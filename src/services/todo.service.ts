@@ -1,16 +1,24 @@
-import { TTodo, TTodoUpdateOptions } from "../models/todo.model";
+import { TTodoCreateInput, TTodoUpdateInput } from "../models/todo.model";
 import TodoRepo from "../repositories/todo.repository";
 
 export default class TodoSvc {
-  static createTask(task: TTodo) {
-    return TodoRepo.createTask(task);
-  }
+    static createTask(task: TTodoCreateInput) {
+        return TodoRepo.createTask(task);
+    }
 
-  static update(task: TTodoUpdateOptions) {
-    return TodoRepo.update(task);
-  }
+    static getAll() {
+        return TodoRepo.getAll();
+    }
 
-  static delete(_id: string) {
-    return TodoRepo.delete(_id);
-  }
+    static getById(id: string) {
+        return TodoRepo.getById(id);
+    }
+
+    static update(task: TTodoUpdateInput) {
+        return TodoRepo.update(task);
+    }
+
+    static delete(id: string) {
+        return TodoRepo.delete(id);
+    }
 }

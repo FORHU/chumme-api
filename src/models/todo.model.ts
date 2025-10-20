@@ -1,34 +1,21 @@
-import { ObjectId } from "mongodb";
-
 export type TTodo = {
-  _id?: ObjectId;
-  title: string;
-  description: string;
-  createdAt?: Date;
-  updatedAt?: Date;
-  status?: string;
+    id?: string;
+    title: string;
+    description: string;
+    status?: string;
+    createdAt?: Date;
+    updatedAt?: Date;
 };
 
-export type TTodoUpdateOptions = {
-  _id?: ObjectId | string;
-  title: string;
-  description: string;
+export type TTodoCreateInput = {
+    title: string;
+    description: string;
+    status?: string;
 };
 
-export class MOrganization implements Partial<TTodo> {
-  _id?: ObjectId;
-  title: string;
-  description: string;
-  createdAt?: Date;
-  updatedAt?: Date;
-  status?: string;
-
-  constructor({ _id = new ObjectId(), title = "", description = "", createdAt = new Date(), updatedAt, status = "active" } = {} as TTodo) {
-    this._id = _id;
-    this.title = title;
-    this.description = description;
-    this.createdAt = createdAt;
-    this.updatedAt = updatedAt;
-    this.status = status;
-  }
-}
+export type TTodoUpdateInput = {
+    id: string;
+    title?: string;
+    description?: string;
+    status?: string;
+};

@@ -1,39 +1,63 @@
-import { ObjectId } from "mongodb";
-import { MOrganization, TTodo, TTodoUpdateOptions } from "../models/todo.model";
-import { getDB } from "../utils/mongo";
+import {
+    TTodo,
+    TTodoCreateInput,
+    TTodoUpdateInput,
+} from "../models/todo.model";
+import { prisma } from "../utils/prisma";
 
 export default class TodoRepo {
-  static collection() {
-    return getDB().collection("organizations");
-  }
-
-  static async createTask(organization: TTodo) {
-    return this.collection().insertOne(new MOrganization(organization));
-  }
-
-  static async update(organization: TTodoUpdateOptions) {
-    try {
-      organization._id = new ObjectId(organization._id);
-    } catch (error) {
-      return Promise.reject("Invalid organization id.");
-    }
-    const { title, description } = organization;
-    const updatedAt = new Date();
-    return this.collection().updateOne({ _id: organization._id }, { $set: { title, description, updatedAt } });
-  }
-
-  static async delete(_id: string | ObjectId) {
-    try {
-      _id = new ObjectId(_id);
-    } catch (error) {
-      return Promise.reject("Invalid organization id.");
+    static async createTask(todoData: TTodoCreateInput) {
+        try {
+            return await prisma.todo.create({
+                data: todoData,
+            });
+        } catch (error) {
+            throw new Error(`Failed to create todo: ${error}`);
+        }
     }
 
-    try {
-      await this.collection().deleteOne({ _id: new ObjectId(_id) });
-      return Promise.resolve("Successfully deleted organization.");
-    } catch (error) {
-      return Promise.reject("Server internal error.");
+    static async getAll() {
+        try {
+            return await prisma.todo.findMany({
+                orderBy: {
+                    createdAt: "desc",
+                },
+            });
+        } catch (error) {
+            throw new Error(`Failed to fetch todos: ${error}`);
+        }
     }
-  }
+
+    static async getById(id: string) {
+        try {
+            return await prisma.todo.findUnique({
+                where: { id },
+            });
+        } catch (error) {
+            throw new Error(`Failed to fetch todo: ${error}`);
+        }
+    }
+
+    static async update(updateData: TTodoUpdateInput) {
+        try {
+            const { id, ...data } = updateData;
+            return await prisma.todo.update({
+                where: { id },
+                data,
+            });
+        } catch (error) {
+            throw new Error(`Failed to update todo: ${error}`);
+        }
+    }
+
+    static async delete(id: string) {
+        try {
+            await prisma.todo.delete({
+                where: { id },
+            });
+            return "Successfully deleted todo.";
+        } catch (error) {
+            throw new Error(`Failed to delete todo: ${error}`);
+        }
+    }
 }
