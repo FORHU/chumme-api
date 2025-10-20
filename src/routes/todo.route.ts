@@ -1,10 +1,8 @@
 import express from "express";
-const router = express.Router();
-
 import TodoCtrl from "../controllers/todo.controller";
 
-router.post("/", TodoCtrl.createTask);
-router.put("/", TodoCtrl.update);
-router.delete("/", TodoCtrl.delete);
+const router = express.Router();
+
+router.post("/register", TodoCtrl.register);
 
 export default router;
