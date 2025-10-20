@@ -30,6 +30,7 @@ model User {
   lastLoginAt DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+  provider    String? // for OAuth providers
   sessions    Session[]
   // for non auth related fields?
   // posts         Post[]
