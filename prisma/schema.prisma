@@ -13,13 +13,35 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Todo {
-  id          String   @id @default(cuid())
-  title       String
-  description String
-  status      String   @default("active")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+enum Role {
+  USER
+  ADMIN
+}
 
-  @@map("todos")
+model User {
+  id          Int       @id @default(autoincrement())
+  email       String    @unique
+  password    String
+  name        String?
+  username    String    @unique // for profile username
+  avatar      String? //for avatar URL
+  role        Role      @default(USER)
+  isActive    Boolean   @default(true)
+  lastLoginAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  sessions    Session[]
+  // for non auth related fields?
+  // posts         Post[]
+  // comments      Comment[]
+  // conversations Conversation[]
+}
+
+model Session {
+  id        Int      @id @default(autoincrement())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    Int
+  token     String   @unique
+  createdAt DateTime @default(now())
+  expiresAt DateTime
 }
