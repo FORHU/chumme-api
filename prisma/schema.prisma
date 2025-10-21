@@ -24,9 +24,11 @@ model User {
   password    String
   name        String?
   username    String    @unique // for profile username
-  avatar      String? //for avatar URL
+  avatar      File?     @relation(fields: [avatarId], references: [id]) //for avatar URL
+  avatarId    String? // ID of the File used as avatar
   role        Role      @default(USER)
   isActive    Boolean   @default(true)
+  isDeleted   Boolean   @default(false) // for soft delete
   lastLoginAt DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -45,4 +47,14 @@ model Session {
   token     String   @unique
   createdAt DateTime @default(now())
   expiresAt DateTime
+}
+
+model File {
+  id        String    @id @default(uuid())
+  filename  String?
+  fileUrl   String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  users     User[] // reverse relation for avatars (not sure if needed)
 }
