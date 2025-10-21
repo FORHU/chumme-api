@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
 import Joi from "joi";
-import TodoSvc from "../services/todo.service";
+import AuthSvc from "../services/auth.service";
 
-export default class TodoCtrl {
+export default class AuthCtrl {
     static async register(req: Request, res: Response) {
         const { email, password, username, name } = req.body;
 
@@ -19,8 +19,8 @@ export default class TodoCtrl {
         }
 
         try {
-            const result = await TodoSvc.register({ email, password, username, name });
-            return res.status(201).json({ message: "User created successfully", user: result });
+            const user = await AuthSvc.register({ email, password, username, name });
+            return res.status(201).json({ message: "User created successfully", user });
         } catch (error) {
             return res.status(500).json({ message: error });
         }
