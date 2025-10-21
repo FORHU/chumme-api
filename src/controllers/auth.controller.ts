@@ -42,8 +42,9 @@ export default class AuthCtrl {
         try {
             const result = await AuthSvc.login({ email, password });
             return res.json(result);
-        } catch (error) {
-            return res.status(401).json({ message: error });
+        } catch (error: any) {
+            console.error('Login error:', error);
+            return res.status(401).json({ message: error.message || error });
         }
     }
 }

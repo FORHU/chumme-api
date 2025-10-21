@@ -54,13 +54,13 @@ export default class AuthSvc {
         // Generate tokens
         const accessToken = jwt.sign(
             { userId: user.id },
-            process.env.JWT_SECRET!,
+            process.env.ACCESS_TOKEN_SECRET!,
             { expiresIn: '15m' }
         );
 
         const refreshToken = jwt.sign(
             { userId: user.id },
-            process.env.JWT_REFRESH_SECRET!,
+            process.env.REFRESH_TOKEN_SECRET!,
             { expiresIn: '7d' }
         );
 
