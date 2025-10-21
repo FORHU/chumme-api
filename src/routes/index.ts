@@ -10,7 +10,7 @@ router.get("/v1", (_, res) => {
   });
 });
 
-router.use("/auth", authRoute);
+router.use("/v1/auth", authRoute);
 router.use("/v1/chat", chatRoutes);
 
 export default router;
