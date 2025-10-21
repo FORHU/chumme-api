@@ -1,5 +1,4 @@
 import { PrismaClient } from "@prisma/client";
-import crypto from "crypto";
 
 const prisma = new PrismaClient();
 
@@ -19,17 +18,9 @@ export default class AuthRepo {
         username: string;
         name?: string;
     }) {
-        const salt = crypto.randomBytes(16).toString('hex');
-        const hashedPassword = crypto
-            .pbkdf2Sync(data.password, salt, 1000, 64, 'sha512')
-            .toString('hex');
-
         return prisma.user.create({
             data: {
-                email: data.email,
-                password: `${salt}:${hashedPassword}`,
-                username: data.username,
-                name: data.name,
+                ...data,
                 provider: null
             },
             select: {

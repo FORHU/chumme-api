@@ -1,4 +1,5 @@
 import AuthRepo from "../repositories/auth.repository";
+import crypto from "crypto";
 
 export default class AuthSvc {
     static async register({
@@ -13,12 +14,20 @@ export default class AuthSvc {
         name?: string;
     }) {
         const existingUser = await AuthRepo.findUserByEmailOrUsername(email, username);
-
-        if (existingUser) {
-            const field = existingUser.email === email ? 'email' : 'username';
-            throw `This ${field} is already registered`;
+        if (!existingUser) {
+            throw "User not found";
         }
 
-        return AuthRepo.createUser({ email, password, username, name });
+        const salt = crypto.randomBytes(16).toString('hex');
+        const hashedPassword = crypto
+            .pbkdf2Sync(password, salt, 1000, 64, 'sha512')
+            .toString('hex');
+
+        return AuthRepo.createUser({
+            email,
+            password: `${salt}:${hashedPassword}`,
+            username,
+            name
+        });
     }
 }
