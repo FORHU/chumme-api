@@ -1,0 +1,20 @@
+import { Request, Response } from "express";
+import UserSvc from "../services/user.service";
+
+export default class UserCtrl {
+    static async getCurrentUser(req: Request, res: Response) {
+        try {
+            const userId = req.user.userId; // From auth middleware
+            console.log('Looking for user with ID:', userId);
+            const user = await UserSvc.getUserById(userId);
+            if (!user) {
+                console.log('No user found with ID:', userId);
+                return res.status(404).json({ message: "User not found" });
+            }
+            return res.json(user);
+        } catch (error) {
+            console.error('Error in getCurrentUser:', error);
+            return res.status(500).json({ message: error });
+        }
+    }
+}

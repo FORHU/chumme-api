@@ -81,12 +81,42 @@ export default class AuthRepo {
 
     static async createSession(data: {
         userId: string;
-        token: string;
+        refreshToken: string;
         expiresAt: Date;
     }) {
         return prisma.session.create({
             data: {
                 ...data
+            }
+        });
+    }
+
+    static async findValidSession(refreshToken: string) {
+        return prisma.session.findFirst({
+            where: {
+                refreshToken,
+                expiresAt: {
+                    gt: new Date()
+                }
+            },
+            include: {
+                user: true
+            }
+        });
+    }
+
+    static async findUserById(userId: string) {
+        return prisma.user.findUnique({
+            where: {
+                id: userId,
+                isDeleted: false
+            },
+            include: {
+                avatar: {
+                    select: {
+                        fileUrl: true
+                    }
+                }
             }
         });
     }

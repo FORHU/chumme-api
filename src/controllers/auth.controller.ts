@@ -47,4 +47,25 @@ export default class AuthCtrl {
             return res.status(401).json({ message: error.message || error });
         }
     }
+
+    static async refreshToken(req: Request, res: Response) {
+        const { refreshToken } = req.body;
+
+        const schema = Joi.object({
+            refreshToken: Joi.string().required()
+        });
+
+        const { error } = schema.validate({ refreshToken });
+        if (error) {
+            return res.status(400).json({ message: error.message });
+        }
+
+        try {
+            const result = await AuthSvc.refreshToken(refreshToken);
+            return res.json(result);
+        } catch (error: any) {
+            console.error('Refresh token error:', error);
+            return res.status(401).json({ message: error.message || error });
+        }
+    }
 }
