@@ -3,24 +3,61 @@ import Joi from "joi";
 import TodoSvc from "../services/todo.service";
 
 export default class TodoCtrl {
-    static async register(req: Request, res: Response) {
-        const { email, password, username, name } = req.body;
+    static async createTask(req: Request, res: Response) {
+        const { title, description } = req.body;
 
         const schema = Joi.object({
-            email: Joi.string().email().required(),
-            password: Joi.string().min(6).required(),
-            username: Joi.string().required(),
-            name: Joi.string().optional()
+            title: Joi.string().required(),
+            description: Joi.string().required(),
         });
 
-        const { error } = schema.validate({ email, password, username, name });
+        const { error } = schema.validate({ title, description });
         if (error) {
             return res.status(400).json({ message: error.message });
         }
 
         try {
-            const result = await TodoSvc.register({ email, password, username, name });
-            return res.status(201).json({ message: "User created successfully", user: result });
+            const result = await TodoSvc.createTask({ title, description });
+            return res.json({ message: result });
+        } catch (error) {
+            return res.status(500).json({ message: error });
+        }
+    }
+
+    static async update(req: Request, res: Response) {
+        const { title, description, status } = req.body;
+        const id = req.params.id as string;
+
+        const schema = Joi.object({
+            title: Joi.string().optional(),
+            description: Joi.string().optional(),
+            status: Joi.string().optional(),
+        });
+
+        const { error } = schema.validate({ title, description, status });
+        if (error) {
+            return res.status(400).json({ message: error.message });
+        }
+
+        try {
+            const result = await TodoSvc.update({
+                id,
+                title,
+                description,
+                status,
+            });
+            return res.json({ message: result });
+        } catch (error) {
+            return res.status(500).json({ message: error });
+        }
+    }
+
+    static async delete(req: Request, res: Response) {
+        const id = req.params.id as string;
+
+        try {
+            const result = await TodoSvc.delete(id);
+            return res.json({ message: result });
         } catch (error) {
             return res.status(500).json({ message: error });
         }
