@@ -34,4 +34,60 @@ export default class AuthRepo {
             }
         });
     }
+
+    static async findUserByEmail(email: string) {
+        return prisma.user.findUnique({
+            where: {
+                email,
+                isDeleted: false
+            },
+            include: {
+                avatar: {
+                    select: {
+                        fileUrl: true
+                    }
+                }
+            }
+        });
+    }
+
+    static async updateUserLoginStatus(userId: string) {
+        return prisma.user.update({
+            where: {
+                id: userId,
+                isDeleted: false
+            },
+            data: {
+                isActive: true,
+                lastLoginAt: new Date(),
+                updatedAt: new Date() // This is handled automatically by @updatedAt
+            },
+            select: {
+                id: true,
+                email: true,
+                username: true,
+                name: true,
+                role: true,
+                isActive: true,
+                avatar: {
+                    select: {
+                        fileUrl: true
+                    }
+                },
+                lastLoginAt: true
+            }
+        });
+    }
+
+    static async createSession(data: {
+        userId: string;
+        token: string;
+        expiresAt: Date;
+    }) {
+        return prisma.session.create({
+            data: {
+                ...data
+            }
+        });
+    }
 }
