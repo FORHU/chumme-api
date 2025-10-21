@@ -14,8 +14,8 @@ export default class AuthSvc {
         name?: string;
     }) {
         const existingUser = await AuthRepo.findUserByEmailOrUsername(email, username);
-        if (!existingUser) {
-            throw "User not found";
+        if (existingUser) {
+            throw "This email or username is already registered";
         }
 
         const salt = crypto.randomBytes(16).toString('hex');
