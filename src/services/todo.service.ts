@@ -1,24 +1,48 @@
-import { TTodoCreateInput, TTodoUpdateInput } from "../models/todo.model";
-import TodoRepo from "../repositories/todo.repository";
+import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcrypt";
+
+const prisma = new PrismaClient();
 
 export default class TodoSvc {
-    static createTask(task: TTodoCreateInput) {
-        return TodoRepo.createTask(task);
-    }
+    static async register({
+        email,
+        password,
+        username,
+        name
+    }: {
+        email: string;
+        password: string;
+        username: string;
+        name?: string;
+    }) {
+        const exists = await prisma.user.findFirst({
+            where: { OR: [{ email }, { username }] }
+        });
 
-    static getAll() {
-        return TodoRepo.getAll();
-    }
+        if (exists) {
+            const field = exists.email === email ? 'email' : 'username';
+            throw `This ${field} is already registered`;
+        }
 
-    static getById(id: string) {
-        return TodoRepo.getById(id);
-    }
+        const hashedPassword = await bcrypt.hash(password, 10);
 
-    static update(task: TTodoUpdateInput) {
-        return TodoRepo.update(task);
-    }
-
-    static delete(id: string) {
-        return TodoRepo.delete(id);
+        return prisma.user.create({
+            data: {
+                email,
+                password: hashedPassword,
+                username,
+                name,
+                provider: null
+            },
+            select: {
+                id: true,
+                email: true,
+                username: true,
+                name: true,
+                role: true,
+                createdAt: true, //not sure if needed by client
+                updatedAt: true
+            }
+        });
     }
 }
