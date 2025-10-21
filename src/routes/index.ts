@@ -1,4 +1,5 @@
 import express from "express";
+import chatRoutes from "./chat.route";
 
 const router = express.Router();
 
@@ -8,4 +9,8 @@ router.get("/v1", (_, res) => {
   });
 });
 
+router.use("/v1/chat", chatRoutes);
+
 export default router;
+
+
