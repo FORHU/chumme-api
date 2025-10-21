@@ -67,7 +67,7 @@ export default class AuthSvc {
         // Create session with refresh token
         await AuthRepo.createSession({
             userId: user.id,
-            token: refreshToken,
+            refreshToken: refreshToken,
             expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
         });
 
@@ -83,5 +83,45 @@ export default class AuthSvc {
                 avatar: user.avatar?.fileUrl
             }
         };
+    }
+
+    static async refreshToken(refreshToken: string) {
+        try {
+            // Verify refresh token
+            const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET!) as { userId: string };
+
+            // Find valid session
+            const session = await AuthRepo.findValidSession(refreshToken);
+            if (!session) {
+                throw "Invalid refresh token";
+            }
+
+            // Get user
+            const user = await AuthRepo.findUserById(decoded.userId);
+            if (!user) {
+                throw "User not found";
+            }
+
+            // Generate new access token
+            const accessToken = jwt.sign(
+                { userId: user.id },
+                process.env.ACCESS_TOKEN_SECRET!,
+                { expiresIn: '15m' }
+            );
+
+            return {
+                accessToken,
+                user: {
+                    id: user.id,
+                    email: user.email,
+                    username: user.username,
+                    name: user.name,
+                    role: user.role,
+                    avatar: user.avatar?.fileUrl
+                }
+            };
+        } catch (error) {
+            throw "Invalid refresh token";
+        }
     }
 }
