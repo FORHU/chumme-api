@@ -61,16 +61,13 @@ export default class ChatSvc {
         }
     }
 
-    static async getChatMessageById(chatMessageId: string, role?: ChatRole){
+    static async getChatMessageById(chatMessageId: string){
         if(!chatMessageId || !chatMessageId.trim()){
             throw new BadRequestError("Chat Message ID is required");
         }
-        if(role && !Object.values(ChatRole).includes(role)){
-            throw new BadRequestError("Invalid role value");
-        }
 
         try {
-            const chatMessage = await ChatRepo.getChatMessageById(chatMessageId, role);
+            const chatMessage = await ChatRepo.getChatMessageById(chatMessageId);
             if(!chatMessage){
                 throw new NotFoundError("Chat message not found");
             }

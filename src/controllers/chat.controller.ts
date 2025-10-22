@@ -41,15 +41,14 @@ export default class ChatCtrl {
             role: Joi.string().valid(...Object.values(ChatRole)).optional()
         })
 
-        const { error, value } = schema.validate({chatId, role})
+        const { error } = schema.validate({chatId, role})
         if(error){
             next(new BadRequestError(error.message));
         }
 
-        const validateRole : ChatRole | undefined = value.role
 
          try {
-             const chatMessage = await ChatSvc.getChatMessageById(chatId, validateRole);
+             const chatMessage = await ChatSvc.getChatMessageById(chatId);
              return res.json(chatMessage);       
         } catch (error) {
             next(error);

@@ -24,18 +24,18 @@ export default class ChatRepo{
         })
     }
 
-    static async findChatMessagesByUserId(userId: string){
+    static async findChatMessagesByUserId(userId: string, role?: ChatRole){
         return prisma.chatMessage.findMany({
-            where: { userId },
+            where: { userId , ...(role && {role})  },
             include: {
                 emotionMemory:  { select: { id: true, emotion: true, confidence: true }},
             }
         })
     }
 
-    static async getChatMessageById(chatMessageId: string, role?: ChatRole){
+    static async getChatMessageById(chatMessageId: string){
         return prisma.chatMessage.findUnique({
-            where: { id: chatMessageId, ...(role && {role}) },
+            where: { id: chatMessageId},
             include: {
                 emotionMemory:  { select: { id: true, emotion: true, confidence: true }},
                 User: { select: { id: true, username: true, name: true }},
