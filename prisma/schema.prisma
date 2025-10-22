@@ -38,10 +38,12 @@ model User {
   roomsOwned  Room[]       @relation("RoomOwner")
   roomMembers RoomMember[]
   messages    Message[]
-  // for non auth related fields?
-  // posts         Post[]
-  // comments      Comment[]
-  // conversations Conversation[]
+  // social feed relations
+  posts       Post[]
+  likes       Like[]
+  comments    Comment[]
+  followers   Follow[]     @relation("UserFollowers")
+  following   Follow[]     @relation("UserFollows")
 }
 
 model Session {
@@ -99,4 +101,65 @@ model Message {
   isSystem  Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// Social feed models
+model Post {
+  id        String   @id @default(uuid())
+  userId    String
+  content   String
+  mediaUrls String[] @default([])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  isDeleted Boolean  @default(false)
+
+  user     User      @relation(fields: [userId], references: [id])
+  likes    Like[]
+  comments Comment[]
+
+  @@index([userId]) //for performance if many users already
+}
+
+model Like {
+  id        String   @id @default(uuid())
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+  isDeleted Boolean  @default(false) // unlike action
+
+  post Post @relation(fields: [postId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([postId, userId])
+  @@index([postId])
+  @@index([userId])
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  postId    String
+  userId    String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  isDeleted Boolean  @default(false)
+
+  post Post @relation(fields: [postId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([postId])
+  @@index([userId])
+}
+
+model Follow {
+  id          String   @id @default(uuid())
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+  isDeleted   Boolean  @default(false) // unfollow action
+
+  follower  User @relation("UserFollows", fields: [followerId], references: [id])
+  following User @relation("UserFollowers", fields: [followingId], references: [id])
+
+  @@unique([followerId, followingId])
 }
