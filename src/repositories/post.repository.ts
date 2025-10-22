@@ -206,4 +206,57 @@ export default class PostRepo {
             }
         });
     }
+
+    static async getFeedPosts(userId: string) {
+        return prisma.post.findMany({
+            where: {
+                isDeleted: false,
+                user: {
+                    followers: {
+                        some: {
+                            followerId: userId,
+                            isDeleted: false
+                        }
+                    }
+                }
+            },
+            select: {
+                id: true,
+                userId: true,
+                content: true,
+                mediaUrls: true,
+                createdAt: true,
+                updatedAt: true,
+                user: {
+                    select: {
+                        id: true,
+                        username: true,
+                        name: true,
+                        avatar: {
+                            select: {
+                                fileUrl: true
+                            }
+                        }
+                    }
+                },
+                _count: {
+                    select: {
+                        likes: {
+                            where: {
+                                isDeleted: false
+                            }
+                        },
+                        comments: {
+                            where: {
+                                isDeleted: false
+                            }
+                        }
+                    }
+                }
+            },
+            orderBy: {
+                createdAt: 'desc'
+            }
+        });
+    }
 }

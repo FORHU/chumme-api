@@ -141,4 +141,17 @@ export default class PostCtrl {
             });
         }
     }
+
+    static async getFeed(req: Request, res: Response) {
+        try {
+            const userId = req.user.userId;
+
+            const result = await PostSvc.getFeed(userId);
+            return res.status(200).json(result);
+        } catch (error: any) {
+            return res.status(500).json({
+                message: error.message || "Failed to fetch feed"
+            });
+        }
+    }
 }

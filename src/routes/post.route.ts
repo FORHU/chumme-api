@@ -4,6 +4,7 @@ import { authenticate } from "../middleware/auth.middleware";
 
 const router = express.Router();
 
+router.get("/feed", authenticate, PostCtrl.getFeed);
 router.get("/", authenticate, PostCtrl.getPosts);
 router.post("/", authenticate, PostCtrl.createPost);
 router.post("/:id/like", authenticate, PostCtrl.toggleLike);

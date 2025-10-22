@@ -129,4 +129,13 @@ export default class PostSvc {
             }
         };
     }
+
+    static async getFeed(userId: string) {
+        const posts = await PostRepo.getFeedPosts(userId);
+
+        return {
+            posts,
+            total: posts.length
+        };
+    }
 }
