@@ -1,7 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import Joi from "joi";
 import ChatSvc from "../services/chat.service";
-import ChatRepo from "../repositories/chat.repository";
 import { ChatRole } from "@prisma/client";
 import { BadRequestError } from "../utils/error.util";
 
