@@ -61,13 +61,13 @@ export default class ChatSvc {
         }
     }
 
-    static async getChatMessageById(chatMessageId: string){
+    static async getChatMessageById(chatMessageId: string, currentUserId: string){
         if(!chatMessageId || !chatMessageId.trim()){
             throw new BadRequestError("Chat Message ID is required");
         }
 
         try {
-            const chatMessage = await ChatRepo.getChatMessageById(chatMessageId);
+            const chatMessage = await ChatRepo.getChatMessageById(chatMessageId, currentUserId);
             if(!chatMessage){
                 throw new NotFoundError("Chat message not found");
             }

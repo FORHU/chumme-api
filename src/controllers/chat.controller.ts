@@ -8,14 +8,15 @@ export default class ChatCtrl {
 
     static async sendChat(req: Request, res: Response, next: NextFunction){
 
-        const {input, userId} = req.body;
+        const {input } = req.body;
+        const { id: userId } = req.user;
 
         const schema = Joi.object({
             input: Joi.string().required(),
             userId: Joi.string().required()
         })
 
-        const { error } = schema.validate(req.body)
+        const { error } = schema.validate({ input, userId })
         
         if(error){
             next(new BadRequestError(error.message));
@@ -34,6 +35,7 @@ export default class ChatCtrl {
 
         const { chatId } = req.params;
         const { role } = req.query;
+        const { id: currentUserId } = req.user;
 
         const schema = Joi.object({
             chatId: Joi.string().required(),
@@ -47,7 +49,7 @@ export default class ChatCtrl {
 
 
          try {
-             const chatMessage = await ChatSvc.getChatMessageById(chatId);
+             const chatMessage = await ChatSvc.getChatMessageById(chatId, currentUserId);
              return res.json(chatMessage);       
         } catch (error) {
             next(error);

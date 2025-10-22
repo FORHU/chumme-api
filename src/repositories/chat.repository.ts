@@ -33,9 +33,9 @@ export default class ChatRepo{
         })
     }
 
-    static async getChatMessageById(chatMessageId: string){
+    static async getChatMessageById(chatMessageId: string, userId: string){
         return prisma.chatMessage.findUnique({
-            where: { id: chatMessageId},
+            where: { id: chatMessageId, userId },
             include: {
                 emotionMemory:  { select: { id: true, emotion: true, confidence: true }},
                 User: { select: { id: true, username: true, name: true }},
