@@ -20,6 +20,7 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
 
     try {
         const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET!) as { userId: string };
+        req.user = decoded;
         const user = await UserRepo.findUserById(decoded.userId);
         if (!user || user.isDeleted) {
             return res.status(404).json({ message: "User not found" });

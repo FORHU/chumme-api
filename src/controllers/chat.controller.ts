@@ -1,48 +1,58 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import Joi from "joi";
 import ChatSvc from "../services/chat.service";
-import { detectEmotion } from "../utils/openai/detect-emotion.util";
+import { ChatRole } from "@prisma/client";
+import { BadRequestError } from "../utils/error.util";
 
 export default class ChatCtrl {
 
-    static async sendChat(req: Request, res: Response){
+    static async sendChat(req: Request, res: Response, next: NextFunction){
 
-        const {input} = req.body;
+        const {input } = req.body;
+        const { id: userId } = req.user;
 
         const schema = Joi.object({
-            input: Joi.string().required()
+            input: Joi.string().required(),
+            userId: Joi.string().required()
         })
 
-        const { error } = schema.validate(req.body)
+        const { error } = schema.validate({ input, userId })
         
         if(error){
-            return res.status(400).json({message: error.message});
+            next(new BadRequestError(error.message));
         }
 
          try {
-            const result = await ChatSvc.sendChat(input); 
+            const result = await ChatSvc.sendChat(input, userId); 
             return res.json(result);  
         } catch (error) {
-                return res.status(500).json({message: error});
+               next(error);
         }
 
     }
 
-    static async getChats(req: Request, res: Response){
+    static async getChatByChatId(req: Request, res: Response, next: NextFunction){
+
+        const { chatId } = req.params;
+        const { role } = req.query;
+        const { id: currentUserId } = req.user;
 
         const schema = Joi.object({
-
+            chatId: Joi.string().required(),
+            role: Joi.string().valid(...Object.values(ChatRole)).optional()
         })
 
-        const { error } = schema.validate({})
+        const { error } = schema.validate({chatId, role})
         if(error){
-            return res.status(400).json({message: error.message});
+            next(new BadRequestError(error.message));
         }
 
+
          try {
-            return res.json({message: "Get chats successfully fetched!!"});            
+             const chatMessage = await ChatSvc.getChatMessageById(chatId, currentUserId);
+             return res.json(chatMessage);       
         } catch (error) {
-                return res.status(500).json({message: error});
+            next(error);
         }
     }
 
