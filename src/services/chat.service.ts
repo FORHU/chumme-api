@@ -52,4 +52,24 @@ export default class ChatSvc {
         }
     }
 
+    static async getChatMessageById(chatMessageId: string){
+        if(!chatMessageId || !chatMessageId.trim()){
+            throw new Error("Chat Message ID is required");
+        }
+
+        try {
+            const chatMessage = await ChatRepo.getChatMessageById(chatMessageId);
+            if(!chatMessage){
+                throw new Error("Chat Message not found");
+            }
+            return chatMessage;
+        } catch (error: any) {
+            console.error("Error in ChatSvc.getChatMessageById:", error?.message || error);
+            if(error instanceof Prisma.PrismaClientKnownRequestError){
+                throw new Error(`Database error: ${error?.message}`);
+            }
+            throw  new Error("[ChatSvc.getChatMessageById], Failed to retrieve chat message");
+        }
+    }
+
 } 

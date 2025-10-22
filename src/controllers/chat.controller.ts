@@ -29,19 +29,22 @@ export default class ChatCtrl {
 
     }
 
-    static async getChats(req: Request, res: Response){
+    static async getChatByChatId(req: Request, res: Response){
+
+        const { chatId } = req.params;
 
         const schema = Joi.object({
-
+            chatId: Joi.string().required()
         })
 
-        const { error } = schema.validate({})
+        const { error } = schema.validate({chatId})
         if(error){
             return res.status(400).json({message: error.message});
         }
 
          try {
-            return res.json({message: "Get chats successfully fetched!!"});            
+             const chatMessage = await ChatSvc.getChatMessageById(chatId);
+             return res.json(chatMessage);       
         } catch (error) {
                 return res.status(500).json({message: error});
         }

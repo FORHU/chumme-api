@@ -10,8 +10,7 @@ export default class ChatRepo{
         return prisma.chatMessage.create({
             data, 
             include: {
-                User: true,
-                emotionMemory: true,
+                emotionMemory: { select: { id: true, emotion: true, confidence: true }},
             }
         })
     }
@@ -19,10 +18,9 @@ export default class ChatRepo{
     static async createEmotionMemory(data: Prisma.EmotionMemoryCreateInput){
         return prisma.emotionMemory.create({
             data,
-            include: {
-                ChatMessage: true,
-                User: true,
-            }
+            // include: {
+            //     ChatMessage: { select: { id: true, message: true }},
+            // }
         })
     }
 
@@ -30,7 +28,7 @@ export default class ChatRepo{
         return prisma.chatMessage.findMany({
             where: { userId },
             include: {
-                emotionMemory: true,
+                emotionMemory:  { select: { id: true, emotion: true, confidence: true }},
             }
         })
     }
@@ -39,8 +37,8 @@ export default class ChatRepo{
         return prisma.chatMessage.findUnique({
             where: { id: chatMessageId },
             include: {
-                emotionMemory: true,
-                User: true,
+                emotionMemory:  { select: { id: true, emotion: true, confidence: true }},
+                User: { select: { id: true, username: true, name: true }},
             }
         })
     }
