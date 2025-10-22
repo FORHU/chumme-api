@@ -44,6 +44,13 @@ model User {
   comments    Comment[]
   followers   Follow[]     @relation("UserFollowers")
   following   Follow[]     @relation("UserFollows")
+  // for non auth related fields?
+  // posts         Post[]
+  // comments      Comment[]
+  // conversations Conversation[]
+
+  chatMessages     ChatMessage[]
+  emotionMemories  EmotionMemory[]
 }
 
 model Session {
@@ -101,6 +108,33 @@ model Message {
   isSystem  Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+
+enum ChatRole {
+  USER
+  AI
+  ADMIN
+}
+
+model ChatMessage {
+  id            String      @id @default(uuid())
+  userId        String
+  role          ChatRole    @default(USER) 
+  confidence    Float?  
+  createdAt     DateTime    @default(now())
+  User          User        @relation(fields: [userId], references: [id])
+  emotionMemory EmotionMemory?
+}
+
+model EmotionMemory {
+  id             String    @id @default(uuid())
+  chatMessageId  String    @unique
+  emotion        String
+  confidence     Float
+  createdAt      DateTime   @default(now())
+  ChatMessage    ChatMessage @relation(fields: [chatMessageId], references: [id])
+  User          User        @relation(fields: [userId], references: [id])
 }
 
 // Social feed models
