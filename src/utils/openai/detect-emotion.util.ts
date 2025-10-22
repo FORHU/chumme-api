@@ -1,17 +1,25 @@
-export function detectEmotion(text: string) : string {
-    const lower = text.toLowerCase();
+import { defaultOpenAIRequest } from "./ai-request.util";
 
-    if(lower.includes('sorry') || lower.includes('apologize')) {
-        return 'apologetic';
-    } else if(lower.includes('thank you') || lower.includes('thanks')) {
-        return 'grateful';
-    } else if(lower.includes('happy') || lower.includes('joy')) {
-        return 'happy';
-    } else if(lower.includes('sad') || lower.includes('unhappy')) {
-        return 'sad';
-    } else if(lower.includes('angry') || lower.includes('frustrated')) {
-        return 'angry';
-    } else {
-        return 'neutral';
-    }
+export async function detectEmotion(inputText: string) {
+       const prompt = `You are an emotion analysis engine. Analyze the following text and return a JSON object with two fields: 
+            "emotion" (one word like happy, sad, angry, excited, lonely, nostalgic, calm, anxious, proud, grateful)
+            and "confidence" (a number between 0 and 1, 0.5 being neutral).
+
+            Text: "${inputText}"
+            Output format example:
+            {"emotion": "happy", "confidence": 0.94}`;
+
+        try {
+             const res = await defaultOpenAIRequest(prompt, {role: "user", temperature: 0.0 });
+            const parsed = JSON.parse(res || "{emotion: null, confidence: null}") ;
+            if(!parsed.emotion || typeof parsed.confidence !== "number"){
+                throw new Error("[detectEmotion utils], Invalid response structure from AI");
+            } else {
+                return parsed; // { emotion: string, confidence: number}
+            }
+        } catch (error) {
+            console.error("Error in detect-emotion.utils:", error);
+            throw  new Error("Failed to Detect Emotion response");
+        }
+
 }

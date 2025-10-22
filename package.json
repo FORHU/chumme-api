@@ -25,6 +25,7 @@
     "jsonwebtoken": "^9.0.2",
     "node-cron": "^3.0.2",
     "nodemailer": "^6.9.6",
+    "openai": "^6.6.0",
     "prisma": "^6.17.1",
     "redis": "^4.6.10",
     "socket.io": "^4.7.2",
