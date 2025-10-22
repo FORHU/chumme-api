@@ -114,8 +114,8 @@ enum ChatRole {
 model ChatMessage {
   id            String      @id @default(uuid())
   userId        String
-  role          ChatRole    @default(USER) 
-  confidence    Float?  
+  role          ChatRole    @default(USER)
+  message       String  
   createdAt     DateTime    @default(now())
   User          User        @relation(fields: [userId], references: [id])
   emotionMemory EmotionMemory?
@@ -124,6 +124,7 @@ model ChatMessage {
 model EmotionMemory {
   id             String    @id @default(uuid())
   chatMessageId  String    @unique
+  userId         String
   emotion        String
   confidence     Float
   createdAt      DateTime   @default(now())
