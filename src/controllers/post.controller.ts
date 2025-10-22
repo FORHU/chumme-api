@@ -25,4 +25,31 @@ export default class PostCtrl {
             });
         }
     }
+
+    static async toggleLike(req: Request, res: Response) {
+        try {
+            const { id } = req.params;
+            const userId = req.user.userId;
+
+            // Validate UUID format
+            const schema = Joi.object({
+                id: Joi.string().uuid().required()
+            });
+
+            const { error } = schema.validate({ id });
+            if (error) {
+                return res.status(400).json({ message: "Invalid post ID" });
+            }
+
+            const result = await PostSvc.toggleLike(id, userId);
+            return res.status(200).json(result);
+        } catch (error: any) {
+            if (error.message === "Post not found") {
+                return res.status(404).json({ message: error.message });
+            }
+            return res.status(500).json({
+                message: error.message || "Failed to toggle like"
+            });
+        }
+    }
 }
