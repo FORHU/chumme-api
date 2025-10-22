@@ -1,4 +1,4 @@
-import { Prisma, PrismaClient  } from "@prisma/client";
+import { ChatRole, Prisma, PrismaClient  } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -33,9 +33,9 @@ export default class ChatRepo{
         })
     }
 
-    static async getChatMessageById(chatMessageId: string){
+    static async getChatMessageById(chatMessageId: string, role?: ChatRole){
         return prisma.chatMessage.findUnique({
-            where: { id: chatMessageId },
+            where: { id: chatMessageId, ...(role && {role}) },
             include: {
                 emotionMemory:  { select: { id: true, emotion: true, confidence: true }},
                 User: { select: { id: true, username: true, name: true }},

@@ -1,11 +1,13 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import Joi from "joi";
 import ChatSvc from "../services/chat.service";
 import ChatRepo from "../repositories/chat.repository";
+import { ChatRole } from "@prisma/client";
+import { BadRequestError } from "../utils/error.util";
 
 export default class ChatCtrl {
 
-    static async sendChat(req: Request, res: Response){
+    static async sendChat(req: Request, res: Response, next: NextFunction){
 
         const {input, userId} = req.body;
 
@@ -17,36 +19,40 @@ export default class ChatCtrl {
         const { error } = schema.validate(req.body)
         
         if(error){
-            return res.status(400).json({message: error.message});
+            next(new BadRequestError(error.message));
         }
 
          try {
             const result = await ChatSvc.sendChat(input, userId); 
             return res.json(result);  
         } catch (error) {
-                return res.status(500).json({message: error});
+               next(error);
         }
 
     }
 
-    static async getChatByChatId(req: Request, res: Response){
+    static async getChatByChatId(req: Request, res: Response, next: NextFunction){
 
         const { chatId } = req.params;
+        const { role } = req.query;
 
         const schema = Joi.object({
-            chatId: Joi.string().required()
+            chatId: Joi.string().required(),
+            role: Joi.string().valid(...Object.values(ChatRole)).optional()
         })
 
-        const { error } = schema.validate({chatId})
+        const { error, value } = schema.validate({chatId, role})
         if(error){
-            return res.status(400).json({message: error.message});
+            next(new BadRequestError(error.message));
         }
 
+        const validateRole : ChatRole | undefined = value.role
+
          try {
-             const chatMessage = await ChatSvc.getChatMessageById(chatId);
+             const chatMessage = await ChatSvc.getChatMessageById(chatId, validateRole);
              return res.json(chatMessage);       
         } catch (error) {
-                return res.status(500).json({message: error});
+            next(error);
         }
     }
 

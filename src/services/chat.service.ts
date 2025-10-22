@@ -2,16 +2,17 @@ import { defaultOpenAIRequest } from "../utils/openai/ai-request.util";
 import { composePrompt } from "../utils/openai/compose-prompt.util";
 import { detectEmotion } from "../utils/openai/detect-emotion.util";
 import ChatRepo from "../repositories/chat.repository";
-import { Prisma } from "@prisma/client";
+import { Prisma, ChatRole } from "@prisma/client";
+import { BadRequestError, InternalServerError, NotFoundError } from "../utils/error.util";
 
 
 export default class ChatSvc {
     static async sendChat(inputText: string, userId: string){
         if(!inputText || !inputText.trim()){
-            throw new Error("Input text cannot be empty");
+            throw new BadRequestError("Input text cannot be empty");
         }
         if(!userId || !userId.trim()){
-            throw new Error("User ID is required");
+            throw new BadRequestError("User ID is required");
         }
 
         try {
@@ -20,12 +21,26 @@ export default class ChatSvc {
 
             let chatMessage = null;
             let emotionMemory = null;
+            let aiResponse = null;
+
+            const prompt = composePrompt(inputText, emotion, confidence);
+
+            const finalChatResponse = await defaultOpenAIRequest(prompt, {role: "user", temperature: 0.7, maxTokens: 800});
+            if(!finalChatResponse || typeof finalChatResponse !== "string"){
+                throw new InternalServerError("[ChatSvc.sendChat], Invalid response from AI, expecting a string");
+            }
 
            if(emotion !== "neutral" && confidence > 0.5){
              chatMessage = await ChatRepo.createChatMessage({
                 message: inputText,
                 User: { connect: { id: userId}},
                 role: "USER",
+            });
+
+            aiResponse =  await ChatRepo.createChatMessage({
+                message: finalChatResponse,
+                User: { connect: { id: userId }},
+                role: "AI",
             });
 
             emotionMemory = await ChatRepo.createEmotionMemory({
@@ -36,39 +51,35 @@ export default class ChatSvc {
             });
            }
 
-            const prompt = composePrompt(inputText, emotion, confidence);
-
-            const res = await defaultOpenAIRequest(prompt, {role: "user", temperature: 0.7, maxTokens: 800});
-            if(!res || typeof res !== "string"){
-                throw new Error("[ChatSvc.sendChat], Invalid response from AI, expecting a string");
-            }
-          return { message: res, emotion_data: emotionResult, chatMessageId: chatMessage?.id || null, emotionMemoryId: emotionMemory?.id || null };
+            
+          return { response: finalChatResponse, emotion_data: emotionResult, chatMessageId: chatMessage?.id || null, emotionMemoryId: emotionMemory?.id || null, aiResponseId: aiResponse?.id || null };
         } catch (error: any) {
-            console.error("Error in ChatSvc.sendChat:", error?.message || error);
             if(error instanceof Prisma.PrismaClientKnownRequestError){
-                throw new Error(`Database error: ${error?.message}`);
+                throw new InternalServerError(`Database error: ${error?.message}`);
             }
-            throw  new Error("[ChatSvc.sendChat], Failed to get AI response");
+            throw error;
         }
     }
 
-    static async getChatMessageById(chatMessageId: string){
+    static async getChatMessageById(chatMessageId: string, role?: ChatRole){
         if(!chatMessageId || !chatMessageId.trim()){
-            throw new Error("Chat Message ID is required");
+            throw new BadRequestError("Chat Message ID is required");
+        }
+        if(role && !Object.values(ChatRole).includes(role)){
+            throw new BadRequestError("Invalid role value");
         }
 
         try {
-            const chatMessage = await ChatRepo.getChatMessageById(chatMessageId);
+            const chatMessage = await ChatRepo.getChatMessageById(chatMessageId, role);
             if(!chatMessage){
-                throw new Error("Chat Message not found");
+                throw new NotFoundError("Chat message not found");
             }
             return chatMessage;
         } catch (error: any) {
-            console.error("Error in ChatSvc.getChatMessageById:", error?.message || error);
             if(error instanceof Prisma.PrismaClientKnownRequestError){
-                throw new Error(`Database error: ${error?.message}`);
+            throw new InternalServerError(`Database error: ${error.message}`);
             }
-            throw  new Error("[ChatSvc.getChatMessageById], Failed to retrieve chat message");
+            throw error;
         }
     }
 

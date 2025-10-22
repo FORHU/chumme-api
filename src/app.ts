@@ -9,6 +9,7 @@ import setup from "./setup";
 import cors from "cors";
 import { createServer } from "http";
 import { Server } from "socket.io";
+import { errorHandler } from "./middleware/error-handler.middleware";
 
 const app = express();
 
@@ -37,6 +38,7 @@ app.disable("x-powered-by");
 
 // Use router for routing
 app.use("/api", router);
+app.use(errorHandler)
 
 const server = createServer(app);
 
