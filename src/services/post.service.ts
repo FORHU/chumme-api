@@ -68,4 +68,27 @@ export default class PostSvc {
             };
         }
     }
+
+    static async createComment(postId: string, userId: string, content: string) {
+        // Check if post exists
+        const post = await PostRepo.findPostById(postId);
+        if (!post) {
+            throw new Error("Post not found");
+        }
+
+        // ensure content is not empty
+        if (!content || content.trim().length === 0) {
+            throw new Error("Comment content is required");
+        }
+        // Max content length 1000 characters
+        if (content.length > 1000) {
+            throw new Error("Comment is too long (max 1000 characters)");
+        }
+
+        return PostRepo.createComment({
+            postId,
+            userId,
+            content: content.trim()
+        });
+    }
 }
