@@ -21,4 +21,8 @@ export default class UserSvc {
         // Soft delete the user
         return UserRepo.softDeleteUser(userId);
     }
+
+    static async getAllUsers() {
+        return UserRepo.findAllUsers();
+    }
 }

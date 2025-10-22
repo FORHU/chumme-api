@@ -46,4 +46,31 @@ export default class UserRepo {
             where: { userId }
         });
     }
+
+    static async findAllUsers() {
+        return prisma.user.findMany({
+            where: {
+                isDeleted: false  // Only get active users
+            },
+            select: {
+                id: true,
+                email: true,
+                username: true,
+                name: true,
+                role: true,
+                isActive: true,
+                avatar: {
+                    select: {
+                        fileUrl: true
+                    }
+                },
+                lastLoginAt: true,
+                createdAt: true,
+                updatedAt: true
+            },
+            orderBy: {
+                createdAt: 'desc'  // Newest first
+            }
+        });
+    }
 }
