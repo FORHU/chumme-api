@@ -1,4 +1,5 @@
 import PostRepo from "../repositories/post.repository";
+import UserRepo from "../repositories/user.repository";
 
 export default class PostSvc {
     static async createPost(userId: string, data: {
@@ -105,6 +106,27 @@ export default class PostSvc {
         return {
             comments,
             total
+        };
+    }
+
+    static async getPostsByUserId(userId: string) {
+        // Check if user exists
+        const user = await UserRepo.findUserById(userId);
+        if (!user) {
+            throw new Error("User not found");
+        }
+
+        const posts = await PostRepo.getPostsByUserId(userId);
+
+        return {
+            posts,
+            total: posts.length,
+            user: {
+                id: user.id,
+                username: user.username,
+                name: user.name,
+                avatar: user.avatar
+            }
         };
     }
 }

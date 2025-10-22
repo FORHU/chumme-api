@@ -160,4 +160,50 @@ export default class PostRepo {
             }
         });
     }
+
+    static async getPostsByUserId(userId: string) {
+        return prisma.post.findMany({
+            where: {
+                userId,
+                isDeleted: false
+            },
+            select: {
+                id: true,
+                userId: true,
+                content: true,
+                mediaUrls: true,
+                createdAt: true,
+                updatedAt: true,
+                user: {
+                    select: {
+                        id: true,
+                        username: true,
+                        name: true,
+                        avatar: {
+                            select: {
+                                fileUrl: true
+                            }
+                        }
+                    }
+                },
+                _count: {
+                    select: {
+                        likes: {
+                            where: {
+                                isDeleted: false
+                            }
+                        },
+                        comments: {
+                            where: {
+                                isDeleted: false
+                            }
+                        }
+                    }
+                }
+            },
+            orderBy: {
+                createdAt: 'desc'
+            }
+        });
+    }
 }
