@@ -1,7 +1,6 @@
 import express from "express";
 import authRoute from "./auth.route";
 import chatRoutes from "./chat.route";
-import openAIRoutes from "./openai.route";
 import userRoute from "./user.route";
 
 const router = express.Router();
@@ -14,7 +13,6 @@ router.get("/v1", (_, res) => {
 
 router.use("/v1/auth", authRoute);
 router.use("/v1/chat", chatRoutes);
-router.use("/v1/openai", openAIRoutes);
 router.use("/v1/users", userRoute);
 
 export default router;

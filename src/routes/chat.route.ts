@@ -3,7 +3,7 @@ const router = express.Router();
 
 import ChatCtrl from "../controllers/chat.controller";
 
-router.post("/create", ChatCtrl.createChat);
+router.post("/send", ChatCtrl.sendChat);
 router.get("/all", ChatCtrl.getChats);
 
 export default router;
