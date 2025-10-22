@@ -73,4 +73,46 @@ export default class UserRepo {
             }
         });
     }
+
+    static async findUserByEmail(email: string) {
+        return prisma.user.findUnique({
+            where: { email }
+        });
+    }
+
+    static async findUserByUsername(username: string) {
+        return prisma.user.findUnique({
+            where: { username }
+        });
+    }
+
+    static async updateUser(userId: string, data: {
+        username?: string;
+        name?: string;
+        email?: string;
+    }) {
+        return prisma.user.update({
+            where: {
+                id: userId,
+                isDeleted: false
+            },
+            data,
+            select: {
+                id: true,
+                email: true,
+                username: true,
+                name: true,
+                role: true,
+                isActive: true,
+                avatar: {
+                    select: {
+                        fileUrl: true
+                    }
+                },
+                lastLoginAt: true,
+                createdAt: true,
+                updatedAt: true
+            }
+        });
+    }
 }
