@@ -5,13 +5,8 @@ import UserSvc from "../services/user.service";
 export default class UserCtrl {
     static async getCurrentUser(req: Request, res: Response) {
         try {
-            const userId = req.user.userId; // From auth middleware
-            console.log('Looking for user with ID:', userId);
-            const user = await UserSvc.getUserById(userId);
-            if (!user) {
-                console.log('No user found with ID:', userId);
-                return res.status(404).json({ message: "User not found" });
-            }
+
+            const user = req.user; // From auth middleware
             return res.json(user);
         } catch (error) {
             console.error('Error in getCurrentUser:', error);
@@ -21,7 +16,7 @@ export default class UserCtrl {
 
     static async deleteAccount(req: Request, res: Response) {
         try {
-            const userId = req.user.userId;
+            const userId = req.user.id;
             await UserSvc.deleteUser(userId);
             return res.status(200).json({
                 message: "Account successfully deleted"
