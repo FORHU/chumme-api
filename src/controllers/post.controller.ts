@@ -52,4 +52,36 @@ export default class PostCtrl {
             });
         }
     }
+
+    static async createComment(req: Request, res: Response) {
+        try {
+            const { id } = req.params;
+            const userId = req.user.userId;
+
+            // Validate input
+            const schema = Joi.object({
+                id: Joi.string().uuid().required(),
+                content: Joi.string().required().max(1000)
+            });
+
+            const { error } = schema.validate({
+                id,
+                content: req.body.content
+            });
+
+            if (error) {
+                return res.status(400).json({ message: error.message });
+            }
+
+            const comment = await PostSvc.createComment(id, userId, req.body.content);
+            return res.status(201).json(comment);
+        } catch (error: any) {
+            if (error.message === "Post not found") {
+                return res.status(404).json({ message: error.message });
+            }
+            return res.status(500).json({
+                message: error.message || "Failed to create comment"
+            });
+        }
+    }
 }

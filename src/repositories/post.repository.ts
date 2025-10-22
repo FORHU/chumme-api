@@ -87,4 +87,37 @@ export default class PostRepo {
             }
         });
     }
+
+    static async createComment(data: {
+        postId: string;
+        userId: string;
+        content: string;
+    }) {
+        return prisma.comment.create({
+            data: {
+                postId: data.postId,
+                userId: data.userId,
+                content: data.content
+            },
+            select: {
+                id: true,
+                postId: true,
+                content: true,
+                createdAt: true,
+                updatedAt: true,
+                user: {
+                    select: {
+                        id: true,
+                        username: true,
+                        name: true,
+                        avatar: {
+                            select: {
+                                fileUrl: true
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
 }
