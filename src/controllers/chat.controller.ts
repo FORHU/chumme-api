@@ -1,16 +1,17 @@
 import { Request, Response } from "express";
 import Joi from "joi";
 import ChatSvc from "../services/chat.service";
-import { detectEmotion } from "../utils/openai/detect-emotion.util";
+import ChatRepo from "../repositories/chat.repository";
 
 export default class ChatCtrl {
 
     static async sendChat(req: Request, res: Response){
 
-        const {input} = req.body;
+        const {input, userId} = req.body;
 
         const schema = Joi.object({
-            input: Joi.string().required()
+            input: Joi.string().required(),
+            userId: Joi.string().required()
         })
 
         const { error } = schema.validate(req.body)
@@ -20,7 +21,7 @@ export default class ChatCtrl {
         }
 
          try {
-            const result = await ChatSvc.sendChat(input); 
+            const result = await ChatSvc.sendChat(input, userId); 
             return res.json(result);  
         } catch (error) {
                 return res.status(500).json({message: error});
