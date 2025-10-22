@@ -16,6 +16,7 @@ export default class UserRepo {
                 name: true,
                 role: true,
                 isActive: true,
+                isDeleted: true,
                 avatar: {
                     select: {
                         fileUrl: true
@@ -25,6 +26,24 @@ export default class UserRepo {
                 createdAt: true,
                 updatedAt: true
             }
+        });
+    }
+
+    static async softDeleteUser(userId: string) {
+        return prisma.user.update({
+            where: {
+                id: userId
+            },
+            data: {
+                isDeleted: true,
+                isActive: false
+            }
+        });
+    }
+
+    static async invalidateUserSessions(userId: string) {
+        return prisma.session.deleteMany({
+            where: { userId }
         });
     }
 }

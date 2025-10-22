@@ -17,4 +17,19 @@ export default class UserCtrl {
             return res.status(500).json({ message: error });
         }
     }
+
+    static async deleteAccount(req: Request, res: Response) {
+        try {
+            const userId = req.user.userId;
+            await UserSvc.deleteUser(userId);
+            return res.status(200).json({
+                message: "Account successfully deleted"
+            });
+        } catch (error) {
+            return res.status(500).json({
+                message: error instanceof Error ? error.message : "An error occurred"
+            });
+        }
+    }
 }
+
