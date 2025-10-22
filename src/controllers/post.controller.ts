@@ -109,4 +109,36 @@ export default class PostCtrl {
             });
         }
     }
+
+    static async getPosts(req: Request, res: Response) {
+        try {
+            const { userId } = req.query;
+
+            if (!userId) {
+                return res.status(400).json({
+                    message: "userId query parameter is required"
+                });
+            }
+
+            // Validate UUID format
+            const schema = Joi.object({
+                userId: Joi.string().uuid().required()
+            });
+
+            const { error } = schema.validate({ userId });
+            if (error) {
+                return res.status(400).json({ message: "Invalid user ID" });
+            }
+
+            const result = await PostSvc.getPostsByUserId(userId as string);
+            return res.status(200).json(result);
+        } catch (error: any) {
+            if (error.message === "User not found") {
+                return res.status(404).json({ message: error.message });
+            }
+            return res.status(500).json({
+                message: error.message || "Failed to fetch posts"
+            });
+        }
+    }
 }
