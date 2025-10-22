@@ -120,4 +120,44 @@ export default class PostRepo {
             }
         });
     }
+
+    static async getCommentsByPostId(postId: string) {
+        return prisma.comment.findMany({
+            where: {
+                postId,
+                isDeleted: false
+            },
+            select: {
+                id: true,
+                postId: true,
+                content: true,
+                createdAt: true,
+                updatedAt: true,
+                user: {
+                    select: {
+                        id: true,
+                        username: true,
+                        name: true,
+                        avatar: {
+                            select: {
+                                fileUrl: true
+                            }
+                        }
+                    }
+                }
+            },
+            orderBy: {
+                createdAt: 'desc'  // Newest comments first
+            }
+        });
+    }
+
+    static async getCommentsCount(postId: string) {
+        return prisma.comment.count({
+            where: {
+                postId,
+                isDeleted: false
+            }
+        });
+    }
 }

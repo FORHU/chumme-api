@@ -91,4 +91,20 @@ export default class PostSvc {
             content: content.trim()
         });
     }
+
+    static async getCommentsByPostId(postId: string) {
+        // Check if post exists
+        const post = await PostRepo.findPostById(postId);
+        if (!post) {
+            throw new Error("Post not found");
+        }
+
+        const comments = await PostRepo.getCommentsByPostId(postId);
+        const total = await PostRepo.getCommentsCount(postId);
+
+        return {
+            comments,
+            total
+        };
+    }
 }
