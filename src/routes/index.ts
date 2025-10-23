@@ -3,6 +3,7 @@ import authRoute from "./auth.route";
 import chatRoutes from "./chat.route";
 import userRoute from "./user.route";
 import postRoute from "./post.route";
+import roomRoute from "./room.route"; 
 import { authenticate } from "../middleware/auth.middleware";
 
 const router = express.Router();
@@ -17,6 +18,8 @@ router.use("/v1/auth", authRoute);
 router.use("/v1/chat", authenticate,  chatRoutes);
 router.use("/v1/users", userRoute);
 router.use("/v1/posts", postRoute);
+router.use("/v1/rooms", roomRoute);
+
 
 export default router;
 

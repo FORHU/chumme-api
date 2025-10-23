@@ -75,7 +75,7 @@ model File {
 // Chat models
 
 model Room {
-  id        Int          @id @default(autoincrement())
+  id        String       @id @default(uuid())
   name      String?
   isPrivate Boolean      @default(false)
   owner     User         @relation("RoomOwner", fields: [ownerId], references: [id])
@@ -87,9 +87,9 @@ model Room {
 }
 
 model RoomMember {
-  id       Int      @id @default(autoincrement())
+  id       String       @id @default(uuid())
   room     Room     @relation(fields: [roomId], references: [id])
-  roomId   Int
+  roomId   String
   user     User     @relation(fields: [userId], references: [id])
   userId   String
   role     String   @default("member")
@@ -99,9 +99,9 @@ model RoomMember {
 }
 
 model Message {
-  id        Int      @id @default(autoincrement())
+  id          String       @id @default(uuid())
   room      Room     @relation(fields: [roomId], references: [id])
-  roomId    Int
+  roomId    String
   author    User     @relation(fields: [authorId], references: [id])
   authorId  String
   content   String
