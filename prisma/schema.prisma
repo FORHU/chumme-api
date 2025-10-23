@@ -44,13 +44,16 @@ model User {
   comments    Comment[]
   followers   Follow[]     @relation("UserFollowers")
   following   Follow[]     @relation("UserFollows")
-  // for non auth related fields?
-  // posts         Post[]
-  // comments      Comment[]
-  // conversations Conversation[]
 
-  chatMessages     ChatMessage[]
-  emotionMemories  EmotionMemory[]
+  chatMessages    ChatMessage[]
+  emotionMemories EmotionMemory[]
+
+  // Fields for OTP verification
+  mobileNumber    String?
+  otpCode         String?
+  otpExpiry       DateTime?
+  isEmailVerified Boolean   @default(false)
+  isPhoneVerified Boolean   @default(false)
 }
 
 model Session {
@@ -110,7 +113,6 @@ model Message {
   updatedAt DateTime @updatedAt
 }
 
-
 enum ChatRole {
   USER
   AI
@@ -118,23 +120,23 @@ enum ChatRole {
 }
 
 model ChatMessage {
-  id            String      @id @default(uuid())
+  id            String         @id @default(uuid())
   userId        String
-  role          ChatRole    @default(USER)
-  message       String  
-  createdAt     DateTime    @default(now())
-  User          User        @relation(fields: [userId], references: [id])
+  role          ChatRole       @default(USER)
+  message       String
+  createdAt     DateTime       @default(now())
+  User          User           @relation(fields: [userId], references: [id])
   emotionMemory EmotionMemory?
 }
 
 model EmotionMemory {
-  id             String    @id @default(uuid())
-  chatMessageId  String    @unique
-  userId         String
-  emotion        String
-  confidence     Float
-  createdAt      DateTime   @default(now())
-  ChatMessage    ChatMessage @relation(fields: [chatMessageId], references: [id])
+  id            String      @id @default(uuid())
+  chatMessageId String      @unique
+  userId        String
+  emotion       String
+  confidence    Float
+  createdAt     DateTime    @default(now())
+  ChatMessage   ChatMessage @relation(fields: [chatMessageId], references: [id])
   User          User        @relation(fields: [userId], references: [id])
 }
 
