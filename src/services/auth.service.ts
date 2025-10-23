@@ -103,12 +103,12 @@ export default class AuthSvc {
             throw new Error("No verification code found. Please register again.");
         }
 
-        if (isOTPExpired(user.otpExpiry)) {
-            throw new Error("Verification code expired. Please request a new one.");
-        }
-
         if (user.otpCode !== otpCode) {
             throw new Error("Invalid verification code");
+        }
+
+        if (isOTPExpired(user.otpExpiry)) {
+            throw new Error("Verification code expired. Please request a new one.");
         }
 
         await AuthRepo.updateUser(user.id, {
@@ -294,6 +294,36 @@ export default class AuthSvc {
 
         return {
             message: "Password reset successfully! You can now login with your new password."
+        };
+    }
+
+    static async resendVerificationOTP(email: string) {
+        const user = await AuthRepo.findUserByEmail(email);
+
+        if (!user) {
+            throw new Error("User not found");
+        }
+
+        if (user.isEmailVerified) {
+            throw new Error("Email already verified");
+        }
+
+        const otp = generateOTP();
+        const otpExpiry = getOTPExpiry();
+
+        await AuthRepo.updateUser(user.id, {
+            otpCode: otp,
+            otpExpiry: otpExpiry,
+        });
+
+        try {
+            await sendVerificationOTP(user.email, otp);
+        } catch (error) {
+            console.log(`OTP for ${user.email}: ${otp}`);
+        }
+
+        return {
+            message: "New verification code sent to your email"
         };
     }
 }

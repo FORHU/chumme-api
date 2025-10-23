@@ -136,4 +136,22 @@ export default class AuthCtrl {
             });
         }
     }
+
+    static async resendVerificationOTP(req: Request, res: Response) {
+        try {
+            const schema = Joi.object({
+                email: Joi.string().email().required()
+            });
+
+            const { error, value } = schema.validate(req.body);
+            if (error) {
+                return res.status(400).json({ message: error.message });
+            }
+
+            const result = await AuthSvc.resendVerificationOTP(value.email);
+            return res.status(200).json(result);
+        } catch (error: any) {
+            return res.status(400).json({ message: error.message });
+        }
+    }
 }
