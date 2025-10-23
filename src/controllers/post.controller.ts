@@ -15,7 +15,7 @@ export default class PostCtrl {
                 return res.status(400).json({ message: error.message });
             }
 
-            const userId = req.user.userId;
+            const userId = req.user.id;
             const post = await PostSvc.createPost(userId, value);
 
             return res.status(201).json(post);
@@ -29,7 +29,7 @@ export default class PostCtrl {
     static async toggleLike(req: Request, res: Response) {
         try {
             const { id } = req.params;
-            const userId = req.user.userId;
+            const userId = req.user.id;
 
             // Validate UUID format
             const schema = Joi.object({
@@ -56,7 +56,7 @@ export default class PostCtrl {
     static async createComment(req: Request, res: Response) {
         try {
             const { id } = req.params;
-            const userId = req.user.userId;
+            const userId = req.user.id;
 
             // Validate input
             const schema = Joi.object({
@@ -144,7 +144,7 @@ export default class PostCtrl {
 
     static async getFeed(req: Request, res: Response) {
         try {
-            const userId = req.user.userId;
+            const userId = req.user.id;
 
             const result = await PostSvc.getFeed(userId);
             return res.status(200).json(result);

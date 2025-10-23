@@ -6,9 +6,10 @@ const router = express.Router();
 
 router.get("/feed", authenticate, PostCtrl.getFeed);
 router.get("/", authenticate, PostCtrl.getPosts);
+router.get("/:id/comments", authenticate, PostCtrl.getComments);
 router.post("/", authenticate, PostCtrl.createPost);
 router.post("/:id/like", authenticate, PostCtrl.toggleLike);
 router.post("/:id/comment", authenticate, PostCtrl.createComment);
-router.get("/:id/comments", authenticate, PostCtrl.getComments);
+
 
 export default router;

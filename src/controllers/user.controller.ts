@@ -52,7 +52,7 @@ export default class UserCtrl {
                 return res.status(400).json({ message: error.message });
             }
 
-            const userId = req.user.userId;
+            const userId = req.user.id;
             const updatedUser = await UserSvc.updateUser(userId, value);
 
             return res.json(updatedUser);
