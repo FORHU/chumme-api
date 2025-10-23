@@ -27,7 +27,8 @@ export default class RoomRepo {
             data: {
                 name: data.name,
                 isPrivate: data.isPrivate,
-                ownerId: data.ownerId
+                ownerId: data.ownerId,
+                isDeleted: false
             },
             include: {
                 owner: {
@@ -69,12 +70,13 @@ export default class RoomRepo {
     }
 
     /**
-     * Find room by ID
+     * Find room by ID (only non-deleted rooms)
      */
     static async findRoomById(roomId: string) {
         return prisma.room.findUnique({
             where: {
-                id: roomId
+                id: roomId,
+                isDeleted: false
             },
             include: {
                 owner: {
@@ -117,10 +119,12 @@ export default class RoomRepo {
 
     /**
      * Get rooms accessible to the user (public rooms + private rooms where user is member)
+     * Only non-deleted rooms
      */
     static async getUserAccessibleRooms(userId: string, skip: number, limit: number) {
         return prisma.room.findMany({
             where: {
+                isDeleted: false, // Add this condition
                 OR: [
                     { isPrivate: false }, // Public rooms
                     { 
@@ -162,11 +166,12 @@ export default class RoomRepo {
     }
 
     /**
-     * Count rooms accessible to the user
+     * Count rooms accessible to the user (only non-deleted rooms)
      */
     static async countUserAccessibleRooms(userId: string) {
         return prisma.room.count({
             where: {
+                isDeleted: false, // Add this condition
                 OR: [
                     { isPrivate: false }, // Public rooms
                     { 
@@ -183,7 +188,7 @@ export default class RoomRepo {
     }
 
     /**
-     * Update room details
+     * Update room details (only non-deleted rooms)
      */
     static async updateRoom(roomId: string, data: {
         name?: string;
@@ -191,7 +196,8 @@ export default class RoomRepo {
     }) {
         return prisma.room.update({
             where: {
-                id: roomId
+                id: roomId,
+                isDeleted: false // Add this condition
             },
             data: {
                 ...data,
@@ -237,39 +243,41 @@ export default class RoomRepo {
     }
 
     /**
-     * Soft delete room (using a transaction to handle related data)
+     * Soft delete room
      */
     static async softDeleteRoom(roomId: string) {
-        // Since Room model doesn't have isDeleted field, we'll use a different approach
-        // We could either add isDeleted to Room model or remove all members and mark as inactive
-        // For now, let's remove all members and the room itself
-        return prisma.$transaction(async (tx) => {
-            // Remove all room members
-            await tx.roomMember.deleteMany({
-                where: {
-                    roomId: roomId
-                }
-            });
-
-            // Delete the room
-            await tx.room.delete({
-                where: {
-                    id: roomId
-                }
-            });
-
-            return true;
+        return prisma.room.update({
+            where: {
+                id: roomId,
+                isDeleted: false // Only delete non-deleted rooms
+            },
+            data: {
+                isDeleted: true,
+                updatedAt: new Date()
+            }
         });
     }
 
     /**
-     * Add a member to a room
+     * Add a member to a room (only non-deleted rooms)
      */
     static async addRoomMember(data: {
         roomId: string;
         userId: string;
         role: string;
     }) {
+        // First check if room exists and is not deleted
+        const room = await prisma.room.findFirst({
+            where: {
+                id: data.roomId,
+                isDeleted: false
+            }
+        });
+
+        if (!room) {
+            throw new Error("Room not found or has been deleted");
+        }
+
         return prisma.roomMember.create({
             data: {
                 roomId: data.roomId,
@@ -306,38 +314,45 @@ export default class RoomRepo {
     }
 
     /**
-     * Check if user is a member of the room
+     * Check if user is a member of the room (only non-deleted rooms)
      */
     static async isUserRoomMember(roomId: string, userId: string) {
         const member = await prisma.roomMember.findFirst({
             where: {
                 roomId: roomId,
-                userId: userId
+                userId: userId,
+                room: {
+                    isDeleted: false // Add this condition
+                }
             }
         });
         return !!member;
     }
 
     /**
-     * Check if user is the owner of the room
+     * Check if user is the owner of the room (only non-deleted rooms)
      */
     static async isUserRoomOwner(roomId: string, userId: string) {
         const room = await prisma.room.findFirst({
             where: {
                 id: roomId,
-                ownerId: userId
+                ownerId: userId,
+                isDeleted: false // Add this condition
             }
         });
         return !!room;
     }
 
     /**
-     * Get all members of a room
+     * Get all members of a room (only non-deleted rooms)
      */
     static async getRoomMembers(roomId: string) {
         return prisma.roomMember.findMany({
             where: {
-                roomId: roomId
+                roomId: roomId,
+                room: {
+                    isDeleted: false // Add this condition
+                }
             },
             include: {
                 user: {

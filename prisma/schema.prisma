@@ -78,6 +78,7 @@ model Room {
   id        String       @id @default(uuid())
   name      String?
   isPrivate Boolean      @default(false)
+  isDeleted Boolean      @default(false)
   owner     User         @relation("RoomOwner", fields: [ownerId], references: [id])
   ownerId   String
   members   RoomMember[]
