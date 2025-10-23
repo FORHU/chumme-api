@@ -1,7 +1,7 @@
 import { defaultOpenAIRequest } from "../utils/openai/ai-request.util";
 import { composePrompt } from "../utils/openai/compose-prompt.util";
 import { detectEmotion } from "../utils/openai/detect-emotion.util";
-import ChatRepo from "../repositories/chat.repository";
+import ChatRepo, { TGetChatMessagesByUserIdOptions } from "../repositories/chat.repository";
 import { Prisma, ChatRole } from "@prisma/client";
 import { BadRequestError, InternalServerError, NotFoundError } from "../utils/error.util";
 
@@ -23,7 +23,11 @@ export default class ChatSvc {
             let emotionMemory = null;
             let aiResponse = null;
 
-            const prompt = composePrompt(inputText, emotion, confidence);
+            //getChatHistory
+            const chatHistoryArrayResponse = await ChatRepo.getChatListByUserId(userId, {role: 'USER', limit: 5, page: 1, });
+            const chatHistoryArray = chatHistoryArrayResponse?.data || []
+
+            const prompt = composePrompt(inputText, emotion, confidence, chatHistoryArray);
 
             const finalChatResponse = await defaultOpenAIRequest(prompt, {role: "user", temperature: 0.7, maxTokens: 800});
             if(!finalChatResponse || typeof finalChatResponse !== "string"){
@@ -52,7 +56,7 @@ export default class ChatSvc {
            }
 
             
-          return { response: finalChatResponse, emotion_data: emotionResult, chatMessageId: chatMessage?.id || null, emotionMemoryId: emotionMemory?.id || null, aiResponseId: aiResponse?.id || null };
+          return { response: finalChatResponse, emotion_data: emotionResult, chatMessageId: chatMessage?.id || null, emotionMemoryId: emotionMemory?.id || null, aiResponseId: aiResponse?.id || null, prompt };
         } catch (error: any) {
             if(error instanceof Prisma.PrismaClientKnownRequestError){
                 throw new InternalServerError(`Database error: ${error?.message}`);
@@ -75,9 +79,22 @@ export default class ChatSvc {
         } catch (error: any) {
             if(error instanceof Prisma.PrismaClientKnownRequestError){
             throw new InternalServerError(`Database error: ${error.message}`);
-            }
-            throw error;
+            } throw error;
         }
+    }
+
+    static async getChatListByUserId(currentUserId: string, options: TGetChatMessagesByUserIdOptions){
+        try {
+            const list = await ChatRepo.getChatListByUserId(currentUserId, options);
+            return list
+
+        } catch (error: any) {
+            if(error instanceof Prisma.PrismaClientInitializationError){
+                throw new InternalServerError(`Database error: ${error.message}`)
+            } throw error;
+            
+        }
+
     }
 
 } 
