@@ -8,9 +8,7 @@ export function composePrompt(
 ): string {
 
   // Build memory context
-  const memoryContext = pastMessages
-  .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) // chronological
-  .map((msg, index) => {
+  const memoryContext = pastMessages.map((msg, index) => {
     const emotionInfo = msg.emotionMemory
       ? ` (Emotion: ${msg.emotionMemory.emotion}, Confidence: ${msg.emotionMemory.confidence.toFixed(2)})`
       : "";
