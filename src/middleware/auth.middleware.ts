@@ -24,8 +24,7 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
         if (!user || user.isDeleted) {
             return res.status(404).json({ message: "User not found" });
         }
-        // Keep userId for consistency across the codebase
-        req.user = { ...user, userId: user.id };
+        req.user = user;
         next();
     } catch (error) {
         return res.status(401).json({ message: "Invalid token" });
