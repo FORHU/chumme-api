@@ -17,10 +17,19 @@ export default class AuthRepo {
         password: string;
         username: string;
         name?: string;
+        mobileNumber?: string;
+        otpCode?: string;
+        otpExpiry?: Date;
     }) {
         return prisma.user.create({
             data: {
-                ...data,
+                email: data.email,
+                password: data.password,
+                username: data.username,
+                name: data.name,
+                mobileNumber: data.mobileNumber,
+                otpCode: data.otpCode,
+                otpExpiry: data.otpExpiry,
                 provider: null
             },
             select: {
@@ -118,6 +127,25 @@ export default class AuthRepo {
                     }
                 }
             }
+        });
+    }
+
+    static async findUserByUsername(username: string) {
+        return prisma.user.findUnique({
+            where: {
+                username,
+                isDeleted: false
+            }
+        });
+    }
+
+    static async updateUser(userId: string, data: any) {
+        return prisma.user.update({
+            where: {
+                id: userId,
+                isDeleted: false
+            },
+            data: data
         });
     }
 }

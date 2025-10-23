@@ -49,11 +49,9 @@ model User {
   emotionMemories EmotionMemory[]
 
   // Fields for OTP verification
-  mobileNumber    String?
-  otpCode         String?
-  otpExpiry       DateTime?
-  isEmailVerified Boolean   @default(false)
-  isPhoneVerified Boolean   @default(false)
+  mobileNumber String?
+  otpCode      String?
+  otpExpiry    DateTime?
 }
 
 model Session {
