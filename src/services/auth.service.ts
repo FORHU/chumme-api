@@ -2,6 +2,7 @@ import AuthRepo from "../repositories/auth.repository";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import { generateOTP, getOTPExpiry, isOTPExpired } from "../utils/otp.utils";
+import { sendPasswordResetOTP, sendVerificationOTP } from "../utils/mailer";
 
 export default class AuthSvc {
     static async register(data: {
@@ -44,11 +45,15 @@ export default class AuthSvc {
             otpExpiry: otpExpiry,             // Save expiry
         });
 
-        // TODO: Send verification email with OTP
-        // await sendVerificationEmail(user.email, otp);
-
-        // For now, just log it (since we don't have email setup yet)
-        console.log(`🔐 OTP for ${user.email}: ${otp}`);
+        // Send verification email with OTP
+        try {
+            await sendVerificationOTP(user.email, otp);
+            console.log(`Verification email sent to ${user.email}`);
+        } catch (error) {
+            console.error('Failed to send verification email:', error);
+            // Still log to console as backup
+            console.log(`Backup - OTP for ${user.email}: ${otp}`);
+        }
 
         // Generate tokens
         const accessToken = jwt.sign(
@@ -83,10 +88,48 @@ export default class AuthSvc {
         };
     }
 
+    static async verifyEmail(email: string, otpCode: string) {
+        const user = await AuthRepo.findUserByEmail(email);
+
+        if (!user) {
+            throw new Error("User not found");
+        }
+
+        if (user.isEmailVerified) {
+            throw new Error("Email already verified");
+        }
+
+        if (!user.otpCode || !user.otpExpiry) {
+            throw new Error("No verification code found. Please register again.");
+        }
+
+        if (isOTPExpired(user.otpExpiry)) {
+            throw new Error("Verification code expired. Please request a new one.");
+        }
+
+        if (user.otpCode !== otpCode) {
+            throw new Error("Invalid verification code");
+        }
+
+        await AuthRepo.updateUser(user.id, {
+            isEmailVerified: true,
+            otpCode: null,
+            otpExpiry: null,
+        });
+
+        return {
+            message: "Email verified successfully! You can now login."
+        };
+    }
+
     static async login({ email, password }: { email: string; password: string }) {
         const user = await AuthRepo.findUserByEmail(email);
         if (!user) {
             throw "Invalid credentials";
+        }
+
+        if (!user.isEmailVerified) {
+            throw "Please verify your email before logging in";
         }
 
         // Verify password
@@ -175,15 +218,13 @@ export default class AuthSvc {
             throw "Invalid refresh token";
         }
     }
-    // ============================================
-    // FORGOT PASSWORD - Send OTP
-    // ============================================
+    // Send OTP to reset password
     static async forgotPassword(email: string) {
         // Find user by email
         const user = await AuthRepo.findUserByEmail(email);
 
         if (!user) {
-            // Don't reveal if email exists (security)
+            // security
             return {
                 message: "If an account exists with this email, you will receive a password reset code."
             };
@@ -199,20 +240,21 @@ export default class AuthSvc {
             otpExpiry: otpExpiry,
         });
 
-        // TODO: Send email with OTP
-        // await sendPasswordResetOTP(user.email, otp);
-
-        // For now, just log it
-        console.log(`🔐 Password Reset OTP for ${user.email}: ${otp}`);
+        // Send email with OTP
+        try {
+            await sendPasswordResetOTP(user.email, otp);
+        } catch (error) {
+            console.error('Failed to send email:', error);
+            // Still log to console as backup
+            console.log(` Password Reset OTP for ${user.email}: ${otp}`);
+        }
 
         return {
             message: "If an account exists with this email, you will receive a password reset code."
         };
     }
 
-    // ============================================
-    // RESET PASSWORD - Verify OTP and change password
-    // ============================================
+    // Verify OTP and change password
     static async resetPassword(email: string, otpCode: string, newPassword: string) {
         // Find user by email
         const user = await AuthRepo.findUserByEmail(email);

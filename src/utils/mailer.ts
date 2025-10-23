@@ -1,24 +1,44 @@
 import { SendMailOptions, createTransport } from "nodemailer";
-import { MAILER_EMAIL, MAILER_PASSWORD, MAILER_TRANSPORT_HOST, MAILER_TRANSPORT_PORT, MAILER_TRANSPORT_SECURE } from "../config";
 import fs from 'fs';
 import path from 'path';
 import mjml2html from 'mjml';
 
-export async function sendEmail({ to, subject, text, html }: { to: string; subject: string; text?: string; html?: string }): Promise<string> {
-  const transporter = createTransport({
-    host: MAILER_TRANSPORT_HOST,
-    port: MAILER_TRANSPORT_PORT,
-    secure: MAILER_TRANSPORT_SECURE,
+// Create Ethereal test account on first use
+let etherealTransporter: any = null;
+
+async function getEtherealTransporter() {
+  if (etherealTransporter) {
+    return etherealTransporter;
+  }
+
+  // Generate test SMTP credentials from ethereal.email
+  const testAccount = await require('nodemailer').createTestAccount();
+
+  console.log('   Ethereal Email Account Created:');
+  console.log('   Email:', testAccount.user);
+  console.log('   Password:', testAccount.pass);
+  console.log('   SMTP Host:', testAccount.smtp.host);
+  console.log('   SMTP Port:', testAccount.smtp.port);
+
+  // Create transporter with Ethereal credentials
+  etherealTransporter = createTransport({
+    host: testAccount.smtp.host,
+    port: testAccount.smtp.port,
+    secure: testAccount.smtp.secure,
     auth: {
-      user: MAILER_EMAIL,
-      pass: MAILER_PASSWORD,
+      user: testAccount.user,
+      pass: testAccount.pass,
     },
   });
 
-  console.log(MAILER_EMAIL, MAILER_PASSWORD, MAILER_TRANSPORT_HOST, MAILER_TRANSPORT_PORT);
+  return etherealTransporter;
+}
+
+export async function sendEmail({ to, subject, text, html }: { to: string; subject: string; text?: string; html?: string }): Promise<string> {
+  const transporter = await getEtherealTransporter();
 
   const mailOptions: SendMailOptions = {
-    from: `Seven 365 <${MAILER_EMAIL}>`,
+    from: `Chumme App <noreply@chumme.app>`,
     to,
     subject,
   };
@@ -32,17 +52,21 @@ export async function sendEmail({ to, subject, text, html }: { to: string; subje
   }
 
   try {
-    await transporter.sendMail(mailOptions);
-    return Promise.resolve("Email sent successfully");
+    const info = await transporter.sendMail(mailOptions);
+    // Get preview URL
+    const previewUrl = require('nodemailer').getTestMessageUrl(info);
+
+    console.log('Email sent successfully!');
+    console.log('Preview URL:', previewUrl);
+    console.log('   (Copy this URL to view the email in your browser)');
+
+    return Promise.resolve(`Email sent! Preview at: ${previewUrl}`);
   } catch (error) {
+    console.error('Failed to send email:', error);
     return Promise.reject(error);
   }
 }
 
-/**
- * Send Password Reset OTP Email
- * Uses MJML template with OTP code
- */
 export async function sendPasswordResetOTP(email: string, otpCode: string): Promise<string> {
   try {
     // Read MJML template from src folder
@@ -63,6 +87,24 @@ export async function sendPasswordResetOTP(email: string, otpCode: string): Prom
     });
   } catch (error) {
     console.error('Failed to send password reset email:', error);
+    throw error;
+  }
+}
+
+export async function sendVerificationOTP(email: string, otpCode: string): Promise<string> {
+  try {
+    const templatePath = path.join(__dirname, '../verification-email.mjml');
+    const mjmlTemplate = fs.readFileSync(templatePath, 'utf-8');
+    const mjmlWithCode = mjmlTemplate.replace('{{OTP_CODE}}', otpCode);
+    const { html } = mjml2html(mjmlWithCode);
+
+    return await sendEmail({
+      to: email,
+      subject: 'Verify Your Email Address',
+      html: html
+    });
+  } catch (error) {
+    console.error('Failed to send verification email:', error);
     throw error;
   }
 }

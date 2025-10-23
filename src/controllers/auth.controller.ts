@@ -27,6 +27,25 @@ export default class AuthCtrl {
         }
     }
 
+    static async verifyEmail(req: Request, res: Response) {
+        try {
+            const schema = Joi.object({
+                email: Joi.string().email().required(),
+                otpCode: Joi.string().length(6).required()
+            });
+
+            const { error, value } = schema.validate(req.body);
+            if (error) {
+                return res.status(400).json({ message: error.message });
+            }
+
+            const result = await AuthSvc.verifyEmail(value.email, value.otpCode);
+            return res.status(200).json(result);
+        } catch (error: any) {
+            return res.status(400).json({ message: error.message });
+        }
+    }
+
     static async login(req: Request, res: Response) {
         const { email, password } = req.body;
 
@@ -70,9 +89,6 @@ export default class AuthCtrl {
         }
     }
 
-    // ============================================
-    // FORGOT PASSWORD
-    // ============================================
     static async forgotPassword(req: Request, res: Response) {
         try {
             const schema = Joi.object({
@@ -94,9 +110,6 @@ export default class AuthCtrl {
         }
     }
 
-    // ============================================
-    // RESET PASSWORD
-    // ============================================
     static async resetPassword(req: Request, res: Response) {
         try {
             const schema = Joi.object({
