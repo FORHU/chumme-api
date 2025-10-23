@@ -4,10 +4,6 @@ import PostSvc from "../services/post.service";
 
 export default class PostCtrl {
     static async createPost(req: Request, res: Response) {
-        console.log("=== DEBUG START ===");
-        console.log("req.user:", req.user);
-        console.log("req.user?.userId:", req.user?.userId);
-        console.log("===================");
         try {
             const schema = Joi.object({
                 content: Joi.string().required().max(5000),

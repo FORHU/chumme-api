@@ -2,16 +2,14 @@ import rateLimit from 'express-rate-limit';
 
 export const postRateLimit = rateLimit({
     windowMs: 24 * 60 * 60 * 1000,
-    max: 3,
+    max: 500,   // Based on X Upper Limits
     message: {
         message: 'Too many posts created. Please try again after 24 hours.'
     },
     standardHeaders: true,
     legacyHeaders: false,
     keyGenerator: (req) => {
-        // FIX: Check if req.user exists, fallback to IP
         const userId = req.user?.userId;
-        console.log("Rate limit - User ID:", userId); // Debug log
         return userId || req.ip || 'unknown';
     },
     // Add this to skip if user not authenticated
@@ -20,7 +18,7 @@ export const postRateLimit = rateLimit({
 
 export const commentRateLimit = rateLimit({
     windowMs: 60 * 60 * 1000,
-    max: 3,
+    max: 200, // Based on Instagram Limits
     message: {
         message: 'Too many comments. Please try again after 1 hour.'
     },
@@ -35,7 +33,7 @@ export const commentRateLimit = rateLimit({
 
 export const likeRateLimit = rateLimit({
     windowMs: 60 * 60 * 1000,
-    max: 3,
+    max: 1000, // Based on Instagram Limits
     message: {
         message: 'Too many likes. Please try again after 1 hour.'
     },
