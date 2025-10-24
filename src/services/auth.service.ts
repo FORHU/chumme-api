@@ -3,6 +3,7 @@ import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import { generateOTP, getOTPExpiry, isOTPExpired } from "../utils/otp.utils";
 import { sendTemplatedEmail } from "../utils/helpers";
+import { ACCESS_TOKEN_SECRET, REFRESH_TOKEN_SECRET, ACCESS_TOKEN_EXPIRY } from "../config";
 
 export default class AuthSvc {
     static async register(data: {
@@ -64,13 +65,13 @@ export default class AuthSvc {
         // Generate tokens
         const accessToken = jwt.sign(
             { userId: user.id },
-            process.env.ACCESS_TOKEN_SECRET!,
-            { expiresIn: '1d' }
+            ACCESS_TOKEN_SECRET,
+            { expiresIn: ACCESS_TOKEN_EXPIRY as any }
         );
 
         const refreshToken = jwt.sign(
             { userId: user.id },
-            process.env.REFRESH_TOKEN_SECRET!,
+            REFRESH_TOKEN_SECRET,
             { expiresIn: '7d' }
         );
 
@@ -154,13 +155,13 @@ export default class AuthSvc {
         // Generate tokens
         const accessToken = jwt.sign(
             { userId: user.id },
-            process.env.ACCESS_TOKEN_SECRET!,
-            { expiresIn: '15m' }
+            ACCESS_TOKEN_SECRET,
+            { expiresIn: ACCESS_TOKEN_EXPIRY as any }
         );
 
         const refreshToken = jwt.sign(
             { userId: user.id },
-            process.env.REFRESH_TOKEN_SECRET!,
+            REFRESH_TOKEN_SECRET,
             { expiresIn: '7d' }
         );
 
@@ -205,8 +206,8 @@ export default class AuthSvc {
             // Generate new access token
             const accessToken = jwt.sign(
                 { userId: user.id },
-                process.env.ACCESS_TOKEN_SECRET!,
-                { expiresIn: '15m' }
+                ACCESS_TOKEN_SECRET,
+                { expiresIn: ACCESS_TOKEN_EXPIRY as any }
             );
 
             return {
@@ -329,11 +330,17 @@ export default class AuthSvc {
         });
 
         try {
-            // await sendVerificationOTP(user.email, otp);
+            sendTemplatedEmail({
+                subject: 'Verify Your Email Address',
+                email_data: {
+                    email: user.email,
+                    OTP_CODE: otp.toString(),
+                },
+                template_name: "verification-email.html",
+            });
         } catch (error) {
             console.log(`OTP for ${user.email}: ${otp}`);
         }
-
         return {
             message: "New verification code sent to your email"
         };
