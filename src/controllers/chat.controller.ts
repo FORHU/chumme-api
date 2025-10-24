@@ -4,6 +4,9 @@ import ChatSvc from "../services/chat.service";
 import { ChatRole } from "@prisma/client";
 import { BadRequestError, InternalServerError } from "../utils/error.util";
 
+import logger  from '../utils/logger';
+
+
 export default class ChatCtrl {
 
     static async sendChat(req: Request, res: Response, next: NextFunction){
@@ -56,6 +59,7 @@ export default class ChatCtrl {
 
 
          try {
+             logger.info('[CHAT.SERVICES] - Fetching chat by id')
              const chatMessage = await ChatSvc.getChatMessageById(chatId, currentUserId);
              return res.json(chatMessage);       
         } catch (error) {

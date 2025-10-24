@@ -1,4 +1,5 @@
 import { openai } from "../../config/openai.config";
+import logger from "../logger";
 
 export interface OpenAIRequestOptions {
   model?: string;
@@ -21,5 +22,6 @@ const {
     messages: [{ role, content: prompt }],
     temperature,
   });
+
   return res.choices[0].message.content;
 }
