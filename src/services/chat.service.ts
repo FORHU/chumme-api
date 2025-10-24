@@ -4,6 +4,7 @@ import { detectEmotion } from "../utils/openai/detect-emotion.util";
 import ChatRepo, { TGetChatMessagesByUserIdOptions } from "../repositories/chat.repository";
 import { Prisma, ChatRole } from "@prisma/client";
 import { BadRequestError, InternalServerError, NotFoundError } from "../utils/error.util";
+import logger from "../utils/logger";
 
 
 export default class ChatSvc {
@@ -29,8 +30,13 @@ export default class ChatSvc {
 
             const prompt = composePrompt(inputText, emotion, confidence, chatHistoryArray);
 
+            const start = Date.now()
             const finalChatResponse = await defaultOpenAIRequest(prompt, {role: "user", temperature: 0.7, maxTokens: 800});
+            const duration = Date.now() - start
+            logger.chat_response(`[OPENAI-InputResponse], response time: ${duration} `)
+
             if(!finalChatResponse || typeof finalChatResponse !== "string"){
+                logger.chat_error(`[OPENAI-InputResponse], Error: Invalid response from AI, expecting a string`)
                 throw new InternalServerError("[ChatSvc.sendChat], Invalid response from AI, expecting a string");
             }
 
@@ -59,8 +65,10 @@ export default class ChatSvc {
           return { response: finalChatResponse, emotion_data: emotionResult, chatMessageId: chatMessage?.id || null, emotionMemoryId: emotionMemory?.id || null, aiResponseId: aiResponse?.id || null, prompt };
         } catch (error: any) {
             if(error instanceof Prisma.PrismaClientKnownRequestError){
+                logger.error(`Database error: ${error?.message}`)
                 throw new InternalServerError(`Database error: ${error?.message}`);
             }
+            logger.error(`[CHAT.SERVICE] sendChat Error: ${error?.message}`)
             throw error;
         }
     }
