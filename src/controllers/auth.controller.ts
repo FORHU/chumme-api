@@ -4,25 +4,45 @@ import AuthSvc from "../services/auth.service";
 
 export default class AuthCtrl {
     static async register(req: Request, res: Response) {
-        const { email, password, username, name } = req.body;
+        const { email, password, username, name, mobileNumber } = req.body;
 
         const schema = Joi.object({
             email: Joi.string().email().required(),
             password: Joi.string().min(6).required(),
             username: Joi.string().required(),
-            name: Joi.string().optional()
+            name: Joi.string().optional(),
+            mobileNumber: Joi.string().optional()
         });
 
-        const { error } = schema.validate({ email, password, username, name });
+        const { error } = schema.validate({ email, password, username, name, mobileNumber });
         if (error) {
             return res.status(400).json({ message: error.message });
         }
 
         try {
-            const user = await AuthSvc.register({ email, password, username, name });
+            const user = await AuthSvc.register({ email, password, username, name, mobileNumber });
             return res.status(201).json({ message: "User created successfully", user });
-        } catch (error) {
-            return res.status(500).json({ message: error });
+        } catch (error: any) {
+            return res.status(400).json({ message: error.message || error });
+        }
+    }
+
+    static async verifyEmail(req: Request, res: Response) {
+        try {
+            const schema = Joi.object({
+                email: Joi.string().email().required(),
+                otpCode: Joi.string().length(6).required()
+            });
+
+            const { error, value } = schema.validate(req.body);
+            if (error) {
+                return res.status(400).json({ message: error.message });
+            }
+
+            const result = await AuthSvc.verifyEmail(value.email, value.otpCode);
+            return res.status(200).json(result);
+        } catch (error: any) {
+            return res.status(400).json({ message: error.message });
         }
     }
 
@@ -66,6 +86,72 @@ export default class AuthCtrl {
         } catch (error: any) {
             console.error('Refresh token error:', error);
             return res.status(401).json({ message: error.message || error });
+        }
+    }
+
+    static async forgotPassword(req: Request, res: Response) {
+        try {
+            const schema = Joi.object({
+                email: Joi.string().email().required()
+            });
+
+            const { error, value } = schema.validate(req.body);
+            if (error) {
+                return res.status(400).json({ message: error.message });
+            }
+
+            const result = await AuthSvc.forgotPassword(value.email);
+
+            return res.status(200).json(result);
+        } catch (error: any) {
+            return res.status(400).json({
+                message: error.message || "Failed to process request"
+            });
+        }
+    }
+
+    static async resetPassword(req: Request, res: Response) {
+        try {
+            const schema = Joi.object({
+                email: Joi.string().email().required(),
+                otpCode: Joi.string().length(6).required(),
+                newPassword: Joi.string().min(6).required()
+            });
+
+            const { error, value } = schema.validate(req.body);
+            if (error) {
+                return res.status(400).json({ message: error.message });
+            }
+
+            const result = await AuthSvc.resetPassword(
+                value.email,
+                value.otpCode,
+                value.newPassword
+            );
+
+            return res.status(200).json(result);
+        } catch (error: any) {
+            return res.status(400).json({
+                message: error.message || "Failed to reset password"
+            });
+        }
+    }
+
+    static async resendVerificationOTP(req: Request, res: Response) {
+        try {
+            const schema = Joi.object({
+                email: Joi.string().email().required()
+            });
+
+            const { error, value } = schema.validate(req.body);
+            if (error) {
+                return res.status(400).json({ message: error.message });
+            }
+
+            const result = await AuthSvc.resendVerificationOTP(value.email);
+            return res.status(200).json(result);
+        } catch (error: any) {
+            return res.status(400).json({ message: error.message });
         }
     }
 }
