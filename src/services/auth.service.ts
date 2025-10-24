@@ -2,7 +2,7 @@ import AuthRepo from "../repositories/auth.repository";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import { generateOTP, getOTPExpiry, isOTPExpired } from "../utils/otp.utils";
-import { sendPasswordResetOTP, sendVerificationOTP } from "../utils/mailer";
+import { sendTemplatedEmail } from "../utils/helpers";
 
 export default class AuthSvc {
     static async register(data: {
@@ -47,8 +47,14 @@ export default class AuthSvc {
 
         // Send verification email with OTP
         try {
-            await sendVerificationOTP(user.email, otp);
-            console.log(`Verification email sent to ${user.email}`);
+            sendTemplatedEmail({
+                subject: `Verify Your Email Address`,
+                email_data: {
+                    email: user.email,
+                    OTP_CODE: otp.toString(),
+                },
+                template_name: "verification-email.html",
+            });
         } catch (error) {
             console.error('Failed to send verification email:', error);
             // Still log to console as backup
@@ -241,12 +247,18 @@ export default class AuthSvc {
         });
 
         // Send email with OTP
+        // Send email with OTP
         try {
-            await sendPasswordResetOTP(user.email, otp);
+            sendTemplatedEmail({
+                subject: 'Password Reset Code',
+                email_data: {
+                    email: user.email,
+                    OTP_CODE: otp.toString(),
+                },
+                template_name: "forgot-password.html",
+            });
         } catch (error) {
-            console.error('Failed to send email:', error);
-            // Still log to console as backup
-            console.log(` Password Reset OTP for ${user.email}: ${otp}`);
+            console.log(`Password Reset OTP for ${user.email}: ${otp}`);
         }
 
         return {
@@ -317,7 +329,7 @@ export default class AuthSvc {
         });
 
         try {
-            await sendVerificationOTP(user.email, otp);
+            // await sendVerificationOTP(user.email, otp);
         } catch (error) {
             console.log(`OTP for ${user.email}: ${otp}`);
         }
