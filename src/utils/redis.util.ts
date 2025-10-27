@@ -11,6 +11,16 @@ export default class RedisUtil {
         port: REDIS_PORT,
       },
     });
+
+    this.redisClient.on("ready", () => {
+      console.log(`[RedisUtil] Connected to Redis at ${REDIS_HOST}:${REDIS_PORT}`)
+    })
+
+    this.redisClient.on("error", (err) => {
+      console.error("[RedisUtil] Redis connection error:", err);
+    });
+
+    await this.redisClient.connect();
   }
 
   static useConnection() {

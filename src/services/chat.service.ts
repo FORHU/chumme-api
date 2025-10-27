@@ -5,6 +5,7 @@ import ChatRepo, { TGetChatMessagesByUserIdOptions } from "../repositories/chat.
 import { Prisma, ChatRole } from "@prisma/client";
 import { BadRequestError, InternalServerError, NotFoundError } from "../utils/error.util";
 import logger from "../utils/logger";
+import CacheUtil from "../utils/cache.util";
 
 
 export default class ChatSvc {
@@ -25,7 +26,7 @@ export default class ChatSvc {
             let aiResponse = null;
 
             //getChatHistory
-            const chatHistoryArrayResponse = await ChatRepo.getChatListByUserId(userId, {role: 'USER', limit: 5, page: 1, });
+            const chatHistoryArrayResponse = await this.getChatListByUserId(userId, {role: 'USER', limit: 5, page: 1, });
             const chatHistoryArray = chatHistoryArrayResponse?.data || []
 
             const prompt = composePrompt(inputText, emotion, confidence, chatHistoryArray);
@@ -53,6 +54,8 @@ export default class ChatSvc {
                 role: "AI",
             });
 
+            await CacheUtil.delByPattern(`chat:list:${userId}:*`)
+
             emotionMemory = await ChatRepo.createEmotionMemory({
                 emotion,
                 confidence,
@@ -74,6 +77,13 @@ export default class ChatSvc {
     }
 
     static async getChatMessageById(chatMessageId: string, currentUserId: string){
+
+        const cachedKey =  `chat:message:${currentUserId}`
+        const cache = await CacheUtil.get(cachedKey)
+        if(cache){
+            return cache
+        }
+
         if(!chatMessageId || !chatMessageId.trim()){
             throw new BadRequestError("Chat Message ID is required");
         }
@@ -83,6 +93,7 @@ export default class ChatSvc {
             if(!chatMessage){
                 throw new NotFoundError("Chat message not found");
             }
+            await CacheUtil.set(cachedKey, chatMessage)
             return chatMessage;
         } catch (error: any) {
             if(error instanceof Prisma.PrismaClientKnownRequestError){
@@ -92,8 +103,17 @@ export default class ChatSvc {
     }
 
     static async getChatListByUserId(currentUserId: string, options: TGetChatMessagesByUserIdOptions){
+
+        const cachedKey = `chat:list:${currentUserId}:role:${options.role || 'ALL'}:page:${options.page || 1}`
+
+        const cached = await CacheUtil.get(cachedKey)
+        if(cached){
+            return cached;
+        }
+
         try {
             const list = await ChatRepo.getChatListByUserId(currentUserId, options);
+            await CacheUtil.set(cachedKey, list)
             return list
 
         } catch (error: any) {
