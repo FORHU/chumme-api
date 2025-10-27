@@ -20,4 +20,5 @@ export const ACCESS_TOKEN_EXPIRY = (process.env.ACCESS_TOKEN_EXPIRY as any);
 export const REDIS_HOST = process.env.REDIS_HOST as string;
 export const REDIS_PORT = Number(process.env.REDIS_PORT || 6379);
 export const REDIS_PASSWORD = process.env.REDIS_PASSWORD as string;
+export const REDIS_TTL_SECONDS = Number(process.env.REDIS_TTL_SECONDS) || 3600;
 export const SERVICE_ACCOUNT = process.env.SERVICE_ACCOUNT as string;
