@@ -1,11 +1,22 @@
 import UserRepo from "../repositories/user.repository";
+import CacheUtil from "../utils/cache.util";
 
 export default class UserSvc {
     static async getUserById(userId: string) {
+        const cachedKey = `user:${userId}`;
+
+        const cached = await CacheUtil.get(cachedKey);
+        if (cached) {
+            return cached;
+        }
+
         const user = await UserRepo.findUserById(userId);
         if (!user) {
             throw "User not found";
         }
+
+        await CacheUtil.set(cachedKey, user);
+
         return user;
     }
 
@@ -19,11 +30,32 @@ export default class UserSvc {
         await UserRepo.invalidateUserSessions(userId);
 
         // Soft delete the user
-        return UserRepo.softDeleteUser(userId);
+        const result = await UserRepo.softDeleteUser(userId);
+
+        // Clear cache for this user (they're deleted now)
+        await CacheUtil.del(`user:${userId}`);
+        // Clear all users list cache (list changed)
+        await CacheUtil.del(`user:all`);
+
+        return result;
     }
 
     static async getAllUsers() {
-        return UserRepo.findAllUsers();
+        // Cache key: all users list
+        const cachedKey = `user:all`;
+
+        // Check cache
+        const cached = await CacheUtil.get(cachedKey);
+        if (cached) {
+            return cached; // Fast return
+        }
+
+        const users = await UserRepo.findAllUsers();
+
+        // Cache the list
+        await CacheUtil.set(cachedKey, users);
+
+        return users;
     }
 
     static async updateUser(userId: string, updateData: {
@@ -53,6 +85,13 @@ export default class UserSvc {
             }
         }
 
-        return UserRepo.updateUser(userId, updateData);
+        const updatedUser = await UserRepo.updateUser(userId, updateData);
+
+        // Clear cache because user data changed
+        await CacheUtil.del(`user:${userId}`);
+        // Clear all users list (user info in list is now stale)
+        await CacheUtil.del(`user:all`);
+
+        return updatedUser;
     }
 }
