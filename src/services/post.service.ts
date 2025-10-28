@@ -1,5 +1,6 @@
 import PostRepo from "../repositories/post.repository";
 import UserRepo from "../repositories/user.repository";
+import CacheUtil from "../utils/cache.util";
 
 export default class PostSvc {
     static async createPost(userId: string, data: {
@@ -21,11 +22,19 @@ export default class PostSvc {
             throw new Error("Maximum 10 media files allowed per post");
         }
 
-        return PostRepo.createPost({
+        const newPost = await PostRepo.createPost({
             userId,
             content: data.content,
             mediaUrls: data.mediaUrls
         });
+
+        // Clear cached data because new post was created
+        // Clear user's posts cache (their profile posts list changed)
+        await CacheUtil.del(`post:user:${userId}`);
+        // Clear user's feed cache (new post affects their feed)
+        await CacheUtil.del(`post:feed:${userId}`);
+
+        return newPost;
     }
 
     static async toggleLike(postId: string, userId: string) {
@@ -43,6 +52,10 @@ export default class PostSvc {
                 // Like was previously deleted, reactivate it
                 await PostRepo.reactivateLike(existingLike.id);
                 const likesCount = await PostRepo.getLikesCount(postId);
+                
+                // Clear cache for post owner (like count changed)
+                await CacheUtil.del(`post:user:${post.userId}`);
+                
                 return {
                     liked: true,
                     likesCount,
@@ -52,6 +65,10 @@ export default class PostSvc {
                 // Like is active, soft delete it
                 await PostRepo.softDeleteLike(existingLike.id);
                 const likesCount = await PostRepo.getLikesCount(postId);
+                
+                // Clear cache for post owner (like count changed)
+                await CacheUtil.del(`post:user:${post.userId}`);
+                
                 return {
                     liked: false,
                     likesCount,
@@ -62,6 +79,10 @@ export default class PostSvc {
             // No like exists, create new one
             await PostRepo.createLike(postId, userId);
             const likesCount = await PostRepo.getLikesCount(postId);
+            
+            // Clear cache for post owner (like count changed)
+            await CacheUtil.del(`post:user:${post.userId}`);
+            
             return {
                 liked: true,
                 likesCount,
@@ -86,14 +107,28 @@ export default class PostSvc {
             throw new Error("Comment is too long (max 1000 characters)");
         }
 
-        return PostRepo.createComment({
+        const newComment = await PostRepo.createComment({
             postId,
             userId,
             content: content.trim()
         });
+
+        // Clear cached comments for this post (new comment was added)
+        await CacheUtil.del(`post:comments:${postId}`);
+
+        return newComment;
     }
 
     static async getCommentsByPostId(postId: string) {
+        // Cache key: unique identifier for this post's comments
+        const cachedKey = `post:comments:${postId}`;
+        
+        // Try to get from cache first
+        const cached = await CacheUtil.get(cachedKey);
+        if (cached) {
+            return cached; // Return cached data instantly (no DB query)
+        }
+
         // Check if post exists
         const post = await PostRepo.findPostById(postId);
         if (!post) {
@@ -103,13 +138,27 @@ export default class PostSvc {
         const comments = await PostRepo.getCommentsByPostId(postId);
         const total = await PostRepo.getCommentsCount(postId);
 
-        return {
+        const result = {
             comments,
             total
         };
+
+        // Save to cache for future requests (expires in 1 hour)
+        await CacheUtil.set(cachedKey, result);
+
+        return result;
     }
 
     static async getPostsByUserId(userId: string) {
+        // Cache key: unique identifier for this user's posts
+        const cachedKey = `post:user:${userId}`;
+        
+        // Try cache first
+        const cached = await CacheUtil.get(cachedKey);
+        if (cached) {
+            return cached; // Fast return from cache
+        }
+
         // Check if user exists
         const user = await UserRepo.findUserById(userId);
         if (!user) {
@@ -118,7 +167,7 @@ export default class PostSvc {
 
         const posts = await PostRepo.getPostsByUserId(userId);
 
-        return {
+        const result = {
             posts,
             total: posts.length,
             user: {
@@ -128,14 +177,33 @@ export default class PostSvc {
                 avatar: user.avatar
             }
         };
+
+        // Cache the result
+        await CacheUtil.set(cachedKey, result);
+
+        return result;
     }
 
     static async getFeed(userId: string) {
+        // Cache key: personalized feed per user
+        const cachedKey = `post:feed:${userId}`;
+        
+        // Check cache
+        const cached = await CacheUtil.get(cachedKey);
+        if (cached) {
+            return cached; // Super fast feed loading!
+        }
+
         const posts = await PostRepo.getFeedPosts(userId);
 
-        return {
+        const result = {
             posts,
             total: posts.length
         };
+
+        // Cache feed (expires in 1 hour)
+        await CacheUtil.set(cachedKey, result);
+
+        return result;
     }
 }
