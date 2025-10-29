@@ -5,6 +5,7 @@ import userRoute from "./user.route";
 import postRoute from "./post.route";
 import roomRoute from "./room.route";
 import onboardingRoute from "./onboarding.route";
+import userInterestRoute from "./user-interest.route";
 
 const router = express.Router();
 
@@ -20,6 +21,7 @@ router.use("/v1/users", userRoute);
 router.use("/v1/posts", postRoute);
 router.use("/v1/rooms", roomRoute);
 router.use("/v1/onboarding", onboardingRoute);
+router.use("/v1/interests", userInterestRoute);
 
 
 export default router;
