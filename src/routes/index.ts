@@ -8,6 +8,8 @@ import onboardingRoute from "./onboarding.route";
 import userInterestRoute from "./user-interest.route";
 import userEmotionRoute from "./user-emotion.route";
 import artistRoute from "./artist.route";
+import fileRoute from "./file.route";
+import videoRoute from "./video.route";
 
 const router = express.Router();
 
@@ -26,6 +28,8 @@ router.use("/v1/onboarding", onboardingRoute);
 router.use("/v1/interests", userInterestRoute);
 router.use("/v1/emotions", userEmotionRoute);
 router.use("/v1/artists", artistRoute);
+router.use("/v1/files", fileRoute);
+router.use("/v1/videos", videoRoute);
 
 
 export default router;

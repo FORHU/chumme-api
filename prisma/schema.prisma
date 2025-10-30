@@ -86,7 +86,8 @@ model File {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
-  users     User[] // reverse relation for avatars (not sure if needed)
+  users     User[]
+  videos    Video[]
 }
 
 // Chat models
@@ -301,24 +302,23 @@ model UserArtist {
 }
 
 model Video {
-  id           String        @id @default(uuid())
-  title        String
-  url          String        @unique
-  platform     VideoPlatform
-  artistId     String? // optional incase of fan edits or non-artist specific vids
-  thumbnailUrl String?
-  duration     Int?
-  viewCount    Int?
-  transcript   String?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  isDeleted    Boolean       @default(false)
+  id        String        @id @default(uuid())
+  title     String
+  fileId    String
+  file      File          @relation(fields: [fileId], references: [id])
+  platform  VideoPlatform
+  artistId  String? // optional incase of fan edits or non-artist specific vids
+  meta_data Json?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  isDeleted Boolean       @default(false)
 
   artist        Artist?        @relation(fields: [artistId], references: [id])
   videoEmotions VideoEmotion[]
 
   @@index([artistId])
   @@index([platform])
+  @@index([fileId])
 }
 
 model VideoEmotion {
