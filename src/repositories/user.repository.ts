@@ -3,8 +3,9 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 export default class UserRepo {
+
     static async findUserById(userId: string) {
-        return prisma.user.findFirst({
+        return prisma.user.findUnique({
             where: {
                 id: userId,
                 isDeleted: false
@@ -12,19 +13,65 @@ export default class UserRepo {
             select: {
                 id: true,
                 email: true,
-                username: true,
                 name: true,
+                username: true,
                 role: true,
                 isActive: true,
                 isDeleted: true,
-                avatar: {
-                    select: {
-                        fileUrl: true
-                    }
-                },
                 lastLoginAt: true,
                 createdAt: true,
-                updatedAt: true
+                updatedAt: true,
+                provider: true,
+                mobileNumber: true,
+                isEmailVerified: true,
+                onboardingCompleted: true,
+                avatar: {
+                    select: {
+                        id: true,
+                        filename: true,
+                        fileUrl: true,
+                        createdAt: true,
+                        updatedAt: true
+                    }
+                },
+                userInterests: {
+                    include: {
+                        interest: {
+                            select: {
+                                id: true,
+                                name: true,
+                                description: true,
+                                icon: true
+                            }
+                        }
+                    }
+                },
+                userEmotionPreferences: {
+                    include: {
+                        emotion: {
+                            select: {
+                                id: true,
+                                name: true,
+                                description: true,
+                                icon: true
+                            }
+                        }
+                    }
+                },
+                userArtists: {
+                    include: {
+                        artist: {
+                            select: {
+                                id: true,
+                                name: true,
+                                bio: true,
+                                imageUrl: true,
+                                nationality: true,
+                                genre: true
+                            }
+                        }
+                    }
+                }
             }
         });
     }
