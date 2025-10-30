@@ -136,7 +136,13 @@ export default class AuthSvc {
         }
 
         if (!user.isEmailVerified) {
-            throw "Please verify your email before logging in";
+            return {
+                requiresVerification: true, message: "Please verify your email before logging in.",
+                user: {
+                    email: user.email,
+                    isEmailVerified: user.isEmailVerified, otpExpiry: user.otpExpiry ?? null,
+                }
+            };
         }
 
         // Verify password
@@ -181,7 +187,8 @@ export default class AuthSvc {
                 username: user.username,
                 name: user.name,
                 role: user.role,
-                avatar: user.avatar?.fileUrl
+                avatar: user.avatar?.fileUrl,
+                onboardingStatus: user.onboardingCompleted
             }
         };
     }

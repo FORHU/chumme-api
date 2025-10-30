@@ -85,7 +85,8 @@ export default class AuthRepo {
                         fileUrl: true
                     }
                 },
-                lastLoginAt: true
+                lastLoginAt: true,
+                onboardingCompleted: true
             }
         });
     }
