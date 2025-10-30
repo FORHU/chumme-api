@@ -2,8 +2,8 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-export const getAllInterests = async () => {
-    return await prisma.interest.findMany({
+export const getAllEmotions = async () => {
+    return await prisma.emotion.findMany({
         where: {
             isDeleted: false,
         },
@@ -19,16 +19,16 @@ export const getAllInterests = async () => {
     });
 };
 
-export const getUserInterests = async (userId: string) => {
-    return await prisma.userInterest.findMany({
+export const getUserEmotions = async (userId: string) => {
+    return await prisma.userEmotionPreference.findMany({
         where: {
             userId,
-            interest: {
+            emotion: {
                 isDeleted: false,
             },
         },
         include: {
-            interest: {
+            emotion: {
                 select: {
                     id: true,
                     name: true,
@@ -43,26 +43,26 @@ export const getUserInterests = async (userId: string) => {
     });
 };
 
-export const addUserInterests = async (
+export const addUserEmotions = async (
     userId: string,
-    interestIds: string[]
+    emotionIds: string[]
 ) => {
-    await prisma.userInterest.createMany({
-        data: interestIds.map((interestId) => ({
+    await prisma.userEmotionPreference.createMany({
+        data: emotionIds.map((emotionId) => ({
             userId,
-            interestId,
+            emotionId,
         })),
         skipDuplicates: true,
     });
 };
 
-export const removeUserInterest = async (
+export const removeUserEmotion = async (
     userId: string,
-    userInterestId: string
+    userEmotionId: string
 ) => {
-    const deleted = await prisma.userInterest.delete({
+    const deleted = await prisma.userEmotionPreference.delete({
         where: {
-            id: userInterestId,
+            id: userEmotionId,
             userId,
         },
     });

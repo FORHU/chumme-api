@@ -38,6 +38,7 @@ export default class OnboardingSvc {
 
         // Clear onboarding status cache
         await CacheUtil.del(`onboarding:status:${userId}`);
+        await CacheUtil.del(`user:${userId}:interests`);
 
         return result.map(ui => ui.interest);
     }
@@ -50,6 +51,7 @@ export default class OnboardingSvc {
 
         // Clear onboarding status cache
         await CacheUtil.del(`onboarding:status:${userId}`);
+        await CacheUtil.del(`user:${userId}:emotions`);
 
         return result.map(uep => uep.emotion);
     }
@@ -62,6 +64,7 @@ export default class OnboardingSvc {
 
         // Clear onboarding status cache
         await CacheUtil.del(`onboarding:status:${userId}`);
+        await CacheUtil.del(`user:${userId}:artists`);
 
         return result.map(ua => ua.artist);
     }
