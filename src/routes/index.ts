@@ -7,6 +7,7 @@ import roomRoute from "./room.route";
 import onboardingRoute from "./onboarding.route";
 import userInterestRoute from "./user-interest.route";
 import userEmotionRoute from "./user-emotion.route";
+import artistRoute from "./artist.route";
 
 const router = express.Router();
 
@@ -24,6 +25,7 @@ router.use("/v1/rooms", roomRoute);
 router.use("/v1/onboarding", onboardingRoute);
 router.use("/v1/interests", userInterestRoute);
 router.use("/v1/emotions", userEmotionRoute);
+router.use("/v1/artists", artistRoute);
 
 
 export default router;

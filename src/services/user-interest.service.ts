@@ -39,9 +39,9 @@ export const addUserInterests = async (
     await userInterestRepo.addUserInterests(userId, interestIds);
     await CacheUtil.del(`user:${userId}:interests`);
 
-    // Fetch fresh data from DB without caching it in this response
     const freshData = await userInterestRepo.getUserInterests(userId);
     return freshData;
+
 }; export const removeUserInterest = async (
     userId: string,
     userInterestId: string
