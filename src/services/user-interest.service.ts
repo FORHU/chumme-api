@@ -36,24 +36,18 @@ export const addUserInterests = async (
     userId: string,
     interestIds: string[]
 ) => {
-    const updatedInterests = await userInterestRepo.addUserInterests(
-        userId,
-        interestIds
-    );
+    await userInterestRepo.addUserInterests(userId, interestIds);
     await CacheUtil.del(`user:${userId}:interests`);
 
-    return updatedInterests;
-};
-
-export const removeUserInterest = async (
+    // Fetch fresh data from DB without caching it in this response
+    const freshData = await userInterestRepo.getUserInterests(userId);
+    return freshData;
+}; export const removeUserInterest = async (
     userId: string,
     userInterestId: string
 ) => {
-    const deleted = await userInterestRepo.removeUserInterest(
-        userId,
-        userInterestId
-    );
+    await userInterestRepo.removeUserInterest(userId, userInterestId);
     await CacheUtil.del(`user:${userId}:interests`);
 
-    return deleted;
+    return { success: true };
 };
