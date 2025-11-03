@@ -17,4 +17,9 @@ export default class FileRepo {
     static async findFileById(fileId: string) {
         return prisma.file.findUnique({ where: { id: fileId } });
     }
+
+    // Delete file record
+    static async deleteFile(fileId: string) {
+        return prisma.file.delete({ where: { id: fileId } });
+    }
 }
