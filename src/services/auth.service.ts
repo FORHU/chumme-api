@@ -8,7 +8,6 @@ import {
     REFRESH_TOKEN_SECRET,
     ACCESS_TOKEN_EXPIRY,
 } from "../config";
-import { EventPublisher } from "./event-publisher.service";
 
 export default class AuthSvc {
     static async register(data: {
@@ -86,18 +85,6 @@ export default class AuthSvc {
             refreshToken,
             expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         });
-
-        // Publish user created event
-        try {
-            await EventPublisher.publishUserCreated({
-                userId: user.id,
-                email: user.email,
-                name: user.name || undefined,
-            });
-        } catch (error) {
-            console.error("Failed to publish user created event:", error);
-            // Don't fail registration if event publishing fails
-        }
 
         return {
             user: {
