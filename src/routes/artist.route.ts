@@ -1,11 +1,11 @@
 import express from "express";
-import * as ArtistCtrl from "../controllers/artist.controller";
+import * as artistController from "../controllers/artist.controller";
 import { authenticate } from "../middleware/auth.middleware";
 
 const router = express.Router();
 
-router.get("/", authenticate, ArtistCtrl.getAllArtists);
-router.get("/me", authenticate, ArtistCtrl.getUserArtists);
-router.post("/me", authenticate, ArtistCtrl.addUserArtists);
+router.get("/", authenticate, artistController.getAllArtists);
+router.get("/me", authenticate, artistController.getUserArtists);
+router.post("/me", authenticate, artistController.addUserArtists);
 
 export default router;
