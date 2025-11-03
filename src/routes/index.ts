@@ -10,13 +10,14 @@ import userEmotionRoute from "./user-emotion.route";
 import artistRoute from "./artist.route";
 import fileRoute from "./file.route";
 import videoRoute from "./video.route";
+import healthRoute from "./health.route";
 
 const router = express.Router();
 
 router.get("/v1", (_, res) => {
-  res.json({
-    message: "Welcome to my API",
-  });
+    res.json({
+        message: "Welcome to my API",
+    });
 });
 
 router.use("/v1/auth", authRoute);
@@ -30,8 +31,6 @@ router.use("/v1/emotions", userEmotionRoute);
 router.use("/v1/artists", artistRoute);
 router.use("/v1/files", fileRoute);
 router.use("/v1/videos", videoRoute);
-
+router.use("/v1", healthRoute);
 
 export default router;
-
-

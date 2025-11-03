@@ -13,7 +13,7 @@ import { errorHandler } from "./middleware/error-handler.middleware";
 
 const app = express();
 
-app.set("trust proxy", 1); 
+app.set("trust proxy", 1);
 
 app.use(
     cors({
@@ -38,7 +38,7 @@ app.disable("x-powered-by");
 
 // Use router for routing
 app.use("/api", router);
-app.use(errorHandler)
+app.use(errorHandler);
 
 const server = createServer(app);
 
@@ -51,14 +51,30 @@ export const io = new Server(server, {
 });
 
 import events from "./events";
+import { videoPostListener } from "./listeners/video-post.listener";
 
 events(io);
 
-// Connect to PostgreSQL via Prisma
+// Connect to PostgreSQL via Prisma and RabbitMQ
 connectToPrisma()
-    .then(() => {
+    .then(async () => {
         // Run setup
         setup();
+
+        // Initialize RabbitMQ for video posts
+        try {
+            await videoPostListener.connect();
+            await videoPostListener.startListening();
+            console.log(
+                "Video Post RabbitMQ listener initialized successfully"
+            );
+        } catch (error) {
+            console.error(
+                "Failed to initialize Video Post RabbitMQ listener:",
+                error
+            );
+            // Don't crash the server if RabbitMQ fails
+        }
     })
     .catch((err: any) => {
         console.log(err);
