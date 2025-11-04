@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import S3Util from "../utils/s3.util";
 
 const prisma = new PrismaClient();
 
@@ -41,5 +42,29 @@ export default class FileRepo {
         return { file, isUpdate };
     }
 
-    //TODO: Setup Rabbit MQ (listener and publisher)
+    static async getFileById(fileId: string) {
+        const file = await FileRepo.findFileById(fileId);
+
+        if (!file) {
+            throw new Error("File not found");
+        }
+
+        return file;
+    }
+
+    static async deleteFile(fileId: string) {
+        const file = await FileRepo.findFileById(fileId);
+
+        if (!file) {
+            throw new Error("File not found");
+        }
+
+        if (file.fileUrl) {
+            await S3Util.deleteFile(file.fileUrl);
+        }
+
+        await FileRepo.deleteFile(fileId);
+
+        return { message: "File deleted successfully" };
+    }
 }
