@@ -28,3 +28,8 @@ export const AWS_REGION = process.env.AWS_REGION || "ap-southeast-1";
 export const AWS_ACCESS_KEY_ID = process.env.AWS_ACCESS_KEY_ID as string;
 export const AWS_SECRET_ACCESS_KEY = process.env.AWS_SECRET_ACCESS_KEY as string;
 export const AWS_S3_BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME as string;
+
+// RabbitMQ Configuration
+export const RABBITMQ_URL = process.env.RABBITMQ_URL || "amqp://localhost:5672";
+export const RABBITMQ_EXCHANGE = process.env.RABBITMQ_EXCHANGE || "chumme_exchange";
+export const RABBITMQ_QUEUE_PREFIX = process.env.RABBITMQ_QUEUE_PREFIX || "chumme";
