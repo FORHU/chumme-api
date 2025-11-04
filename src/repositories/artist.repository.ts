@@ -56,3 +56,32 @@ export const addUserArtists = async (
         skipDuplicates: true
     });
 };
+
+export const upsertArtist = async (data: {
+    name: string;
+    bio?: string | null;
+    imageUrl?: string | null;
+    genre?: string | null;
+}) => {
+    // First try to find existing artist
+    let artist = await prisma.artist.findFirst({
+        where: {
+            name: data.name,
+            isDeleted: false,
+        },
+    });
+
+    // If not found, create new artist
+    if (!artist) {
+        artist = await prisma.artist.create({
+            data: {
+                name: data.name,
+                bio: data.bio ?? null,
+                imageUrl: data.imageUrl ?? null,
+                genre: data.genre ?? null,
+            },
+        });
+    }
+
+    return artist;
+};
