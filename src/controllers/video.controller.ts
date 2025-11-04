@@ -31,4 +31,36 @@ export default class VideoCtrl {
             return res.status(400).json({ message: err.message || err });
         }
     }
+
+    static async upsertVideo(req: Request, res: Response) {
+        try {
+            const schema = Joi.object({
+                externalUrl: Joi.string().uri().required(),
+                title: Joi.string().required(),
+                fileId: Joi.string().uuid().required(),
+                platform: Joi.string().valid(...allowedPlatforms).required(),
+                artistId: Joi.string().uuid().optional(),
+                meta_data: Joi.any().optional()
+            });
+
+            const { error, value } = schema.validate(req.body);
+            if (error) return res.status(400).json({ message: error.message });
+
+            const { video, isUpdate } = await VideoSvc.upsertVideo({
+                externalUrl: value.externalUrl,
+                title: value.title,
+                fileId: value.fileId,
+                platform: value.platform,
+                artistId: value.artistId,
+                meta_data: value.meta_data
+            });
+
+            const message = isUpdate ? "Video updated" : "Video created";
+            const statusCode = isUpdate ? 200 : 201;
+
+            return res.status(statusCode).json({ message, video });
+        } catch (err: any) {
+            return res.status(400).json({ message: err.message || err });
+        }
+    }
 }

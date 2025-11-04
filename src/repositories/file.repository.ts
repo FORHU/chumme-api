@@ -13,13 +13,33 @@ export default class FileRepo {
         });
     }
 
-    // helper to search
     static async findFileById(fileId: string) {
         return prisma.file.findUnique({ where: { id: fileId } });
     }
 
-    // Delete file record
-    static async deleteFile(fileId: string) {
-        return prisma.file.delete({ where: { id: fileId } });
+    static async upsertFile(
+        id: string,  // Required: caller must provide ID
+        data: { filename?: string | null; fileUrl?: string | null }
+    ) {
+        // Check if record exists before upserting
+        const existing = await prisma.file.findUnique({ where: { id } });
+        const isUpdate = !!existing;
+
+        const file = await prisma.file.upsert({
+            where: { id },
+            create: {
+                id: id,  // Use provided ID for creation
+                filename: data.filename ?? null,
+                fileUrl: data.fileUrl ?? null
+            },
+            update: {
+                filename: data.filename ?? null,
+                fileUrl: data.fileUrl ?? null
+            }
+        });
+
+        return { file, isUpdate };
     }
+
+    //TODO: Setup Rabbit MQ (listener and publisher)
 }
