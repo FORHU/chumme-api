@@ -1,6 +1,44 @@
 import amqp from "amqplib";
 import { RABBITMQ_URL } from "../config";
 
+// Individual post structure sent from crawler
+export interface TikTokPostMessage {
+    id: string;
+    tiktokMetaId: string;
+    videoPage: string;
+    caption: string;
+    title: string;
+    videoSrc: string | null;
+    createdAt: string;
+    isDownloaded: boolean;
+    videoFile: {
+        id: string;
+        postId: string;
+        filename: string;
+        fileUrl: string;
+        createdAt: string;
+        updatedAt: string;
+        deletedAt: string | null;
+        metadata: {
+            key: string;
+            size: number;
+            contentType: string;
+        };
+    } | null;
+    tiktokMeta: {
+        id: string;
+        profileUrl: string;
+        displayName: string;
+        bio: string;
+        followers: string;
+        following: string;
+        likes: string;
+        profileImageUrl: string;
+        createdAt: string;
+    };
+}
+
+// Legacy interface for backward compatibility
 export interface VideoPostEvent {
     data: {
         id: string;
@@ -54,10 +92,17 @@ export class VideoPostListener {
             this.connection = (await amqp.connect(RABBITMQ_URL)) as any;
             this.channel = await (this.connection as any).createChannel();
 
-            // Declare queue for video post events
-            await this.channel!.assertQueue("tiktok-sync-queue", {
-                durable: true,
+            // Declare exchange and queue for video post events
+            const exchangeName = "system_events";
+            const queueName = "tiktok-sync-queue";
+            const routingKey = "tiktok-sync-queue";
+
+            // Use passive check or match existing exchange configuration
+            await this.channel!.assertExchange(exchangeName, "topic", {
+                durable: false, // Match existing exchange configuration
             });
+            await this.channel!.assertQueue(queueName, { durable: true });
+            await this.channel!.bindQueue(queueName, exchangeName, routingKey);
 
             this.isConnected = true;
             console.log("RabbitMQ connected for video post events");
@@ -91,16 +136,16 @@ export class VideoPostListener {
                 async (msg: amqp.ConsumeMessage | null) => {
                     if (msg) {
                         try {
-                            const videoPostData: VideoPostEvent = JSON.parse(
+                            const postData: TikTokPostMessage = JSON.parse(
                                 msg.content.toString()
                             );
                             console.log(
-                                "Received video post event:",
-                                videoPostData
+                                "Received TikTok post event:",
+                                postData
                             );
 
-                            // Process the video post
-                            await this.handleVideoPostEvent(videoPostData);
+                            // Process the individual post
+                            await this.handleTikTokPost(postData);
 
                             // Acknowledge the message
                             this.channel?.ack(msg);
@@ -116,9 +161,66 @@ export class VideoPostListener {
                 }
             );
 
-            console.log("Listening for video post events...");
+            console.log(
+                "Listening for video post events...",
+                "tiktok-sync-queue"
+            );
         } catch (error) {
             console.error("Error setting up video post listener:", error);
+            throw error;
+        }
+    }
+
+    private async handleTikTokPost(postData: TikTokPostMessage): Promise<void> {
+        try {
+            console.log(
+                `Processing individual TikTok post: ${postData.caption} by ${postData.tiktokMeta.displayName}`
+            );
+
+            // Convert individual post to VideoPostEvent format for the ingestion service
+            const videoPostEvent: VideoPostEvent = {
+                data: {
+                    id: postData.tiktokMeta.id,
+                    profileUrl: postData.tiktokMeta.profileUrl,
+                    displayName: postData.tiktokMeta.displayName,
+                    bio: postData.tiktokMeta.bio,
+                    followers: postData.tiktokMeta.followers,
+                    following: postData.tiktokMeta.following,
+                    likes: postData.tiktokMeta.likes,
+                    profileImageUrl: postData.tiktokMeta.profileImageUrl,
+                    createdAt: postData.tiktokMeta.createdAt,
+                    posts: [
+                        {
+                            id: postData.id,
+                            tiktokMetaId: postData.tiktokMetaId,
+                            videoPage: postData.videoPage,
+                            caption: postData.caption,
+                            title: postData.title,
+                            videoSrc: postData.videoSrc,
+                            createdAt: postData.createdAt,
+                            isDownloaded: postData.isDownloaded,
+                            videoFile: postData.videoFile,
+                        },
+                    ],
+                },
+                page: 1,
+                limit: 1,
+                totalPosts: 1,
+                totalPages: 1,
+            };
+
+            // Import the service here to avoid circular dependencies
+            const { processTikTokCrawlerData } = await import(
+                "../services/tiktok-ingestion.service"
+            );
+
+            // Process the crawler data
+            await processTikTokCrawlerData(videoPostEvent);
+            console.log(
+                `Successfully processed TikTok post: ${postData.caption}`
+            );
+        } catch (error) {
+            console.error("Error handling TikTok post event:", error);
             throw error;
         }
     }
@@ -127,18 +229,22 @@ export class VideoPostListener {
         videoPostData: VideoPostEvent
     ): Promise<void> {
         try {
-            const { data } = videoPostData;
             console.log(
-                `Processing TikTok crawler data for: ${data.displayName} (${data.profileUrl})`
+                `Processing TikTok crawler data for: ${JSON.stringify(videoPostData)}`
             );
-            console.log(`Total posts to process: ${videoPostData.totalPosts}`);
+            console.log(
+                `Total posts to process: ${videoPostData.totalPosts || 0}`
+            );
 
             // Import the service here to avoid circular dependencies
-            const { processTikTokCrawlerData } = await import("../services/tiktok-ingestion.service");
+            const { processTikTokCrawlerData } = await import(
+                "../services/tiktok-ingestion.service"
+            );
 
             // Process the crawler data
-            await processTikTokCrawlerData(videoPostData); console.log(
-                `Successfully processed ${data.posts.length} posts for ${data.displayName}`
+            await processTikTokCrawlerData(videoPostData);
+            console.log(
+                `Successfully processed crawler data for: ${JSON.stringify(videoPostData)}`
             );
         } catch (error) {
             console.error("Error handling video post event:", error);
