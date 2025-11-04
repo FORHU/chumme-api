@@ -55,7 +55,7 @@ export class VideoPostListener {
             this.channel = await (this.connection as any).createChannel();
 
             // Declare queue for video post events
-            await this.channel!.assertQueue("video_post_queue", {
+            await this.channel!.assertQueue("tiktok-sync-queue", {
                 durable: true,
             });
 
@@ -87,7 +87,7 @@ export class VideoPostListener {
         try {
             // Listen for video post events
             await this.channel.consume(
-                "video_post_queue",
+                "tiktok-sync-queue",
                 async (msg: amqp.ConsumeMessage | null) => {
                     if (msg) {
                         try {
