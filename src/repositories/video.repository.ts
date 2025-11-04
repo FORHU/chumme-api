@@ -26,6 +26,7 @@ export default class VideoRepo {
     static async upsertVideo(
         where: { externalUrl: string },
         data: {
+            id?: string;
             title: string;
             fileId: string;
             platform: any;
@@ -41,6 +42,7 @@ export default class VideoRepo {
         const video = await prisma.video.upsert({
             where: where,
             create: {
+                id: data.id,
                 title: data.title,
                 fileId: data.fileId,
                 platform: data.platform,

@@ -2,14 +2,45 @@ import amqp from "amqplib";
 import { RABBITMQ_URL } from "../config";
 
 export interface VideoPostEvent {
-    id: string;
-    userId: string;
-    title: string;
-    description?: string;
-    videoUrl: string;
-    thumbnailUrl?: string;
-    duration?: number;
-    createdAt: string;
+    data: {
+        id: string;
+        profileUrl: string;
+        displayName: string;
+        bio: string;
+        followers: string;
+        following: string;
+        likes: string;
+        profileImageUrl: string;
+        createdAt: string;
+        posts: Array<{
+            id: string;
+            tiktokMetaId: string;
+            videoPage: string;
+            caption: string;
+            title: string;
+            videoSrc: string | null;
+            createdAt: string;
+            isDownloaded: boolean;
+            videoFile: {
+                id: string;
+                postId: string;
+                filename: string;
+                fileUrl: string;
+                createdAt: string;
+                updatedAt: string;
+                deletedAt: string | null;
+                metadata: {
+                    key: string;
+                    size: number;
+                    contentType: string;
+                };
+            } | null;
+        }>;
+    };
+    page: number;
+    limit: number;
+    totalPosts: number;
+    totalPages: number;
 }
 
 export class VideoPostListener {
@@ -96,32 +127,18 @@ export class VideoPostListener {
         videoPostData: VideoPostEvent
     ): Promise<void> {
         try {
+            const { data } = videoPostData;
             console.log(
-                `Processing video post: ${videoPostData.title} by user ${videoPostData.userId}`
+                `Processing TikTok crawler data for: ${data.displayName} (${data.profileUrl})`
             );
+            console.log(`Total posts to process: ${videoPostData.totalPosts}`);
 
-            // Here you can add your business logic for handling video posts
-            // For example:
+            // Import the service here to avoid circular dependencies
+            const { processTikTokCrawlerData } = await import("../services/tiktok-ingestion.service");
 
-            // 1. Save video metadata to database
-            // await this.saveVideoPost(videoPostData);
-
-            // 2. Generate thumbnail if not provided
-            // if (!videoPostData.thumbnailUrl) {
-            //   await this.generateThumbnail(videoPostData.videoUrl);
-            // }
-
-            // 3. Process video for different qualities
-            // await this.processVideoQualities(videoPostData.videoUrl);
-
-            // 4. Send notification to followers
-            // await this.notifyFollowers(videoPostData.userId, videoPostData.id);
-
-            // 5. Update search index
-            // await this.updateSearchIndex(videoPostData);
-
-            console.log(
-                `Successfully processed video post ${videoPostData.id}`
+            // Process the crawler data
+            await processTikTokCrawlerData(videoPostData); console.log(
+                `Successfully processed ${data.posts.length} posts for ${data.displayName}`
             );
         } catch (error) {
             console.error("Error handling video post event:", error);
@@ -169,7 +186,7 @@ export class VideoPostListener {
             }
 
             console.log(
-                `Video post event published for: ${videoPostData.title}`
+                `Video post event published for: ${videoPostData.data.displayName}`
             );
         } catch (error) {
             console.error("Error publishing video post event:", error);
