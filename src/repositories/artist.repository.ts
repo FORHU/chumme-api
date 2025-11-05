@@ -63,25 +63,24 @@ export const upsertArtist = async (data: {
     imageUrl?: string | null;
     genre?: string | null;
 }) => {
-    // First try to find existing artist
-    let artist = await prisma.artist.findFirst({
+    // Use upsert to handle concurrent requests gracefully
+    const artist = await prisma.artist.upsert({
         where: {
             name: data.name,
-            isDeleted: false,
+        },
+        update: {
+            // Only update if new data is provided
+            ...(data.bio !== undefined && { bio: data.bio }),
+            ...(data.imageUrl !== undefined && { imageUrl: data.imageUrl }),
+            ...(data.genre !== undefined && { genre: data.genre }),
+        },
+        create: {
+            name: data.name,
+            bio: data.bio ?? null,
+            imageUrl: data.imageUrl ?? null,
+            genre: data.genre ?? null,
         },
     });
-
-    // If not found, create new artist
-    if (!artist) {
-        artist = await prisma.artist.create({
-            data: {
-                name: data.name,
-                bio: data.bio ?? null,
-                imageUrl: data.imageUrl ?? null,
-                genre: data.genre ?? null,
-            },
-        });
-    }
 
     return artist;
 };

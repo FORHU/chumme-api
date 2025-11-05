@@ -79,7 +79,7 @@ export default class VideoSvc {
         // Create feed item only for new videos, not updates
         if (!result.isUpdate) {
             await FeedRepo.createVideoFeedItem(result.video.id);
-            
+
             // Clear feed cache for all pages (since new content was added)
             await CacheUtil.delByPattern(`feed:page:*`);
             await CacheUtil.delByPattern(`feed:personalized:*`);

@@ -31,7 +31,7 @@ export const AWS_SECRET_ACCESS_KEY = process.env
 export const AWS_S3_BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME as string;
 
 // RabbitMQ Configuration
-export const RABBITMQ_URL = process.env.RABBITMQ_URL || "amqp://localhost:5672";
+export const RABBITMQ_URL = process.env.RABBITMQ_URL || "amqp://admin:admin123@localhost:5672/my_vhost";
 export const RABBITMQ_EXCHANGE =
     process.env.RABBITMQ_EXCHANGE || "chumme_exchange";
 export const RABBITMQ_QUEUE_PREFIX =

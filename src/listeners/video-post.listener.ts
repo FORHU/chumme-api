@@ -1,16 +1,47 @@
 import amqp from "amqplib";
 import { RABBITMQ_URL } from "../config";
+import { processTikTokCrawlerData } from "../services/tiktok-ingestion.service";
 
 // Individual post structure sent from crawler
 export interface TikTokPostMessage {
     id: string;
     tiktokMetaId: string;
-    videoPage: string;
+    videoPage: string
     caption: string;
     title: string;
     videoSrc: string | null;
     createdAt: string;
     isDownloaded: boolean;
+    metadata?: {
+        artist: string;
+        songTitle: string;
+        fullTitle: string;
+        spotifyData?: {
+            success: boolean;
+            data?: {
+                track?: {
+                    id: string;
+                    name: string;
+                    artists: Array<{ id: string; name: string }>;
+                    album?: any;
+                    external_urls?: any;
+                    preview_url?: string;
+                    popularity?: number;
+                    duration_ms?: number;
+                };
+                emotion?: {
+                    primaryEmotion: string;
+                    emotionIntensity: number;
+                    description: string;
+                    secondaryEmotions: string[];
+                    audioCharacteristics?: any;
+                };
+                confidence?: number;
+                analysisMethod?: string;
+                note?: string;
+            };
+        };
+    };
     videoFile: {
         id: string;
         postId: string;
@@ -59,6 +90,26 @@ export interface VideoPostEvent {
             videoSrc: string | null;
             createdAt: string;
             isDownloaded: boolean;
+            metadata?: {
+                artist: string;
+                songTitle: string;
+                fullTitle: string;
+                spotifyData?: {
+                    success: boolean;
+                    data?: {
+                        track?: any;
+                        emotion?: {
+                            primaryEmotion: string;
+                            emotionIntensity: number;
+                            description: string;
+                            secondaryEmotions: string[];
+                            audioCharacteristics?: any;
+                        };
+                        confidence?: number;
+                        analysisMethod?: string;
+                    };
+                };
+            };
             videoFile: {
                 id: string;
                 postId: string;
@@ -75,10 +126,6 @@ export interface VideoPostEvent {
             } | null;
         }>;
     };
-    page: number;
-    limit: number;
-    totalPosts: number;
-    totalPages: number;
 }
 
 export class VideoPostListener {
@@ -199,20 +246,14 @@ export class VideoPostListener {
                             videoSrc: postData.videoSrc,
                             createdAt: postData.createdAt,
                             isDownloaded: postData.isDownloaded,
+                            metadata: postData.metadata,
                             videoFile: postData.videoFile,
                         },
                     ],
                 },
-                page: 1,
-                limit: 1,
-                totalPosts: 1,
-                totalPages: 1,
             };
 
-            // Import the service here to avoid circular dependencies
-            const { processTikTokCrawlerData } = await import(
-                "../services/tiktok-ingestion.service"
-            );
+
 
             // Process the crawler data
             await processTikTokCrawlerData(videoPostEvent);
@@ -232,15 +273,6 @@ export class VideoPostListener {
             console.log(
                 `Processing TikTok crawler data for: ${JSON.stringify(videoPostData)}`
             );
-            console.log(
-                `Total posts to process: ${videoPostData.totalPosts || 0}`
-            );
-
-            // Import the service here to avoid circular dependencies
-            const { processTikTokCrawlerData } = await import(
-                "../services/tiktok-ingestion.service"
-            );
-
             // Process the crawler data
             await processTikTokCrawlerData(videoPostData);
             console.log(
