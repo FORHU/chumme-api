@@ -25,6 +25,11 @@ enum VideoPlatform {
   TIKTOK
 }
 
+enum FeedItemType {
+  POST
+  VIDEO
+}
+
 model User {
   id          String       @id @default(uuid())
   email       String       @unique
@@ -83,6 +88,7 @@ model File {
   id        String    @id @default(uuid())
   filename  String?
   fileUrl   String?
+  metaData  Json?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
@@ -166,9 +172,10 @@ model Post {
   updatedAt DateTime @updatedAt
   isDeleted Boolean  @default(false)
 
-  user     User      @relation(fields: [userId], references: [id])
-  likes    Like[]
-  comments Comment[]
+  user      User       @relation(fields: [userId], references: [id])
+  likes     Like[]
+  comments  Comment[]
+  feedItems FeedItem[]
 
   @@index([userId]) //for performance if many users already
 }
@@ -316,6 +323,7 @@ model Video {
 
   artist        Artist?        @relation(fields: [artistId], references: [id])
   videoEmotions VideoEmotion[]
+  feedItems     FeedItem[]
 
   @@index([artistId])
   @@index([platform])
@@ -334,4 +342,20 @@ model VideoEmotion {
   @@unique([videoId, emotionId])
   @@index([videoId])
   @@index([emotionId])
+}
+
+// Feed aggregation model - combines Posts and Videos for unified feed
+model FeedItem {
+  id        String       @id @default(uuid())
+  type      FeedItemType
+  postId    String?
+  videoId   String?
+  createdAt DateTime     @default(now())
+  isDeleted Boolean      @default(false)
+
+  post  Post?  @relation(fields: [postId], references: [id], onDelete: Cascade)
+  video Video? @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@index([type])
 }
