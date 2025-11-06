@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,6 +5,302 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+model User {
+  id                     String                  @id @default(uuid())
+  email                  String                  @unique
+  password               String
+  name                   String?
+  username               String                  @unique
+  role                   Role                    @default(USER)
+  isActive               Boolean                 @default(true)
+  lastLoginAt            DateTime?
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  provider               String?
+  avatarId               String?
+  isDeleted              Boolean                 @default(false)
+  mobileNumber           String?
+  otpCode                String?
+  otpExpiry              DateTime?
+  isEmailVerified        Boolean                 @default(false)
+  onboardingCompleted    Boolean                 @default(false)
+  chatMessages           ChatMessage[]
+  comments               Comment[]
+  emotionMemories        EmotionMemory[]
+  following              Follow[]                @relation("UserFollows")
+  followers              Follow[]                @relation("UserFollowers")
+  likes                  Like[]
+  messages               Message[]
+  posts                  Post[]
+  roomsOwned             Room[]                  @relation("RoomOwner")
+  roomMembers            RoomMember[]
+  sessions               Session[]
+  avatar                 File?                   @relation(fields: [avatarId], references: [id])
+  userArtists            UserArtist[]
+  userEmotionPreferences UserEmotionPreference[]
+  userInterests          UserInterest[]
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  userId       String
+  createdAt    DateTime @default(now())
+  expiresAt    DateTime
+  refreshToken String   @unique
+  user         User     @relation(fields: [userId], references: [id])
+}
+
+model File {
+  id        String    @id @default(uuid())
+  filename  String?
+  fileUrl   String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  metaData  Json?
+  users     User[]
+  videos    Video[]
+}
+
+model Room {
+  id        String       @id @default(uuid())
+  name      String?
+  isPrivate Boolean      @default(false)
+  ownerId   String
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  isDeleted Boolean      @default(false)
+  messages  Message[]
+  owner     User         @relation("RoomOwner", fields: [ownerId], references: [id])
+  members   RoomMember[]
+}
+
+model RoomMember {
+  id       String   @id @default(uuid())
+  roomId   String
+  userId   String
+  role     String   @default("member")
+  joinedAt DateTime @default(now())
+  room     Room     @relation(fields: [roomId], references: [id])
+  user     User     @relation(fields: [userId], references: [id])
+
+  @@unique([roomId, userId])
+}
+
+model Message {
+  id        String   @id @default(uuid())
+  roomId    String
+  authorId  String
+  content   String
+  isSystem  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  author    User     @relation(fields: [authorId], references: [id])
+  room      Room     @relation(fields: [roomId], references: [id])
+}
+
+model ChatMessage {
+  id            String         @id @default(uuid())
+  userId        String
+  role          ChatRole       @default(USER)
+  createdAt     DateTime       @default(now())
+  message       String
+  User          User           @relation(fields: [userId], references: [id])
+  emotionMemory EmotionMemory?
+}
+
+model EmotionMemory {
+  id            String      @id @default(uuid())
+  chatMessageId String      @unique
+  userId        String
+  emotion       String
+  confidence    Float
+  createdAt     DateTime    @default(now())
+  ChatMessage   ChatMessage @relation(fields: [chatMessageId], references: [id])
+  User          User        @relation(fields: [userId], references: [id])
+}
+
+model Post {
+  id        String     @id @default(uuid())
+  userId    String
+  content   String
+  mediaUrls String[]   @default([])
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  isDeleted Boolean    @default(false)
+  comments  Comment[]
+  feedItems FeedItem[]
+  likes     Like[]
+  user      User       @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model Like {
+  id        String   @id @default(uuid())
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+  isDeleted Boolean  @default(false)
+  post      Post     @relation(fields: [postId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([postId, userId])
+  @@index([postId])
+  @@index([userId])
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  postId    String
+  userId    String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  isDeleted Boolean  @default(false)
+  post      Post     @relation(fields: [postId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([postId])
+  @@index([userId])
+}
+
+model Follow {
+  id          String   @id @default(uuid())
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+  isDeleted   Boolean  @default(false)
+  follower    User     @relation("UserFollows", fields: [followerId], references: [id])
+  following   User     @relation("UserFollowers", fields: [followingId], references: [id])
+
+  @@unique([followerId, followingId])
+}
+
+model Interest {
+  id            String         @id @default(uuid())
+  name          String         @unique
+  description   String?
+  icon          String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  isDeleted     Boolean        @default(false)
+  userInterests UserInterest[]
+}
+
+model UserInterest {
+  id         String   @id @default(uuid())
+  userId     String
+  interestId String
+  createdAt  DateTime @default(now())
+  interest   Interest @relation(fields: [interestId], references: [id])
+  user       User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, interestId])
+  @@index([userId])
+  @@index([interestId])
+}
+
+model Emotion {
+  id                     String                  @id @default(uuid())
+  name                   String                  @unique
+  description            String?
+  icon                   String?
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  isDeleted              Boolean                 @default(false)
+  userEmotionPreferences UserEmotionPreference[]
+  videoEmotions          VideoEmotion[]
+}
+
+model UserEmotionPreference {
+  id        String   @id @default(uuid())
+  userId    String
+  emotionId String
+  createdAt DateTime @default(now())
+  emotion   Emotion  @relation(fields: [emotionId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, emotionId])
+  @@index([userId])
+  @@index([emotionId])
+}
+
+model Artist {
+  id          String       @id @default(uuid())
+  name        String       @unique
+  bio         String?
+  imageUrl    String?
+  nationality String?
+  genre       String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  isDeleted   Boolean      @default(false)
+  userArtists UserArtist[]
+  videos      Video[]
+}
+
+model UserArtist {
+  id        String   @id @default(uuid())
+  userId    String
+  artistId  String
+  createdAt DateTime @default(now())
+  artist    Artist   @relation(fields: [artistId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, artistId])
+  @@index([userId])
+  @@index([artistId])
+}
+
+model Video {
+  id            String         @id @default(uuid())
+  title         String
+  platform      VideoPlatform
+  artistId      String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  isDeleted     Boolean        @default(false)
+  fileId        String
+  meta_data     Json?
+  externalUrl   String?        @unique
+  feedItems     FeedItem[]
+  artist        Artist?        @relation(fields: [artistId], references: [id])
+  file          File           @relation(fields: [fileId], references: [id])
+  videoEmotions VideoEmotion[]
+
+  @@index([artistId])
+  @@index([platform])
+  @@index([fileId])
+}
+
+model VideoEmotion {
+  id        String   @id @default(uuid())
+  videoId   String
+  emotionId String
+  createdAt DateTime @default(now())
+  emotion   Emotion  @relation(fields: [emotionId], references: [id])
+  video     Video    @relation(fields: [videoId], references: [id])
+
+  @@unique([videoId, emotionId])
+  @@index([videoId])
+  @@index([emotionId])
+}
+
+model FeedItem {
+  id        String       @id @default(uuid())
+  type      FeedItemType
+  postId    String?
+  videoId   String?
+  createdAt DateTime     @default(now())
+  isDeleted Boolean      @default(false)
+  post      Post?        @relation(fields: [postId], references: [id], onDelete: Cascade)
+  video     Video?       @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@index([type])
 }
 
 enum Role {
@@ -30,332 +320,8 @@ enum FeedItemType {
   VIDEO
 }
 
-model User {
-  id          String       @id @default(uuid())
-  email       String       @unique
-  password    String
-  name        String?
-  username    String       @unique // for profile username
-  avatar      File?        @relation(fields: [avatarId], references: [id]) //for avatar URL
-  avatarId    String? // ID of the File used as avatar
-  role        Role         @default(USER)
-  isActive    Boolean      @default(true)
-  isDeleted   Boolean      @default(false) // for soft delete
-  lastLoginAt DateTime?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  provider    String? // for OAuth providers
-  sessions    Session[]
-  // chat relations
-  roomsOwned  Room[]       @relation("RoomOwner")
-  roomMembers RoomMember[]
-  messages    Message[]
-  // social feed relations
-  posts       Post[]
-  likes       Like[]
-  comments    Comment[]
-  followers   Follow[]     @relation("UserFollowers")
-  following   Follow[]     @relation("UserFollows")
-
-  chatMessages    ChatMessage[]
-  emotionMemories EmotionMemory[]
-
-  // Fields for OTP verification
-  mobileNumber    String?
-  otpCode         String?
-  otpExpiry       DateTime?
-  isEmailVerified Boolean   @default(false)
-
-  // Onboarding
-  onboardingCompleted Boolean @default(false)
-
-  // Relations for onboarding
-  userInterests          UserInterest[]
-  userEmotionPreferences UserEmotionPreference[]
-  userArtists            UserArtist[]
-}
-
-model Session {
-  id           String   @id @default(uuid())
-  user         User     @relation(fields: [userId], references: [id])
-  userId       String
-  refreshToken String   @unique
-  createdAt    DateTime @default(now())
-  expiresAt    DateTime
-}
-
-model File {
-  id        String    @id @default(uuid())
-  filename  String?
-  fileUrl   String?
-  metaData  Json?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
-  users     User[]
-  videos    Video[]
-}
-
-// Chat models
-
-model Room {
-  id        String       @id @default(uuid())
-  name      String?
-  isPrivate Boolean      @default(false)
-  isDeleted Boolean      @default(false)
-  owner     User         @relation("RoomOwner", fields: [ownerId], references: [id])
-  ownerId   String
-  members   RoomMember[]
-  messages  Message[]
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
-}
-
-model RoomMember {
-  id       String   @id @default(uuid())
-  room     Room     @relation(fields: [roomId], references: [id])
-  roomId   String
-  user     User     @relation(fields: [userId], references: [id])
-  userId   String
-  role     String   @default("member")
-  joinedAt DateTime @default(now())
-
-  @@unique([roomId, userId])
-}
-
-model Message {
-  id        String   @id @default(uuid())
-  room      Room     @relation(fields: [roomId], references: [id])
-  roomId    String
-  author    User     @relation(fields: [authorId], references: [id])
-  authorId  String
-  content   String
-  isSystem  Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
 enum ChatRole {
   USER
   AI
   ADMIN
-}
-
-model ChatMessage {
-  id            String         @id @default(uuid())
-  userId        String
-  role          ChatRole       @default(USER)
-  message       String
-  createdAt     DateTime       @default(now())
-  User          User           @relation(fields: [userId], references: [id])
-  emotionMemory EmotionMemory?
-}
-
-model EmotionMemory {
-  id            String      @id @default(uuid())
-  chatMessageId String      @unique
-  userId        String
-  emotion       String
-  confidence    Float
-  createdAt     DateTime    @default(now())
-  ChatMessage   ChatMessage @relation(fields: [chatMessageId], references: [id])
-  User          User        @relation(fields: [userId], references: [id])
-}
-
-// Social feed models
-model Post {
-  id        String   @id @default(uuid())
-  userId    String
-  content   String
-  mediaUrls String[] @default([])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  isDeleted Boolean  @default(false)
-
-  user      User       @relation(fields: [userId], references: [id])
-  likes     Like[]
-  comments  Comment[]
-  feedItems FeedItem[]
-
-  @@index([userId]) //for performance if many users already
-}
-
-model Like {
-  id        String   @id @default(uuid())
-  postId    String
-  userId    String
-  createdAt DateTime @default(now())
-  isDeleted Boolean  @default(false) // unlike action
-
-  post Post @relation(fields: [postId], references: [id])
-  user User @relation(fields: [userId], references: [id])
-
-  @@unique([postId, userId])
-  @@index([postId])
-  @@index([userId])
-}
-
-model Comment {
-  id        String   @id @default(uuid())
-  postId    String
-  userId    String
-  content   String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  isDeleted Boolean  @default(false)
-
-  post Post @relation(fields: [postId], references: [id])
-  user User @relation(fields: [userId], references: [id])
-
-  @@index([postId])
-  @@index([userId])
-}
-
-model Follow {
-  id          String   @id @default(uuid())
-  followerId  String
-  followingId String
-  createdAt   DateTime @default(now())
-  isDeleted   Boolean  @default(false) // unfollow action
-
-  follower  User @relation("UserFollows", fields: [followerId], references: [id])
-  following User @relation("UserFollowers", fields: [followingId], references: [id])
-
-  @@unique([followerId, followingId])
-}
-
-// Onboarding Models
-
-model Interest {
-  id          String   @id @default(uuid())
-  name        String   @unique
-  description String?
-  icon        String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  isDeleted   Boolean  @default(false)
-
-  userInterests UserInterest[]
-}
-
-model UserInterest {
-  id         String   @id @default(uuid())
-  userId     String
-  interestId String
-  createdAt  DateTime @default(now())
-
-  user     User     @relation(fields: [userId], references: [id])
-  interest Interest @relation(fields: [interestId], references: [id])
-
-  @@unique([userId, interestId])
-  @@index([userId])
-  @@index([interestId])
-}
-
-model Emotion {
-  id          String   @id @default(uuid())
-  name        String   @unique // "sad", "happy", "tired", "bored", "excited", "calm", "anxious"
-  description String? // more detailed breakdown of the emotion
-  icon        String? // emoji or icon URL
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  isDeleted   Boolean  @default(false)
-
-  userEmotionPreferences UserEmotionPreference[]
-  videoEmotions          VideoEmotion[]
-}
-
-model UserEmotionPreference {
-  id        String   @id @default(uuid())
-  userId    String
-  emotionId String
-  createdAt DateTime @default(now())
-
-  user    User    @relation(fields: [userId], references: [id])
-  emotion Emotion @relation(fields: [emotionId], references: [id])
-
-  @@unique([userId, emotionId])
-  @@index([userId])
-  @@index([emotionId])
-}
-
-model Artist {
-  id          String   @id @default(uuid())
-  name        String   @unique
-  bio         String?
-  imageUrl    String?
-  nationality String?
-  genre       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  isDeleted   Boolean  @default(false)
-
-  userArtists UserArtist[]
-  videos      Video[]
-}
-
-model UserArtist {
-  id        String   @id @default(uuid())
-  userId    String
-  artistId  String
-  createdAt DateTime @default(now())
-
-  user   User   @relation(fields: [userId], references: [id])
-  artist Artist @relation(fields: [artistId], references: [id])
-
-  @@unique([userId, artistId])
-  @@index([userId])
-  @@index([artistId])
-}
-
-model Video {
-  id          String        @id @default(uuid())
-  title       String
-  fileId      String
-  file        File          @relation(fields: [fileId], references: [id])
-  platform    VideoPlatform
-  artistId    String? // optional incase of fan edits or non-artist specific vids
-  meta_data   Json?
-  externalUrl String?       @unique // link to the vids for true unique identification instead of ID
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  isDeleted   Boolean       @default(false)
-
-  artist        Artist?        @relation(fields: [artistId], references: [id])
-  videoEmotions VideoEmotion[]
-  feedItems     FeedItem[]
-
-  @@index([artistId])
-  @@index([platform])
-  @@index([fileId])
-}
-
-model VideoEmotion {
-  id        String   @id @default(uuid())
-  videoId   String
-  emotionId String
-  createdAt DateTime @default(now())
-
-  video   Video   @relation(fields: [videoId], references: [id])
-  emotion Emotion @relation(fields: [emotionId], references: [id])
-
-  @@unique([videoId, emotionId])
-  @@index([videoId])
-  @@index([emotionId])
-}
-
-// Feed aggregation model - combines Posts and Videos for unified feed
-model FeedItem {
-  id        String       @id @default(uuid())
-  type      FeedItemType
-  postId    String?
-  videoId   String?
-  createdAt DateTime     @default(now())
-  isDeleted Boolean      @default(false)
-
-  post  Post?  @relation(fields: [postId], references: [id], onDelete: Cascade)
-  video Video? @relation(fields: [videoId], references: [id], onDelete: Cascade)
-
-  @@index([createdAt])
-  @@index([type])
 }
