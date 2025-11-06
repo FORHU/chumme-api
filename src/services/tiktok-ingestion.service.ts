@@ -1,6 +1,7 @@
-import VideoRepo from "../repositories/video.repository";
+import VideoSvc from "./video.service";
 import FileRepo from "../repositories/file.repository";
 import { upsertArtist } from "../repositories/artist.repository";
+import EmotionRepo from "../repositories/emotion.repository";
 import type { VideoPostEvent } from "../listeners/video-post.listener";
 
 /**
@@ -45,32 +46,30 @@ export async function processTikTokCrawlerData(crawlerData: VideoPostEvent): Pro
                 }
             );
 
-            // Step 2b: Prepare metadata - store crawler-specific data
+            // Step 2b: Prepare metadata - store crawler-specific data (including full Spotify data)
             const metadata = {
                 tiktokMetaId: post.tiktokMetaId,
-                likes: post.caption,
+                caption: post.caption,
                 videoSrc: post.videoSrc,
                 crawledAt: post.createdAt,
                 fileMetadata: {
                     size: post.videoFile.metadata.size,
                     contentType: post.videoFile.metadata.contentType,
                     s3Key: post.videoFile.metadata.key,
-                }
+                },
+                // Store full music/Spotify data in meta_data for reference
+                musicData: post.metadata || null,
             };
 
-            // Step 2c: upsert video 
-            const result = await VideoRepo.upsertVideo(
-                { externalUrl: post.videoPage },
-                {
-                    id: post.videoFile.id,  // Video ID = post.videoFile.id
-                    title: post.title || "TikTok Video",
-                    fileId: fileResult.file.id,
-                    platform: "TIKTOK",
-                    externalUrl: post.videoPage,
-                    artistId: artist.id,
-                    meta_data: metadata,
-                }
-            );
+            // Step 2c: upsert video (service layer handles FeedItem creation)
+            const result = await VideoSvc.upsertVideo({
+                externalUrl: post.videoPage,
+                title: post.title || "TikTok Video",
+                fileId: fileResult.file.id,
+                platform: "TIKTOK",
+                artistId: artist.id,
+                meta_data: metadata,
+            });
 
             if (result.isUpdate) {
                 updatedVideos++;
@@ -78,6 +77,36 @@ export async function processTikTokCrawlerData(crawlerData: VideoPostEvent): Pro
             } else {
                 newVideos++;
                 console.log(`Created new video: ${result.video.id}`);
+            }
+
+            // Step 2d: Extract and link emotions from Spotify data
+            if (post.metadata?.spotifyData?.data?.emotion) {
+                const emotionData = post.metadata.spotifyData.data.emotion;
+                const emotionsToLink: string[] = [];
+
+                // Add primary emotion
+                if (emotionData.primaryEmotion) {
+                    emotionsToLink.push(emotionData.primaryEmotion);
+                }
+
+                // Add secondary emotions (optional, for richer emotional context)
+                if (emotionData.secondaryEmotions && Array.isArray(emotionData.secondaryEmotions)) {
+                    emotionsToLink.push(...emotionData.secondaryEmotions);
+                }
+
+                if (emotionsToLink.length > 0) {
+                    try {
+                        await EmotionRepo.linkVideoToEmotions(result.video.id, emotionsToLink);
+                        console.log(`Linked emotions to video ${result.video.id}: ${emotionsToLink.join(', ')}`);
+                    } catch (emotionError) {
+                        console.warn(`Failed to link emotions for video ${result.video.id}:`, emotionError);
+                        // Don't fail the entire ingestion if emotion linking fails
+                    }
+                } else {
+                    console.log(`No emotions found in Spotify data for video ${result.video.id}`);
+                }
+            } else {
+                console.log(`No Spotify emotion data available for video ${result.video.id}`);
             }
         } catch (error) {
             console.error(`Error processing post ${post.id}:`, error);

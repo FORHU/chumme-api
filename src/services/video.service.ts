@@ -1,5 +1,7 @@
 import VideoRepo from "../repositories/video.repository";
 import FileRepo from "../repositories/file.repository";
+import FeedRepo from "../repositories/feed.repository";
+import CacheUtil from "../utils/cache.util";
 
 export default class VideoSvc {
     // Helper: Validate video data
@@ -38,6 +40,13 @@ export default class VideoSvc {
             meta_data: data.meta_data ?? null
         });
 
+        // Create feed item for the new video
+        await FeedRepo.createVideoFeedItem(video.id);
+
+        // Clear feed cache for all pages (since new content was added)
+        await CacheUtil.delByPattern(`feed:page:*`);
+        await CacheUtil.delByPattern(`feed:personalized:*`);
+
         return video;
     }
 
@@ -66,6 +75,15 @@ export default class VideoSvc {
                 meta_data: data.meta_data ?? null
             }
         );
+
+        // Create feed item only for new videos, not updates
+        if (!result.isUpdate) {
+            await FeedRepo.createVideoFeedItem(result.video.id);
+
+            // Clear feed cache for all pages (since new content was added)
+            await CacheUtil.delByPattern(`feed:page:*`);
+            await CacheUtil.delByPattern(`feed:personalized:*`);
+        }
 
         return result; // { video, isUpdate }
     }

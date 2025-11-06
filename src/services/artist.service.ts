@@ -36,7 +36,12 @@ export const addUserArtists = async (
     artistIds: string[]
 ) => {
     await artistRepo.addUserArtists(userId, artistIds);
+
+    // Clear user artists cache
     await CacheUtil.del(`user:${userId}:artists`);
+
+    // Clear personalized feed cache since artist preferences changed
+    await CacheUtil.delByPattern(`feed:personalized:${userId}:*`);
 
     const data = await artistRepo.getUserArtists(userId);
     return data;

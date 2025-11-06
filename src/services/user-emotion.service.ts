@@ -38,6 +38,7 @@ export const addUserEmotions = async (
 ) => {
     await userEmotionRepo.addUserEmotions(userId, emotionIds);
     await CacheUtil.del(`user:${userId}:emotions`);
+    await CacheUtil.delByPattern(`feed:personalized:${userId}:*`);
 
     // Fetch fresh data from DB without caching it in this response
     const freshData = await userEmotionRepo.getUserEmotions(userId);
@@ -50,6 +51,7 @@ export const removeUserEmotion = async (
 ) => {
     await userEmotionRepo.removeUserEmotion(userId, userEmotionId);
     await CacheUtil.del(`user:${userId}:emotions`);
+    await CacheUtil.delByPattern(`feed:personalized:${userId}:*`);
 
     return { success: true };
 };

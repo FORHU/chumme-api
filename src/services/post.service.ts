@@ -1,6 +1,7 @@
 import PostRepo from "../repositories/post.repository";
 import UserRepo from "../repositories/user.repository";
 import CacheUtil from "../utils/cache.util";
+import FeedRepo from "../repositories/feed.repository";
 
 export default class PostSvc {
     static async createPost(userId: string, data: {
@@ -28,8 +29,16 @@ export default class PostSvc {
             mediaUrls: data.mediaUrls
         });
 
+        // Create feed item for the new post
+        await FeedRepo.createPostFeedItem(newPost.id);
+
+        // Clear caches
         await CacheUtil.del(`post:user:${userId}`);
         await CacheUtil.del(`post:feed:${userId}`);
+        
+        // Clear feed cache for all pages (since new content was added)
+        await CacheUtil.delByPattern(`feed:page:*`);
+        await CacheUtil.delByPattern(`feed:personalized:*`);
 
         return newPost;
     }
@@ -51,6 +60,8 @@ export default class PostSvc {
                 const likesCount = await PostRepo.getLikesCount(postId);
 
                 await CacheUtil.del(`post:user:${post.userId}`);
+                await CacheUtil.delByPattern(`feed:page:*`);
+                await CacheUtil.delByPattern(`feed:personalized:*`);
 
                 return {
                     liked: true,
@@ -63,6 +74,8 @@ export default class PostSvc {
                 const likesCount = await PostRepo.getLikesCount(postId);
 
                 await CacheUtil.del(`post:user:${post.userId}`);
+                await CacheUtil.delByPattern(`feed:page:*`);
+                await CacheUtil.delByPattern(`feed:personalized:*`);
 
                 return {
                     liked: false,
@@ -76,6 +89,8 @@ export default class PostSvc {
             const likesCount = await PostRepo.getLikesCount(postId);
 
             await CacheUtil.del(`post:user:${post.userId}`);
+            await CacheUtil.delByPattern(`feed:page:*`);
+            await CacheUtil.delByPattern(`feed:personalized:*`);
 
             return {
                 liked: true,
@@ -107,6 +122,10 @@ export default class PostSvc {
             content: content.trim()
         });
         await CacheUtil.del(`post:comments:${postId}`);
+        
+        // Clear feed cache since comment count changed
+        await CacheUtil.delByPattern(`feed:page:*`);
+        await CacheUtil.delByPattern(`feed:personalized:*`);
 
         return newComment;
     }
