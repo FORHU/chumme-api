@@ -12,19 +12,36 @@ export default class FeedSvc {
                     return {
                         id: item.id,
                         type: 'post',
-                        createdAt: item.createdAt,
                         content: {
-                            ...item.post,
-                            likesCount: item.post.likes.length,
-                            commentsCount: item.post.comments.length
+                            id: item.post.id,
+                            text: item.post.text,
+                            createdAt: item.post.createdAt,
+                            user: {
+                                id: item.post.user?.id
+                            },
+                            likesCount: item.post.likes?.length || 0,
+                            commentsCount: item.post.comments?.length || 0
                         }
                     };
                 } else if (item.type === 'VIDEO' && item.video) {
                     return {
                         id: item.id,
                         type: 'video',
-                        createdAt: item.createdAt,
-                        content: item.video
+                        content: {
+                            id: item.video.id,
+                            title: item.video.title,
+                            platform: item.video.platform,
+                            meta_data: {
+                                caption: item.video.meta_data?.caption || null
+                            },
+                            artist: {
+                                id: item.video.artist?.id
+                            },
+                            file: {
+                                id: item.video.file?.id,
+                                fileUrl: item.video.file?.fileUrl
+                            }
+                        }
                     };
                 }
                 return null;
