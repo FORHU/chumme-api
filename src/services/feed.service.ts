@@ -35,7 +35,8 @@ export default class FeedSvc {
                                 caption: item.video.meta_data?.caption || null
                             },
                             artist: {
-                                id: item.video.artist?.id
+                                id: item.video.artist?.id,
+                                name: item.video.artist?.name
                             },
                             file: {
                                 id: item.video.file?.id,
