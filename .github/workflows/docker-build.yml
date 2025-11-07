@@ -6,9 +6,9 @@ on:
 env:
     AWS_REGION: ap-southeast-1
     ECR_REPOSITORY: npx/chumme-api
-    ECS_CLUSTER: chumme-api-cluster
-    ECS_SERVICE: chumme-api-service
-    ECS_TASK_DEFINITION: chumme-api
+    ECS_CLUSTER: flawless-lion-ibkqr4
+    ECS_SERVICE: flawless-lion-ibkqr4
+    ECS_TASK_DEFINITION: flawless-lion-ibkqr4
 
 jobs:
     docker-build-and-push:
