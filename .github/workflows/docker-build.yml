@@ -6,9 +6,9 @@ on:
 env:
     AWS_REGION: ap-southeast-1
     ECR_REPOSITORY: npx/chumme-api
-    ECS_CLUSTER: flawless-lion-ibkqr4
-    ECS_SERVICE: flawless-lion-ibkqr4-service-5te1lbup
-    ECS_TASK_DEFINITION: flawless-lion-ibkqr4
+    ECS_CLUSTER: uncommon-deer-0vc0dh
+    ECS_SERVICE: uncommon-deer-0vc0dh-service
+    ECS_TASK_DEFINITION: uncommon-deer-0vc0dh-task
 
 jobs:
     docker-build-and-push:
@@ -63,6 +63,33 @@ jobs:
             - name: Download task definition
               run: |
                   aws ecs describe-task-definition --task-definition ${{ env.ECS_TASK_DEFINITION }} --query taskDefinition > task-definition.json
+
+            - name: Update task definition with Parameter Store secrets
+              run: |
+                  # Put all variables in Parameter Store secrets (both sensitive and non-sensitive)
+                  SECRETS='[
+                    {"name":"DATABASE_URL","valueFrom":"/chumme-api/DATABASE_URL"},
+                    {"name":"ACCESS_TOKEN_SECRET","valueFrom":"/chumme-api/ACCESS_TOKEN_SECRET"},
+                    {"name":"REFRESH_TOKEN_SECRET","valueFrom":"/chumme-api/REFRESH_TOKEN_SECRET"},
+                    {"name":"ACCESS_TOKEN_EXPIRY","valueFrom":"/chumme-api/ACCESS_TOKEN_EXPIRY"},
+                    {"name":"OPENAI_API_KEY","valueFrom":"/chumme-api/OPENAI_API_KEY"},
+                    {"name":"MAILER_TRANSPORT_HOST","valueFrom":"/chumme-api/MAILER_TRANSPORT_HOST"},
+                    {"name":"MAILER_TRANSPORT_PORT","valueFrom":"/chumme-api/MAILER_TRANSPORT_PORT"},
+                    {"name":"MAILER_TRANSPORT_SECURE","valueFrom":"/chumme-api/MAILER_TRANSPORT_SECURE"},
+                    {"name":"MAILER_EMAIL","valueFrom":"/chumme-api/MAILER_EMAIL"},
+                    {"name":"MAILER_PASSWORD","valueFrom":"/chumme-api/MAILER_PASSWORD"},
+                    {"name":"REDIS_HOST","valueFrom":"/chumme-api/REDIS_HOST"},
+                    {"name":"REDIS_PORT","valueFrom":"/chumme-api/REDIS_PORT"},
+                    {"name":"REDIS_PASSWORD","valueFrom":"/chumme-api/REDIS_PASSWORD"},
+                    {"name":"REDIS_TTL_SECONDS","valueFrom":"/chumme-api/REDIS_TTL_SECONDS"},
+                    {"name":"RABBITMQ_URL","valueFrom":"/chumme-api/RABBITMQ_URL"},
+                    {"name":"NODE_ENV","value":"production"},
+                    {"name":"PORT","value":"3000"}
+                  ]'
+
+                  # Update task definition with all secrets from Parameter Store
+                  jq --argjson secrets "$SECRETS" '.containerDefinitions[0].secrets = $secrets | .containerDefinitions[0].environment = []' task-definition.json > temp-task-definition.json
+                  mv temp-task-definition.json task-definition.json
 
             - name: Fill in the new image ID in the Amazon ECS task definition
               id: task-def
