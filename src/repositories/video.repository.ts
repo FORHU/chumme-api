@@ -1,6 +1,5 @@
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { Prisma } from "@prisma/client";
+import { prisma } from "../utils/prisma";
 
 export default class VideoRepo {
     // Save / create video record
@@ -61,5 +60,105 @@ export default class VideoRepo {
         });
 
         return { video, isUpdate };
+    }
+
+    /**
+     * Find videos by emotion name and optionally filter by artist IDs
+     * @param emotionName - The emotion to search for (case-insensitive)
+     * @param artistIds - Optional array of artist IDs to filter by
+     * @param limit - Maximum number of results to return
+     * @returns Array of videos with their relations
+     */
+    static async findVideosByEmotionAndArtist(
+        emotionName: string,
+        artistIds?: string[],
+        limit: number = 10
+    ) {
+        const whereClause: any = {
+            isDeleted: false,
+            videoEmotions: {
+                some: {
+                    emotion: {
+                        name: {
+                            equals: emotionName.toLowerCase(),
+                            mode: 'insensitive'
+                        },
+                        isDeleted: false
+                    }
+                }
+            }
+        };
+
+        // Only add artist filter if artistIds are provided
+        if (artistIds && artistIds.length > 0) {
+            whereClause.artistId = { in: artistIds };
+        }
+
+        return prisma.video.findMany({
+            where: whereClause,
+            include: {
+                file: true,
+                artist: true,
+                videoEmotions: {
+                    include: {
+                        emotion: true
+                    }
+                }
+            },
+            orderBy: { createdAt: 'desc' },
+            take: limit
+        });
+    }
+
+    /**
+     * Find videos by multiple emotion names (matches ANY of the emotions)
+     * @param emotionNames - Array of emotion names to search for
+     * @param artistIds - Optional array of artist IDs to filter by
+     * @param limit - Maximum number of results to return
+     * @returns Array of videos with their relations
+     */
+    static async findVideosByEmotions(
+        emotionNames: string[],
+        artistIds?: string[],
+        limit: number = 10
+    ) {
+        if (!emotionNames || emotionNames.length === 0) {
+            return [];
+        }
+
+        const whereClause: any = {
+            isDeleted: false,
+            videoEmotions: {
+                some: {
+                    emotion: {
+                        name: {
+                            in: emotionNames.map(e => e.toLowerCase()),
+                            mode: 'insensitive'
+                        },
+                        isDeleted: false
+                    }
+                }
+            }
+        };
+
+        // Only add artist filter if artistIds are provided
+        if (artistIds && artistIds.length > 0) {
+            whereClause.artistId = { in: artistIds };
+        }
+
+        return prisma.video.findMany({
+            where: whereClause,
+            include: {
+                file: true,
+                artist: true,
+                videoEmotions: {
+                    include: {
+                        emotion: true
+                    }
+                }
+            },
+            orderBy: { createdAt: 'desc' },
+            take: limit
+        });
     }
 }

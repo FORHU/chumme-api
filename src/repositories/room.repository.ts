@@ -1,6 +1,5 @@
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { Prisma } from "@prisma/client";
+import { prisma } from "../utils/prisma";
 
 export default class RoomRepo {
     /**
@@ -127,7 +126,7 @@ export default class RoomRepo {
                 isDeleted: false, // Add this condition
                 OR: [
                     { isPrivate: false }, // Public rooms
-                    { 
+                    {
                         isPrivate: true,
                         members: {
                             some: {
@@ -174,7 +173,7 @@ export default class RoomRepo {
                 isDeleted: false, // Add this condition
                 OR: [
                     { isPrivate: false }, // Public rooms
-                    { 
+                    {
                         isPrivate: true,
                         members: {
                             some: {

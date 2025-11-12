@@ -1,6 +1,5 @@
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { Prisma } from "@prisma/client";
+import { prisma } from "../utils/prisma";
 
 /**
  * Upsert an emotion by name (case-insensitive)
@@ -104,9 +103,31 @@ export const getVideoEmotions = async (videoId: string) => {
     });
 };
 
+/**
+ * Get all emotions from the database
+ * Returns only non-deleted emotions
+ */
+export const getAllEmotions = async () => {
+    return await prisma.emotion.findMany({
+        where: {
+            isDeleted: false,
+        },
+        select: {
+            id: true,
+            name: true,
+            description: true,
+            icon: true,
+        },
+        orderBy: {
+            name: 'asc',
+        },
+    });
+};
+
 export default {
     upsertEmotion,
     linkVideoToEmotion,
     linkVideoToEmotions,
     getVideoEmotions,
+    getAllEmotions,
 };
