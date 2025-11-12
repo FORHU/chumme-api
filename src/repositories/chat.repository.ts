@@ -1,27 +1,26 @@
-import { ChatRole, Prisma, PrismaClient  } from "@prisma/client";
+import { ChatRole, Prisma } from "@prisma/client";
+import { prisma } from "../utils/prisma";
 
-const prisma = new PrismaClient();
-
-export type TGetChatMessagesByUserIdOptions  = { 
-    role?: ChatRole, 
-    page?: number, 
-    limit?: number, 
-    sortOrder?: "asc" | "desc", 
+export type TGetChatMessagesByUserIdOptions = {
+    role?: ChatRole,
+    page?: number,
+    limit?: number,
+    sortOrder?: "asc" | "desc",
     sortBy?: keyof Prisma.ChatMessageOrderByWithRelationInput
 }
 
-export default class ChatRepo{
-    static async createChatMessage(data: Prisma.ChatMessageCreateInput){
+export default class ChatRepo {
+    static async createChatMessage(data: Prisma.ChatMessageCreateInput) {
 
         return prisma.chatMessage.create({
-            data, 
+            data,
             include: {
-                emotionMemory: { select: { id: true, emotion: true, confidence: true }},
+                emotionMemory: { select: { id: true, emotion: true, confidence: true } },
             }
         })
     }
 
-    static async createEmotionMemory(data: Prisma.EmotionMemoryCreateInput){
+    static async createEmotionMemory(data: Prisma.EmotionMemoryCreateInput) {
         return prisma.emotionMemory.create({
             data,
             // include: {
@@ -30,7 +29,7 @@ export default class ChatRepo{
         })
     }
 
-    static async getChatListByUserId(userId: string, options: TGetChatMessagesByUserIdOptions){
+    static async getChatListByUserId(userId: string, options: TGetChatMessagesByUserIdOptions) {
 
         const {
             role,
@@ -42,21 +41,21 @@ export default class ChatRepo{
 
         const skip = (page - 1) * limit
 
-        const [ messageList, total ] = await Promise.all([
+        const [messageList, total] = await Promise.all([
             prisma.chatMessage.findMany({
-                where: { userId, ...(role && {role})},
-                include: { emotionMemory:  { select: { id: true, emotion: true, confidence: true }},},
+                where: { userId, ...(role && { role }) },
+                include: { emotionMemory: { select: { id: true, emotion: true, confidence: true } }, },
                 skip,
-                orderBy: { [sortBy] : sortOrder },
+                orderBy: { [sortBy]: sortOrder },
                 take: limit
             }),
 
             prisma.chatMessage.count({
-                where: { userId, ...(role && {role})},
+                where: { userId, ...(role && { role }) },
             })
         ])
 
-        return { 
+        return {
             data: messageList,
             currentPage: page,
             totalItems: total,
@@ -67,12 +66,12 @@ export default class ChatRepo{
     }
 
 
-    static async getChatMessageById(chatMessageId: string, userId: string){
+    static async getChatMessageById(chatMessageId: string, userId: string) {
         return prisma.chatMessage.findUnique({
             where: { id: chatMessageId, userId },
             include: {
-                emotionMemory:  { select: { id: true, emotion: true, confidence: true }},
-                User: { select: { id: true, username: true, name: true }},
+                emotionMemory: { select: { id: true, emotion: true, confidence: true } },
+                User: { select: { id: true, username: true, name: true } },
             }
         })
     }

@@ -116,16 +116,16 @@ export default class ChatSvc {
 
     static async getChatListByUserId(currentUserId: string, options: TGetChatMessagesByUserIdOptions) {
 
-        // const cachedKey = `chat:list:${currentUserId}:role:${options.role || 'ALL'}:page:${options.page || 1}`
+        const cachedKey = `chat:list:${currentUserId}:role:${options.role || 'ALL'}:page:${options.page || 1}`
 
-        // const cached = await CacheUtil.get(cachedKey)
-        // if (cached) {
-        //     return cached;
-        // }
+        const cached = await CacheUtil.get(cachedKey)
+        if (cached) {
+            return cached;
+        }
 
         try {
             const list = await ChatRepo.getChatListByUserId(currentUserId, options);
-            // await CacheUtil.set(cachedKey, list)
+            await CacheUtil.set(cachedKey, list)
             return list
 
         } catch (error: any) {

@@ -1,7 +1,5 @@
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../utils/prisma";
 import S3Util from "../utils/s3.util";
-
-const prisma = new PrismaClient();
 
 export default class FileRepo {
     // Save / create file record 
