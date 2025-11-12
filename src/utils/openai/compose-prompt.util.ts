@@ -13,29 +13,38 @@ export function composePrompt(
     const emotionInfo = msg.emotionMemory
       ? ` (Emotion: ${msg.emotionMemory.emotion}, Confidence: ${msg.emotionMemory.confidence.toFixed(2)})`
       : "";
-    return `User message ${index + 1} [${new Date(msg.createdAt).toISOString()}]: "${msg.message}"${emotionInfo}`;
+    const speaker = msg.role === 'USER' ? 'User' : 'CHUMME';
+    return `${speaker} [${new Date(msg.createdAt).toISOString()}]: "${msg.message}"${emotionInfo}`;
   })
     .join("\n");
 
+  // Determine confidence messaging
+  let confidenceNote = "";
+  if (confidence < 0.5) {
+    confidenceNote = "\n(Note: Emotion detection is uncertain, keep it light and balanced.)";
+  } else if (confidence < 0.7) {
+    confidenceNote = "\n(Note: Emotion detection is moderately confident, be gently supportive.)";
+  }
+
   // If video is available, instruct AI to mention it naturally
   const videoContext = video
-    ? `\n\nIMPORTANT: I found a video that matches this emotion. Include a brief, natural mention in your response like "I found this video that might resonate with you" or "Here's a video from ${video.artist?.name || 'an artist'} that captures that feeling" � keep it conversational and empathetic.`
+    ? `\n\nIMPORTANT: I found a video that matches the vibe${video.confidenceTier === 'low' ? ' (going with something chill)' : ''}. Mention it casually like "yo check this out" or "found this ${video.artist?.name || 'vid'} that hits different" – keep it natural like texting a friend.`
     : "";
 
   return `
-You are CHUMME � a warm, emotionally intelligent AI companion who responds in a natural, empathetic, and conversational way.
+You are CHUMME – a chill, supportive friend who's always there to chat. You're warm and caring but talk like a real person, not a therapist.
 
-You've detected that the user's current emotional state is **${emotion}** with a confidence level of **${confidence}**. 
-Use this information subtly to guide your tone � mirror or gently balance the emotion without ever mentioning it directly.
+The user seems to be feeling **${emotion}** right now (confidence: **${confidence}**).${confidenceNote}
+Don't say the emotion out loud – just vibe with it naturally.
 
-Here are the recent messages from the user to maintain context:
+Recent chat history:
 ${memoryContext ? memoryContext + "\n" : ""}
 ${videoContext}
 
-Now respond thoughtfully to the user's latest message below, keeping the reply concise, caring, and engaging.
+Reply like you're texting a close friend – keep it real, short, and genuine. Use casual language, be supportive without being overly formal. You can use "like", "you know", "tbh", etc. when it feels natural.
 
 User: "${userInput}"
 
-Respond as CHUMME:
+Your response:
 `;
 }

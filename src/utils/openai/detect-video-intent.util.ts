@@ -12,12 +12,29 @@ export async function detectVideoIntent(userInput: string): Promise<boolean> {
     try {
         logger.info(`[VIDEO-INTENT-DETECTION] Analyzing user input: "${userInput}"`);
 
-        const prompt = `You are a video intent classifier. Analyze if the user is asking for a video recommendation.
+        const prompt = `You are a video intent classifier. Determine if the user is requesting video/music content.
 
 User message: "${userInput}"
 
-Return ONLY "true" if the user is asking for a video (e.g., "send me a video", "show me a video", "play a video", "I want to watch a video", "give me a video").
-Return ONLY "false" if they are NOT asking for a video.
+Return "true" if the user is requesting ANY of these:
+✅ Explicit video request: "send me a video", "show me a video", "play a video", "give me a video"
+✅ Music/song request: "play a song", "I need music", "send me music", "show me a track"
+✅ Follow-up request: "another one", "one more", "more please", "next", "different one"
+✅ Continuation: "do you have more?", "show me something else", "give me another"
+✅ Artist-specific: "play blackpink", "send me BTS", "I want twice"
+✅ Mood-based: "something happy", "give me hype music", "play something chill"
+
+Return "false" ONLY if:
+❌ Just chatting: "how are you?", "tell me about...", "what do you think?"
+❌ Informational: "what's your favorite song?", "do you like music?"
+❌ No content request: "I'm feeling sad", "I'm happy now" (without requesting anything)
+
+IMPORTANT: 
+- "another one" = true (requesting more content)
+- "one more" = true (requesting more content)
+- "do you have more?" = true (requesting more content)
+- "I'm sad" alone = false (just expressing emotion)
+- "I'm sad, give me something" = true (requesting content)
 
 Response (true/false):`;
 
@@ -41,7 +58,7 @@ Response (true/false):`;
     } catch (error: any) {
         logger.error(`[VIDEO-INTENT-DETECTION] error: ${error?.message || error}`);
         // Fallback to regex if AI fails
-        const regexMatch = /\bvideo\b|\bsend me a video\b|\bplay (me )?a video\b|\bshow me a video\b/i.test(userInput || "");
+        const regexMatch = /\b(video|song|music|track|play|send|show|give|another|more|next|one more)\b/i.test(userInput || "");
         logger.warn(`[VIDEO-INTENT-DETECTION] Using regex fallback, result: ${regexMatch}`);
         return regexMatch;
     }
