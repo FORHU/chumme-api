@@ -66,6 +66,12 @@ export default class ChatSvc {
                     role: "AI",
                 });
 
+                await EmbeddingSvc.createEmbedding(
+                    "text-embedding-3-small",
+                    embedding,
+                    chatMessage.id
+                );
+
                 await CacheUtil.delByPattern(`chat:list:${userId}:*`);
 
                 // Return crisis response WITHOUT video recommendation
