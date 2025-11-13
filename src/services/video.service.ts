@@ -37,7 +37,7 @@ export default class VideoSvc {
             fileId: data.fileId,
             platform: data.platform,
             artistId: data.artistId ?? null,
-            meta_data: data.meta_data ?? null
+            meta_data: data.meta_data ?? null,
         });
 
         // Create feed item for the new video
@@ -72,7 +72,7 @@ export default class VideoSvc {
                 platform: data.platform,
                 externalUrl: data.externalUrl,
                 artistId: data.artistId ?? null,
-                meta_data: data.meta_data ?? null
+                meta_data: data.meta_data ?? null,
             }
         );
 
