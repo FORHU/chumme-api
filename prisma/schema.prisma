@@ -109,6 +109,16 @@ model ChatMessage {
   message       String
   User          User           @relation(fields: [userId], references: [id])
   emotionMemory EmotionMemory?
+  embedding     Embedding?
+}
+
+model Embedding {
+  id            String      @id @default(uuid())
+  model         String
+  vector        Json
+  createdAt     DateTime    @default(now())
+  chatMessageId String      @unique
+  chatMessage   ChatMessage @relation(fields: [chatMessageId], references: [id])
 }
 
 model EmotionMemory {
