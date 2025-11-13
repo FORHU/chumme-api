@@ -62,6 +62,12 @@ RECOMMENDATION GUIDELINES:
    - If user says "chill", "relax" → peaceful, acoustic, slow, content
    - If user says "hype", "pump up" → energetic, upbeat, danceable, excited
 
+6. CONFLICTING EMOTIONS (detected emotion vs requested emotion):
+   - "I'm super happy! Give me a sad Blackpink video" → User wants SAD video despite being happy
+   - "I'm angry but give me chill music" → User wants CHILL despite being angry
+   - RULE: ALWAYS honor the explicit request over detected emotion
+   - Strategy = "validate" (validating user's explicit choice)
+
 IMPORTANT RULES:
 - Return 2-4 emotions total (2 primary, 2 fallback)
 - Only use emotions from the available list
@@ -80,6 +86,8 @@ Examples:
 - User happy → {"primary": ["happy", "upbeat"], "fallback": ["energetic", "danceable"], "strategy": "amplify"}
 - User "give me sad music" → {"primary": ["sad", "contemplative"], "fallback": ["acoustic", "slow"], "strategy": "validate"}
 - User bored → {"primary": ["energetic", "upbeat"], "fallback": ["danceable", "excited"], "strategy": "energize"}
+- User happy but asks for sad → {"primary": ["sad", "contemplative"], "fallback": ["acoustic", "slow"], "strategy": "validate"}
+- User angry but asks for chill → {"primary": ["peaceful", "acoustic"], "fallback": ["content", "neutral"], "strategy": "validate"}
 `;
 
         const start = Date.now();
@@ -96,8 +104,14 @@ Examples:
             throw new Error("Empty response from AI");
         }
 
+        // Strip markdown code blocks if present
+        let cleanedResult = result.trim();
+        if (cleanedResult.includes("```")) {
+            cleanedResult = cleanedResult.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+        }
+
         // Parse AI response
-        const parsed = JSON.parse(result.trim());
+        const parsed = JSON.parse(cleanedResult);
 
         // Validate emotions exist in database
         const validPrimary = (parsed.primary || []).filter((e: string) =>
