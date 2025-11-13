@@ -1,12 +1,19 @@
-import { determineVideoEmotions } from "../utils/emotion/determine-video-emotions.util";
-import { mapEmotionToDatabase } from "../utils/emotion/map-emotion-to-db.util";
 import {
+    determineVideoEmotions,
+    mapEmotionToDatabase,
     detectCrisis,
     generateCrisisResponse,
-} from "../utils/emotion/detect-crisis.util";
-import ChatRepo, {
-    TGetChatMessagesByUserIdOptions,
-} from "../repositories/chat.repository";
+} from "../utils/emotion";
+import {
+    defaultOpenAIRequest,
+    composePrompt,
+    getTextEmbedding,
+    fetchVideoRecommendation,
+    detectEmotion,
+    detectLanguage,
+    detectSpecificSong,
+} from "../utils/openai";
+import ChatRepo, { TGetChatMessagesByUserIdOptions } from "../repositories/chat.repository";
 import EmotionRepo from "../repositories/emotion.repository";
 import EmbeddingSvc from "./embedding.service";
 import { Prisma } from "@prisma/client";
@@ -17,14 +24,6 @@ import {
 } from "../utils/error.util";
 import logger from "../utils/logger";
 import CacheUtil from "../utils/cache.util";
-
-import {
-    defaultOpenAIRequest,
-    composePrompt,
-    getTextEmbedding,
-    fetchVideoRecommendation,
-    detectEmotion,
-} from "../utils/openai";
 
 export default class ChatSvc {
     static async sendChat(inputText: string, userId: string) {
@@ -42,7 +41,14 @@ export default class ChatSvc {
             // Get text embedding for the input
             const embedding = await getTextEmbedding(inputText);
 
-            // CRITICAL: Check for crisis situation FIRST
+            // Get chat history FIRST (needed for both crisis and normal flow)
+            const chatHistoryArrayResponse = await this.getChatListByUserId(
+                userId,
+                { limit: 10, page: 1 }
+            );
+            const chatHistoryArray = chatHistoryArrayResponse?.data || [];
+
+            // CRITICAL: Check for crisis situation
             const isCrisis = detectCrisis(emotion, inputText, confidence);
 
             if (isCrisis) {
@@ -53,13 +59,21 @@ export default class ChatSvc {
                 // Generate crisis response
                 const crisisResponse = generateCrisisResponse("US"); // TODO: Detect user locale
 
-                // Save the interaction (without emotion memory - this is crisis intervention)
+                // Save the user message with embedding
                 const chatMessage = await ChatRepo.createChatMessage({
                     message: inputText,
                     User: { connect: { id: userId } },
                     role: "USER",
                 });
 
+                // Save embedding for crisis message
+                await EmbeddingSvc.createEmbedding(
+                    "text-embedding-3-small",
+                    embedding,
+                    chatMessage.id
+                );
+
+                // Save AI crisis response
                 const aiResponse = await ChatRepo.createChatMessage({
                     message: crisisResponse,
                     User: { connect: { id: userId } },
@@ -84,7 +98,6 @@ export default class ChatSvc {
                     chatMessageId: chatMessage.id,
                     emotionMemoryId: null,
                     aiResponseId: aiResponse.id,
-                    prompt: null,
                     video: null, // No video in crisis situations
                 };
             }
@@ -93,12 +106,17 @@ export default class ChatSvc {
             let emotionMemory = null;
             let aiResponse = null;
 
-            //getChatHistory - fetch both USER and AI messages for full conversation context
-            const chatHistoryArrayResponse = await this.getChatListByUserId(
-                userId,
-                { limit: 10, page: 1 }
-            );
-            const chatHistoryArray = chatHistoryArrayResponse?.data || [];
+            // Detect language (for non-English support)
+            const detectedLanguage = await detectLanguage(inputText);
+            if (detectedLanguage) {
+                logger.info(`[CHAT-SERVICE] Non-English language detected: ${detectedLanguage}`);
+            }
+
+            // Detect specific song request
+            const specificSong = await detectSpecificSong(inputText);
+            if (specificSong.songTitle) {
+                logger.info(`[CHAT-SERVICE] Specific song requested: "${specificSong.songTitle}"${specificSong.artist ? ` by ${specificSong.artist}` : ''}`);
+            }
 
             // Get all available emotions from database
             const dbEmotions = await EmotionRepo.getAllEmotions();
@@ -136,7 +154,7 @@ export default class ChatSvc {
 
             // Fetch video recommendation based on primary emotions
             // Pass chat history for context (to remember previous artist preferences)
-            let selectedVideo = await fetchVideoRecommendation(
+            let result = await fetchVideoRecommendation(
                 inputText,
                 primaryEmotions,
                 confidence,
@@ -145,11 +163,9 @@ export default class ChatSvc {
             );
 
             // If no video found with primary emotions, try fallback emotions
-            if (!selectedVideo && fallbackEmotions.length > 0) {
-                logger.info(
-                    `[CHAT-SERVICE] No videos found with primary emotions, trying fallback`
-                );
-                selectedVideo = await fetchVideoRecommendation(
+            if (!result.video && fallbackEmotions.length > 0) {
+                logger.info(`[CHAT-SERVICE] No videos found with primary emotions, trying fallback`);
+                result = await fetchVideoRecommendation(
                     inputText,
                     fallbackEmotions,
                     confidence,
@@ -158,13 +174,20 @@ export default class ChatSvc {
                 );
             }
 
-            const prompt = composePrompt(
-                inputText,
-                mappedEmotion,
-                confidence,
-                chatHistoryArray,
-                selectedVideo
-            );
+            const selectedVideo = result.video;
+            let videoMetadata = result.metadata || {};
+
+            // Add language mismatch to metadata if detected
+            if (detectedLanguage) {
+                videoMetadata = { ...videoMetadata, languageMismatch: detectedLanguage };
+            }
+
+            // Add specific song request to metadata if no video found
+            if (specificSong.songTitle && !selectedVideo) {
+                videoMetadata = { ...videoMetadata, specificSongNotFound: specificSong };
+            }
+
+            const prompt = composePrompt(inputText, mappedEmotion, confidence, chatHistoryArray, selectedVideo, videoMetadata);
 
             const start = Date.now();
             const finalChatResponse = await defaultOpenAIRequest(prompt, {
@@ -225,8 +248,7 @@ export default class ChatSvc {
                 chatMessageId: chatMessage?.id || null,
                 emotionMemoryId: emotionMemory?.id || null,
                 aiResponseId: aiResponse?.id || null,
-                prompt,
-                video: selectedVideo,
+                video: selectedVideo
             };
         } catch (error: any) {
             if (error instanceof Prisma.PrismaClientKnownRequestError) {

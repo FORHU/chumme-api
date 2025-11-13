@@ -39,11 +39,25 @@ export async function detectRequestedArtist(
         } const prompt = `
 You are an artist name extractor.
 
-Here is the mapping between user terms and database artist names:
-- "blackpink", "bp" → bp_tiktok
-- "bts", "bangtan" → bts_official_bighit
-- "twice" → twice_tiktok_official
-- "coheed", "coheed and cambria" → coheedandcambriaofficial
+Here is the comprehensive mapping between user terms and database artist names (including variations, nicknames, misspellings):
+
+BLACKPINK variations → bp_tiktok:
+- "blackpink", "black pink", "black-pink", "blckpink"
+- "bp", "b.p.", "b p"
+- "pink", "pinks" (when clearly about artist)
+
+BTS variations → bts_official_bighit:
+- "bts", "b.t.s", "b t s"
+- "bangtan", "bangtan boys", "bangtan sonyeondan"
+- "beyond the scene"
+- "bulletproof boy scouts"
+
+TWICE variations → twice_tiktok_official:
+- "twice", "2wice", "twicetagram"
+
+COHEED AND CAMBRIA variations → coheedandcambriaofficial:
+- "coheed", "coheed and cambria", "coheed & cambria"
+- "c&c", "coheed n cambria"
 
 Available artists (database names):
 ${artistList}${conversationContext}
@@ -51,6 +65,7 @@ ${artistList}${conversationContext}
 Current user message: "${userInput}"
 
 Rules:
+- Match ANY variation/nickname/misspelling listed above to the correct database name
 - Check BOTH the current message AND recent conversation for artist mentions
 - If an artist was mentioned recently and user says "another one", "one more", "show me more", use that artist
 - Output ONLY the matching database name (like bp_tiktok)
@@ -58,13 +73,15 @@ Rules:
 - Do not explain, do not use punctuation, just the result
 
 Examples:
-"I'm sad give me a blackpink video" → bp_tiktok
-"send me a BTS video" → bts_official_bighit
-User: "i like bts" → Assistant: [shows video] → User: "another one please" → bts_official_bighit
-User: "I want a twice song" → twice_tiktok_official → User: "show me more" → twice_tiktok_official
+"I'm sad give me a BP video" → bp_tiktok
+"send me a Bangtan video" → bts_official_bighit
+"black pink makes me happy" → bp_tiktok
+"play me some b.t.s" → bts_official_bighit
+User: "i like bangtan boys" → Assistant: [shows video] → User: "another one please" → bts_official_bighit
+User: "I want a 2wice song" → twice_tiktok_official
 "I want a video" → null
 "show me something from coheed" → coheedandcambriaofficial
-"howbout ones from blackpink pls" → bp_tiktok
+"howbout ones from black-pink pls" → bp_tiktok
 
 Response (exactly one word or null):`;
 
@@ -98,9 +115,10 @@ Response (exactly one word or null):`;
         );
 
         if (matchedArtist) {
-            logger.info(`[ARTIST-DETECTION] Matched artist: "${matchedArtist}"`);
+            logger.info(`[ARTIST-DETECTION] ✓ Matched artist: "${matchedArtist}"`);
         } else {
-            logger.warn(`[ARTIST-DETECTION] AI detected "${response}" but no match found in database`);
+            logger.warn(`[ARTIST-DETECTION] ⚠️ Artist "${response}" requested but not found in database. Available: ${availableArtists.join(', ')}`);
+            logger.warn(`[ARTIST-DETECTION] Will fallback to user's favorite artists or all videos`);
         }
 
         return matchedArtist || null;
