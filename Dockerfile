@@ -1,20 +1,25 @@
-# Use the official Node.js 18 image as base
-FROM node:18-alpine
+# Use the official Node.js 22 image as base (Latest LTS)
+FROM node:22-alpine
+
+# Install required packages for native dependencies
+RUN apk add --no-cache python3 make g++ git
 
 # Set working directory in the container
 WORKDIR /app
 
+# Set npm configuration for better compatibility
+RUN npm config set fetch-retry-maxtimeout 600000
+RUN npm config set fetch-retry-mintimeout 10000
+RUN npm config set fetch-timeout 600000
+
 # Copy package.json and package-lock.json (if available)
 COPY package*.json ./
 
-# Install all dependencies (including dev dependencies for build)
-RUN npm ci
+# Clean npm cache and install dependencies
+RUN npm ci --only=production=false --no-optional
 
 # Copy the rest of the application code
 COPY . .
-
-# Copy the prisma directory for database operations
-COPY prisma ./prisma
 
 # Generate Prisma client
 RUN npx prisma generate
@@ -22,8 +27,8 @@ RUN npx prisma generate
 # Build the TypeScript application
 RUN npm run build
 
-# Remove dev dependencies to reduce image size
-RUN npm prune --production
+# Clean up - remove dev dependencies and clear npm cache
+RUN npm prune --production && npm cache clean --force
 
 # Create a non-root user to run the application
 RUN addgroup -g 1001 -S nodejs
