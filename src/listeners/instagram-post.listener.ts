@@ -1,0 +1,155 @@
+import amqp from "amqplib";
+import { RABBITMQ_URL } from "../config";
+import { QUEUE_NAMES } from "../utils/constant";
+
+export class InstagramPostListener {
+    private connection: amqp.Connection | null = null;
+    private channel: amqp.Channel | null = null;
+    private isConnected: boolean = false;
+
+    async connect(): Promise<void> {
+        try {
+            console.log("Connecting to RabbitMQ for video post events...");
+            this.connection = (await amqp.connect(RABBITMQ_URL)) as any;
+            this.channel = await (this.connection as any).createChannel();
+
+            // Declare exchange and queue for video post events
+            const exchangeName = "system_events";
+            const queueName = QUEUE_NAMES.INSTAGRAM_SYNC;
+            const routingKey = QUEUE_NAMES.INSTAGRAM_SYNC;
+
+            // Use passive check or match existing exchange configuration
+            await this.channel!.assertExchange(exchangeName, "topic", {
+                durable: false, // Match existing exchange configuration
+            });
+            await this.channel!.assertQueue(queueName, { durable: true });
+            await this.channel!.bindQueue(queueName, exchangeName, routingKey);
+
+            this.isConnected = true;
+            console.log("RabbitMQ connected for instagram post events");
+
+            // Handle connection events
+            (this.connection as any).on("error", (err: any) => {
+                console.error("RabbitMQ connection error:", err);
+                this.isConnected = false;
+            });
+
+            (this.connection as any).on("close", () => {
+                console.log("RabbitMQ connection closed");
+                this.isConnected = false;
+            });
+        } catch (error) {
+            console.error("Failed to connect to RabbitMQ:", error);
+            this.isConnected = false;
+            throw error;
+        }
+    }
+
+    async startListening(): Promise<void> {
+        if (!this.isConnected || !this.channel) {
+            throw new Error("RabbitMQ not connected");
+        }
+
+        try {
+            // Listen for video post events
+            await this.channel.consume(
+                QUEUE_NAMES.INSTAGRAM_SYNC,
+                async (msg: amqp.ConsumeMessage | null) => {
+                    if (msg) {
+                        try {
+                            const postData: any = JSON.parse(
+                                msg.content.toString()
+                            );
+                            console.log(
+                                "Received Instagram post event:",
+                                postData
+                            );
+
+                            // Process the individual post
+                            await this.handleInstagramPost(postData);
+
+                            // Acknowledge the message
+                            this.channel?.ack(msg);
+                        } catch (error) {
+                            console.error(
+                                "Error processing video post event:",
+                                error
+                            );
+                            // Reject the message and don't requeue
+                            this.channel?.nack(msg, false, false);
+                        }
+                    }
+                }
+            );
+
+            console.log(
+                "Listening for video post events...",
+                QUEUE_NAMES.INSTAGRAM_SYNC
+            );
+        } catch (error) {
+            console.error("Error setting up video post listener:", error);
+            throw error;
+        }
+    }
+
+    private async handleInstagramPost(postData: any): Promise<void> {
+        try {
+            console.log("Handling Instagram post data:", postData);
+            // Implement the logic to process the Instagram post data
+            // For example, save to database, trigger further processing, etc.
+        } catch (error) {
+            console.error("Error handling Instagram post event:", error);
+            throw error;
+        }
+    }
+
+    async disconnect(): Promise<void> {
+        try {
+            if (this.channel) {
+                await this.channel.close();
+            }
+            if (this.connection) {
+                await (this.connection as any).close();
+            }
+            this.isConnected = false;
+            console.log("Video post listener disconnected");
+        } catch (error) {
+            console.error("Error disconnecting video post listener:", error);
+        }
+    }
+
+    isConnectionActive(): boolean {
+        return this.isConnected;
+    }
+
+    // Helper method to publish video post events (if needed)
+    async publishVideoPostEvent(videoPostData: any): Promise<void> {
+        if (!this.isConnected || !this.channel) {
+            throw new Error("RabbitMQ not connected");
+        }
+
+        try {
+            const messageBuffer = Buffer.from(JSON.stringify(videoPostData));
+            const published = this.channel.sendToQueue(
+                "video_post_queue",
+                messageBuffer,
+                {
+                    persistent: true,
+                }
+            );
+
+            if (!published) {
+                throw new Error("Failed to publish video post event");
+            }
+
+            console.log(
+                `Video post event published for: ${videoPostData.data.displayName}`
+            );
+        } catch (error) {
+            console.error("Error publishing video post event:", error);
+            throw error;
+        }
+    }
+}
+
+export const instagramPostListener = new InstagramPostListener();
