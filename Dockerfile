@@ -16,7 +16,7 @@ RUN npm config set fetch-timeout 600000
 COPY package*.json ./
 
 # Clean npm cache and install dependencies
-RUN npm ci --only=production=false --no-optional
+RUN npm ci --include=dev --no-optional
 
 # Copy the rest of the application code
 COPY . .
