@@ -55,6 +55,18 @@ export const addUserArtists = async (
     });
 };
 
+export const removeUserArtist = async (
+    userId: string,
+    artistId: string
+) => {
+    return await prisma.userArtist.deleteMany({
+        where: {
+            userId,
+            artistId,
+        },
+    });
+};
+
 export const upsertArtist = async (data: {
     name: string;
     bio?: string | null;
