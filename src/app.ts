@@ -51,7 +51,7 @@ export const io = new Server(server, {
 });
 
 import events from "./events";
-import { videoPostListener } from "./listeners/video-post.listener";
+import { videoPostListener, instagramPostListener } from "./listeners";
 
 events(io);
 
@@ -61,10 +61,13 @@ connectToPrisma()
         // Run setup
         setup();
 
-        // Initialize RabbitMQ for video posts
+        // Initialize RabbitMQ crawler listeners
         try {
+            await instagramPostListener.connect();
+            await instagramPostListener.startListening();
             await videoPostListener.connect();
             await videoPostListener.startListening();
+
             console.log(
                 "Video Post RabbitMQ listener initialized successfully"
             );

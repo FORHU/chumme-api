@@ -1,5 +1,5 @@
 import express from "express";
-import { videoPostListener } from "../listeners/video-post.listener";
+import { videoPostListener, instagramPostListener } from "../listeners";
 
 const router = express.Router();
 
@@ -10,9 +10,11 @@ router.get("/health", (req, res) => {
         timestamp: new Date().toISOString(),
         services: {
             api: "healthy",
-            rabbitmq: videoPostListener.isConnectionActive()
-                ? "healthy"
-                : "unhealthy",
+            rabbitmq:
+                videoPostListener.isConnectionActive() &&
+                instagramPostListener.isConnectionActive()
+                    ? "healthy"
+                    : "unhealthy",
         },
     };
 
