@@ -82,3 +82,44 @@ export const addUserArtists = async (req: Request, res: Response) => {
     }
 };
 
+export const removeUserArtist = async (req: Request, res: Response) => {
+    try {
+        const schema = Joi.object({
+            artistId: Joi.string().uuid().required().messages({
+                "string.guid": "Invalid artist ID format",
+                "any.required": "artistId is required",
+            }),
+        });
+
+        const { error, value } = schema.validate(req.params);
+        if (error) {
+            return res.status(400).json({
+                success: false,
+                message: error.details[0].message,
+            });
+        }
+
+        const userId = req.user.id;
+        const { artistId } = value;
+
+        const result = await artistService.removeUserArtist(userId, artistId);
+
+        if (result.count === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Artist not found in your preferences",
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "Artist removed successfully",
+        });
+    } catch (error) {
+        console.error("Error removing user artist:", error);
+        res.status(500).json({
+            success: false,
+            message: error instanceof Error ? error.message : "Failed to remove artist",
+        });
+    }
+};

@@ -46,3 +46,18 @@ export const addUserArtists = async (
     const data = await artistRepo.getUserArtists(userId);
     return data;
 };
+
+export const removeUserArtist = async (
+    userId: string,
+    artistId: string
+) => {
+    const result = await artistRepo.removeUserArtist(userId, artistId);
+
+    // Clear user artists cache
+    await CacheUtil.del(`user:${userId}:artists`);
+
+    // Clear personalized feed cache since artist preferences changed
+    await CacheUtil.delByPattern(`feed:personalized:${userId}:*`);
+
+    return result;
+};
