@@ -1,0 +1,94 @@
+{
+    "family": "flawless-lion-ibkqr4",
+    "networkMode": "awsvpc",
+    "requiresCompatibilities": ["FARGATE"],
+    "cpu": "1024",
+    "memory": "2048",
+    "executionRoleArn": "arn:aws:iam::836628543332:role/ecsTaskExecutionRole",
+    "taskRoleArn": "arn:aws:iam::836628543332:role/ecsTaskRole",
+    "containerDefinitions": [
+        {
+            "name": "chumme-api",
+            "image": "836628543332.dkr.ecr.ap-southeast-1.amazonaws.com/npx/chumme-api:latest",
+            "portMappings": [
+                {
+                    "containerPort": 3000,
+                    "protocol": "tcp"
+                }
+            ],
+            "essential": true,
+            "secrets": [
+                {
+                    "name": "DATABASE_URL",
+                    "valueFrom": "/chumme-api/DATABASE_URL"
+                },
+                {
+                    "name": "ACCESS_TOKEN_SECRET",
+                    "valueFrom": "/chumme-api/ACCESS_TOKEN_SECRET"
+                },
+                {
+                    "name": "REFRESH_TOKEN_SECRET",
+                    "valueFrom": "/chumme-api/REFRESH_TOKEN_SECRET"
+                },
+                {
+                    "name": "OPENAI_API_KEY",
+                    "valueFrom": "/chumme-api/OPENAI_API_KEY"
+                },
+                {
+                    "name": "MAILER_PASSWORD",
+                    "valueFrom": "/chumme-api/MAILER_PASSWORD"
+                },
+                {
+                    "name": "REDIS_PASSWORD",
+                    "valueFrom": "/chumme-api/REDIS_PASSWORD"
+                },
+                {
+                    "name": "RABBITMQ_URL",
+                    "valueFrom": "/chumme-api/RABBITMQ_URL"
+                }
+            ],
+            "environment": [
+                {
+                    "name": "ACCESS_TOKEN_EXPIRY",
+                    "value": "24h"
+                },
+                {
+                    "name": "MAILER_TRANSPORT_HOST",
+                    "value": "smtp.ethereal.email"
+                },
+                {
+                    "name": "MAILER_TRANSPORT_PORT",
+                    "value": "587"
+                },
+                {
+                    "name": "MAILER_TRANSPORT_SECURE",
+                    "value": "false"
+                },
+                {
+                    "name": "MAILER_EMAIL",
+                    "value": "lane.schoen83@ethereal.email"
+                },
+                {
+                    "name": "REDIS_HOST",
+                    "value": "18.136.33.42"
+                },
+                {
+                    "name": "REDIS_PORT",
+                    "value": "6379"
+                },
+                {
+                    "name": "REDIS_TTL_SECONDS",
+                    "value": "3600"
+                }
+            ],
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-group": "/ecs/flawless-lion-ibkqr4",
+                    "awslogs-region": "ap-southeast-1",
+                    "awslogs-stream-prefix": "ecs"
+                }
+            }
+        }
+    ]
+}
