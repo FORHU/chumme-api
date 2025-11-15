@@ -49,6 +49,7 @@ The application's configuration values are managed using the `dotenv` package. Y
 - `PORT`: The port number the server will listen on. Default is 3000.
 
 - `MONGO_URI`: The URI for the MongoDB database. Default is `mongodb://localhost:27017/mydatabase`.
+- `DATABASEURL`
 
 - `SESSION_SECRET`: The secret key used to sign the session ID cookie. Default is `my-secret-key`.
 
