@@ -3,6 +3,8 @@ import FileRepo from "../repositories/file.repository";
 import { upsertArtist } from "../repositories/artist.repository";
 import EmotionRepo from "../repositories/emotion.repository";
 import { InstagramPostEvent } from "../listeners/instagram-post.listener";
+import MediaPostRepo from "../repositories/media-post.repository";
+import MediaPostSvc from "./media-post.service";
 
 /**
  * Service for processing TikTok crawler data and ingesting it into the database
@@ -50,8 +52,8 @@ export async function processInstagramCrawlerData(
             const fileResult = await FileRepo.upsertFile(
                 post.id, // File ID = post.id
                 {
-                    filename: post.mediaSrc.filename,
-                    fileUrl: post.mediaSrc.fileUrl,
+                    filename: post.mediaSrc,
+                    fileUrl: post.videoFile?.fileUrl,
                 }
             );
 
@@ -59,20 +61,23 @@ export async function processInstagramCrawlerData(
             const metadata = {
                 instagramMetaId: post.instagramMetaId,
                 caption: post.caption,
-                videoSrc: post.videoSrc,
+                mediaSrc: post.mediaSrc,
                 crawledAt: post.createdAt,
                 fileMetadata: {
-                    size: post.mediaSrc.metadata.size,
-                    contentType: post.mediaSrc.metadata.contentType,
-                    s3Key: post.mediaSrc.metadata.key,
+                    size: post.videoFile?.metadata.size,
+                    contentType: post.videoFile?.metadata.contentType,
+                    s3Key: post.videoFile?.metadata.key,
                 },
                 // Store full music/Spotify data in meta_data for reference
                 musicData: post.metadata || null,
             };
 
+            let videoResult;
+            let mediaPostResult;
+
            if(post.type === 'Video'){
                 // Step 2c: upsert video (service layer handles FeedItem creation)
-                const result = await VideoSvc.upsertVideo({
+                videoResult = await VideoSvc.upsertVideo({
                     externalUrl: post.videoPage,
                     title: post.title || "Instagram Post/Video",
                     fileId: fileResult.file.id,
@@ -81,17 +86,17 @@ export async function processInstagramCrawlerData(
                     meta_data: metadata,
                 });
 
-                if (result.isUpdate) {
+                if (videoResult.isUpdate) {
                     updatedVideos++;
-                    console.log(`Updated existing video: ${result.video.id}`);
+                    console.log(`Updated existing video: ${videoResult.video.id}`);
                 } else {
                     newVideos++;
-                    console.log(`Created new video: ${result.video.id}`);
+                    console.log(`Created new video: ${videoResult.video.id}`);
                 }
            } else {
                 //for type == 'Image' | 'Sidecar', use MediaPostService
-                const result = await MediaPostSvc.upsertMediaPost({
-                    externalUrl: post,
+                mediaPostResult = await MediaPostSvc.upsertMediaPost({
+                    externalUrl: post.videoPage,
                     title: post.title || "Instagram Post/Media",
                     fileId: fileResult.file.id,
                     platform: "INSTAGRAM",
@@ -99,7 +104,17 @@ export async function processInstagramCrawlerData(
                     meta_data: metadata,
                 });
 
+                if (mediaPostResult.isUpdate) {
+                    updatedPosts++;
+                    console.log(`Updated existing video: ${mediaPostResult.mediaPost.id}`);
+                } else {
+                    newPosts++;
+                    console.log(`Created new video: ${mediaPostResult.mediaPost.id}`);
+                }
+
            }
+
+            const resultId = videoResult ? videoResult.video.id : mediaPostResult ? mediaPostResult.mediaPost.id : '';
 
             // Step 2d: Extract and link emotions from Spotify data
             if (post.metadata?.spotifyData?.data?.emotion) {
@@ -119,30 +134,33 @@ export async function processInstagramCrawlerData(
                     emotionsToLink.push(...emotionData.secondaryEmotions);
                 }
 
+
+
                 if (emotionsToLink.length > 0) {
                     try {
+                        
                         await EmotionRepo.linkVideoToEmotions(
-                            result.video.id,
+                            resultId,
                             emotionsToLink
                         );
                         console.log(
-                            `Linked emotions to video ${result.video.id}: ${emotionsToLink.join(", ")}`
+                            `Linked emotions to video ${resultId}: ${emotionsToLink.join(", ")}`
                         );
                     } catch (emotionError) {
                         console.warn(
-                            `Failed to link emotions for video ${result.video.id}:`,
+                            `Failed to link emotions for video ${resultId}:`,
                             emotionError
                         );
                         // Don't fail the entire ingestion if emotion linking fails
                     }
                 } else {
                     console.log(
-                        `No emotions found in Spotify data for video ${result.video.id}`
+                        `No emotions found in Spotify data for video ${resultId}`
                     );
                 }
             } else {
                 console.log(
-                    `No Spotify emotion data available for video ${result.video.id}`
+                    `No Spotify emotion data available for video ${resultId}`
                 );
             }
         } catch (error) {

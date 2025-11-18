@@ -352,18 +352,6 @@ model FeedItem {
   @@index([type])
 }
 
-model MediaPostEmotion {
-  id          String    @id
-  mediaPostId String
-  emotionId   String
-  createdAt   DateTime  @default(now())
-  Emotion     Emotion   @relation(fields: [emotionId], references: [id])
-  MediaPost   MediaPost @relation(fields: [mediaPostId], references: [id])
-
-  @@unique([mediaPostId, emotionId])
-  @@index([emotionId])
-  @@index([mediaPostId])
-}
 
 enum Role {
   USER
@@ -380,6 +368,7 @@ enum VideoPlatform {
 enum FeedItemType {
   POST
   VIDEO
+  MEDIA_POST
 }
 
 enum ChatRole {

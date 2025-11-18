@@ -51,7 +51,7 @@ export default class MediaPostSvc {
         return mediaPost;
     }
 
-    static async upsertVideo(data: {
+    static async upsertMediaPost(data: {
         externalUrl: string;
         title: string;
         fileId: string;
