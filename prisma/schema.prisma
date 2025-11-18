@@ -53,16 +53,16 @@ model Session {
 }
 
 model File {
-  id        String    @id @default(uuid())
-  filename  String?
-  fileUrl   String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
-  metaData  Json?
-  users     User[]
-  videos    Video[]
-  mediaPosts  MediaPost[]
+  id         String      @id @default(uuid())
+  filename   String?
+  fileUrl    String?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  deletedAt  DateTime?
+  metaData   Json?
+  mediaPosts MediaPost[]
+  users      User[]
+  videos     Video[]
 }
 
 model Room {
@@ -114,12 +114,12 @@ model ChatMessage {
 }
 
 model Embedding {
-  id            String                @id @default(uuid())
+  id            String      @id @default(uuid())
   model         String
-  vector        Unsupported("vector")
-  createdAt     DateTime              @default(now())
-  chatMessageId String                @unique
-  chatMessage   ChatMessage           @relation(fields: [chatMessageId], references: [id])
+  vector        Json?
+  createdAt     DateTime    @default(now())
+  chatMessageId String      @unique
+  chatMessage   ChatMessage @relation(fields: [chatMessageId], references: [id])
 }
 
 model EmotionMemory {
@@ -222,6 +222,7 @@ model Emotion {
   createdAt              DateTime                @default(now())
   updatedAt              DateTime                @updatedAt
   isDeleted              Boolean                 @default(false)
+  MediaPostEmotion       MediaPostEmotion[]
   userEmotionPreferences UserEmotionPreference[]
   videoEmotions          VideoEmotion[]
 }
@@ -249,9 +250,9 @@ model Artist {
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   isDeleted   Boolean      @default(false)
+  mediaPosts  MediaPost[]
   userArtists UserArtist[]
   videos      Video[]
-  mediaPosts  MediaPost[]
 }
 
 model UserArtist {
@@ -302,19 +303,20 @@ model VideoEmotion {
 }
 
 model MediaPost {
-  id            String         @id @default(uuid())
-  title         String
-  platform      VideoPlatform
-  artistId      String?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  isDeleted     Boolean        @default(false)
-  fileId        String
-  meta_data     Json?
-  externalUrl   String?        @unique
-  feedItems     FeedItem[]
-  artist        Artist?        @relation(fields: [artistId], references: [id])
-  file          File           @relation(fields: [fileId], references: [id])
+  id               String             @id @default(uuid())
+  title            String
+  platform         VideoPlatform
+  artistId         String?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  isDeleted        Boolean            @default(false)
+  fileId           String
+  meta_data        Json?
+  externalUrl      String?            @unique
+  feedItems        FeedItem[]
+  artist           Artist?            @relation(fields: [artistId], references: [id])
+  file             File               @relation(fields: [fileId], references: [id])
+  MediaPostEmotion MediaPostEmotion[]
 
   @@index([artistId])
   @@index([platform])
@@ -322,20 +324,32 @@ model MediaPost {
 }
 
 model FeedItem {
-  id        String       @id @default(uuid())
-  type      FeedItemType
-  postId    String?
-  videoId   String?
+  id          String       @id @default(uuid())
+  type        FeedItemType
+  postId      String?
+  videoId     String?
+  createdAt   DateTime     @default(now())
+  isDeleted   Boolean      @default(false)
   mediaPostId String?
-  createdAt DateTime     @default(now())
-  isDeleted Boolean      @default(false)
-  post      Post?        @relation(fields: [postId], references: [id], onDelete: Cascade)
-  video     Video?       @relation(fields: [videoId], references: [id], onDelete: Cascade)
-  MediaPost  MediaPost?   @relation(fields: [mediaPostId], references: [id], onDelete: Cascade)
-
+  MediaPost   MediaPost?   @relation(fields: [mediaPostId], references: [id], onDelete: Cascade)
+  post        Post?        @relation(fields: [postId], references: [id], onDelete: Cascade)
+  video       Video?       @relation(fields: [videoId], references: [id], onDelete: Cascade)
 
   @@index([createdAt])
   @@index([type])
+}
+
+model MediaPostEmotion {
+  id          String    @id
+  mediaPostId String
+  emotionId   String
+  createdAt   DateTime  @default(now())
+  Emotion     Emotion   @relation(fields: [emotionId], references: [id])
+  MediaPost   MediaPost @relation(fields: [mediaPostId], references: [id])
+
+  @@unique([mediaPostId, emotionId])
+  @@index([emotionId])
+  @@index([mediaPostId])
 }
 
 enum Role {
