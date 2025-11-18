@@ -222,7 +222,7 @@ model Emotion {
   createdAt              DateTime                @default(now())
   updatedAt              DateTime                @updatedAt
   isDeleted              Boolean                 @default(false)
-  MediaPostEmotion       MediaPostEmotion[]
+  mediaPostEmotions      MediaPostEmotion[]
   userEmotionPreferences UserEmotionPreference[]
   videoEmotions          VideoEmotion[]
 }
@@ -303,24 +303,37 @@ model VideoEmotion {
 }
 
 model MediaPost {
-  id               String             @id @default(uuid())
-  title            String
-  platform         VideoPlatform
-  artistId         String?
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
-  isDeleted        Boolean            @default(false)
-  fileId           String
-  meta_data        Json?
-  externalUrl      String?            @unique
-  feedItems        FeedItem[]
-  artist           Artist?            @relation(fields: [artistId], references: [id])
-  file             File               @relation(fields: [fileId], references: [id])
-  MediaPostEmotion MediaPostEmotion[]
+  id                String             @id @default(uuid())
+  title             String
+  platform          VideoPlatform
+  artistId          String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  isDeleted         Boolean            @default(false)
+  fileId            String
+  meta_data         Json?
+  externalUrl       String?            @unique
+  feedItems         FeedItem[]
+  artist            Artist?            @relation(fields: [artistId], references: [id])
+  file              File               @relation(fields: [fileId], references: [id])
+  mediaPostEmotions MediaPostEmotion[]
 
   @@index([artistId])
   @@index([platform])
   @@index([fileId])
+}
+
+model MediaPostEmotion {
+  id          String    @id @default(uuid())
+  mediaPostId String
+  emotionId   String
+  createdAt   DateTime  @default(now())
+  emotion     Emotion   @relation(fields: [emotionId], references: [id])
+  mediaPost   MediaPost @relation(fields: [mediaPostId], references: [id])
+
+  @@unique([mediaPostId, emotionId])
+  @@index([mediaPostId])
+  @@index([emotionId])
 }
 
 model FeedItem {

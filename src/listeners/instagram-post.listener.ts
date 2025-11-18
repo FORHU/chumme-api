@@ -1,6 +1,77 @@
 import amqp from "amqplib";
 import { RABBITMQ_URL } from "../config";
 import { QUEUE_NAMES } from "../utils/constant";
+import { processInstagramCrawlerData } from "../services/instagram-ingestion.service";
+
+
+export interface InstagramPostEvent {
+    id: string;
+    videoPage: string;
+    platform: string;
+    caption: string;
+    title: string;
+    createdAt: Date;
+    isDownloaded: boolean;
+    isSynced: boolean;
+    metadata: {
+        artist: string;
+        songTitle: string;
+        fullTitle: string;
+        spotifyData?: {
+            success: boolean;
+            data?: {
+                track?: {
+                    id: string;
+                    name: string;
+                    artists: Array<{ id: string; name: string }>;
+                    album?: any;
+                    external_urls?: any;
+                    preview_url?: string;
+                    popularity?: number;
+                    duration_ms?: number;
+                };
+                emotion?: {
+                    primaryEmotion: string;
+                    emotionIntensity: number;
+                    description: string;
+                    secondaryEmotions: string[];
+                    audioCharacteristics?: any;
+                };
+                confidence?: number;
+                analysisMethod?: string;
+                note?: string;
+            };
+        };
+    }
+    postDate: Date | null;
+    instagramMetaId: string;
+    mediaSrc: string | null;
+    videoFile: {
+        id: string;
+        createdAt: Date;
+        metadata: {
+        size: number;
+        contentType: string;
+        key: string;
+    };
+        tiktokPostId: string | null;
+        instagramPostId: string | null;
+        filename: string | null;
+        fileUrl: string | null;
+        updatedAt: Date;
+        deletedAt: Date | null;
+    } | null;
+    instagramMeta: {
+        id: string;
+        createdAt: Date;
+        displayName: string;
+        bio: string;
+        followers: string;
+        following: string;
+        profileImageUrl: string;
+        username: string;
+    };
+}
 
 export class InstagramPostListener {
     private connection: amqp.Connection | null = null;
@@ -93,14 +164,48 @@ export class InstagramPostListener {
     }
 
     private async handleInstagramPost(postData: any): Promise<void> {
-        try {
-            console.log("Handling Instagram post data:", postData);
-            // Implement the logic to process the Instagram post data
-            // For example, save to database, trigger further processing, etc.
-        } catch (error) {
-            console.error("Error handling Instagram post event:", error);
-            throw error;
-        }
+         try {
+            console.log(`Processing individual Instagram post: ${postData.caption} by ${postData.instagramMeta.displayName}`);
+        
+                    // Convert individual post to VideoPostEvent format for the ingestion service
+                    const postEvent: InstagramPostEvent = {
+                        data: {
+                            id: postData.instagramMeta.id,
+                            username: postData.instagramMeta.profileUrl,
+                            displayName: postData.instagramMeta.displayName,
+                            bio: postData.instagramMeta.bio,
+                            followers: postData.instagramMeta.followers,
+                            following: postData.instagramMeta.following,
+                            profileImageUrl: postData.instagramMeta.profileImageUrl,
+                            createdAt: postData.instagramMeta.createdAt,
+                            posts: [
+                                {
+                                    id: postData.id,
+                                    type: postData.type,
+                                    instagramMetaId: postData.instagramMeta.id,
+                                    videoPage: postData.videoPage,
+                                    caption: postData.caption,
+                                    title: postData.title,
+                                    videoSrc: postData.videoSrc,
+                                    createdAt: postData.createdAt,
+                                    isDownloaded: postData.isDownloaded,
+                                    isSynced: postData.isSynced,
+                                    metadata: postData.metadata,
+                                    mediaSrc: postData.mediaSrc,
+                                },
+                            ],
+                        },
+                    };
+        
+                    // Process the crawler data
+                    await processInstagramCrawlerData(postEvent);
+                    console.log(
+                        `Successfully processed TikTok post: ${postData.caption}`
+                    );
+                } catch (error) {
+                    console.error("Error handling TikTok post event:", error);
+                    throw error;
+                }
     }
 
     async disconnect(): Promise<void> {
