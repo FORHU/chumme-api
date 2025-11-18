@@ -26,6 +26,15 @@ export default class FeedRepo {
         });
     }
 
+     static async createMediaPostFeedItem(mediaPostId: string) {
+        return await prisma.feedItem.create({
+            data: {
+                type: "MEDIA_POST",
+                mediaPostId
+            }
+        });
+    }
+
     /**
      * Get paginated feed with all content
      */
@@ -100,6 +109,14 @@ export default class FeedRepo {
     static async softDeleteByVideoId(videoId: string) {
         return await prisma.feedItem.updateMany({
             where: { videoId },
+            data: { isDeleted: true }
+        });
+    }
+
+
+     static async softDeleteByMediaPostId(mediaPostId: string) {
+        return await prisma.feedItem.updateMany({
+            where: { mediaPostId },
             data: { isDeleted: true }
         });
     }
