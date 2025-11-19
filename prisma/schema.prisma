@@ -227,6 +227,19 @@ model Emotion {
   videoEmotions          VideoEmotion[]
 }
 
+model MediaPostEmotion {
+  id          String    @id @default(uuid())
+  mediaPostId String
+  emotionId   String
+  createdAt   DateTime  @default(now())
+  emotion     Emotion   @relation(fields: [emotionId], references: [id])
+  mediaPost   MediaPost @relation(fields: [mediaPostId], references: [id])
+
+  @@unique([mediaPostId, emotionId])
+  @@index([mediaPostId])
+  @@index([emotionId])
+}
+
 model UserEmotionPreference {
   id        String   @id @default(uuid())
   userId    String
@@ -323,19 +336,6 @@ model MediaPost {
   @@index([fileId])
 }
 
-model MediaPostEmotion {
-  id          String    @id @default(uuid())
-  mediaPostId String
-  emotionId   String
-  createdAt   DateTime  @default(now())
-  emotion     Emotion   @relation(fields: [emotionId], references: [id])
-  mediaPost   MediaPost @relation(fields: [mediaPostId], references: [id])
-
-  @@unique([mediaPostId, emotionId])
-  @@index([mediaPostId])
-  @@index([emotionId])
-}
-
 model FeedItem {
   id          String       @id @default(uuid())
   type        FeedItemType
@@ -352,6 +352,13 @@ model FeedItem {
   @@index([type])
 }
 
+model Todo {
+  id        String   @id @default(uuid())
+  title     String
+  isDone    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
 
 enum Role {
   USER
