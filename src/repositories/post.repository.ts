@@ -10,7 +10,7 @@ export default class PostRepo {
             data: {
                 userId: data.userId,
                 content: data.content,
-                mediaUrls: data.mediaUrls || []
+                mediaUrls: data.mediaUrls || [],
             },
             select: {
                 id: true,
@@ -26,18 +26,17 @@ export default class PostRepo {
                         name: true,
                         avatar: {
                             select: {
-                                fileUrl: true
-                            }
-                        }
-                    }
-                }
-            }
+                                fileUrl: true,
+                            },
+                        },
+                    },
+                },
+            },
         });
     }
 
-
     static async upsertPost(
-        where: { externalUrl: string},
+        where: { externalUrl: string },
         data: {
             id?: string;
             title: string;
@@ -47,27 +46,24 @@ export default class PostRepo {
             artistId?: string | null;
             meta_data?: any | null;
         }
-    ){
-
+    ) {
         const existing = await prisma.post.findUnique({ where });
         const isUpdate = !!existing;
 
-        const post = await prisma.post.upsert({
-            where: where,
-            create: {
-                
-            }
-        })
+        // const post = await prisma.post.upsert({
+        //     where: where,
+        //     create: {
 
-
+        //     }
+        // })
     }
 
     static async findPostById(postId: string) {
         return prisma.post.findUnique({
             where: {
                 id: postId,
-                isDeleted: false
-            }
+                isDeleted: false,
+            },
         });
     }
 
@@ -76,8 +72,8 @@ export default class PostRepo {
         return prisma.like.findFirst({
             where: {
                 postId,
-                userId
-            }
+                userId,
+            },
         });
     }
 
@@ -85,22 +81,22 @@ export default class PostRepo {
         return prisma.like.create({
             data: {
                 postId,
-                userId
-            }
+                userId,
+            },
         });
     }
 
     static async softDeleteLike(likeId: string) {
         return prisma.like.update({
             where: { id: likeId },
-            data: { isDeleted: true }
+            data: { isDeleted: true },
         });
     }
 
     static async reactivateLike(likeId: string) {
         return prisma.like.update({
             where: { id: likeId },
-            data: { isDeleted: false }
+            data: { isDeleted: false },
         });
     }
 
@@ -108,8 +104,8 @@ export default class PostRepo {
         return prisma.like.count({
             where: {
                 postId,
-                isDeleted: false
-            }
+                isDeleted: false,
+            },
         });
     }
 
@@ -122,7 +118,7 @@ export default class PostRepo {
             data: {
                 postId: data.postId,
                 userId: data.userId,
-                content: data.content
+                content: data.content,
             },
             select: {
                 id: true,
@@ -137,12 +133,12 @@ export default class PostRepo {
                         name: true,
                         avatar: {
                             select: {
-                                fileUrl: true
-                            }
-                        }
-                    }
-                }
-            }
+                                fileUrl: true,
+                            },
+                        },
+                    },
+                },
+            },
         });
     }
 
@@ -150,7 +146,7 @@ export default class PostRepo {
         return prisma.comment.findMany({
             where: {
                 postId,
-                isDeleted: false
+                isDeleted: false,
             },
             select: {
                 id: true,
@@ -165,15 +161,15 @@ export default class PostRepo {
                         name: true,
                         avatar: {
                             select: {
-                                fileUrl: true
-                            }
-                        }
-                    }
-                }
+                                fileUrl: true,
+                            },
+                        },
+                    },
+                },
             },
             orderBy: {
-                createdAt: 'desc'  // Newest comments first
-            }
+                createdAt: "desc", // Newest comments first
+            },
         });
     }
 
@@ -181,8 +177,8 @@ export default class PostRepo {
         return prisma.comment.count({
             where: {
                 postId,
-                isDeleted: false
-            }
+                isDeleted: false,
+            },
         });
     }
 
@@ -190,7 +186,7 @@ export default class PostRepo {
         return prisma.post.findMany({
             where: {
                 userId,
-                isDeleted: false
+                isDeleted: false,
             },
             select: {
                 id: true,
@@ -206,29 +202,29 @@ export default class PostRepo {
                         name: true,
                         avatar: {
                             select: {
-                                fileUrl: true
-                            }
-                        }
-                    }
+                                fileUrl: true,
+                            },
+                        },
+                    },
                 },
                 _count: {
                     select: {
                         likes: {
                             where: {
-                                isDeleted: false
-                            }
+                                isDeleted: false,
+                            },
                         },
                         comments: {
                             where: {
-                                isDeleted: false
-                            }
-                        }
-                    }
-                }
+                                isDeleted: false,
+                            },
+                        },
+                    },
+                },
             },
             orderBy: {
-                createdAt: 'desc'
-            }
+                createdAt: "desc",
+            },
         });
     }
 
@@ -240,10 +236,10 @@ export default class PostRepo {
                     followers: {
                         some: {
                             followerId: userId,
-                            isDeleted: false
-                        }
-                    }
-                }
+                            isDeleted: false,
+                        },
+                    },
+                },
             },
             select: {
                 id: true,
@@ -259,29 +255,29 @@ export default class PostRepo {
                         name: true,
                         avatar: {
                             select: {
-                                fileUrl: true
-                            }
-                        }
-                    }
+                                fileUrl: true,
+                            },
+                        },
+                    },
                 },
                 _count: {
                     select: {
                         likes: {
                             where: {
-                                isDeleted: false
-                            }
+                                isDeleted: false,
+                            },
                         },
                         comments: {
                             where: {
-                                isDeleted: false
-                            }
-                        }
-                    }
-                }
+                                isDeleted: false,
+                            },
+                        },
+                    },
+                },
             },
             orderBy: {
-                createdAt: 'desc'
-            }
+                createdAt: "desc",
+            },
         });
     }
 }
