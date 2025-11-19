@@ -16,7 +16,6 @@ export interface InstagramPostEvent {
     createdAt: Date;
     posts: Array<{ 
                     id: string;
-                    videoPage: string;
                     platform: string;
                     caption: string;
                     title: string;
@@ -24,6 +23,7 @@ export interface InstagramPostEvent {
                     isDownloaded: boolean;
                     isSynced: boolean;
                     type: string;
+                    url: string;
                     metadata: {
                         artist: string;
                         songTitle: string;
@@ -56,21 +56,21 @@ export interface InstagramPostEvent {
                     }
                     postDate: Date | null;
                     instagramMetaId: string;
-                    mediaSrc: string | null;
-                    videoFile: {
+                    mediaSrc: {
                         id: string;
-                        createdAt: Date;
-                        metadata: {
-                        size: number;
-                        contentType: string;
-                        key: string;
-                    }
-                        instagramPostId: string | null;
                         filename: string | null;
-                        fileUrl: string | null;
-                        updatedAt: Date;
+                        fileUrl: string;
+                        createdAt: Date;
+                        updatedAt: Date | null;
                         deletedAt: Date | null;
-                    } | null;
+                        metadata:  {
+                                    size: number;
+                                    contentType: string;
+                                    key: string;
+                                    } | null;
+                        instagramPostId: string;
+
+                    },
                     instagramMeta: {
                         id: string;
                         createdAt: Date;
@@ -150,6 +150,7 @@ export class InstagramPostListener {
                             // Process the individual post
                             await this.handleInstagramPost(postData);
 
+
                             // Acknowledge the message
                             this.channel?.ack(msg);
                         } catch (error) {
@@ -194,7 +195,7 @@ export class InstagramPostListener {
                                     id: postData.id,
                                     instagramMetaId: postData.instagramMeta.id,
                                     type: postData.type,
-                                    videoPage: postData.videoPage,
+                                    url: postData.url,
                                     platform: postData.platform,
                                     caption: postData.caption,
                                     title: postData.title,
@@ -204,7 +205,6 @@ export class InstagramPostListener {
                                     metadata: postData.metadata,
                                     postDate: postData.postDate,
                                     mediaSrc: postData.mediaSrc,
-                                    videoFile: postData.videoFile,
                                     instagramMeta: postData.instagramMeta,
                                 }
                             ],

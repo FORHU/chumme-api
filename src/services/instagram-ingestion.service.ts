@@ -52,8 +52,8 @@ export async function processInstagramCrawlerData(
             const fileResult = await FileRepo.upsertFile(
                 post.id, // File ID = post.id
                 {
-                    filename: post.mediaSrc,
-                    fileUrl: post.videoFile?.fileUrl,
+                    filename: post.mediaSrc?.filename,
+                    fileUrl: post.mediaSrc?.fileUrl,
                 }
             );
 
@@ -64,9 +64,9 @@ export async function processInstagramCrawlerData(
                 mediaSrc: post.mediaSrc,
                 crawledAt: post.createdAt,
                 fileMetadata: {
-                    size: post.videoFile?.metadata.size,
-                    contentType: post.videoFile?.metadata.contentType,
-                    s3Key: post.videoFile?.metadata.key,
+                    size: post.mediaSrc?.metadata?.size,
+                    contentType: post.mediaSrc?.metadata?.contentType,
+                    s3Key: post.mediaSrc?.metadata?.key,
                 },
                 // Store full music/Spotify data in meta_data for reference
                 musicData: post.metadata || null,
@@ -78,7 +78,7 @@ export async function processInstagramCrawlerData(
            if(post.type === 'Video'){
                 // Step 2c: upsert video (service layer handles FeedItem creation)
                 videoResult = await VideoSvc.upsertVideo({
-                    externalUrl: post.videoPage,
+                    externalUrl: post.url,
                     title: post.title || "Instagram Post/Video",
                     fileId: fileResult.file.id,
                     platform: "INSTAGRAM",
@@ -96,7 +96,7 @@ export async function processInstagramCrawlerData(
            } else {
                 //for type == 'Image' | 'Sidecar', use MediaPostService
                 mediaPostResult = await MediaPostSvc.upsertMediaPost({
-                    externalUrl: post.videoPage,
+                    externalUrl: post.url,
                     title: post.title || "Instagram Post/Media",
                     fileId: fileResult.file.id,
                     platform: "INSTAGRAM",
@@ -173,4 +173,8 @@ export async function processInstagramCrawlerData(
     console.log(`  - New videos: ${newVideos}`);
     console.log(`  - Updated videos: ${updatedVideos}`);
     console.log(`  - Skipped videos: ${skippedVideos}`);
+
+    console.log(`  - New mediaPosts: ${newPosts}`);
+    console.log(`  - Updated mediaPosts: ${updatedPosts}`);
+    console.log(`  - Skipped mediaPosts: ${skippedPosts}`);
 }
