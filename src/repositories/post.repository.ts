@@ -35,28 +35,6 @@ export default class PostRepo {
         });
     }
 
-    static async upsertPost(
-        where: { externalUrl: string },
-        data: {
-            id?: string;
-            title: string;
-            fileId: string;
-            platform: any;
-            externalUrl: string;
-            artistId?: string | null;
-            meta_data?: any | null;
-        }
-    ) {
-        const existing = await prisma.post.findUnique({ where });
-        const isUpdate = !!existing;
-
-        // const post = await prisma.post.upsert({
-        //     where: where,
-        //     create: {
-
-        //     }
-        // })
-    }
 
     static async findPostById(postId: string) {
         return prisma.post.findUnique({
