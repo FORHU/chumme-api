@@ -254,18 +254,20 @@ model UserEmotionPreference {
 }
 
 model Artist {
-  id          String       @id @default(uuid())
-  name        String       @unique
-  bio         String?
-  imageUrl    String?
-  nationality String?
-  genre       String?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  isDeleted   Boolean      @default(false)
-  mediaPosts  MediaPost[]
-  userArtists UserArtist[]
-  videos      Video[]
+  id                  String       @id @default(uuid())
+  name                String       @unique
+  bio                 String?
+  imageUrl            String?
+  nationality         String?
+  instagramUsername   String?
+  tiktokUsername      String?
+  genre               String?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  isDeleted           Boolean      @default(false)
+  mediaPosts          MediaPost[]
+  userArtists         UserArtist[]
+  videos              Video[]
 }
 
 model UserArtist {
