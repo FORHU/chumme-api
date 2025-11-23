@@ -12,4 +12,12 @@ export default class EmbeddingSvc {
             chatMessageId,
         });
     }
+
+    static async findSimilarMessages(
+        vector: number[],
+        userId: string,
+        limit: number = 5
+    ) {
+        return await EmbeddingRepo.findNearestNeighbors(vector, userId, limit);
+    }
 }
