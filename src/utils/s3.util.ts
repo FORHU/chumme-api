@@ -1,5 +1,5 @@
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
-import { AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_S3_BUCKET_NAME } from "../config";
+import { S3_CDN_URL, AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_S3_BUCKET_NAME } from "../config";
 import crypto from "crypto";
 import logger from "./logger";
 
@@ -37,9 +37,9 @@ export default class S3Util {
         });
 
         await s3Client.send(command);
-        const url = `https://${AWS_S3_BUCKET_NAME}.s3.${AWS_REGION}.amazonaws.com/${key}`;
-        logger.info(`[S3] Uploaded: ${url}`);
-        return url;
+        // const url = `https://${AWS_S3_BUCKET_NAME}.s3.${AWS_REGION}.amazonaws.com/${key}`;
+        // logger.info(`[S3] Uploaded: ${url}`);
+        return `${S3_CDN_URL}/${key}`;
     }
 
     /**

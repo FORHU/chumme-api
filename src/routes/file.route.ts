@@ -9,5 +9,7 @@ router.post("/upload", upload.single("file"), FileCtrl.uploadFile);
 router.get("/:id", FileCtrl.getFile);
 router.delete("/:id", FileCtrl.deleteFile);
 router.put("/upsert", FileCtrl.upsertFile);
+router.get("/:userId", FileCtrl.upsertFile);
+
 
 export default router;
