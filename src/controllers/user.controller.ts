@@ -45,9 +45,7 @@ export default class UserCtrl {
                 username: Joi.string(),
                 name: Joi.string(),
                 email: Joi.string().email(),
-                avatar: Joi.object({
-                    filerUrl: Joi.string().optional()
-                }).optional()
+                avatar: Joi.string().uuid().optional()
             }).min(1);
 
             const { error, value } = schema.validate(req.body);
