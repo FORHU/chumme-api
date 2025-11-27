@@ -62,9 +62,7 @@ export default class UserSvc {
         username?: string;
         name?: string;
         email?: string;
-        avatar?: {
-         fileUrl: string;
-        };
+        avatar?: string; 
     }) {
         // Check if user exists
         const existingUser = await UserRepo.findUserById(userId);
@@ -88,7 +86,13 @@ export default class UserSvc {
             }
         }
 
-        const updatedUser = await UserRepo.updateUser(userId, updateData);
+       const dataToUpdate: any = { ...updateData };
+
+       if (updateData.avatar) {
+           dataToUpdate.avatar = { connect: { id: updateData.avatar }}
+        }
+
+        const updatedUser = await UserRepo.updateUser(userId, dataToUpdate);
 
         // Clear cache because user data changed
         await CacheUtil.del(`user:${userId}`);
