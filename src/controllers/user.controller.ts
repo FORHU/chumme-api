@@ -44,7 +44,10 @@ export default class UserCtrl {
             const schema = Joi.object({
                 username: Joi.string(),
                 name: Joi.string(),
-                email: Joi.string().email()
+                email: Joi.string().email(),
+                avatar: Joi.object({
+                    filerUrl: Joi.string().optional()
+                }).optional()
             }).min(1);
 
             const { error, value } = schema.validate(req.body);
@@ -62,5 +65,5 @@ export default class UserCtrl {
             });
         }
     }
+    
 }
-
