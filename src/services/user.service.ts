@@ -62,6 +62,9 @@ export default class UserSvc {
         username?: string;
         name?: string;
         email?: string;
+        avatar?: {
+         fileUrl: string;
+        };
     }) {
         // Check if user exists
         const existingUser = await UserRepo.findUserById(userId);

@@ -41,6 +41,7 @@ model User {
   userArtists            UserArtist[]
   userEmotionPreferences UserEmotionPreference[]
   userInterests          UserInterest[]
+  bookmarks              Bookmark[]             
 }
 
 model Session {
@@ -145,6 +146,7 @@ model Post {
   feedItems FeedItem[]
   likes     Like[]
   user      User       @relation(fields: [userId], references: [id])
+  bookmarks Bookmark[]
 
   @@index([userId])
 }
@@ -354,13 +356,18 @@ model FeedItem {
   @@index([type])
 }
 
-model Todo {
+model Bookmark {
   id        String   @id @default(uuid())
-  title     String
-  isDone    Boolean  @default(false)
+  postId    String?  
+  post      Post?    @relation(fields: [postId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  timestamp DateTime @default(now())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  deletedAt DateTime?
 }
+
 
 enum Role {
   USER
