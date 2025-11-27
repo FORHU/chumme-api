@@ -1,13 +1,19 @@
 import { Server } from "socket.io";
 
 export default (io: Server) => {
-  const namespace = io.of(/^\/organizations-owner-[0-9a-fA-F]{24}$/);
+    io.on("connection", (socket) => {
+        console.log("Client connected to /organization");
 
-  namespace.on("connection", (socket) => {
-    console.log("Client connected to /organization namespace");
+        socket.on("disconnect", () => {
+            console.log("Client disconnected from /organization");
+        });
 
-    socket.on("disconnect", () => {
-      console.log("Client disconnected from /organization namespace");
+        socket.on("join", (data) => {
+            console.log("Client joined /organization", data);
+        });
+
+        socket.on("chat_message", (data) => {
+            console.log("Client sent chat message", data);
+        });
     });
-  });
 };
