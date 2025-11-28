@@ -45,6 +45,14 @@ export async function detectEmotion(inputText: string) {
             - 🤔💭 → contemplative/neutral
             - Multiple sad emojis (😭😭😭) = very sad, high confidence
 
+            SPECIAL RULE:
+            Do NOT classify the emotion as "neutral" when the user is sharing important personal information such as:
+            - their birthday
+            - anniversary
+            - special dates
+            - major life events (e.g., graduation, job change)
+            These typically carry emotional significance (often happy, nostalgic, grateful, or excited). Infer the most likely associated emotion instead of neutral.
+
             Text: "${inputText}"
             
             IMPORTANT: Return ONLY the JSON object, no markdown formatting, no code blocks, no explanations.

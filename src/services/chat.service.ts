@@ -46,7 +46,7 @@ export default class ChatSvc {
             // Get chat history FIRST (needed for both crisis and normal flow)
             const chatHistoryArrayResponse = await this.getChatListByUserId(
                 userId,
-                { limit: 10, page: 1 }
+                { limit: 10, page: 1, excludeNeutral: true }
             );
             const chatHistoryArray = chatHistoryArrayResponse?.data || [];
 
@@ -247,7 +247,6 @@ export default class ChatSvc {
                 );
             }
 
-            if (mappedEmotion !== "neutral" && confidence > 0.5) {
                 chatMessage = await ChatRepo.createChatMessage({
                     message: inputText,
                     User: { connect: { id: userId } },
@@ -274,7 +273,6 @@ export default class ChatSvc {
                     ChatMessage: { connect: { id: chatMessage.id } },
                     User: { connect: { id: userId } },
                 });
-            }
 
             return {
                 response: finalChatResponse,

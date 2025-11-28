@@ -6,7 +6,8 @@ export type TGetChatMessagesByUserIdOptions = {
     page?: number,
     limit?: number,
     sortOrder?: "asc" | "desc",
-    sortBy?: keyof Prisma.ChatMessageOrderByWithRelationInput
+    sortBy?: keyof Prisma.ChatMessageOrderByWithRelationInput,
+    excludeNeutral?: boolean
 }
 
 export default class ChatRepo {
@@ -36,14 +37,24 @@ export default class ChatRepo {
             page = 1,
             limit = 5,
             sortOrder = "desc",
-            sortBy = "createdAt"
+            sortBy = "createdAt",
+            excludeNeutral = false
         } = options;
 
         const skip = (page - 1) * limit
 
         const [messageList, total] = await Promise.all([
-            prisma.chatMessage.findMany({
-                where: { userId, ...(role && { role }) },
+        prisma.chatMessage.findMany({
+                where: { userId, ...(role && { role }),
+                        ...(excludeNeutral && {
+                            NOT: {
+                                emotionMemory: {
+                                    emotion: "neutral",
+                                    confidence: 0.5
+                                }
+                            }
+                        }) 
+                },
                 include: { emotionMemory: { select: { id: true, emotion: true, confidence: true } }, },
                 skip,
                 orderBy: { [sortBy]: sortOrder },
