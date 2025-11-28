@@ -1,10 +1,10 @@
 import express from "express";
 import BookmarkCtrl from "../controllers/bookmark.controller";
+import { authenticate } from "../middleware/auth.middleware";
 
 const router = express.Router();
 
-router.get("/", BookmarkCtrl.getBookmark);
-router.patch("/upsert", BookmarkCtrl.upsertBookmark);
-router.delete("/me", BookmarkCtrl.deleteBookmark);
+router.get("/me", authenticate, BookmarkCtrl.getAllBookmarks);
+router.post("/upsert", BookmarkCtrl.upsertBookmark);
 
 export default router;

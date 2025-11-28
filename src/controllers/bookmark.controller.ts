@@ -1,30 +1,47 @@
 import { Request, Response } from "express";
 import Joi from "joi";
+import BookmarkSvc from "../services/bookmark.service";
 
 export default class BookmarkCtrl {
+  static async getAllBookmarks(req: Request, res: Response) {
+    try {
+      const page = parseInt(req.query.page as string) || 0;
+      const limit = parseInt(req.query.limit as string) || 20;
+      const bookmark = await BookmarkSvc.fetchAllUserBookmarks(req?.user?.id, page, limit);
+      res.json({
+        success: true,
+        data: bookmark,
+        pagination: {
+          page,
+          limit,
+          hasMore: bookmark?.length === limit,
+        },
+      });
+    } catch (error: any) {
+      res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  }
+
   static async upsertBookmark(req: Request, res: Response) {
     try {
-      // return res.status(201).json({ message: "File saved", file });
+      const schema = Joi.object({
+        userId: Joi.string().optional(),
+        bookmarkId: Joi.string(),
+      });
+      const { error, value } = schema.validate(req.body);
+
+      if (error) return res.status(400).json({ message: error.message });
+
+      const bookmark = await BookmarkSvc.saveBookmark(
+        value.userId,
+        value.bookmarkId
+      );
+      return res.status(201).json({ message: "File saved", bookmark });
     } catch (err: any) {
       return res.status(400).json({ message: err.message || err });
-    }
-  }
-
-  static async getBookmark(req: Request, res: Response) {
-    try {
-      // return res.status(200).json({ file });
-    } catch (err: any) {
-      const statusCode = err.message === "File not found" ? 404 : 400;
-      return res.status(statusCode).json({ message: err.message || err });
-    }
-  }
-
-  static async deleteBookmark(req: Request, res: Response) {
-    try {
-      // return res.status(200).json({ file });
-    } catch (err: any) {
-      const statusCode = err.message === "File not found" ? 404 : 400;
-      return res.status(statusCode).json({ message: err.message || err });
     }
   }
 }

@@ -41,7 +41,8 @@ model User {
   userArtists            UserArtist[]
   userEmotionPreferences UserEmotionPreference[]
   userInterests          UserInterest[]
-  bookmarks              Bookmark[]             
+  bookmarks              Bookmark[]        
+  nationality            String?     
 }
 
 model Session {

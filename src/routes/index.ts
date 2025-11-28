@@ -12,6 +12,7 @@ import fileRoute from "./file.route";
 import videoRoute from "./video.route";
 import healthRoute from "./health.route";
 import feedRoute from "./feed.route";
+import bookmarkRoute from "./bookmark.route";
 
 const router = express.Router();
 
@@ -33,6 +34,7 @@ router.use("/v1/artists", artistRoute);
 router.use("/v1/files", fileRoute);
 router.use("/v1/videos", videoRoute);
 router.use("/v1/feed", feedRoute);
+router.use("/v1/bookmark", bookmarkRoute);
 router.use("/v1", healthRoute);
 
 export default router;
