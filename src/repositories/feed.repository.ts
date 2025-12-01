@@ -9,8 +9,8 @@ export default class FeedRepo {
         return await prisma.feedItem.create({
             data: {
                 type: "POST",
-                postId
-            }
+                postId,
+            },
         });
     }
 
@@ -21,17 +21,17 @@ export default class FeedRepo {
         return await prisma.feedItem.create({
             data: {
                 type: "VIDEO",
-                videoId
-            }
+                videoId,
+            },
         });
     }
 
-     static async createMediaPostFeedItem(mediaPostId: string) {
+    static async createMediaPostFeedItem(mediaPostId: string) {
         return await prisma.feedItem.create({
             data: {
                 type: "MEDIA_POST",
-                mediaPostId
-            }
+                mediaPostId,
+            },
         });
     }
 
@@ -50,16 +50,16 @@ export default class FeedRepo {
                                 id: true,
                                 username: true,
                                 name: true,
-                                avatar: true
-                            }
+                                avatar: true,
+                            },
                         },
                         likes: {
-                            where: { isDeleted: false }
+                            where: { isDeleted: false },
                         },
                         comments: {
-                            where: { isDeleted: false }
-                        }
-                    }
+                            where: { isDeleted: false },
+                        },
+                    },
                 },
                 video: {
                     where: { isDeleted: false },
@@ -69,8 +69,8 @@ export default class FeedRepo {
                                 id: true,
                                 name: true,
                                 imageUrl: true,
-                                genre: true
-                            }
+                                genre: true,
+                            },
                         },
                         file: true,
                         videoEmotions: {
@@ -79,17 +79,17 @@ export default class FeedRepo {
                                     select: {
                                         id: true,
                                         name: true,
-                                        icon: true
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                                        icon: true,
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
             },
-            orderBy: { createdAt: 'desc' },
+            orderBy: { createdAt: "desc" },
             skip: page * limit,
-            take: limit
+            take: limit,
         });
     }
 
@@ -99,7 +99,7 @@ export default class FeedRepo {
     static async softDeleteByPostId(postId: string) {
         return await prisma.feedItem.updateMany({
             where: { postId },
-            data: { isDeleted: true }
+            data: { isDeleted: true },
         });
     }
 
@@ -109,15 +109,14 @@ export default class FeedRepo {
     static async softDeleteByVideoId(videoId: string) {
         return await prisma.feedItem.updateMany({
             where: { videoId },
-            data: { isDeleted: true }
+            data: { isDeleted: true },
         });
     }
 
-
-     static async softDeleteByMediaPostId(mediaPostId: string) {
+    static async softDeleteByMediaPostId(mediaPostId: string) {
         return await prisma.feedItem.updateMany({
             where: { mediaPostId },
-            data: { isDeleted: true }
+            data: { isDeleted: true },
         });
     }
 
@@ -126,7 +125,7 @@ export default class FeedRepo {
      */
     static async getFeedCount() {
         return await prisma.feedItem.count({
-            where: { isDeleted: false }
+            where: { isDeleted: false },
         });
     }
 
@@ -136,26 +135,33 @@ export default class FeedRepo {
      * - Videos from their favorite artists (fandom content)
      * - Fallback to all videos if no artist preferences set
      */
-    static async getPersonalizedFeed(userId: string, page: number = 0, limit: number = 20) {
+    static async getPersonalizedFeed(
+        userId: string,
+        page: number = 0,
+        limit: number = 20,
+        artist?: string
+    ) {
+        console.log(artist);
+
         // Get user's followed users
         const following = await prisma.follow.findMany({
             where: {
                 followerId: userId,
-                isDeleted: false
+                isDeleted: false,
             },
             select: {
-                followingId: true
-            }
+                followingId: true,
+            },
         });
-        const followingIds = following.map(f => f.followingId);
+        const followingIds = following.map((f) => f.followingId);
         followingIds.push(userId); // Include user's own posts
 
         // Get user's favorite artists
-        const userArtists = await prisma.userArtist.findMany({
-            where: { userId },
-            select: { artistId: true }
-        });
-        const artistIds = userArtists.map(a => a.artistId);
+        // const userArtists = await prisma.userArtist.findMany({
+        //     where: { userId },
+        //     select: { artistId: true },
+        // });
+        // const artistIds = userArtists.map((a) => a.artistId);
 
         // Build OR conditions: Posts from following + Videos from favorite artists
         const orConditions: any[] = [];
@@ -165,33 +171,35 @@ export default class FeedRepo {
             type: "POST",
             post: {
                 userId: { in: followingIds },
-                isDeleted: false
-            }
+                isDeleted: false,
+            },
         });
 
         // 2. Include ALL videos from favorite artists (if any selected)
-        if (artistIds.length > 0) {
+        if (artist) {
             orConditions.push({
                 type: "VIDEO",
                 video: {
-                    artistId: { in: artistIds },
-                    isDeleted: false
-                }
+                    artistId: { in: [artist] },
+                    isDeleted: false,
+                },
             });
         } else {
             // 3. If no artist preferences set, show all videos as fallback
             orConditions.push({
                 type: "VIDEO",
                 video: {
-                    isDeleted: false
-                }
+                    isDeleted: false,
+                },
             });
         }
+
+        console.log(orConditions);
 
         return await prisma.feedItem.findMany({
             where: {
                 isDeleted: false,
-                OR: orConditions
+                OR: orConditions,
             },
             include: {
                 post: {
@@ -201,16 +209,16 @@ export default class FeedRepo {
                                 id: true,
                                 username: true,
                                 name: true,
-                                avatar: true
-                            }
+                                avatar: true,
+                            },
                         },
                         likes: {
-                            where: { isDeleted: false }
+                            where: { isDeleted: false },
                         },
                         comments: {
-                            where: { isDeleted: false }
-                        }
-                    }
+                            where: { isDeleted: false },
+                        },
+                    },
                 },
                 video: {
                     include: {
@@ -219,8 +227,8 @@ export default class FeedRepo {
                                 id: true,
                                 name: true,
                                 imageUrl: true,
-                                genre: true
-                            }
+                                genre: true,
+                            },
                         },
                         file: true,
                         videoEmotions: {
@@ -229,17 +237,17 @@ export default class FeedRepo {
                                     select: {
                                         id: true,
                                         name: true,
-                                        icon: true
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                                        icon: true,
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
             },
-            orderBy: { createdAt: 'desc' },
+            orderBy: { createdAt: "desc" },
             skip: page * limit,
-            take: limit
+            take: limit,
         });
     }
 }

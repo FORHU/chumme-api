@@ -8,41 +8,41 @@ export default class FeedSvc {
     private static formatFeedItems(feedItems: any[]) {
         return feedItems
             .map((item: any) => {
-                if (item.type === 'POST' && item.post) {
+                if (item.type === "POST" && item.post) {
                     return {
                         id: item.id,
-                        type: 'post',
+                        type: "post",
                         content: {
                             id: item.post.id,
                             text: item.post.text,
                             createdAt: item.post.createdAt,
                             user: {
-                                id: item.post.user?.id
+                                id: item.post.user?.id,
                             },
                             likesCount: item.post.likes?.length || 0,
-                            commentsCount: item.post.comments?.length || 0
-                        }
+                            commentsCount: item.post.comments?.length || 0,
+                        },
                     };
-                } else if (item.type === 'VIDEO' && item.video) {
+                } else if (item.type === "VIDEO" && item.video) {
                     return {
                         id: item.id,
-                        type: 'video',
+                        type: "video",
                         content: {
                             id: item.video.id,
                             title: item.video.title,
                             platform: item.video.platform,
                             meta_data: {
-                                caption: item.video.meta_data?.caption || null
+                                caption: item.video.meta_data?.caption || null,
                             },
                             artist: {
                                 id: item.video.artist?.id,
-                                name: item.video.artist?.name
+                                name: item.video.artist?.name,
                             },
                             file: {
                                 id: item.video.file?.id,
-                                fileUrl: item.video.file?.fileUrl
-                            }
-                        }
+                                fileUrl: item.video.file?.fileUrl,
+                            },
+                        },
                     };
                 }
                 return null;
@@ -84,7 +84,12 @@ export default class FeedSvc {
      * - Videos from their favorite artists
      * Note: Emotion preferences can be used elsewhere (e.g., video recommendations, mood-based playlists)
      */
-    static async getPersonalizedFeed(userId: string, page: number = 0, limit: number = 20) {
+    static async getPersonalizedFeed(
+        userId: string,
+        page: number = 0,
+        limit: number = 20,
+        artist?: string
+    ) {
         // Validate pagination params
         if (page < 0) {
             throw new Error("Page must be non-negative");
@@ -94,18 +99,23 @@ export default class FeedSvc {
         }
 
         // Check cache (personalized per user)
-        const cacheKey = `feed:personalized:${userId}:page:${page}:limit:${limit}`;
-        const cached = await CacheUtil.get(cacheKey);
-        if (cached) {
-            return cached;
-        }
+        // const cacheKey = `feed:personalized:${userId}:page:${page}:limit:${limit}`;
+        // const cached = await CacheUtil.get(cacheKey);
+        // if (cached) {
+        //     return cached;
+        // }
 
         // Get feed filtered by followed users
-        const feedItems = await FeedRepo.getPersonalizedFeed(userId, page, limit);
+        const feedItems = await FeedRepo.getPersonalizedFeed(
+            userId,
+            page,
+            limit,
+            artist
+        );
         const formattedFeed = this.formatFeedItems(feedItems);
 
         // Cache the result
-        await CacheUtil.set(cacheKey, formattedFeed);
+        // await CacheUtil.set(cacheKey, formattedFeed);
 
         return formattedFeed;
     }
