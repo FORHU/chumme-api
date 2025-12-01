@@ -1,7 +1,6 @@
 import { prisma } from "../utils/prisma";
 
 export default class BookmarkRepo {
-
   static async fetchUserBookmarks(
     userId: string,
     page: number = 0,
@@ -62,6 +61,12 @@ export default class BookmarkRepo {
     });
   }
 
+  static async getBookmark(query: any) {
+    return prisma.bookmark.findUnique({
+      where: query,
+    });
+  }
+
   static async removeBookmarksInFeedItem(feedId: string) {
     return prisma.bookmark.deleteMany({ where: { feedId } });
   }
@@ -70,14 +75,9 @@ export default class BookmarkRepo {
     return prisma.bookmark.delete({ where: { id: bookmarkId } });
   }
 
-  static async createUserBookmark(
-    bookmarkId: string,
-    userId: string,
-    feedId: string
-  ) {
+  static async createUserBookmark(userId: string, feedId: string) {
     return prisma.bookmark.create({
       data: {
-        id: bookmarkId,
         feedId,
         userId,
       },

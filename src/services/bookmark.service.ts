@@ -26,20 +26,20 @@ export default class BookmarkSvc {
     await CacheUtil.set(cacheKey, bookmark);
   }
 
-  static async saveBookmark(userId: string, bookmarkId: string, feedId: string) {
+  static async saveBookmark(userId: string, feedId: string) {
     const user = await UserRepo.findUserBookmark(userId);
     if (!user) throw new Error("User cannot be found");
 
-    const bookmarks: Bookmark[] = user.bookmarks || [];
-    const existingBookmark = bookmarks.find((b) => b.id === bookmarkId);
+    const query = { userFeed: { userId, feedId }, };
+    const existingBookmark = await BookmarkRepo.getBookmark(query);    
 
     let message = "";
 
     if (existingBookmark) {
-      await BookmarkRepo.deleteUserBookmark(bookmarkId);
+      await BookmarkRepo.deleteUserBookmark(existingBookmark.id);
       message = "Bookmark removed";
     } else {
-      await BookmarkRepo.createUserBookmark(bookmarkId, userId, feedId);
+      await BookmarkRepo.createUserBookmark(userId, feedId);
       message = "Bookmark added";
     }
 

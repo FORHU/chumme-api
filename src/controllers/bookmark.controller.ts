@@ -7,7 +7,7 @@ export default class BookmarkCtrl {
     try {
       const page = parseInt(req.query.page as string) || 0;
       const limit = parseInt(req.query.limit as string) || 20;
-      
+
       const bookmark = await BookmarkSvc.fetchAllUserBookmarks(
         req?.user?.id,
         page,
@@ -32,22 +32,18 @@ export default class BookmarkCtrl {
 
   static async upsertBookmark(req: Request, res: Response) {
     try {
-      const schema = Joi.object({
-        userId: Joi.string().optional(),
-        bookmarkId: Joi.string(),
-        feedId: Joi.string(),
-      });
+      const schema = Joi.object({ feedId: Joi.string() });
       const { error, value } = schema.validate(req.body);
 
       if (error) return res.status(400).json({ message: error.message });
 
       const bookmark = await BookmarkSvc.saveBookmark(
-        value.userId,
-        value.bookmarkId,
+        req.user.id,
         value.feedId
       );
       return res.status(201).json({ message: "File saved", bookmark });
     } catch (err: any) {
+      console.log('err',err);
       return res.status(400).json({ message: err.message || err });
     }
   }

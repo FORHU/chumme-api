@@ -360,13 +360,15 @@ model FeedItem {
 
 model Bookmark {
   id        String    @id @default(uuid())
-  feedId    String?  
-  feed      FeedItem? @relation(fields: [feedId], references: [id])
+  feedId    String  
+  feed      FeedItem @relation(fields: [feedId], references: [id])
   userId    String
   user      User      @relation(fields: [userId], references: [id])
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
+
+  @@unique([feedId, userId], name: "userFeed")
 }
 
 
