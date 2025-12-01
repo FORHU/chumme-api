@@ -2,121 +2,126 @@ import FeedRepo from "../repositories/feed.repository";
 import CacheUtil from "../utils/cache.util";
 
 export default class FeedSvc {
-    /**
-     * Helper method to format feed items
-     */
-    private static formatFeedItems(feedItems: any[]) {
-        return feedItems
-            .map((item: any) => {
-                if (item.type === "POST" && item.post) {
-                    return {
-                        id: item.id,
-                        type: "post",
-                        content: {
-                            id: item.post.id,
-                            text: item.post.text,
-                            createdAt: item.post.createdAt,
-                            user: {
-                                id: item.post.user?.id,
-                            },
-                            likesCount: item.post.likes?.length || 0,
-                            commentsCount: item.post.comments?.length || 0,
-                        },
-                    };
-                } else if (item.type === "VIDEO" && item.video) {
-                    return {
-                        id: item.id,
-                        type: "video",
-                        content: {
-                            id: item.video.id,
-                            title: item.video.title,
-                            platform: item.video.platform,
-                            meta_data: {
-                                caption: item.video.meta_data?.caption || null,
-                            },
-                            artist: {
-                                id: item.video.artist?.id,
-                                name: item.video.artist?.name,
-                            },
-                            file: {
-                                id: item.video.file?.id,
-                                fileUrl: item.video.file?.fileUrl,
-                            },
-                        },
-                    };
-                }
-                return null;
-            })
-            .filter(Boolean);
+  /**
+   * Helper method to format feed items
+   */
+  private static formatFeedItems(feedItems: any[]) {
+    return feedItems
+      .map((item: any) => {
+        if (item.type === "POST" && item.post) {
+          return {
+            id: item.id,
+            type: "post",
+            content: {
+              id: item.post.id,
+              text: item.post.text,
+              createdAt: item.post.createdAt,
+              user: {
+                id: item.post.user?.id,
+              },
+              likesCount: item.post.likes?.length || 0,
+              commentsCount: item.post.comments?.length || 0,
+            },
+          };
+        } else if (item.type === "VIDEO" && item.video) {
+          return {
+            id: item.id,
+            type: "video",
+            content: {
+              id: item.video.id,
+              title: item.video.title,
+              platform: item.video.platform,
+              meta_data: {
+                caption: item.video.meta_data?.caption || null,
+              },
+              artist: {
+                id: item.video.artist?.id,
+                name: item.video.artist?.name,
+              },
+              file: {
+                id: item.video.file?.id,
+                fileUrl: item.video.file?.fileUrl,
+              },
+            },
+          };
+        }
+        return null;
+      })
+      .filter(Boolean);
+  }
+
+  /**
+   * Get unified feed with pagination
+   */
+  static async getFeed(page: number = 0, limit: number = 20) {
+    // Validate pagination params
+    if (page < 0) {
+      throw new Error("Page must be non-negative");
+    }
+    if (limit < 1 || limit > 50) {
+      throw new Error("Limit must be between 1 and 50");
     }
 
-    /**
-     * Get unified feed with pagination
-     */
-    static async getFeed(page: number = 0, limit: number = 20) {
-        // Validate pagination params
-        if (page < 0) {
-            throw new Error("Page must be non-negative");
-        }
-        if (limit < 1 || limit > 50) {
-            throw new Error("Limit must be between 1 and 50");
-        }
-
-        // Check cache
-        const cacheKey = `feed:page:${page}:limit:${limit}`;
-        const cached = await CacheUtil.get(cacheKey);
-        if (cached) {
-            return cached;
-        }
-
-        const feedItems = await FeedRepo.getFeed(page, limit);
-        const formattedFeed = this.formatFeedItems(feedItems);
-
-        // Cache the formatted result
-        await CacheUtil.set(cacheKey, formattedFeed);
-
-        return formattedFeed;
+    // Check cache
+    const cacheKey = `feed:page:${page}:limit:${limit}`;
+    const cached = await CacheUtil.get(cacheKey);
+    if (cached) {
+      return cached;
     }
 
-    /**
-     * Get personalized feed based on:
-     * - Posts from users they follow (+ own posts)
-     * - Videos from their favorite artists
-     * Note: Emotion preferences can be used elsewhere (e.g., video recommendations, mood-based playlists)
-     */
-    static async getPersonalizedFeed(
-        userId: string,
-        page: number = 0,
-        limit: number = 20,
-        artist?: string
-    ) {
-        // Validate pagination params
-        if (page < 0) {
-            throw new Error("Page must be non-negative");
-        }
-        if (limit < 1 || limit > 50) {
-            throw new Error("Limit must be between 1 and 50");
-        }
+    const feedItems = await FeedRepo.getFeed(page, limit);
+    const formattedFeed = this.formatFeedItems(feedItems);
 
-        // Check cache (personalized per user)
-        // const cacheKey = `feed:personalized:${userId}:page:${page}:limit:${limit}`;
-        // const cached = await CacheUtil.get(cacheKey);
-        // if (cached) {
-        //     return cached;
-        // }
+    // Cache the formatted result
+    await CacheUtil.set(cacheKey, formattedFeed);
 
-        // Get feed filtered by followed users
-        const feedItems = await FeedRepo.getPersonalizedFeed(
-            userId,
-            page,
-            limit,
-            artist
-        );
-        const formattedFeed = this.formatFeedItems(feedItems);
+    return formattedFeed;
+  }
 
-        // Cache the result
-        // await CacheUtil.set(cacheKey, formattedFeed);
+  /**
+   * Get personalized feed based on:
+   * - Posts from users they follow (+ own posts)
+   * - Videos from their favorite artists
+   * Note: Emotion preferences can be used elsewhere (e.g., video recommendations, mood-based playlists)
+   */
+  static async getPersonalizedFeed(
+    userId: string,
+    page: number = 0,
+    limit: number = 20,
+    artistInUrlString: string
+  ) {
+    let artistStringToArray: Array<string> = [];
 
-        return formattedFeed;
+    if (artistInUrlString) {
+      artistStringToArray = artistInUrlString
+        .replace(/"/g, "")
+        .split(",")
+        .map((id: any) => id.trim());
     }
+
+    if (page < 0) {
+      throw new Error("Page must be non-negative");
+    }
+    if (limit < 1 || limit > 50) {
+      throw new Error("Limit must be between 1 and 50");
+    }
+
+    const cacheKey = `feed:personalized:${userId}:page:${page}:limit:${limit}`;
+    const cached = await CacheUtil.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const feedItems = await FeedRepo.getPersonalizedFeed(
+      userId,
+      page,
+      limit,
+      artistStringToArray
+    );
+    const formattedFeed = this.formatFeedItems(feedItems);
+
+    await CacheUtil.set(cacheKey, formattedFeed);
+
+    return formattedFeed;
+  }
 }
