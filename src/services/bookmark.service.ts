@@ -3,6 +3,7 @@ import UserRepo from "../repositories/user.repository";
 import { prisma } from "../utils/prisma";
 import BookmarkRepo from "../repositories/bookmark.repository";
 import CacheUtil from "../utils/cache.util";
+import FeedRepo from "../repositories/feed.repository";
 export default class BookmarkSvc {
   static async fetchAllUserBookmarks(
     userId: string,
@@ -21,25 +22,24 @@ export default class BookmarkSvc {
     if (cached) {
       return cached;
     }
-
     const bookmark = await BookmarkRepo.fetchUserBookmarks(userId, page, limit);
     await CacheUtil.set(cacheKey, bookmark);
   }
 
-  static async saveBookmark(userId: string, bookmarkId: string) {
+  static async saveBookmark(userId: string, feedId: string) {
     const user = await UserRepo.findUserBookmark(userId);
     if (!user) throw new Error("User cannot be found");
 
-    const bookmarks: Bookmark[] = user.bookmarks || [];
-    const existingBookmark = bookmarks.find((b) => b.id === bookmarkId);
+    const query = { userFeed: { userId, feedId }, };
+    const existingBookmark = await BookmarkRepo.getBookmark(query);    
 
     let message = "";
 
     if (existingBookmark) {
-      await BookmarkRepo.deleteUserBookmark(bookmarkId);
+      await BookmarkRepo.deleteUserBookmark(existingBookmark.id);
       message = "Bookmark removed";
     } else {
-      await BookmarkRepo.createUserBookmark(bookmarkId, userId);
+      await BookmarkRepo.createUserBookmark(userId, feedId);
       message = "Bookmark added";
     }
 

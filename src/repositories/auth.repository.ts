@@ -12,7 +12,7 @@ export default class AuthRepo {
 
     static async createUser(data: {
         email: string;
-        password: string;
+        password: string;    
         username: string;
         name?: string;
         mobileNumber?: string;

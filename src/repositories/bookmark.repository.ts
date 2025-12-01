@@ -8,28 +8,77 @@ export default class BookmarkRepo {
   ) {
     return prisma.bookmark.findMany({
       where: { userId },
-      select: {
-        id: true,
-        postId: true,
-        userId: true,
-        createdAt: true,
-        updatedAt: true,
-        deletedAt: true,
-      },
       orderBy: { createdAt: "desc" },
       skip: page * limit,
       take: limit,
+      select: {
+        id: true,
+        createdAt: true,
+        feed: {
+          select: {
+            type: true,
+            postId: true,
+            video: {
+              select: {
+                id: true,
+                title: true,
+                artistId: true,
+                createdAt: true,
+                file: {
+                  select: {
+                    fileUrl: true,
+                  },
+                },
+              },
+            },
+            post: {
+              select: {
+                id: true,
+                content: true,
+                mediaUrls: true,
+                createdAt: true,
+                comments: true,
+                feedItems: true,
+                likes: true,
+                user: true,
+              },
+            },
+            MediaPost: {
+              select: {
+                id: true,
+                title: true,
+                file: {
+                  select: {
+                    fileUrl: true,
+                  },
+                },
+                mediaPostEmotions: true,
+              },
+            },
+          },
+        },
+      },
     });
+  }
+
+  static async getBookmark(query: any) {
+    return prisma.bookmark.findUnique({
+      where: query,
+    });
+  }
+
+  static async removeBookmarksInFeedItem(feedId: string) {
+    return prisma.bookmark.deleteMany({ where: { feedId } });
   }
 
   static async deleteUserBookmark(bookmarkId: string) {
     return prisma.bookmark.delete({ where: { id: bookmarkId } });
   }
 
-  static async createUserBookmark(bookmarkId: string, userId: string) {
+  static async createUserBookmark(userId: string, feedId: string) {
     return prisma.bookmark.create({
       data: {
-        id: bookmarkId,
+        feedId,
         userId,
       },
     });

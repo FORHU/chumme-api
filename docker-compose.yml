@@ -1,42 +1,42 @@
-services:
-  postgres:
-    image: postgres:15
-    container_name: local_postgres
-    environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: mypassword
-      POSTGRES_DB: chumme
-    ports:
-      - "5432:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    restart: unless-stopped
+    services:
+      postgres:
+        image: postgres:15
+        container_name: local_postgres
+        environment:
+          POSTGRES_USER: admin
+          POSTGRES_PASSWORD: mypassword
+          POSTGRES_DB: chumme
+        ports:
+          - "5432:5432"
+        volumes:
+          - pgdata:/var/lib/postgresql/data
+        restart: unless-stopped
 
-  rabbitmq:
-    image: rabbitmq:3-management
-    container_name: local_rabbitmq
-    environment:
-      RABBITMQ_DEFAULT_USER: admin
-      RABBITMQ_DEFAULT_PASS: admin123
-      RABBITMQ_DEFAULT_VHOST: my_vhost
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    volumes:
-      - rabbitmqdata:/var/lib/rabbitmq
-    restart: unless-stopped
+      rabbitmq:
+        image: rabbitmq:3-management
+        container_name: local_rabbitmq
+        environment:
+          RABBITMQ_DEFAULT_USER: admin
+          RABBITMQ_DEFAULT_PASS: admin123
+          RABBITMQ_DEFAULT_VHOST: my_vhost
+        ports:
+          - "5672:5672"
+          - "15672:15672"
+        volumes:
+          - rabbitmqdata:/var/lib/rabbitmq
+        restart: unless-stopped
 
-  redis:
-    image: redis:7
-    container_name: local_redis
-    ports:
-      - "6379:6379"
-    command: ["redis-server", "--appendonly", "yes"]
-    volumes:
-      - redisdata:/data
-    restart: unless-stopped
+      redis:
+        image: redis:7
+        container_name: local_redis
+        ports:
+          - "6379:6379"
+        command: ["redis-server", "--appendonly", "yes"]
+        volumes:
+          - redisdata:/data
+        restart: unless-stopped
 
-volumes:
-  pgdata:
-  rabbitmqdata:
-  redisdata:
+    volumes:
+      pgdata:
+      rabbitmqdata:
+      redisdata:
