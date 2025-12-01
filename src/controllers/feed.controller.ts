@@ -19,13 +19,13 @@ export default class FeedCtrl {
                 pagination: {
                     page,
                     limit,
-                    hasMore: feed.length === limit
-                }
+                    hasMore: feed.length === limit,
+                },
             });
         } catch (error: any) {
             res.status(400).json({
                 success: false,
-                message: error.message
+                message: error.message,
             });
         }
     }
@@ -41,14 +41,21 @@ export default class FeedCtrl {
             if (!userId) {
                 return res.status(401).json({
                     success: false,
-                    message: "Authentication required"
+                    message: "Authentication required",
                 });
             }
 
             const page = parseInt(req.query.page as string) || 0;
             const limit = parseInt(req.query.limit as string) || 20;
 
-            const feed = await FeedSvc.getPersonalizedFeed(userId, page, limit);
+            const artist = req.query.artist as string;
+
+            const feed = await FeedSvc.getPersonalizedFeed(
+                userId,
+                page,
+                limit,
+                artist
+            );
 
             res.json({
                 success: true,
@@ -56,13 +63,13 @@ export default class FeedCtrl {
                 pagination: {
                     page,
                     limit,
-                    hasMore: feed.length === limit
-                }
+                    hasMore: feed.length === limit,
+                },
             });
         } catch (error: any) {
             res.status(400).json({
                 success: false,
-                message: error.message
+                message: error.message,
             });
         }
     }
