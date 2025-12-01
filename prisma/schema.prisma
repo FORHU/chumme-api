@@ -41,8 +41,8 @@ model User {
   userArtists            UserArtist[]
   userEmotionPreferences UserEmotionPreference[]
   userInterests          UserInterest[]
-  bookmarks              Bookmark[]        
-  nationality            String?     
+  bookmarks              Bookmark[]
+  nationality            String?
 }
 
 model Session {
@@ -147,7 +147,6 @@ model Post {
   feedItems FeedItem[]
   likes     Like[]
   user      User       @relation(fields: [userId], references: [id])
-  bookmarks Bookmark[]
 
   @@index([userId])
 }
@@ -345,6 +344,7 @@ model FeedItem {
   id          String       @id @default(uuid())
   type        FeedItemType
   postId      String?
+  artistId    String?
   videoId     String?
   createdAt   DateTime     @default(now())
   isDeleted   Boolean      @default(false)
@@ -352,21 +352,23 @@ model FeedItem {
   MediaPost   MediaPost?   @relation(fields: [mediaPostId], references: [id], onDelete: Cascade)
   post        Post?        @relation(fields: [postId], references: [id], onDelete: Cascade)
   video       Video?       @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  bookmarks   Bookmark[]
 
   @@index([createdAt])
   @@index([type])
 }
 
 model Bookmark {
-  id        String   @id @default(uuid())
-  postId    String?  
-  post      Post?    @relation(fields: [postId], references: [id])
+  id        String    @id @default(uuid())
+  feedId    String?  
+  feed      FeedItem? @relation(fields: [feedId], references: [id])
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  user      User      @relation(fields: [userId], references: [id])
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 }
+
 
 enum Role {
   USER

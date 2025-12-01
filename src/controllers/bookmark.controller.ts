@@ -7,7 +7,12 @@ export default class BookmarkCtrl {
     try {
       const page = parseInt(req.query.page as string) || 0;
       const limit = parseInt(req.query.limit as string) || 20;
-      const bookmark = await BookmarkSvc.fetchAllUserBookmarks(req?.user?.id, page, limit);
+      
+      const bookmark = await BookmarkSvc.fetchAllUserBookmarks(
+        req?.user?.id,
+        page,
+        limit
+      );
       res.json({
         success: true,
         data: bookmark,
@@ -30,6 +35,7 @@ export default class BookmarkCtrl {
       const schema = Joi.object({
         userId: Joi.string().optional(),
         bookmarkId: Joi.string(),
+        feedId: Joi.string(),
       });
       const { error, value } = schema.validate(req.body);
 
@@ -37,7 +43,8 @@ export default class BookmarkCtrl {
 
       const bookmark = await BookmarkSvc.saveBookmark(
         value.userId,
-        value.bookmarkId
+        value.bookmarkId,
+        value.feedId
       );
       return res.status(201).json({ message: "File saved", bookmark });
     } catch (err: any) {
