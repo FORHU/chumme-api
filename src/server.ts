@@ -1,20 +1,18 @@
 // src/server.ts
-import app from "./app";
-import { PORT } from "./config";
-import { createServer } from "http";
-import { Server as SocketIOServer } from "socket.io";
-import socketHandler from "./socketHandler";
+import express from "express";
+import http from "http";
+import { Server } from "socket.io";
+import socketHandler from "./socketHandler"; // your handler
 
-const httpServer = createServer(app);
-
-const io = new SocketIOServer(httpServer, {
-  cors: { origin: "*" },
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: { origin: "*" }, // allow all origins for testing
 });
 
-socketHandler(io);
+socketHandler(io); // attach your socket events
 
-httpServer.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+const PORT = 3002;
+server.listen(PORT, () => {
+  console.log(`Server is running on http://localhost:${PORT}`);
 });
-
-
