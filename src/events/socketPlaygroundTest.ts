@@ -80,24 +80,31 @@
   };
 
   // -----------------------------
-  // Two clients in the same room
+  // Comment In or Out to add User
   // -----------------------------
-  const roomName = "room1";
-  const test1 = createClient("_1_", roomName, 10000); // every 10s
-  const test2 = createClient("_2_", roomName, 15000); // every 15s
-//   const test3 = createClient("_3_", roomName, 10000); // every 10s
-//   const test4 = createClient("_4_", roomName, 15000); // every 15s
-//   const test5 = createClient("_5_", roomName, 10000); // every 10s
-//   const test6 = createClient("_6_", roomName, 15000); // every 15s
-//   const test7 = createClient("_7_", roomName, 10000); // every 10s
-//   const test8 = createClient("_8_", roomName, 15000); // every 15s
-//   const test9 = createClient("_9_", roomName, 10000); // every 10s
-//   const test10 = createClient("_10_", roomName, 15000); // every 15s
-//   const test11 = createClient("_11_", roomName, 10000); // every 10s
-//   const test12 = createClient("_12_", roomName, 15000); // every 15s
-//   const test13 = createClient("_13_", roomName, 10000); // every 10s
-//   const test14 = createClient("_14_", roomName, 15000); // every 15s
+  const roomName1 = "room1";
+  const roomName2 = "room2";
+  const roomName3 = "room3";
+  const roomName4 = "room4";
+  const roomName5 = "room5";
+  const roomName6 = "room6";
+  const roomName7 = "room7";
+  const roomName8 = "room8";
+  const roomName9 = "room9";
+  const roomName10 = "room10";
+  const test1 = createClient("_1_", roomName1, 10000); // every 10s
+  const test2 = createClient("_2_", roomName1, 15000); // every 15s
+  //   const test3 = createClient("_3_", roomName, 10000); // every 10s
+  //   const test4 = createClient("_4_", roomName, 15000); // every 15s
+  //   const test5 = createClient("_5_", roomName, 10000); // every 10s
+  //   const test6 = createClient("_6_", roomName, 15000); // every 15s
+  //   const test7 = createClient("_7_", roomName, 10000); // every 10s
+  //   const test8 = createClient("_8_", roomName, 15000); // every 15s
+  //   const test9 = createClient("_9_", roomName, 10000); // every 10s
+  //   const test10 = createClient("_10_", roomName, 15000); // every 15s
+  //   const test11 = createClient("_11_", roomName, 10000); // every 10s
+  //   const test12 = createClient("_12_", roomName, 15000); // every 15s
+  //   const test13 = createClient("_13_", roomName, 10000); // every 10s
+  //   const test14 = createClient("_14_", roomName, 15000); // every 15s
 
-  console.log("Two-user chat playground running in room:", roomName);
-  console.log("Many chat playground running in room:", roomName);
 })();
