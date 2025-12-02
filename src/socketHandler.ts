@@ -22,12 +22,14 @@ export default (io: Server) => {
       socket.emit("joined", { room: data.room, message: "Welcome!" });
     });
 
+    // sends the message to all sockets in the room, including the sender.
     // socket.on("chat_message", (data: ChatMessage) => {
     //   console.log(`Message from ${data.user}: ${data.message}`);
     //   io.to(data.room || "").emit("chat_message", data); // send to room
     //   socket.emit("message_sent", data); // confirm sent to sender
     // });
 
+    // not send the message to the sender
     socket.on("chat_message", (data: ChatMessage) => {
       console.log(`Message from ${data.user}: ${data.message}`);
       // Send to everyone in the room except the sender
