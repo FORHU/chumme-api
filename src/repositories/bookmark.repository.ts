@@ -67,6 +67,49 @@ export default class BookmarkRepo {
     });
   }
 
+  static async getBookmarksByIds(bookmarkIds: string[]) {
+    const bookmarks = await prisma.bookmark.findMany({
+      where: { id: { in: bookmarkIds } },
+      select: {
+        id: true,
+        feed: {
+          select: {
+            video: {
+              select: {
+                id: true,
+                meta_data: true,
+                artist: { select: { name: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    type VideoMetaData = { caption?: string; [key: string]: any };
+
+    return bookmarks.map((bookmark) => {
+      const video = bookmark.feed?.video;
+      const metaData = video?.meta_data as VideoMetaData | undefined;
+
+      return {
+        ...bookmark,
+        feed: bookmark.feed
+          ? {
+              ...bookmark.feed,
+              video: video
+                ? {
+                    id: video.id,
+                    artist: video.artist ?? null,
+                    caption: metaData?.caption ?? null,
+                  }
+                : null,
+            }
+          : null,
+      };
+    });
+  }
+
   static async removeBookmarksInFeedItem(feedId: string) {
     return prisma.bookmark.deleteMany({ where: { feedId } });
   }
