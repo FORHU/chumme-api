@@ -1,6 +1,6 @@
 import FeedRepo from "../repositories/feed.repository";
 import CacheUtil from "../utils/cache.util";
-
+import { stringBacktickToArray } from "../utils/helpers";
 export default class FeedSvc {
   /**
    * Helper method to format feed items
@@ -93,10 +93,7 @@ export default class FeedSvc {
     let artistStringToArray: Array<string> = [];
 
     if (artistInUrlString) {
-      artistStringToArray = artistInUrlString
-        .replace(/"/g, "")
-        .split(",")
-        .map((id: any) => id.trim());
+    artistStringToArray = stringBacktickToArray(artistInUrlString);
     }
 
     if (page < 0) {
@@ -118,9 +115,9 @@ export default class FeedSvc {
       limit,
       artistStringToArray
     );
-    const formattedFeed = this.formatFeedItems(feedItems);
 
-    await CacheUtil.set(cacheKey, formattedFeed);
+    const formattedFeed = this.formatFeedItems(feedItems);
+    // await CacheUtil.set(cacheKey, formattedFeed);
 
     return formattedFeed;
   }
