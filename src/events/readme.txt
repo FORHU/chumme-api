@@ -1,20 +1,24 @@
-# Socket.IO server (if not installed already)
-npm install socket.io
+Test Local Development in BACK-END
 
-# Socket.IO client for Node.js testing
-npm install socket.io-client
+# Socket.IO server (if not installed) server
++ npm install socket.io
 
-# TypeScript (if not installed globally)
-npm install typescript ts-node @types/node --save-dev
+# Socket.IO client for Node.js testing Node.js client testing
++ npm install socket.io-client
 
-#Optional: If you want type definitions for socket.io-client
-npm install @types/socket.io-client --save-dev
+# TypeScript (if not installed globally) a TypeScript support
++ npm install typescript ts-node @types/node --save-dev
+
+# Optional: If you want type definitions for socket.io-client
+# Optional TypeScript definitions for client
++ npm install @types/socket.io-client --save-dev
 
 +++++++++++++++++++++++++++++
 // src/server.ts
 * Wrap your Express app in an HTTP server.
 * Attach Socket.IO.
 * cors: { origin: "*" } allows connections from anywhere (optional)
+* App is on 3002, listen to the changes
 -------------------------------
 Wrapped your Express app in an HTTP server.
 Attached a Socket.IO server.
@@ -29,18 +33,17 @@ Listens on port 3002.
 -Handles events:
 * connection → log client connects
 * disconnect → log client disconnects
-* join → client joins a room
-* chat_message → emits messages globally or to rooms
+* join → log client joins a room
+* chat_message → log emits messages globally or to rooms
 -------------------------------
 
 +++++++++++++++++++++++++++++
 // src/events/socketPlayground.ts
-* Simulates multiple clients in Node.js.
+* Simulates multiple clients in Node.js without a frontend.
 * Messages and room behavior appear in both server and client consoles.
 * Fully tests Socket.IO features without a frontend.
 -------------------------------
 -Uses socket.io-client to simulate multiple clients:
-*Alice, Bob, Charlie, Dave
 -Each client can:
 *Connect to server
 *Join rooms
@@ -50,12 +53,17 @@ Listens on port 3002.
 -Repeated messages simulate real-time activity.
 -------------------------------
 
-
-
-+++++++++++++++++++++++++++++
 +++++++++++++++++++++++++++++
 run in another cli
 npx ts-node src/server.ts || npm run dev
 
 run in another cli
 npx ts-node src/events/socketPlayground.ts
+
+
++++++++++++++++++++++++++++++
++++++++++++++++++++++++++++++
+Notes / Tips
+If testing on a real mobile device, replace localhost with your computer’s LAN IP in the playground and React Native client.
+Make sure ports aren’t blocked by firewall.
+Each client logs its messages independently; counts and rooms work per client.
