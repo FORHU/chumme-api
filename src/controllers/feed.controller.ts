@@ -63,7 +63,7 @@ export default class FeedCtrl {
                 pagination: {
                     page,
                     limit,
-                    hasMore: feed.length === limit,
+                    hasMore: feed?.length === limit,
                 },
             });
         } catch (error: any) {

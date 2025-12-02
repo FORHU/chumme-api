@@ -43,7 +43,6 @@ export default class BookmarkCtrl {
       );
       return res.status(201).json({ message: "File saved", bookmark });
     } catch (err: any) {
-      console.log('err',err);
       return res.status(400).json({ message: err.message || err });
     }
   }

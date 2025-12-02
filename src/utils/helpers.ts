@@ -11,32 +11,38 @@ Sends a templated email using the specified parameters.*
 @param {Object} params.email_data - The data to populate the email template.
 @param {Array} [params.attachments=[]] - Optional attachments to include in the email.
 @param {string|null} [params.cc=null] - Optional CC recipient for the email.*/
-export const sendTemplatedEmail = ({ template_name, subject, email_data, attachments = [], cc = null }: any) => {
-    const html = getHTMLContents({ template_name, email_data });
+export const sendTemplatedEmail = ({
+  template_name,
+  subject,
+  email_data,
+  attachments = [],
+  cc = null,
+}: any) => {
+  const html = getHTMLContents({ template_name, email_data });
 
-    handleSendEmail({
-        to: email_data.email,
-        subject,
-        html,
-        attachments,
-        cc,
-    });
+  handleSendEmail({
+    to: email_data.email,
+    subject,
+    html,
+    attachments,
+    cc,
+  });
 };
 
 export const handleSendEmail = ({ to, subject, html, attachments }: any) => {
-    /**
+  /**
      
   Adds a job to the email queue to send an email verification email to the user.
   @param {string} to - The email address to send the verification email to.
   @param {string} subject - The subject of the verification email.
   @param {string} html - The HTML content of the verification email.*/
 
-    sendEmail({
-        to,
-        subject,
-        html,
-        attachments
-    });
+  sendEmail({
+    to,
+    subject,
+    html,
+    attachments,
+  });
 };
 
 /**
@@ -48,11 +54,24 @@ Generates HTML content by replacing placeholders in an email template with provi
 @returns {string} The generated HTML content with placeholders replaced by the provided data.*/
 
 export const getHTMLContents = ({ template_name, email_data }: any): string => {
-    const filePath = path.join(process.cwd(), `email-template/${template_name}`);
-    let html = fs.readFileSync(filePath, "utf8");
-    for (const key in email_data) {
-        const placeholder = `${key}`;
-        html = html.replace(new RegExp(placeholder, "g"), email_data[key]);
-    }
-    return html;
+  const filePath = path.join(process.cwd(), `email-template/${template_name}`);
+  let html = fs.readFileSync(filePath, "utf8");
+  for (const key in email_data) {
+    const placeholder = `${key}`;
+    html = html.replace(new RegExp(placeholder, "g"), email_data[key]);
+  }
+  return html;
 };
+
+export const stringBacktickToArray = (input: string = ""): string[] => {
+  return input
+    .replace(/"/g, "")
+    .split(",")
+    .map((id: any) => id.trim());
+};
+
+export const ACTIONS = {
+  ADD: "add",
+  REMOVE: "remove",
+  UPDATE: "update",
+} as const;
