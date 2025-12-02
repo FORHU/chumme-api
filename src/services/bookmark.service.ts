@@ -17,15 +17,16 @@ export default class BookmarkSvc {
       throw new Error("Limit must be between 1 and 50");
     }
 
-    const cacheKey = `feed:page:${page}:limit:${limit}`;
-    const cached = await CacheUtil.get(cacheKey);
-    if (cached) {
-      return cached;
-    }
-    const bookmark = await BookmarkRepo.fetchUserBookmarks(userId, page, limit);
-    await CacheUtil.set(cacheKey, bookmark);
+    // const cacheKey = `feed:page:${page}:limit:${limit}`;
+    // const cached = await CacheUtil.get(cacheKey);
+    // if (cached) {
+    //   return cached;
+    // }
+    // const bookmark =
+    return await BookmarkRepo.fetchUserBookmarks(userId, page, limit);
+    // await CacheUtil.set(cacheKey, bookmark);
   }
-
+  
   static async saveBookmark(userId: string, feedId: string) {
     const user = await UserRepo.findUserBookmark(userId);
     if (!user) throw new Error("User cannot be found");
