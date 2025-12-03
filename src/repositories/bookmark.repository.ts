@@ -66,7 +66,6 @@ export default class BookmarkRepo {
       },
     });
 
-    // 🔥 Return only the fields YOU need inside meta_data
     return bookmarks.map((item) => {
       const meta = item.feed?.video?.meta_data as any;
 
