@@ -23,6 +23,7 @@ export default class BookmarkRepo {
                 id: true,
                 title: true,
                 artistId: true,
+                meta_data: true,
                 createdAt: true,
                 file: {
                   select: {
