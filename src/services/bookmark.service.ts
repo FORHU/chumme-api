@@ -17,21 +17,24 @@ export default class BookmarkSvc {
       throw new Error("Limit must be between 1 and 50");
     }
 
-    const cacheKey = `feed:page:${page}:limit:${limit}`;
+    // Include userId in cache key
+    const cacheKey = `bookmark:user:${userId}:page:${page}:limit:${limit}`;
     const cached = await CacheUtil.get(cacheKey);
     if (cached) {
       return cached;
     }
+
     const bookmark = await BookmarkRepo.fetchUserBookmarks(userId, page, limit);
     await CacheUtil.set(cacheKey, bookmark);
+    return bookmark; // make sure to return the value
   }
 
   static async saveBookmark(userId: string, feedId: string) {
     const user = await UserRepo.findUserBookmark(userId);
     if (!user) throw new Error("User cannot be found");
 
-    const query = { userFeed: { userId, feedId }, };
-    const existingBookmark = await BookmarkRepo.getBookmark(query);    
+    const query = { userFeed: { userId, feedId } };
+    const existingBookmark = await BookmarkRepo.getBookmark(query);
 
     let message = "";
 
@@ -43,11 +46,11 @@ export default class BookmarkSvc {
       message = "Bookmark added";
     }
 
-    const updatedUser = await UserRepo.findUserBookmark(userId);
+    // Delete all cached pages for this user
+    await CacheUtil.delByPattern(`bookmark:user:${userId}:page:*`);
 
     return {
       message,
-      results: updatedUser?.bookmarks.map((b) => b.id) || [],
     };
   }
 }
