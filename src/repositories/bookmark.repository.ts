@@ -1,12 +1,17 @@
 import { prisma } from "../utils/prisma";
-
+type NeededMetaData = {
+  caption?: string;
+  artist?: string;
+  fullTitle?: string;
+  songTitle?: string;
+};
 export default class BookmarkRepo {
   static async fetchUserBookmarks(
     userId: string,
     page: number = 0,
     limit: number = 20
   ) {
-    return prisma.bookmark.findMany({
+    const bookmarks = await prisma.bookmark.findMany({
       where: { userId },
       orderBy: { createdAt: "desc" },
       skip: page * limit,
@@ -59,6 +64,29 @@ export default class BookmarkRepo {
           },
         },
       },
+    });
+
+    // 🔥 Return only the fields YOU need inside meta_data
+    return bookmarks.map((item) => {
+      const meta = item.feed?.video?.meta_data as any;
+
+      const filteredMeta: NeededMetaData = {
+        caption: meta?.caption || null,
+        artist: meta?.musicData?.artist || null,
+        fullTitle: meta?.musicData?.fullTitle || null,
+        songTitle: meta?.musicData?.songTitle || null,
+      };
+
+      return {
+        ...item,
+        feed: {
+          ...item.feed,
+          video: {
+            ...item.feed?.video,
+            meta_data: filteredMeta,
+          },
+        },
+      };
     });
   }
 
