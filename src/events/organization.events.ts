@@ -1,35 +1,33 @@
-import { Server } from "socket.io";
-import UserChatSvc from "../services/userChat.service";
+import { Server, Socket } from "socket.io";
+interface ChatMessage {
+  username: string;
+  text: string;
+}
 
 export default (io: Server) => {
-  // io.on("connection", (socket) => {
-  //     console.log("Client connected to /organization");
+  const namespace = io.of("/organization-chat");
 
-  //     socket.on("disconnect", () => {
-  //         console.log("Client disconnected from /organization");
-  //     });
+  let connectedUsers = 0;
 
-  //     socket.on("join", (data) => {
-  //         console.log("Client joined /organization", data);
-  //     });
+  namespace.on("connection", (socket: Socket) => {
+    console.log("User connected to organization chat");
 
-  //     socket.on("chat_message", (data) => {
-  //         console.log("Client sent chat message", data);
-  //     });
-  // });
+    connectedUsers++;
+    // Broadcast updated user count
+    namespace.emit("usersCount", connectedUsers);
 
-  // io.on("connection", async (data: Record<any, string>) => {
-  //    await UserChatSvc.findRoomChatByUserId(data.userId);
-  // })
-  io.on("connection", (socket) => {
-    console.log("+++++++++++++ Client connected:", socket.id);
-// a6n_iburaLuiB4ETAAAB
-    socket.on("init_user", async (data: { userId: string }) => {
-      const room = await UserChatSvc.findRoomChatByUserId(data.userId);
-      console.log("+++++++++++++ roomroom:", room);
-
-      socket.emit("user_rooms", room);
+    // Listen for incoming chat messages
+    socket.on("sendMessage", (message: ChatMessage) => {
+      // Broadcast to all clients except the sender
+      socket.broadcast.emit("receiveMessage", message);
     });
 
+    // Handle disconnection
+    socket.on("disconnect", () => {
+      connectedUsers--;
+      // Broadcast updated user count
+      namespace.emit("usersCount", connectedUsers);
+    });
   });
 };
+

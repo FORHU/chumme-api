@@ -1,11 +1,14 @@
 import express from "express";
 import { authenticate } from "../middleware/auth.middleware";
+import UserChatCtrl from "../controllers/userChat.controller";
 
 const router = express.Router();
 
-// router.get("/me", authenticate, UserCtrl.getCurrentUser);
-// router.delete("/me", authenticate, UserCtrl.deleteAccount);
-// router.patch("/me", authenticate, UserCtrl.updateUser);
-// router.get("/", authenticate, UserCtrl.getAllUsers);
+router.post("/createRoom", authenticate, UserChatCtrl.createUserChatRoom);
+router.get("/me", authenticate, UserChatCtrl.fetchActiveRooms);
+router.get("/members", UserChatCtrl.getRoomMembers);
+router.post("/remove", authenticate, UserChatCtrl.removeUserInRoomChat)
+router.delete("/delete", authenticate, UserChatCtrl.deleteRoomChat)
+router.post("/privacy", UserChatCtrl.updateUserChatRoomPrivacy)
 
 export default router;

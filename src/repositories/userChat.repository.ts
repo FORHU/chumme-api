@@ -1,20 +1,92 @@
 import { prisma } from "../utils/prisma";
 
 export default class UserChatRepo {
+  static async findRoomChat(roomId: string, userId: string) {
+    return prisma.room.findFirst({
+      where: { id: roomId, ownerId: userId },
+    });
+  }
+
+  static async findRoomChatById(roomId: string) {
+    return prisma.room.findFirst({
+      where: { id: roomId },
+    });
+  }
+
+  static async fetchActiveRooms(userId: string) {
+    return prisma.room.findMany({
+      where: {
+        isDeleted: false,
+        members: {
+          some: {
+            userId: userId,
+          },
+        },
+      },
+      include: {
+        owner: {
+          select: {
+            id: true,
+            name: true,
+            username: true,
+          },
+        },
+        members: {
+          select: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                username: true,
+              },
+            },
+            role: true,
+            joinedAt: true,
+          },
+        },
+        messages: {
+          select: {
+            content: true,
+            createdAt: true,
+            author: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: "desc",
+          },
+          take: 1,
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+  }
+
   static async findRoomChatByUserId(userId: string) {
-    return prisma.userChat.findFirst({
-      where: { userId: userId },
+    return prisma.userChat.findMany({
+      where: {
+        userId,
+        roomChat: {
+          isDeleted: false, 
+        },
+      },
       select: {
+        id: true, 
         roomId: true,
         createdAt: true,
-        // Room Model
+
         roomChat: {
           select: {
             name: true,
             isPrivate: true,
             createdAt: true,
             isDeleted: true,
-            // Message Model
+
             messages: {
               select: {
                 content: true,
@@ -28,18 +100,20 @@ export default class UserChatRepo {
                   },
                 },
               },
+              orderBy: { createdAt: "desc" },
+              // take: 1, 
             },
-            // User Model
+
             owner: {
               select: {
+                id: true,
                 name: true,
                 username: true,
               },
             },
-            // RoomMember Model
+
             members: {
               select: {
-                // User Model
                 user: {
                   select: {
                     id: true,
@@ -55,48 +129,84 @@ export default class UserChatRepo {
       },
     });
   }
-  static async createRoomUserChat(
+
+  static async getRoomMembers(roomId: string) {
+    return prisma.roomMember.findMany({
+      where: {
+        roomId,
+        room: {
+          isDeleted: false, 
+        },
+      },
+      select: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            username: true,
+            email: true,
+          },
+        },
+        role: true,
+        joinedAt: true,
+      },
+      orderBy: {
+        joinedAt: "asc",
+      },
+    });
+  }
+
+  static async createUserChatRoom(
     userId: string,
     name: string,
     isPrivate: boolean
   ) {
     return prisma.room.create({
       data: {
-        name: name,
-        isPrivate: isPrivate,
+        name,
+        isPrivate,
         ownerId: userId,
         isDeleted: false,
+        members: {
+          create: {
+            userId,
+            role: "owner",
+          },
+        },
       },
     });
   }
-  static async removeRoomUserChat(
-    roomId: string,
-    userId: string,
-    name: string
-  ) {
-    return prisma.room.update({
-      where: {
-        ownerId: userId,
-        id: roomId,
-      },
+
+  static async createUserChat(roomId: string, userId: string) {
+    return prisma.userChat.create({
       data: {
-        isDeleted: true,
+        roomId,
+        userId,
       },
     });
   }
-  static async updateUserChatRoomPrivacy(
-    roomId: string,
-    userId: string,
-    isPrivate: boolean
-  ) {
-    return prisma.room.update({
+
+  static async removeUserInRoomChat(roomId: string, memberId: string) {
+    return prisma.roomMember.delete({
       where: {
-        ownerId: userId,
-        id: roomId,
+        roomId_userId: {
+          roomId,
+          userId: memberId,
+        },
       },
-      data: {
-        isPrivate: isPrivate,
-      },
+    });
+  }
+  static async deleteRoomChat(roomId: string, userId: string) {
+    return prisma.room.update({
+      where: { id: roomId },
+      data: { isDeleted: true },
+    });
+  }
+
+  static async updateUserChatRoomPrivacy(roomId: string, isPrivate: boolean) {
+    return prisma.room.update({
+      where: { id: roomId },
+      data: { isPrivate },
     });
   }
 }
