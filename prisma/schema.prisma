@@ -43,6 +43,7 @@ model User {
   userInterests          UserInterest[]
   bookmarks              Bookmark[]
   nationality            String?
+  userChats              UserChat[]
 }
 
 model Session {
@@ -67,30 +68,42 @@ model File {
   videos     Video[]
 }
 
-model Room {
-  id        String       @id @default(uuid())
-  name      String?
-  isPrivate Boolean      @default(false)
-  ownerId   String
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
-  isDeleted Boolean      @default(false)
-  messages  Message[]
-  owner     User         @relation("RoomOwner", fields: [ownerId], references: [id])
-  members   RoomMember[]
-}
+  model UserChat {
+    id        String    @id @default(uuid())
+    roomId    String
+    userId    String
+    user      User      @relation(fields: [userId], references: [id])
+    roomChat  Room      @relation(fields: [roomId], references: [id])
+    createdAt DateTime  @default(now())
+    updatedAt DateTime  @updatedAt
+    deletedAt DateTime?
+  }
 
-model RoomMember {
-  id       String   @id @default(uuid())
-  roomId   String
-  userId   String
-  role     String   @default("member")
-  joinedAt DateTime @default(now())
-  room     Room     @relation(fields: [roomId], references: [id])
-  user     User     @relation(fields: [userId], references: [id])
+  model Room {
+    id        String       @id @default(uuid())
+    name      String?
+    isPrivate Boolean      @default(false)
+    ownerId   String
+    createdAt DateTime     @default(now())
+    updatedAt DateTime     @updatedAt
+    isDeleted Boolean      @default(false)
+    messages  Message[]
+    owner     User         @relation("RoomOwner", fields: [ownerId], references: [id])
+    userChats UserChat[]
+    members   RoomMember[]
+  }
 
-  @@unique([roomId, userId])
-}
+  model RoomMember {
+    id       String   @id @default(uuid())
+    roomId   String
+    userId   String
+    role     String   @default("member")
+    joinedAt DateTime @default(now())
+    room     Room     @relation(fields: [roomId], references: [id])
+    user     User     @relation(fields: [userId], references: [id])
+
+    @@unique([roomId, userId])
+  }
 
 model Message {
   id        String   @id @default(uuid())
@@ -360,8 +373,8 @@ model FeedItem {
 
 model Bookmark {
   id        String    @id @default(uuid())
-  feedId    String  
-  feed      FeedItem @relation(fields: [feedId], references: [id])
+  feedId    String
+  feed      FeedItem  @relation(fields: [feedId], references: [id])
   userId    String
   user      User      @relation(fields: [userId], references: [id])
   createdAt DateTime  @default(now())
@@ -370,7 +383,6 @@ model Bookmark {
 
   @@unique([feedId, userId], name: "userFeed")
 }
-
 
 enum Role {
   USER

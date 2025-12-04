@@ -117,7 +117,7 @@ export default class FeedSvc {
     );
 
     const formattedFeed = this.formatFeedItems(feedItems);
-    // await CacheUtil.set(cacheKey, formattedFeed);
+    await CacheUtil.set(cacheKey, formattedFeed);
 
     return formattedFeed;
   }
