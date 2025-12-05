@@ -103,7 +103,7 @@ model RoomMember {
   room     Room     @relation(fields: [roomId], references: [id])
   user     User     @relation(fields: [userId], references: [id])
 
-  @@unique([roomId, userId])
+  @@unique([roomId, userId], name: "room_id_user_id")
 }
 
 model Message {

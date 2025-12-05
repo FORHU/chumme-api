@@ -10,7 +10,7 @@ export default class UserChatRepo {
   static async findRoomMember(roomId: string, userId: string) {
     return prisma.roomMember.findUnique({
       where: {
-        roomId_userId: {
+        room_id_user_id: {
           roomId,
           userId,
         },
@@ -170,69 +170,6 @@ export default class UserChatRepo {
     });
   }
 
-  static async findRoomChatByUserId(userId: string) {
-    return prisma.userChat.findMany({
-      where: {
-        userId,
-        roomChat: {
-          isDeleted: false,
-        },
-      },
-      select: {
-        id: true,
-        roomId: true,
-        createdAt: true,
-
-        roomChat: {
-          select: {
-            name: true,
-            isPrivate: true,
-            createdAt: true,
-            isDeleted: true,
-
-            messages: {
-              select: {
-                content: true,
-                isSystem: true,
-                createdAt: true,
-                author: {
-                  select: {
-                    id: true,
-                    name: true,
-                    username: true,
-                  },
-                },
-              },
-              orderBy: { createdAt: "desc" },
-              // take: 1,
-            },
-
-            owner: {
-              select: {
-                id: true,
-                name: true,
-                username: true,
-              },
-            },
-
-            members: {
-              select: {
-                user: {
-                  select: {
-                    id: true,
-                    name: true,
-                  },
-                },
-                joinedAt: true,
-                role: true,
-              },
-            },
-          },
-        },
-      },
-    });
-  }
-
   static async getRoomMembers(roomId: string) {
     return prisma.roomMember.findMany({
       where: {
@@ -344,7 +281,7 @@ export default class UserChatRepo {
   static async removeUserInRoomChat(roomId: string, memberId: string) {
     return prisma.roomMember.delete({
       where: {
-        roomId_userId: {
+        room_id_user_id: {
           roomId,
           userId: memberId,
         },
@@ -376,7 +313,7 @@ export default class UserChatRepo {
 
     const existingMember = await prisma.roomMember.findUnique({
       where: {
-        roomId_userId: { roomId, userId },
+        room_id_user_id: { roomId, userId },
       },
     });
 
