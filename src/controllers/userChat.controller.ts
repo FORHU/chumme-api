@@ -11,6 +11,7 @@ export default class UserChatCtrl {
       return res.status(400).json({ message: err.message || err });
     }
   }
+
   static async getRoomMembers(req: Request, res: Response) {
     try {
       const schema = Joi.object({
@@ -25,11 +26,13 @@ export default class UserChatCtrl {
       return res.status(400).json({ message: err.message || err });
     }
   }
+
   static async createUserChatRoom(req: Request, res: Response) {
     try {
       const schema = Joi.object({
         name: Joi.string(),
         isPrivate: Joi.boolean(),
+        note: Joi.string(),
       });
       const { error, value } = schema.validate(req.body);
       if (error) return res.status(400).json({ message: error.message });
@@ -37,7 +40,7 @@ export default class UserChatCtrl {
       const room = await UserChatSvc.createUserChatRoom(
         req.user.id,
         value.name,
-        value.isPrivate
+        value.note
       );
 
       return res.status(201).json({ result: room });
@@ -45,6 +48,32 @@ export default class UserChatCtrl {
       return res.status(400).json({ message: err.message || err });
     }
   }
+
+  static async fetchRoomById(req: Request, res: Response)  {
+    try {
+      const schema = Joi.object({
+        roomId: Joi.string(),
+      });
+      const { error, value } = schema.validate(req.body);
+      if (error) return res.status(400).json({ message: error.message });
+
+      const room = await UserChatSvc.fetchRoomById(value.roomId);
+
+      return res.status(201).json({ result: room });
+    } catch (err: any) {
+      return res.status(400).json({ message: err.message || err });
+    }
+  } 
+
+  static async fetchRoomNameList(req: Request, res: Response) {
+    try {
+      const roomList = await UserChatSvc.fetchRoomNameList();
+      return res.status(201).json({ result: roomList });
+    } catch (err: any) {
+      return res.status(400).json({ message: err.message || err });
+    }
+  }
+
   static async removeUserInRoomChat(req: Request, res: Response) {
     try {
       const schema = Joi.object({
@@ -68,7 +97,7 @@ export default class UserChatCtrl {
     try {
       const schema = Joi.object({
         roomId: Joi.string(),
-        isPrivate: Joi.boolean()
+        isPrivate: Joi.boolean(),
       });
 
       const { error, value } = schema.validate(req.body);

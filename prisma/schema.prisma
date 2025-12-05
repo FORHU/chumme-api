@@ -68,42 +68,43 @@ model File {
   videos     Video[]
 }
 
-  model UserChat {
-    id        String    @id @default(uuid())
-    roomId    String
-    userId    String
-    user      User      @relation(fields: [userId], references: [id])
-    roomChat  Room      @relation(fields: [roomId], references: [id])
-    createdAt DateTime  @default(now())
-    updatedAt DateTime  @updatedAt
-    deletedAt DateTime?
-  }
+model UserChat {
+  id        String    @id @default(uuid())
+  roomId    String
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  roomChat  Room      @relation(fields: [roomId], references: [id])
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+}
 
-  model Room {
-    id        String       @id @default(uuid())
-    name      String?
-    isPrivate Boolean      @default(false)
-    ownerId   String
-    createdAt DateTime     @default(now())
-    updatedAt DateTime     @updatedAt
-    isDeleted Boolean      @default(false)
-    messages  Message[]
-    owner     User         @relation("RoomOwner", fields: [ownerId], references: [id])
-    userChats UserChat[]
-    members   RoomMember[]
-  }
+model Room {
+  id        String       @id @default(uuid())
+  name      String?
+  isPrivate Boolean      @default(false)
+  ownerId   String
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  isDeleted Boolean      @default(false)
+  note      String?
+  messages  Message[]
+  owner     User         @relation("RoomOwner", fields: [ownerId], references: [id])
+  userChats UserChat[]
+  members   RoomMember[]
+}
 
-  model RoomMember {
-    id       String   @id @default(uuid())
-    roomId   String
-    userId   String
-    role     String   @default("member")
-    joinedAt DateTime @default(now())
-    room     Room     @relation(fields: [roomId], references: [id])
-    user     User     @relation(fields: [userId], references: [id])
+model RoomMember {
+  id       String   @id @default(uuid())
+  roomId   String
+  userId   String
+  role     String   @default("member")
+  joinedAt DateTime @default(now())
+  room     Room     @relation(fields: [roomId], references: [id])
+  user     User     @relation(fields: [userId], references: [id])
 
-    @@unique([roomId, userId])
-  }
+  @@unique([roomId, userId])
+}
 
 model Message {
   id        String   @id @default(uuid())
