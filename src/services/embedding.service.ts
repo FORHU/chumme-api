@@ -16,8 +16,15 @@ export default class EmbeddingSvc {
     static async findSimilarMessages(
         vector: number[],
         userId: string,
-        limit: number = 5
+        limit: number = 5,
+        conversationId?: string
     ) {
-        return await EmbeddingRepo.findNearestNeighbors(vector, userId, limit);
+        return await EmbeddingRepo.findNearestNeighbors(
+            vector,
+            userId,
+            limit,
+            undefined,
+            conversationId
+        );
     }
 }

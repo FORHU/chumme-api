@@ -8,7 +8,7 @@ import logger from "../utils/logger";
 
 export default class ChatCtrl {
     static async sendChat(req: Request, res: Response, next: NextFunction) {
-        const { input } = req.body;
+        const { input, conversationId } = req.body;
         const { id: userId } = req.user;
 
         if (!userId) {
@@ -21,16 +21,21 @@ export default class ChatCtrl {
 
         const schema = Joi.object({
             input: Joi.string().required(),
+            conversationId: Joi.string().uuid().required(),
         });
 
-        const { error } = schema.validate({ input });
+        const { error } = schema.validate({ input, conversationId });
 
         if (error) {
             next(new BadRequestError(error.message));
         }
 
         try {
-            const result = await ChatSvc.sendChat(input, userId);
+            const result = await ChatSvc.sendChat(
+                input,
+                userId,
+                conversationId
+            );
             return res.json(result);
         } catch (error) {
             next(error);

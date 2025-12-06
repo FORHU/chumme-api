@@ -28,12 +28,19 @@ import logger from "../utils/logger";
 import CacheUtil from "../utils/cache.util";
 
 export default class ChatSvc {
-    static async sendChat(inputText: string, userId: string) {
+    static async sendChat(
+        inputText: string,
+        userId: string,
+        conversationId: string
+    ) {
         if (!inputText || !inputText.trim()) {
             throw new BadRequestError("Input text cannot be empty");
         }
         if (!userId || !userId.trim()) {
             throw new BadRequestError("User ID is required");
+        }
+        if (!conversationId || !conversationId.trim()) {
+            throw new BadRequestError("Conversation ID is required");
         }
 
         try {
@@ -247,32 +254,32 @@ export default class ChatSvc {
                 );
             }
 
-                chatMessage = await ChatRepo.createChatMessage({
-                    message: inputText,
-                    User: { connect: { id: userId } },
-                    role: "USER",
-                });
+            chatMessage = await ChatRepo.createChatMessage({
+                message: inputText,
+                User: { connect: { id: userId } },
+                role: "USER",
+            });
 
-                aiResponse = await ChatRepo.createChatMessage({
-                    message: finalChatResponse,
-                    User: { connect: { id: userId } },
-                    role: "AI",
-                });
+            aiResponse = await ChatRepo.createChatMessage({
+                message: finalChatResponse,
+                User: { connect: { id: userId } },
+                role: "AI",
+            });
 
-                await EmbeddingSvc.createEmbedding(
-                    "text-embedding-3-small",
-                    embedding,
-                    chatMessage.id
-                );
+            await EmbeddingSvc.createEmbedding(
+                "text-embedding-3-small",
+                embedding,
+                chatMessage.id
+            );
 
-                await CacheUtil.delByPattern(`chat:list:${userId}:*`);
+            await CacheUtil.delByPattern(`chat:list:${userId}:*`);
 
-                emotionMemory = await ChatRepo.createEmotionMemory({
-                    emotion: mappedEmotion, // Store mapped emotion for consistency with DB
-                    confidence,
-                    ChatMessage: { connect: { id: chatMessage.id } },
-                    User: { connect: { id: userId } },
-                });
+            emotionMemory = await ChatRepo.createEmotionMemory({
+                emotion: mappedEmotion, // Store mapped emotion for consistency with DB
+                confidence,
+                ChatMessage: { connect: { id: chatMessage.id } },
+                User: { connect: { id: userId } },
+            });
 
             return {
                 response: finalChatResponse,
