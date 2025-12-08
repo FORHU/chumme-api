@@ -1,170 +1,171 @@
 import RoomRepo from "../repositories/room.repository";
+import RoomMemberRepo from "../repositories/roomMember.repository";
 
 export default class RoomSvc {
-    /**
-     * Create a new room
-     * Automatically adds the creator as the owner and first member
-     */
-    static async createRoom(data: {
-        name: string;
-        isPrivate: boolean;
-        ownerId: string;
-    }) {
-        // Check if user exists and is not deleted
-        const user = await RoomRepo.findUserById(data.ownerId);
-        if (!user || user.isDeleted) {
-            throw new Error("User not found or has been deleted");
-        }
-
-        // Create the room
-        const room = await RoomRepo.createRoom(data);
-        
-        // Add owner as a member with 'owner' role
-        await RoomRepo.addRoomMember({
-            roomId: room.id,
-            userId: data.ownerId,
-            role: 'owner'
-        });
-
-        return room;
+  static async fetchRoomList() {
+    return await RoomRepo.fetchRoomList();
+  }
+  /**
+   * Create a new room
+   * Automatically adds the creator as the owner and first member
+   */
+  static async createRoom(data: {
+    name: string;
+    note: string;
+    ownerId: string;
+  }) {
+    const roomByName = await RoomRepo.findRoomName(data.name);
+    if (roomByName) {
+      throw new Error("Name Already Exist!");
     }
 
-    /**
-     * Get all rooms accessible to the user
-     * Returns public rooms and private rooms where user is a member
-     */
-    static async getAllRooms(userId: string, page: number = 1, limit: number = 10) {
-        const skip = (page - 1) * limit;
-        
-        const [rooms, totalCount] = await Promise.all([
-            RoomRepo.getUserAccessibleRooms(userId, skip, limit),
-            RoomRepo.countUserAccessibleRooms(userId)
-        ]);
+    // Create the room
+    const room = await RoomRepo.createRoom(data);
 
-        return {
-            rooms,
-            pagination: {
-                page,
-                limit,
-                total: totalCount,
-                pages: Math.ceil(totalCount / limit)
-            }
-        };
+    // Add owner as a member with 'owner' role
+    await RoomRepo.addRoomMember({
+      roomId: room.id,
+      userId: data.ownerId,
+      role: "owner",
+    });
+
+    return room;
+  }
+
+  /**
+   * Get all rooms accessible to the user
+   * Returns public rooms and private rooms where user is a member
+   */
+  static async getAllRooms(
+    userId: string,
+    page: number = 1,
+    limit: number = 10
+  ) {
+    const skip = (page - 1) * limit;
+
+    const [rooms, totalCount] = await Promise.all([
+      RoomRepo.getUserAccessibleRooms(userId, skip, limit),
+      RoomRepo.countUserAccessibleRooms(userId),
+    ]);
+
+    return {
+      rooms,
+      pagination: {
+        page,
+        limit,
+        total: totalCount,
+        pages: Math.ceil(totalCount / limit),
+      },
+    };
+  }
+
+  /**
+   * Get room by ID
+   * User must be a member to view the room
+   */
+  static async getRoomById(roomId: string, userId: string) {
+    // Check if user is a member of the room
+    const isMember = await RoomMemberRepo.isUserRoomMember(roomId, userId);
+    if (!isMember) {
+      return null;
     }
 
-    /**
-     * Get room by ID
-     * User must be a member to view the room
-     */
-    static async getRoomById(roomId: string, userId: string) {
-        // Check if user is a member of the room
-        const isMember = await RoomRepo.isUserRoomMember(roomId, userId);
-        if (!isMember) {
-            return null;
-        }
+    return RoomRepo.findRoomById(roomId);
+  }
 
-        return RoomRepo.findRoomById(roomId);
+  /**
+   * Update room details
+   * Only room owner can update
+   */
+  static async updateRoom(
+    roomId: string,
+    updateData: {
+      name?: string;
+      isPrivate?: boolean;
+      note?: string;
+    },
+    userId: string
+  ) {
+    // Check if user is the owner of the room
+    const isOwner = await RoomRepo.isUserRoomOwner(roomId, userId);
+    if (!isOwner) {
+      return null;
     }
 
-    /**
-     * Update room details
-     * Only room owner can update
-     */
-    static async updateRoom(roomId: string, updateData: {
-        name?: string;
-        isPrivate?: boolean;
-    }, userId: string) {
-        // Check if user is the owner of the room
-        const isOwner = await RoomRepo.isUserRoomOwner(roomId, userId);
-        if (!isOwner) {
-            return null;
-        }
+    return RoomRepo.updateRoom(roomId, updateData);
+  }
 
-        return RoomRepo.updateRoom(roomId, updateData);
+  /**
+   * Soft delete room
+   * Only room owner can delete
+   */
+  static async deleteRoom(roomId: string, userId: string) {
+    // Check if user is the owner of the room
+    const isOwner = await RoomRepo.isUserRoomOwner(roomId, userId);
+    if (!isOwner) {
+      return false;
     }
 
-    /**
-     * Soft delete room
-     * Only room owner can delete
-     */
-    static async deleteRoom(roomId: string, userId: string) {
-        // Check if user is the owner of the room
-        const isOwner = await RoomRepo.isUserRoomOwner(roomId, userId);
-        if (!isOwner) {
-            return false;
-        }
+    return RoomRepo.softDeleteRoom(roomId);
+  }
 
-        return RoomRepo.softDeleteRoom(roomId);
+  /**
+   * Join a room
+   * Users can join public rooms or private rooms they have access to
+   */
+  static async joinRoom(roomId: string, userId: string) {
+    // Check if user exists and is not deleted
+    const user = await RoomRepo.findUserById(userId);
+    if (!user || user.isDeleted) {
+      return { success: false, message: "User not found or has been deleted" };
     }
 
-    /**
-     * Join a room
-     * Users can join public rooms or private rooms they have access to
-     */
-    static async joinRoom(roomId: string, userId: string) {
-        // Check if user exists and is not deleted
-        const user = await RoomRepo.findUserById(userId);
-        if (!user || user.isDeleted) {
-            return { success: false, message: "User not found or has been deleted" };
-        }
-
-        // Check if room exists
-        const room = await RoomRepo.findRoomById(roomId);
-        if (!room) {
-            return { success: false, message: "Room not found" };
-        }
-
-        // Check if user is already a member
-        const isAlreadyMember = await RoomRepo.isUserRoomMember(roomId, userId);
-        if (isAlreadyMember) {
-            return { success: false, message: "User is already a member of this room" };
-        }
-
-        // Add user as member
-        await RoomRepo.addRoomMember({
-            roomId,
-            userId,
-            role: 'member'
-        });
-
-        return { 
-            success: true, 
-            message: "Successfully joined room",
-            room: await RoomRepo.findRoomById(roomId)
-        };
+    // Check if room exists
+    const room = await RoomRepo.findRoomById(roomId);
+    if (!room) {
+      return { success: false, message: "Room not found" };
     }
 
-    /**
-     * Leave a room
-     * Users can leave rooms they're members of (except if they're the owner)
-     */
-    static async leaveRoom(roomId: string, userId: string) {
-        // Check if user is a member
-        const isMember = await RoomRepo.isUserRoomMember(roomId, userId);
-        if (!isMember) {
-            return false;
-        }
-
-        // Check if user is the owner
-        const isOwner = await RoomRepo.isUserRoomOwner(roomId, userId);
-        if (isOwner) {
-            return false; // Owners cannot leave their own rooms
-        }
-
-        return RoomRepo.removeRoomMember(roomId, userId);
+    // Check if user is already a member
+    const isAlreadyMember = await RoomMemberRepo.isUserRoomMember(roomId, userId);
+    if (isAlreadyMember) {
+      return {
+        success: false,
+        message: "User is already a member of this room",
+      };
     }
 
-    /**
-     * Get room members
-     * Only room members can view the member list
-     */
-    static async getRoomMembers(roomId: string, userId: string) {
-        // Check if user is a member of the room
-        const isMember = await RoomRepo.isUserRoomMember(roomId, userId);
-        if (!isMember) {
-            return null;
-        }
+    // Add user as member
+    await RoomRepo.addRoomMember({
+      roomId,
+      userId,
+      role: "member",
+    });
 
-        return RoomRepo.getRoomMembers(roomId);
+    return {
+      success: true,
+      message: "Successfully joined room",
+      room: await RoomRepo.findRoomById(roomId),
+    };
+  }
+
+  /**
+   * Leave a room
+   * Users can leave rooms they're members of (except if they're the owner)
+   */
+  static async leaveRoom(roomId: string, userId: string) {
+    // Check if user is a member
+    const isMember = await RoomMemberRepo.isUserRoomMember(roomId, userId);
+    if (!isMember) {
+      return false;
     }
+
+    // Check if user is the owner
+    const isOwner = await RoomRepo.isUserRoomOwner(roomId, userId);
+    if (isOwner) {
+      return false; // Owners cannot leave their own rooms
+    }
+
+    return RoomRepo.removeRoomMember(roomId, userId);
+  }
 }
