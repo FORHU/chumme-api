@@ -44,6 +44,8 @@ model User {
   userArtists            UserArtist[]
   userEmotionPreferences UserEmotionPreference[]
   userInterests          UserInterest[]
+  nationality            String?
+  userChats              UserChat[]
 }
 
 model Session {
@@ -68,6 +70,17 @@ model File {
   videos     Video[]
 }
 
+model UserChat {
+  id        String    @id @default(uuid())
+  roomId    String
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  roomChat  Room      @relation(fields: [roomId], references: [id])
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+}
+
 model Room {
   id        String       @id @default(uuid())
   name      String?
@@ -76,8 +89,10 @@ model Room {
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
   isDeleted Boolean      @default(false)
+  note      String?
   messages  Message[]
   owner     User         @relation("RoomOwner", fields: [ownerId], references: [id])
+  userChats UserChat[]
   members   RoomMember[]
 }
 
@@ -90,7 +105,7 @@ model RoomMember {
   room     Room     @relation(fields: [roomId], references: [id])
   user     User     @relation(fields: [userId], references: [id])
 
-  @@unique([roomId, userId])
+  @@unique([roomId, userId], name: "room_id_user_id")
 }
 
 model Message {
