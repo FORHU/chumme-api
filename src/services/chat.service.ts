@@ -29,6 +29,45 @@ import CacheUtil from "../utils/cache.util";
 import ConversationSvc from "./conversation.service";
 import { getTimeStamp } from "../utils/helpers";
 
+// ========================================
+// INTERNAL TYPES FOR CHAT PROCESSING
+// ========================================
+
+/**
+ * Context gathered from initial parallel detection operations
+ */
+interface ChatContext {
+    emotion: string;
+    confidence: number;
+    emotionResult: any;
+    embedding: number[];
+    dbEmotions: any[];
+    emotionNames: string[];
+    chatHistoryArray: any[];
+    similarMessages: any[];
+}
+
+/**
+ * Additional context from language and song detection
+ */
+interface AdditionalContext {
+    detectedLanguage: string | null;
+    specificSong: { songTitle: string | null; artist?: string | null };
+    shouldDetectLanguage: boolean;
+    shouldDetectSong: boolean;
+}
+
+/**
+ * Video recommendation result with metadata
+ */
+interface VideoResult {
+    video: any | null;
+    metadata?: any;
+    mappedEmotion?: string;
+    wasMapping?: boolean;
+    originalEmotion?: string;
+}
+
 export default class ChatSvc {
     /**
      * Helper to get conversation connect object for Prisma
@@ -53,11 +92,480 @@ export default class ChatSvc {
         return undefined;
     }
 
+    // ========================================
+    // PRIVATE HELPERS - SETUP
+    // ========================================
+
+    /**
+     * Ensures a conversation exists, either by validating existing ID or creating new one
+     */
+    private static async ensureConversation(
+        userId: string,
+        conversationId?: string
+    ): Promise<string> {
+        if (conversationId) {
+            await ConversationSvc.getConversationById(conversationId, userId);
+            return conversationId;
+        }
+
+        const conversationData = await ConversationSvc.createConversation(
+            userId,
+            `${getTimeStamp()}`
+        );
+        return conversationData.id;
+    }
+
+    // ========================================
+    // PRIVATE HELPERS - CONTEXT DETECTION
+    // ========================================
+
+    /**
+     * Detects all context needed for chat in parallel
+     * - Emotion detection
+     * - Embedding generation
+     * - DB emotions fetch
+     * - Chat history (conversation-scoped)
+     * - RAG similar messages
+     */
+    private static async detectChatContext(
+        inputText: string,
+        userId: string,
+        conversationId: string
+    ): Promise<ChatContext> {
+        // Execute all independent operations in parallel
+        const [emotionResult, embedding, dbEmotions] = await Promise.all([
+            detectEmotion(inputText),
+            getTextEmbedding(inputText),
+            EmotionRepo.getAllEmotions(),
+        ]);
+
+        const { emotion, confidence } = emotionResult || {};
+        const emotionNames = dbEmotions.map((e) => e.name);
+
+        // Get conversation-scoped chat history
+        const chatHistoryArrayResponse = conversationId
+            ? await ChatRepo.getMessagesByConversationId(
+                  conversationId,
+                  userId,
+                  {
+                      limit: 10,
+                      page: 1,
+                      sortOrder: "desc",
+                  }
+              )
+            : { data: [] };
+        const chatHistoryArray = chatHistoryArrayResponse?.data || [];
+
+        // RAG: Find similar messages (conversation-scoped)
+        const similarMessages = await EmbeddingSvc.findSimilarMessages(
+            embedding,
+            userId,
+            5,
+            conversationId
+        );
+
+        return {
+            emotion,
+            confidence,
+            emotionResult,
+            embedding,
+            dbEmotions,
+            emotionNames,
+            chatHistoryArray,
+            similarMessages,
+        };
+    }
+
+    /**
+     * Detects additional context (language and song intent) in parallel
+     * Only runs when needed based on input characteristics
+     */
+    private static async detectAdditionalContext(
+        inputText: string
+    ): Promise<AdditionalContext> {
+        const hasNonEnglishChars = /[^\x00-\x7F]/.test(inputText);
+        const shouldDetectLanguage =
+            hasNonEnglishChars || inputText.length > 200;
+        const shouldDetectSong = /song|music|track|play|send|show|video/i.test(
+            inputText
+        );
+
+        const [detectedLanguage, specificSong] = await Promise.all([
+            shouldDetectLanguage
+                ? detectLanguage(inputText)
+                : Promise.resolve(null),
+            shouldDetectSong
+                ? detectSpecificSong(inputText)
+                : Promise.resolve({ songTitle: null }),
+        ]);
+
+        if (detectedLanguage) {
+            logger.info(
+                `[CHAT-SERVICE] Non-English language detected: ${detectedLanguage}`
+            );
+        }
+
+        if (specificSong.songTitle) {
+            logger.info(
+                `[CHAT-SERVICE] Specific song requested: "${specificSong.songTitle}"${specificSong.artist ? ` by ${specificSong.artist}` : ""}`
+            );
+        }
+
+        return {
+            detectedLanguage,
+            specificSong,
+            shouldDetectLanguage,
+            shouldDetectSong,
+        };
+    }
+
+    // ========================================
+    // PRIVATE HELPERS - VIDEO PROCESSING
+    // ========================================
+
+    /**
+     * Processes video recommendation logic
+     * - Maps emotions
+     * - Determines video emotions (counter-emotion strategy)
+     * - Fetches recommendation
+     * - Adds metadata
+     */
+    private static async processVideoRecommendation(
+        inputText: string,
+        userId: string,
+        context: ChatContext,
+        additionalContext: AdditionalContext
+    ): Promise<VideoResult> {
+        logger.info(
+            `[CHAT-SERVICE] Available emotions in DB: ${context.emotionNames.join(", ")}`
+        );
+        logger.info(
+            `[CHAT-SERVICE] Detected emotion from AI: "${context.emotion}" (confidence: ${context.confidence})`
+        );
+
+        // Map detected emotion to database emotion
+        const { mappedEmotion, wasMapping, originalEmotion } =
+            await mapEmotionToDatabase(context.emotion, context.emotionNames);
+
+        if (wasMapping) {
+            logger.info(
+                `[CHAT-SERVICE] Emotion mapped: "${originalEmotion}" → "${mappedEmotion}"`
+            );
+        }
+
+        // Determine video emotions (counter-emotion logic)
+        const { primaryEmotions, fallbackEmotions, strategy } =
+            await determineVideoEmotions(
+                mappedEmotion,
+                context.confidence,
+                context.emotionNames,
+                inputText
+            );
+
+        logger.info(
+            `[CHAT-SERVICE] Emotion strategy: ${strategy}, Primary: [${primaryEmotions.join(", ")}], Fallback: [${fallbackEmotions.join(", ")}]`
+        );
+
+        // Fetch video recommendation
+        let result = await fetchVideoRecommendation(
+            inputText,
+            primaryEmotions,
+            context.confidence,
+            userId,
+            context.chatHistoryArray
+        );
+
+        // Try fallback emotions if needed
+        if (!result.video && fallbackEmotions.length > 0) {
+            logger.info(
+                `[CHAT-SERVICE] No videos found with primary emotions, trying fallback`
+            );
+            result = await fetchVideoRecommendation(
+                inputText,
+                fallbackEmotions,
+                context.confidence,
+                userId,
+                context.chatHistoryArray
+            );
+        }
+
+        // Add metadata
+        let videoMetadata = result.metadata || {};
+
+        if (additionalContext.detectedLanguage) {
+            videoMetadata = {
+                ...videoMetadata,
+                languageMismatch: additionalContext.detectedLanguage,
+            };
+        }
+
+        if (additionalContext.specificSong.songTitle && !result.video) {
+            videoMetadata = {
+                ...videoMetadata,
+                specificSongNotFound: additionalContext.specificSong,
+            };
+        }
+
+        return {
+            video: result.video,
+            metadata: videoMetadata,
+            mappedEmotion,
+            wasMapping,
+            originalEmotion,
+        };
+    }
+
+    // ========================================
+    // PRIVATE HELPERS - AI RESPONSE
+    // ========================================
+
+    /**
+     * Generates AI response with full context
+     * - Composes prompt with RAG context
+     * - Calls OpenAI
+     * - Returns response
+     */
+    private static async generateAIResponse(
+        inputText: string,
+        context: ChatContext,
+        videoResult: VideoResult
+    ): Promise<string> {
+        // Filter out duplicate messages from RAG
+        const recentMessageIds = new Set(
+            context.chatHistoryArray.map((m: any) => m.id)
+        );
+        const relevantHistory = context.similarMessages
+            .filter((item) => !recentMessageIds.has(item.chatMessageId))
+            .map((item) => item.chatMessage)
+            .filter((msg) => msg !== null);
+
+        if (relevantHistory.length > 0) {
+            logger.info(
+                `[RAG] Found ${relevantHistory.length} relevant past messages for context.`
+            );
+        }
+
+        const prompt = composePrompt(
+            inputText,
+            videoResult.mappedEmotion || context.emotion,
+            context.confidence,
+            context.chatHistoryArray,
+            relevantHistory as any[],
+            videoResult.video,
+            videoResult.metadata
+        );
+
+        const start = Date.now();
+        const finalChatResponse = await defaultOpenAIRequest(prompt, {
+            role: "user",
+            temperature: 0.7,
+            maxTokens: 800,
+        });
+        const duration = Date.now() - start;
+
+        logger.chat_response(
+            `[OPENAI-InputResponse], response time: ${duration}`
+        );
+
+        if (!finalChatResponse || typeof finalChatResponse !== "string") {
+            logger.chat_error(
+                `[OPENAI-InputResponse], Error: Invalid response from AI, expecting a string`
+            );
+            throw new InternalServerError(
+                "[ChatSvc.sendChat], Invalid response from AI, expecting a string"
+            );
+        }
+
+        return finalChatResponse;
+    }
+
+    // ========================================
+    // PRIVATE HELPERS - MESSAGE PERSISTENCE
+    // ========================================
+
+    /**
+     * Saves user message to database
+     */
+    private static async saveUserMessage(
+        inputText: string,
+        userId: string,
+        conversationId: string
+    ) {
+        return ChatRepo.createChatMessage({
+            message: inputText,
+            User: { connect: { id: userId } },
+            role: "USER",
+            conversation: this.getConversationConnect(conversationId, userId),
+        });
+    }
+
+    /**
+     * Saves AI message to database
+     */
+    private static async saveAIMessage(
+        response: string,
+        userId: string,
+        conversationId: string
+    ) {
+        return ChatRepo.createChatMessage({
+            message: response,
+            User: { connect: { id: userId } },
+            role: "AI",
+            conversation: this.getConversationConnect(conversationId, userId),
+        });
+    }
+
+    // ========================================
+    // PRIVATE HELPERS - FLOW HANDLERS
+    // ========================================
+
+    /**
+     * Handles crisis chat flow
+     * - Generates crisis response
+     * - Saves messages
+     * - Returns formatted response (NO video)
+     */
+    private static async handleCrisisChat(
+        inputText: string,
+        userId: string,
+        conversationId: string,
+        context: ChatContext
+    ) {
+        logger.warn(
+            `[CHAT-SERVICE] ⚠️ CRISIS DETECTED - Providing emergency resources`
+        );
+
+        const crisisResponse = generateCrisisResponse("US");
+
+        // Save user message
+        const chatMessage = await this.saveUserMessage(
+            inputText,
+            userId,
+            conversationId
+        );
+
+        // Save embedding for crisis message
+        await EmbeddingSvc.createEmbedding(
+            "text-embedding-3-small",
+            context.embedding,
+            chatMessage.id
+        );
+
+        // Save AI crisis response
+        const aiResponse = await this.saveAIMessage(
+            crisisResponse,
+            userId,
+            conversationId
+        );
+
+        await CacheUtil.delByPattern(`chat:list:${userId}:*`);
+
+        return {
+            response: crisisResponse,
+            emotion_data: {
+                ...context.emotionResult,
+                crisis: true,
+            },
+            chatMessageId: chatMessage.id,
+            emotionMemoryId: null,
+            aiResponseId: aiResponse.id,
+            video: null,
+        };
+    }
+
+    /**
+     * Handles normal chat flow (non-crisis)
+     * - Detects language/song
+     * - Processes video recommendation
+     * - Generates AI response
+     * - Saves messages
+     * - Returns formatted response
+     */
+    private static async handleNormalChat(
+        inputText: string,
+        userId: string,
+        conversationId: string,
+        context: ChatContext
+    ) {
+        // Detect language and song intent
+        const additionalContext = await this.detectAdditionalContext(inputText);
+
+        // Process video recommendation
+        const videoResult = await this.processVideoRecommendation(
+            inputText,
+            userId,
+            context,
+            additionalContext
+        );
+
+        // Generate AI response with full context
+        const finalChatResponse = await this.generateAIResponse(
+            inputText,
+            context,
+            videoResult
+        );
+
+        // Save user message
+        const chatMessage = await this.saveUserMessage(
+            inputText,
+            userId,
+            conversationId
+        );
+
+        // Save AI response
+        const aiResponse = await this.saveAIMessage(
+            finalChatResponse,
+            userId,
+            conversationId
+        );
+
+        // Save user message embedding
+        await EmbeddingSvc.createEmbedding(
+            "text-embedding-3-small",
+            context.embedding,
+            chatMessage.id
+        );
+
+        // Create emotion memory
+        const emotionMemory = await ChatRepo.createEmotionMemory({
+            emotion: videoResult.mappedEmotion || context.emotion,
+            confidence: context.confidence,
+            ChatMessage: { connect: { id: chatMessage.id } },
+            User: { connect: { id: userId } },
+        });
+
+        await CacheUtil.delByPattern(`chat:list:${userId}:*`);
+
+        return {
+            response: finalChatResponse,
+            emotion_data: {
+                ...context.emotionResult,
+                mappedEmotion: videoResult.wasMapping
+                    ? videoResult.mappedEmotion
+                    : undefined,
+                wasMapped: videoResult.wasMapping,
+            },
+            chatMessageId: chatMessage.id,
+            emotionMemoryId: emotionMemory.id,
+            aiResponseId: aiResponse.id,
+            video: videoResult.video,
+        };
+    }
+
+    // ========================================
+    // PUBLIC API
+    // ========================================
+
+    /**
+     * Main chat processing method
+     * Orchestrates the entire chat flow by delegating to specialized private methods
+     */
     static async sendChat(
         inputText: string,
         userId: string,
         conversationId?: string
     ) {
+        // Validation
         if (!inputText || !inputText.trim()) {
             throw new BadRequestError("Input text cannot be empty");
         }
@@ -66,306 +574,42 @@ export default class ChatSvc {
         }
 
         try {
-            // OPTIMIZATION: Execute ALL independent operations in parallel
-            // This includes conversation lookup/creation which can run concurrently
-            const [conversationData, emotionResult, embedding, dbEmotions] =
-                await Promise.all([
-                    // Conversation lookup/creation
-                    conversationId
-                        ? ConversationSvc.getConversationById(
-                              conversationId,
-                              userId
-                          )
-                        : ConversationSvc.createConversation(
-                              userId,
-                              `${getTimeStamp()}`
-                          ),
-                    // Independent API calls
-                    detectEmotion(inputText),
-                    getTextEmbedding(inputText),
-                    EmotionRepo.getAllEmotions(), // Fetch emotions early
-                ]);
-
-            // Set conversationId from result if it was created
-            if (!conversationId && conversationData) {
-                conversationId = conversationData.id;
-            }
-
-            const { emotion, confidence } = emotionResult || {};
-            const emotionNames = dbEmotions.map((e) => e.name);
-
-            // Get chat history scoped to this conversation (not all user messages)
-            // This improves performance by 50-80% and provides better context
-            const chatHistoryArrayResponse = conversationId
-                ? await ChatRepo.getMessagesByConversationId(
-                      conversationId,
-                      userId,
-                      {
-                          limit: 10,
-                          page: 1,
-                          sortOrder: "desc",
-                      }
-                  )
-                : { data: [] }; // Empty history for new conversations
-            const chatHistoryArray = chatHistoryArrayResponse?.data || [];
-
-            // RAG: Find similar messages from the past (scoped to conversation)
-            const similarMessages = await EmbeddingSvc.findSimilarMessages(
-                embedding,
+            // 1. Ensure conversation exists
+            conversationId = await this.ensureConversation(
                 userId,
-                5,
-                conversationId // Add conversation scope for better accuracy
+                conversationId
             );
 
-            // Filter out messages that are already in the recent history to avoid duplicates
-            const recentMessageIds = new Set(
-                chatHistoryArray.map((m: any) => m.id)
+            // 2. Detect all context in parallel
+            const context = await this.detectChatContext(
+                inputText,
+                userId,
+                conversationId
             );
-            const relevantHistory = similarMessages
-                .filter((item) => !recentMessageIds.has(item.chatMessageId))
-                .map((item) => item.chatMessage)
-                .filter((msg) => msg !== null);
 
-            if (relevantHistory.length > 0) {
-                logger.info(
-                    `[RAG] Found ${relevantHistory.length} relevant past messages for context.`
-                );
-            }
+            // 3. Check for crisis
+            const isCrisis = detectCrisis(
+                context.emotion,
+                inputText,
+                context.confidence
+            );
 
-            // CRITICAL: Check for crisis situation
-            const isCrisis = detectCrisis(emotion, inputText, confidence);
-
+            // 4. Route to appropriate handler
             if (isCrisis) {
-                logger.warn(
-                    `[CHAT-SERVICE] ⚠️ CRISIS DETECTED - Providing emergency resources`
-                );
-
-                // Generate crisis response
-                const crisisResponse = generateCrisisResponse("US"); // TODO: Detect user locale
-
-                // Save the user message with embedding
-                const chatMessage = await ChatRepo.createChatMessage({
-                    message: inputText,
-                    User: { connect: { id: userId } },
-                    role: "USER",
-                    conversation: this.getConversationConnect(
-                        conversationId,
-                        userId
-                    ),
-                });
-
-                // Save embedding for crisis message
-                await EmbeddingSvc.createEmbedding(
-                    "text-embedding-3-small",
-                    embedding,
-                    chatMessage.id
-                );
-
-                // Save AI crisis response
-                const aiResponse = await ChatRepo.createChatMessage({
-                    message: crisisResponse,
-                    User: { connect: { id: userId } },
-                    role: "AI",
-                    conversation: this.getConversationConnect(
-                        conversationId,
-                        userId
-                    ),
-                });
-
-                await CacheUtil.delByPattern(`chat:list:${userId}:*`);
-
-                // Return crisis response WITHOUT video recommendation
-                return {
-                    response: crisisResponse,
-                    emotion_data: {
-                        ...emotionResult,
-                        crisis: true, // Flag for frontend
-                    },
-                    chatMessageId: chatMessage.id,
-                    emotionMemoryId: null,
-                    aiResponseId: aiResponse.id,
-                    video: null, // No video in crisis situations
-                };
-            }
-
-            let chatMessage = null;
-            let emotionMemory = null;
-            let aiResponse = null;
-
-            // OPTIMIZATION: Only detect language/song if needed (saves 600-1,600ms when not needed)
-            const shouldDetectSong =
-                /song|music|track|play|send|show|video/i.test(inputText);
-
-            const [detectedLanguage, specificSong] = await Promise.all([
-                // Optional: Make this conditional based on user preferences or history
-                detectLanguage(inputText),
-                shouldDetectSong
-                    ? detectSpecificSong(inputText)
-                    : Promise.resolve({ songTitle: null }),
-            ]);
-
-            if (detectedLanguage) {
-                logger.info(
-                    `[CHAT-SERVICE] Non-English language detected: ${detectedLanguage}`
-                );
-            }
-
-            if (specificSong.songTitle) {
-                logger.info(
-                    `[CHAT-SERVICE] Specific song requested: "${specificSong.songTitle}"${specificSong.artist ? ` by ${specificSong.artist}` : ""}`
-                );
-            }
-
-            logger.info(
-                `[CHAT-SERVICE] Available emotions in DB: ${emotionNames.join(", ")}`
-            );
-            logger.info(
-                `[CHAT-SERVICE] Detected emotion from AI: "${emotion}" (confidence: ${confidence})`
-            );
-
-            // Map detected emotion to database emotion if needed
-            const { mappedEmotion, wasMapping, originalEmotion } =
-                await mapEmotionToDatabase(emotion, emotionNames);
-
-            if (wasMapping) {
-                logger.info(
-                    `[CHAT-SERVICE] Emotion mapped: "${originalEmotion}" → "${mappedEmotion}"`
-                );
-            }
-
-            // Determine which emotions to use for video search (counter-emotion logic)
-            const { primaryEmotions, fallbackEmotions, strategy } =
-                await determineVideoEmotions(
-                    mappedEmotion, // Use mapped emotion instead of original
-                    confidence,
-                    emotionNames,
-                    inputText
-                );
-
-            logger.info(
-                `[CHAT-SERVICE] Emotion strategy: ${strategy}, Primary: [${primaryEmotions.join(", ")}], Fallback: [${fallbackEmotions.join(", ")}]`
-            );
-
-            // Fetch video recommendation based on primary emotions
-            // Pass chat history for context (to remember previous artist preferences)
-            let result = await fetchVideoRecommendation(
-                inputText,
-                primaryEmotions,
-                confidence,
-                userId,
-                chatHistoryArray // Pass conversation context
-            );
-
-            // If no video found with primary emotions, try fallback emotions
-            if (!result.video && fallbackEmotions.length > 0) {
-                logger.info(
-                    `[CHAT-SERVICE] No videos found with primary emotions, trying fallback`
-                );
-                result = await fetchVideoRecommendation(
+                return this.handleCrisisChat(
                     inputText,
-                    fallbackEmotions,
-                    confidence,
                     userId,
-                    chatHistoryArray // Pass conversation context
+                    conversationId,
+                    context
                 );
             }
 
-            const selectedVideo = result.video;
-            let videoMetadata = result.metadata || {};
-
-            // Add language mismatch to metadata if detected
-            if (detectedLanguage) {
-                videoMetadata = {
-                    ...videoMetadata,
-                    languageMismatch: detectedLanguage,
-                };
-            }
-
-            // Add specific song request to metadata if no video found
-            if (specificSong.songTitle && !selectedVideo) {
-                videoMetadata = {
-                    ...videoMetadata,
-                    specificSongNotFound: specificSong,
-                };
-            }
-
-            const prompt = composePrompt(
+            return this.handleNormalChat(
                 inputText,
-                mappedEmotion,
-                confidence,
-                chatHistoryArray,
-                relevantHistory as any[], // Pass RAG context
-                selectedVideo,
-                videoMetadata
+                userId,
+                conversationId,
+                context
             );
-
-            const start = Date.now();
-            const finalChatResponse = await defaultOpenAIRequest(prompt, {
-                role: "user",
-                temperature: 0.7,
-                maxTokens: 800,
-            });
-            const duration = Date.now() - start;
-            logger.chat_response(
-                `[OPENAI-InputResponse], response time: ${duration} `
-            );
-
-            if (!finalChatResponse || typeof finalChatResponse !== "string") {
-                logger.chat_error(
-                    `[OPENAI-InputResponse], Error: Invalid response from AI, expecting a string`
-                );
-                throw new InternalServerError(
-                    "[ChatSvc.sendChat], Invalid response from AI, expecting a string"
-                );
-            }
-
-            chatMessage = await ChatRepo.createChatMessage({
-                message: inputText,
-                User: { connect: { id: userId } },
-                role: "USER",
-                conversation: this.getConversationConnect(
-                    conversationId,
-                    userId
-                ),
-            });
-
-            aiResponse = await ChatRepo.createChatMessage({
-                message: finalChatResponse,
-                User: { connect: { id: userId } },
-                role: "AI",
-                conversation: this.getConversationConnect(
-                    conversationId,
-                    userId
-                ),
-            });
-
-            await EmbeddingSvc.createEmbedding(
-                "text-embedding-3-small",
-                embedding,
-                chatMessage.id
-            );
-
-            await CacheUtil.delByPattern(`chat:list:${userId}:*`);
-
-            emotionMemory = await ChatRepo.createEmotionMemory({
-                emotion: mappedEmotion, // Store mapped emotion for consistency with DB
-                confidence,
-                ChatMessage: { connect: { id: chatMessage.id } },
-                User: { connect: { id: userId } },
-            });
-
-            return {
-                response: finalChatResponse,
-                emotion_data: {
-                    ...emotionResult,
-                    mappedEmotion: wasMapping ? mappedEmotion : undefined, // Include mapping info
-                    wasMapped: wasMapping,
-                },
-                chatMessageId: chatMessage?.id || null,
-                emotionMemoryId: emotionMemory?.id || null,
-                aiResponseId: aiResponse?.id || null,
-                video: selectedVideo,
-            };
         } catch (error: any) {
             if (error instanceof Prisma.PrismaClientKnownRequestError) {
                 logger.error(`Database error: ${error?.message}`);
