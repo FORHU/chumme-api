@@ -1,8 +1,9 @@
 import { prisma } from "../utils/prisma";
+import logger from "../utils/logger";
 
 interface CreateEmbeddingData {
     model: string;
-    vector: any[];
+    vector: number[]; // Fixed: Changed from any[] for better type safety
     chatMessageId: string;
 }
 
@@ -30,8 +31,11 @@ export default class EmbeddingRepository {
             });
 
             return created;
-        } catch (error) {
-            console.error("Error creating embedding:", error);
+        } catch (error: any) {
+            logger.error(
+                `[EMBEDDING-REPO] Error creating embedding: ${error?.message}`,
+                error
+            );
             throw error;
         }
     }
@@ -46,17 +50,17 @@ export default class EmbeddingRepository {
         vector: number[],
         userId: string,
         limit: number = 5,
-        excludeChatMessageId?: string
+        excludeChatMessageId?: string,
+        conversationId?: string
     ) {
-        // 1. Fetch all embeddings for this user
-        // Note: For production with large datasets, this should be replaced with a vector database (pgvector/pinecone)
+        // 1. Fetch embeddings for this user (limited for performance)
+        // Note: For production with large datasets, consider using pgvector/pinecone
         const userEmbeddings = await prisma.embedding.findMany({
             where: {
                 chatMessage: {
                     userId: userId,
-                    // Only look at user messages for context, or AI? Usually user messages to find what THEY said.
-                    // But maybe we want to find what AI said too? Let's stick to user for now or all.
-                    // Let's fetch all history for this user.
+                    // Filter by conversationId if provided to scope RAG to current conversation
+                    ...(conversationId ? { conversationId } : {}),
                 },
                 ...(excludeChatMessageId
                     ? { chatMessageId: { not: excludeChatMessageId } }
@@ -64,6 +68,10 @@ export default class EmbeddingRepository {
             },
             include: {
                 chatMessage: true,
+            },
+            take: 100, // Limit to reduce memory usage
+            orderBy: {
+                createdAt: "desc",
             },
         });
 
@@ -83,6 +91,7 @@ export default class EmbeddingRepository {
                 };
             })
             .filter((item): item is NonNullable<typeof item> => item !== null)
+            .filter((item) => item.similarity >= 0.7) // Only return truly similar messages (threshold: 0.7)
             .sort((a, b) => b.similarity - a.similarity) // Descending order
             .slice(0, limit);
 
