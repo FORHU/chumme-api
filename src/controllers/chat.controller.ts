@@ -20,11 +20,11 @@ export default class ChatCtrl {
         }
 
         const schema = Joi.object({
-            input: Joi.string().required(),
-            conversationId: Joi.string().uuid().required(),
+            input: Joi.string().min(1).max(500).optional(),
+            conversationId: Joi.optional(),
         });
 
-        const { error } = schema.validate({ input, conversationId });
+        const { error } = schema.validate(req.body);
 
         if (error) {
             next(new BadRequestError(error.message));
