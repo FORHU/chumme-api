@@ -44,7 +44,6 @@ model User {
   userArtists            UserArtist[]
   userEmotionPreferences UserEmotionPreference[]
   userInterests          UserInterest[]
-  nationality            String?
   userChats              UserChat[]
 }
 
