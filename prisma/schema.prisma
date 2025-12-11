@@ -81,7 +81,7 @@ model UserChat {
 }
 
 model Room {
-  id        String       @id @default(uuid())
+  id        String       @id @default(uuid()) // this is the room id
   name      String?
   isPrivate Boolean      @default(false)
   ownerId   String
