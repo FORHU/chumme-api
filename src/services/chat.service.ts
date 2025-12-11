@@ -466,6 +466,7 @@ export default class ChatSvc {
                 ...context.emotionResult,
                 crisis: true,
             },
+            conversationId: conversationId,
             chatMessageId: chatMessage.id,
             emotionMemoryId: null,
             aiResponseId: aiResponse.id,
@@ -545,6 +546,7 @@ export default class ChatSvc {
                     : undefined,
                 wasMapped: videoResult.wasMapping,
             },
+            conversationId: conversationId,
             chatMessageId: chatMessage.id,
             emotionMemoryId: emotionMemory.id,
             aiResponseId: aiResponse.id,
@@ -579,14 +581,13 @@ export default class ChatSvc {
                 userId,
                 conversationId
             );
-
             // 2. Detect all context in parallel
             const context = await this.detectChatContext(
                 inputText,
                 userId,
                 conversationId
             );
-
+            
             // 3. Check for crisis
             const isCrisis = detectCrisis(
                 context.emotion,
