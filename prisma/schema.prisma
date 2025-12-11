@@ -137,13 +137,13 @@ model Conversation {
 
 model ChatMessage {
   id             String         @id @default(uuid())
-  conversationId String
+  conversationId String?
   userId         String
   role           ChatRole       @default(USER)
   createdAt      DateTime       @default(now())
   message        String
   mediaUrl       String?
-  conversation   Conversation   @relation(fields: [conversationId], references: [id])
+  conversation   Conversation?   @relation(fields: [conversationId], references: [id])
   User           User           @relation(fields: [userId], references: [id])
   embedding      Embedding?
   emotionMemory  EmotionMemory?
