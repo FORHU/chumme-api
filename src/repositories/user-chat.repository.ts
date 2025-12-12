@@ -29,17 +29,22 @@ export default class UserChatRepo {
   /**
    * Create a new chat for a user in a room
    */
-  static async createUserChat(userId: string, roomId: string) {
-    return prisma.userChat.create({
-      data: {
-        userId,
-        roomId,
-      },
-      include: {
-        roomChat: true,
+static async createUserChat(userId: string, roomId: string) {
+  return prisma.userChat.upsert({
+    where: { room_id_user_id: { userId, roomId } },
+    update: {},
+    create: { userId, roomId },
+    include: { roomChat: true },
+  });
+}
+
+  static async leaveUserChat(userId: string, roomId: string) {
+    return prisma.userChat.delete({
+      where: {
+        room_id_user_id: { roomId, userId },
       },
     });
-  }
+  } 
 
   /**
    * find user

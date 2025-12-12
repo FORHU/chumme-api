@@ -10,4 +10,7 @@ export default class UserChatSvc {
   static async findUserInRoom(userId: string, roomId: string) {
     return UserChatRepo.findUserInRoom(userId, roomId);
   }
+  static async leaveUserChat(userId: string, roomId: string) {
+    return UserChatRepo.leaveUserChat(userId, roomId);
+  }
 }

@@ -78,6 +78,8 @@ model UserChat {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
+
+  @@unique([roomId, userId], name: "room_id_user_id")
 }
 
 model Room {

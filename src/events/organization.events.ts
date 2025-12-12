@@ -45,7 +45,7 @@ export default (io: Server) => {
           room_id
         );
 
-        if (!existing) {
+        if (!existing?.length) {
           await UserChatSvc.createUserChat(socket.user.id, room_id);
         }
 
@@ -79,7 +79,7 @@ export default (io: Server) => {
         room_id
       );
 
-      if (!isMember) {
+      if (!isMember?.length) {
         return socket.emit("not_allowed", {
           message: "You are not a member of this room.",
         });
@@ -93,6 +93,35 @@ export default (io: Server) => {
         createdAt: new Date().toISOString(),
       });
       await MessageSvc.createMessage(room_id, socket.user.id, message);
+    });
+
+    socket.on("leave_room", async ({ room_id }) => {
+      try {
+        const room = await RoomSvc.findById(room_id);
+        if (!room) {
+          return socket.emit("leave_room_failed", {
+            room_id,
+            message: "Room does not exist",
+          });
+        }
+
+        await UserChatSvc.leaveUserChat(socket.user.id, room_id);
+
+        socket.leave(room_id);
+
+        socket.emit("leave_room_success", {
+          room_id,
+          message: "Successfully leave the room",
+        });
+
+        socket.to(room_id).emit("user_leave", {
+          userId: socket.user.id,
+          user: socket.user,
+          room_id,
+        });
+      } catch (err) {
+        console.error(err);
+      }
     });
 
     socket.on("disconnect", async () => {
