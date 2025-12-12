@@ -1,62 +1,105 @@
 import { Server, Socket } from "socket.io";
+import RoomSvc from "../services/room.service";
+import authenticateSocket from "../middleware/authenticate-sockets.middleware";
+import UserChatSvc from "../services/user-chat.service";
+import MessageSvc from "../services/message.service";
 interface ChatMessage {
-    username: string;
-    text: string;
+  username: string;
+  text: string;
+}
+interface AuthenticatedSocket extends Socket {
+  user?: any;
 }
 
 export default (io: Server) => {
-    console.log("Organization events initialized");
-    // const namespace = io.of("/organization-chat");
-    // let connectedUsers = 0;
-    // namespace.on("connection", (socket: Socket) => {
-    //     console.log("User connected to organization chat");
-    //     connectedUsers++;
-    //     // Broadcast updated user count
-    //     namespace.emit("usersCount", connectedUsers);
-    //     // Listen for incoming chat messages
-    //     socket.on("sendMessage", (message: ChatMessage) => {
-    //         // Broadcast to all clients except the sender
-    //         socket.broadcast.emit("receiveMessage", message);
-    //     });
-    //     // Handle disconnection
-    //     socket.on("disconnect", () => {
-    //         connectedUsers--;
-    //         // Broadcast updated user count
-    //         namespace.emit("usersCount", connectedUsers);
-    //     });
-    // });
-
-    io.on("connection", (socket: Socket) => {
-        console.log("User connected to organization chat");
-        socket.join("organization-chat");
-        socket.emit("usersCount", 0);
-        socket.on("disconnect", () => {
-            console.log("User disconnected from organization chat");
-        });
-
-        // socket.on("join_room", (data) => {
-        //     const { room_id } = data;
-        //     console.log("User joined room", room_id);
-        //     // Join the dynamically generated room
-        //     socket.join(room_id);
-        //     // emit an event to notify the client about the room ID
-        //     socket.emit("join_room", room_id);
-        // });
-
-        socket.on("join_room", (data) => {
-            /**
-             * TODO
-             * 1. import room service
-             * 2. check if room exists by room_id (uuid)
-             * 3. if room exists, join the room
-             * 4. if room does not exist, emit an event to notify the client about the room ID
-             */
-            const { room_id } = data;
-            console.log({ room_id });
-            // Join the dynamically generated room
-            socket.join(room_id);
-            // emit an event to notify the client about the room ID
-            socket.emit("join_room", room_id);
-        });
+  io.use((socket: AuthenticatedSocket, next) => {
+    authenticateSocket(socket, (err?: Error) => {
+      if (err) {
+        console.error("Socket authentication failed!");
+        next(err);
+      } else {
+        console.log("Socket authenticated successfully!");
+        next();
+      }
     });
+  });
+
+  io.on("connection", (socket: AuthenticatedSocket) => {
+    console.log("User connected:", socket.user.id);
+
+    socket.join("organization-chat");
+
+    socket.on("join_room", async ({ room_id }) => {
+      try {
+        const room = await RoomSvc.findById(room_id);
+        if (!room) {
+          return socket.emit("join_room_failed", {
+            room_id,
+            message: "Room does not exist",
+          });
+        }
+        console.log("✔ User joined room:", room_id);
+        const existing = await UserChatSvc.findUserInRoom(
+          socket.user.id,
+          room_id
+        );
+
+        if (!existing) {
+          await UserChatSvc.createUserChat(socket.user.id, room_id);
+        }
+
+        socket.join(room_id);
+
+        socket.emit("join_room_success", {
+          room_id,
+          message: "Successfully joined room",
+        });
+
+        socket.to(room_id).emit("user_joined", {
+          userId: socket.user.id,
+          user: socket.user,
+          room_id,
+        });
+      } catch (err) {
+        console.error(err);
+      }
+    });
+
+    socket.on("send_message_to_room", async (data: any) => {
+      const { room_id, message, attachments = [] } = data;
+      if (!room_id)
+        return socket.emit("not_allowed", { message: "room_id missing" });
+
+      if (!message || message.trim() === "") return;
+
+      console.log("sending messages", room_id, message);
+      const isMember = await UserChatSvc.findUserInRoom(
+        socket.user.id,
+        room_id
+      );
+
+      if (!isMember) {
+        return socket.emit("not_allowed", {
+          message: "You are not a member of this room.",
+        });
+      }
+
+      io.to(room_id).emit("send_message_to_room", {
+        room_id,
+        sender: socket.user,
+        content: message,
+        attachments: [],
+        createdAt: new Date().toISOString(),
+      });
+      await MessageSvc.createMessage(room_id, socket.user.id, message);
+    });
+
+    socket.on("disconnect", async () => {
+      if (socket.user?.id) await UserChatSvc.leaveAllRooms(socket.user.id);
+      console.log(
+        "Client disconnected from organization namespace",
+        socket.user.id
+      );
+    });
+  });
 };

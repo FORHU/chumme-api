@@ -1,5 +1,5 @@
 import RoomRepo from "../repositories/room.repository";
-import RoomMemberRepo from "../repositories/roomMember.repository";
+import RoomMemberRepo from "../repositories/room-member.repository";
 
 export default class RoomSvc {
   static async fetchRoomList() {
@@ -95,12 +95,7 @@ export default class RoomSvc {
     return RoomRepo.updateRoom(roomId, updateData);
   }
 
-  /**
-   * Soft delete room
-   * Only room owner can delete
-   */
   static async deleteRoom(roomId: string, userId: string) {
-    // Check if user is the owner of the room
     const isOwner = await RoomRepo.isUserRoomOwner(roomId, userId);
     if (!isOwner) {
       return false;
@@ -109,24 +104,17 @@ export default class RoomSvc {
     return RoomRepo.softDeleteRoom(roomId);
   }
 
-  /**
-   * Join a room
-   * Users can join public rooms or private rooms they have access to
-   */
   static async joinRoom(roomId: string, userId: string) {
-    // Check if user exists and is not deleted
     const user = await RoomRepo.findUserById(userId);
     if (!user || user.isDeleted) {
       return { success: false, message: "User not found or has been deleted" };
     }
 
-    // Check if room exists
     const room = await RoomRepo.findRoomById(roomId);
     if (!room) {
       return { success: false, message: "Room not found" };
     }
 
-    // Check if user is already a member
     const isAlreadyMember = await RoomMemberRepo.isUserRoomMember(roomId, userId);
     if (isAlreadyMember) {
       return {
@@ -135,7 +123,6 @@ export default class RoomSvc {
       };
     }
 
-    // Add user as member
     await RoomRepo.addRoomMember({
       roomId,
       userId,
@@ -167,5 +154,8 @@ export default class RoomSvc {
     }
 
     return RoomRepo.removeRoomMember(roomId, userId);
+  }
+  static async findById(roomId: string) {
+    return RoomRepo.findById(roomId);
   }
 }

@@ -192,7 +192,7 @@ export default class RoomRepo {
     data: {
       name?: string;
       isPrivate?: boolean;
-      note? : string;
+      note?: string;
     }
   ) {
     return prisma.room.update({
@@ -309,7 +309,15 @@ export default class RoomRepo {
       where: {
         id: roomId,
         ownerId: userId,
-        isDeleted: false, 
+        isDeleted: false,
+      },
+    });
+    return !!room;
+  }
+  static async findById(roomId: string) {
+    const room = await prisma.room.findFirst({
+      where: {
+        id: roomId,
       },
     });
     return !!room;

@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import Joi from "joi";
-import RoomMemberSvc from "../services/roomMember.service";
+import RoomMemberSvc from "../services/room-member.service";
 
 export default class RoomMemberCtrl {
   /**
