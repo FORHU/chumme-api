@@ -39,14 +39,23 @@ export default (io: Server) => {
             message: "Room does not exist",
           });
         }
-        console.log("✔ User joined room:", room_id);
         const existing = await UserChatSvc.findUserInRoom(
           socket.user.id,
           room_id
         );
-
-        if (!existing?.length) {
-          await UserChatSvc.createUserChat(socket.user.id, room_id);
+  
+        if (existing?.length === 0) {
+          const userChatRole = "member";
+          await UserChatSvc.createUserChat(
+            socket.user.id,
+            room_id,
+            userChatRole
+          );
+          console.log(`✔ ${socket.user.id} join the room ${room_id}`);
+        } else {
+          return socket.emit("join_room_info", {
+            message: "User already in the room",
+          });
         }
 
         socket.join(room_id);
@@ -73,7 +82,6 @@ export default (io: Server) => {
 
       if (!message || message.trim() === "") return;
 
-      console.log("sending messages", room_id, message);
       const isMember = await UserChatSvc.findUserInRoom(
         socket.user.id,
         room_id
@@ -93,25 +101,39 @@ export default (io: Server) => {
         createdAt: new Date().toISOString(),
       });
       await MessageSvc.createMessage(room_id, socket.user.id, message);
+      console.log(`✔ ${socket.user.id} sent a message in ${room_id}: ${message}`);
     });
 
-    socket.on("leave_room", async ({ room_id }) => {
+    socket.on("leave_room", async ({ room_id, roomName }) => {
       try {
         const room = await RoomSvc.findById(room_id);
         if (!room) {
           return socket.emit("leave_room_failed", {
-            room_id,
             message: "Room does not exist",
           });
         }
 
-        await UserChatSvc.leaveUserChat(socket.user.id, room_id);
+        const existing = await UserChatSvc.findUserInRoom(
+          socket.user.id,
+          room_id
+        );
+
+        if (existing?.length) {
+          await UserChatSvc.leaveUserChat(socket.user.id, room_id);
+          console.log(`✔ ${socket.user.id} left the room ${room_id}`);
+        } else {
+          return socket.emit("join_room_info", {
+            message: "User already left the room",
+          });
+        }
 
         socket.leave(room_id);
+        socket.leave(roomName);
 
         socket.emit("leave_room_success", {
           room_id,
-          message: "Successfully leave the room",
+          roomName,
+          message: "Successfully left the room",
         });
 
         socket.to(room_id).emit("user_leave", {
@@ -121,10 +143,18 @@ export default (io: Server) => {
         });
       } catch (err) {
         console.error(err);
+        socket.emit("leave_room_failed", {
+          message: "Unexpected error leaving room",
+        });
       }
     });
 
     socket.on("disconnect", async () => {
+      const userRoom = await RoomMemberSvc.getRoomsByUserId(socket.user.id);
+      const roomName = userRoom.map((rooms) => rooms.room.name);
+      if (roomName[0]) {
+        socket.leave(roomName[0]);
+      }
       if (socket.user?.id) await RoomMemberSvc.leaveAllRooms(socket.user.id);
       console.log(
         "Client disconnected from organization namespace",
