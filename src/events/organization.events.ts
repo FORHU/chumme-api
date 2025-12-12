@@ -3,6 +3,7 @@ import RoomSvc from "../services/room.service";
 import authenticateSocket from "../middleware/authenticate-sockets.middleware";
 import UserChatSvc from "../services/user-chat.service";
 import MessageSvc from "../services/message.service";
+import RoomMemberSvc from "../services/room-member.service";
 interface ChatMessage {
   username: string;
   text: string;
@@ -95,7 +96,7 @@ export default (io: Server) => {
     });
 
     socket.on("disconnect", async () => {
-      if (socket.user?.id) await UserChatSvc.leaveAllRooms(socket.user.id);
+      if (socket.user?.id) await RoomMemberSvc.leaveAllRooms(socket.user.id);
       console.log(
         "Client disconnected from organization namespace",
         socket.user.id

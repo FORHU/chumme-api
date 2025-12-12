@@ -42,14 +42,6 @@ export default class UserChatRepo {
   }
 
   /**
-   * Delete (soft delete) a user chat
-   */
-  static async leaveAllRooms(userId: string) {
-    return prisma.userChat.deleteMany({
-      where: { userId },
-    });
-  }
-  /**
    * find user
    **/
   static async findUserInRoom(userId: string, roomId: string) {

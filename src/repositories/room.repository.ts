@@ -17,6 +17,9 @@ export default class RoomRepo {
       select: {
         id: true,
         name: true,
+        _count: {
+          select: { members: true },
+        },
       },
     });
   }
