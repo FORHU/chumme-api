@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import UserChatSvc from "../services/userChat.service";
+import UserChatSvc from "../services/user-chat.service";
 
 export default class UserChatCtrl {
   static async getUserChat(req: Request, res: Response) {

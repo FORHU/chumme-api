@@ -381,4 +381,7 @@ export default class AuthSvc {
             message: "New verification code sent to your email",
         };
     }
+    static async getAuthUser(userId: string){
+        return AuthRepo.getAuthUser(userId);
+    }
 }

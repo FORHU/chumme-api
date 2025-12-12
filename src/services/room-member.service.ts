@@ -1,4 +1,4 @@
-import RoomMemberRepo from "../repositories/roomMember.repository";
+import RoomMemberRepo from "../repositories/room-member.repository";
 
 export default class RoomMemberSvc {
   /**
