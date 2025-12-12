@@ -37,10 +37,15 @@ export default class RoomMemberRepo {
         roomId: roomId,
         userId: userId,
         room: {
-          isDeleted: false, 
+          isDeleted: false,
         },
       },
     });
     return !!member;
+  }
+  static async leaveAllRooms(userId: string) {
+    return prisma.roomMember.deleteMany({
+      where: { userId },
+    });
   }
 }
