@@ -8,17 +8,17 @@ export default class UserChatSvc {
     return await UserChatRepo.getUserChat(userId, page, limit);
   }
   static async createUserChat(userId: string, roomId: string, role: string) {
-    // const room = await RoomRepo.findRoomById(roomId);
-    // if (!room) throw new Error("Room does not exist");
+      // const room = await RoomRepo.findRoomById(roomId);
+      // if (!room) throw new Error("Room does not exist");
 
-    // const userChat = await UserChatRepo.createUserChat(userId, roomId, role);
+      // const userChat = await UserChatRepo.createUserChat(userId, roomId, role);
 
-    // const existingMember = await RoomMemberRepo.findRoomMember(userId, roomId);
-    // if (!existingMember) {
-    //   await RoomMemberRepo.createRoomMember(userId, roomId, role);
-    // }
+      // const existingMember = await RoomMemberRepo.findRoomMember(userId, roomId);
+      // if (!existingMember) {
+      //   await RoomMemberRepo.createRoomMember(userId, roomId, role);
+      // }
 
-    // return userChat;
+      // return userChat;
     return await UserChatRepo.createUserChat(userId, roomId, role);
   }
 

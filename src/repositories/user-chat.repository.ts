@@ -58,7 +58,6 @@ export default class UserChatRepo {
       });
     }
 
-    // 3️⃣ Re-fetch room with members to return up-to-date info
     const roomWithMembers = await prisma.room.findUnique({
       where: { id: roomId },
       include: {

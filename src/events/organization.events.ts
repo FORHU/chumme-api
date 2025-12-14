@@ -30,7 +30,7 @@ export default (io: Server) => {
 
     socket.join("organization-chat");
 
-    socket.on("join_room", async ({ room_id }) => {
+    socket.on("join_room", async ({ room_id, roomName }) => {
       try {
         const room = await RoomSvc.findById(room_id);
         if (!room) {
@@ -43,7 +43,7 @@ export default (io: Server) => {
           socket.user.id,
           room_id
         );
-  
+
         if (existing?.length === 0) {
           const userChatRole = "member";
           await UserChatSvc.createUserChat(
@@ -59,6 +59,8 @@ export default (io: Server) => {
         }
 
         socket.join(room_id);
+        const socketsInRoom = await io.in(room_id).fetchSockets();
+        const usersInRoom = socketsInRoom.map((s: any) => s.user);
 
         socket.emit("join_room_success", {
           room_id,
@@ -67,9 +69,11 @@ export default (io: Server) => {
 
         socket.to(room_id).emit("user_joined", {
           userId: socket.user.id,
-          user: socket.user,
+          current_user: socket.user,
           room_id,
+          all_users: usersInRoom,
         });
+        console.log(`User Count - ${usersInRoom?.length} in ${roomName}`);
       } catch (err) {
         console.error(err);
       }
@@ -101,7 +105,9 @@ export default (io: Server) => {
         createdAt: new Date().toISOString(),
       });
       await MessageSvc.createMessage(room_id, socket.user.id, message);
-      console.log(`✔ ${socket.user.id} sent a message in ${room_id}: ${message}`);
+      console.log(
+        `✔ ${socket.user.id} sent a message in ${room_id}: ${message} at ${new Date().toISOString()}`
+      );
     });
 
     socket.on("leave_room", async ({ room_id, roomName }) => {
@@ -129,6 +135,8 @@ export default (io: Server) => {
 
         socket.leave(room_id);
         socket.leave(roomName);
+        const socketsInRoom = await io.in(room_id).fetchSockets();
+        const usersInRoom = socketsInRoom.map((s: any) => s.user);
 
         socket.emit("leave_room_success", {
           room_id,
@@ -138,9 +146,11 @@ export default (io: Server) => {
 
         socket.to(room_id).emit("user_leave", {
           userId: socket.user.id,
-          user: socket.user,
+          current_user: socket.user,
           room_id,
+          all_users: usersInRoom,
         });
+        console.log(`User Count - ${usersInRoom?.length} in ${roomName}`);
       } catch (err) {
         console.error(err);
         socket.emit("leave_room_failed", {
