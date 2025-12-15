@@ -1,6 +1,44 @@
 import { prisma } from "../utils/prisma";
 
 export default class RoomMemberRepo {
+  static async findRoomMember(userId: string, roomId: string) {
+    return prisma.roomMember.findUnique({
+      where: {
+        room_id_user_id: { userId, roomId },
+      },
+    });
+  }
+  static async createRoomMember(roomId: string, userId: string, role: string) {
+    return prisma.roomMember.create({
+      data: {
+        roomId,
+        userId,
+        role,
+      },
+    });
+  }
+
+  static async getRoomsByUserId(userId: string) {
+    return prisma.roomMember.findMany({
+      where: {
+        userId,
+        room: {
+          isDeleted: false, // Only active rooms
+        },
+      },
+      select: {
+        room: {
+          select: {
+            name: true, // Only get room name
+          },
+        },
+      },
+      orderBy: {
+        joinedAt: "asc",
+      },
+    });
+  }
+
   static async getRoomMembers(roomId: string) {
     return prisma.roomMember.findMany({
       where: {

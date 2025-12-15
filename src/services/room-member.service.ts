@@ -17,4 +17,7 @@ export default class RoomMemberSvc {
   static async leaveAllRooms(userId: string) {
     return await RoomMemberRepo.leaveAllRooms(userId);
   }
+  static async getRoomsByUserId(userId: string) {
+    return RoomMemberRepo.getRoomsByUserId(userId);
+  }
 }
