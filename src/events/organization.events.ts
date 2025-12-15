@@ -73,14 +73,14 @@ export default (io: Server) => {
           room_id,
           all_users: usersInRoom,
         });
-        console.log(`User Count - ${usersInRoom?.length} in ${roomName}`);
+        console.log(`User Count + ${usersInRoom?.length} in ${roomName}`);
       } catch (err) {
         console.error(err);
       }
     });
 
     socket.on("send_message_to_room", async (data: any) => {
-      const { room_id, message, attachments = [] } = data;
+      const { room_id, message, attachments = [], roomName } = data;
       if (!room_id)
         return socket.emit("not_allowed", { message: "room_id missing" });
 
@@ -106,7 +106,7 @@ export default (io: Server) => {
       });
       await MessageSvc.createMessage(room_id, socket.user.id, message);
       console.log(
-        `✔ ${socket.user.id} sent a message in ${room_id}: ${message} at ${new Date().toISOString()}`
+        `✔ ${socket.user.name} sent a message in ${roomName}: \** ${message} **/ at ${new Date().toISOString()}`
       );
     });
 
@@ -126,7 +126,7 @@ export default (io: Server) => {
 
         if (existing?.length) {
           await UserChatSvc.leaveUserChat(socket.user.id, room_id);
-          console.log(`✔ ${socket.user.id} left the room ${room_id}`);
+          console.log(`✔ ${socket.user.id} left the room ${roomName} ${room_id}`);
         } else {
           return socket.emit("join_room_info", {
             message: "User already left the room",

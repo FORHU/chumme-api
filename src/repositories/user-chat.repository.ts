@@ -30,54 +30,11 @@ export default class UserChatRepo {
    * Create a new chat for a user in a room
    */
   static async createUserChat(userId: string, roomId: string, role: string) {
-    // return await prisma.userChat.upsert({
-    //   where: { room_id_user_id: { userId, roomId } },
-    //   update: {},
-    //   create: { userId, roomId },
-    // });
-
-    const userChat = await prisma.userChat.upsert({
+    return await prisma.userChat.upsert({
       where: { room_id_user_id: { userId, roomId } },
       update: {},
       create: { userId, roomId },
     });
-
-    const existingMember = await prisma.roomMember.findUnique({
-      where: {
-        room_id_user_id: { userId, roomId },
-      },
-    });
-
-    if (!existingMember) {
-      await prisma.roomMember.create({
-        data: {
-          roomId,
-          userId,
-          role: role,
-        },
-      });
-    }
-
-    const roomWithMembers = await prisma.room.findUnique({
-      where: { id: roomId },
-      include: {
-        members: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                username: true,
-                name: true,
-                avatar: { select: { fileUrl: true } },
-              },
-            },
-          },
-        },
-        messages: true,
-      },
-    });
-
-    return { userChat, room: roomWithMembers };
   }
 
   static async leaveUserChat(userId: string, roomId: string) {
