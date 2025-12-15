@@ -8,6 +8,7 @@ import {
     REFRESH_TOKEN_SECRET,
     ACCESS_TOKEN_EXPIRY,
 } from "../config";
+import { getSessionId } from "../utils/chat-wonder-api";
 
 export default class AuthSvc {
     static async register(data: {
@@ -41,6 +42,17 @@ export default class AuthSvc {
         const otp = generateOTP(); // "582941"
         const otpExpiry = getOTPExpiry(); // 5 minutes from now
 
+
+        // get chat wonder session Id
+        let chatSessionId = "";
+
+        try {
+        const response = await getSessionId();
+        chatSessionId = response?.session_id
+        } catch (err) {
+        console.error("[AuthSvc.register] Failed to get session ID", err);
+        }
+
         // Create user with OTP
         const user = await AuthRepo.createUser({
             email: data.email,
@@ -50,6 +62,7 @@ export default class AuthSvc {
             mobileNumber: data.mobileNumber,
             otpCode: otp, // Save OTP
             otpExpiry: otpExpiry, // Save expiry
+            chatSessionId
         });
 
         // Send verification email with OTP
@@ -79,6 +92,7 @@ export default class AuthSvc {
             { expiresIn: "7d" }
         );
 
+
         // Save refresh token
         await AuthRepo.createSession({
             userId: user.id,
@@ -92,6 +106,7 @@ export default class AuthSvc {
                 email: user.email,
                 username: user.username,
                 name: user.name,
+                chatSessionId: user.chatSessionId
             },
             accessToken,
             refreshToken,
@@ -150,6 +165,27 @@ export default class AuthSvc {
             throw "Invalid credentials";
         }
 
+        const hasChatSessionId = user.chatSessionId
+        if(!hasChatSessionId){
+            try {
+                const response = await getSessionId();
+                const chatSessionId = response?.session_id
+
+                if (chatSessionId) {
+                    await AuthRepo.updateUser(user.id, { chatSessionId });
+                    user.chatSessionId = chatSessionId
+                    console.log('[AuthSvc.login] chatSessionId updated')
+                    } else {
+                    console.warn(
+                        "[AuthSvc.login] chat service returned empty session_id"
+                    );
+                }
+
+                } catch (err) {
+                    console.error("[AuthSvc.login] Failed to update chat session ID", err);
+                } 
+        }
+
         if (!user.isEmailVerified) {
             return {
                 requiresVerification: true,
@@ -204,6 +240,7 @@ export default class AuthSvc {
                 role: user.role,
                 avatar: user.avatar?.fileUrl,
                 onboardingStatus: user.onboardingCompleted,
+                chatSessionId: user.chatSessionId
             },
         };
     }

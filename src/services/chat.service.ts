@@ -28,6 +28,7 @@ import logger from "../utils/logger";
 import CacheUtil from "../utils/cache.util";
 import ConversationSvc from "./conversation.service";
 import { getTimeStamp } from "../utils/helpers";
+import { sendChat } from "../utils/chat-wonder-api";
 
 // ========================================
 // INTERNAL TYPES FOR CHAT PROCESSING
@@ -567,6 +568,8 @@ export default class ChatSvc {
         userId: string,
         conversationId?: string
     ) {
+        
+
         // Validation
         if (!inputText || !inputText.trim()) {
             throw new BadRequestError("Input text cannot be empty");
