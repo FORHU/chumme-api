@@ -3,8 +3,13 @@ import RoomMemberRepo from "../repositories/room-member.repository";
 
 export default class RoomSvc {
   static async fetchRoomList() {
-    return await RoomRepo.fetchRoomList();
+    const response = await RoomRepo.fetchRoomList();
+    return response.map(({ _count, ...room }) => ({
+      ...room,
+      count: _count.members,
+    }));
   }
+
   /**
    * Create a new room
    * Automatically adds the creator as the owner and first member
@@ -115,7 +120,10 @@ export default class RoomSvc {
       return { success: false, message: "Room not found" };
     }
 
-    const isAlreadyMember = await RoomMemberRepo.isUserRoomMember(roomId, userId);
+    const isAlreadyMember = await RoomMemberRepo.isUserRoomMember(
+      roomId,
+      userId
+    );
     if (isAlreadyMember) {
       return {
         success: false,
