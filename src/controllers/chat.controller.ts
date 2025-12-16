@@ -9,11 +9,18 @@ import logger from "../utils/logger";
 export default class ChatCtrl {
   static async sendChat(req: Request, res: Response, next: NextFunction) {
     const { input, conversationId } = req.body;
-    const { id: userId } = req.user;
+    const { id: userId, chatSessionId } = req.user;
+
 
     if (!userId) {
       return next(
         new InternalServerError("Authenticated user not found in request")
+      );
+    }
+
+     if (!chatSessionId) {
+      return next(
+        new InternalServerError("Authenticated chat session ID not found in request")
       );
     }
 
@@ -29,7 +36,7 @@ export default class ChatCtrl {
     }
 
     try {
-      const result = await ChatSvc.sendChat(input, userId, conversationId);
+      const result = await ChatSvc.sendChat(input, userId, conversationId, chatSessionId);
       return res.json(result);
     } catch (error) {
       next(error);

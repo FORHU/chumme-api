@@ -27,7 +27,7 @@ import {
 import logger from "../utils/logger";
 import CacheUtil from "../utils/cache.util";
 import ConversationSvc from "./conversation.service";
-import { sendChat } from "../utils/chat-wonder-api";
+import { chatWonderSendChat } from "../utils/chat-wonder-api";
 
 // ========================================
 // INTERNAL TYPES FOR CHAT PROCESSING
@@ -323,7 +323,8 @@ export default class ChatSvc {
   private static async generateAIResponse(
     inputText: string,
     context: ChatContext,
-    videoResult: VideoResult
+    videoResult: VideoResult,
+    chatSessionId: string
   ): Promise<string> {
     // Filter out duplicate messages from RAG
     const recentMessageIds = new Set(
@@ -351,11 +352,18 @@ export default class ChatSvc {
     );
 
     const start = Date.now();
-    const finalChatResponse = await defaultOpenAIRequest(prompt, {
-      role: "user",
-      temperature: 0.7,
-      maxTokens: 800,
+    // const finalChatResponse = await defaultOpenAIRequest(prompt, {
+    //   role: "user",
+    //   temperature: 0.7,
+    //   maxTokens: 800,
+    // });
+    
+    const finalChatResponse = await chatWonderSendChat({
+      user_input: prompt,
+      user_history_select: "",
+      session_id: chatSessionId
     });
+
     const duration = Date.now() - start;
 
     logger.chat_response(`[OPENAI-InputResponse], response time: ${duration}`);
@@ -482,7 +490,8 @@ export default class ChatSvc {
     inputText: string,
     userId: string,
     conversationId: string,
-    context: ChatContext
+    context: ChatContext,
+    chatSessionId: string
   ) {
     // Detect language and song intent
     const additionalContext = await this.detectAdditionalContext(inputText);
@@ -499,7 +508,8 @@ export default class ChatSvc {
     const finalChatResponse = await this.generateAIResponse(
       inputText,
       context,
-      videoResult
+      videoResult,
+      chatSessionId
     );
 
     // Save user message
@@ -562,7 +572,8 @@ export default class ChatSvc {
   static async sendChat(
     inputText: string,
     userId: string,
-    conversationId?: string
+    conversationId?: string,
+    chatSessionId?: string
   ) {
     // Validation
     if (!inputText || !inputText.trim()) {
@@ -570,6 +581,10 @@ export default class ChatSvc {
     }
     if (!userId || !userId.trim()) {
       throw new BadRequestError("User ID is required");
+    }
+
+    if (!chatSessionId || !chatSessionId.trim()) {
+      throw new BadRequestError("Chat Session ID is required");
     }
 
     try {
@@ -582,24 +597,24 @@ export default class ChatSvc {
         conversationId
       );
 
-      // 3. Check for crisis
-      const isCrisis = detectCrisis(
-        context.emotion,
-        inputText,
-        context.confidence
-      );
+    //   // 3. Check for crisis
+    //   const isCrisis = detectCrisis(
+    //     context.emotion,
+    //     inputText,
+    //     context.confidence
+    //   );
 
-      // 4. Route to appropriate handler
-      if (isCrisis) {
-        return this.handleCrisisChat(
-          inputText,
-          userId,
-          conversationId,
-          context
-        );
-      }
+    //   // 4. Route to appropriate handler
+    //   if (isCrisis) {
+    //     return this.handleCrisisChat(
+    //       inputText,
+    //       userId,
+    //       conversationId,
+    //       context
+    //     );
+    //   }
 
-      return this.handleNormalChat(inputText, userId, conversationId, context);
+      return this.handleNormalChat(inputText, userId, conversationId, context, chatSessionId);
     } catch (error: any) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         logger.error(`Database error: ${error?.message}`);

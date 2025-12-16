@@ -37,6 +37,7 @@ export default class UserRepo {
         mobileNumber: true,
         isEmailVerified: true,
         onboardingCompleted: true,
+        chatSessionId: true,
         avatar: {
           select: {
             id: true,
