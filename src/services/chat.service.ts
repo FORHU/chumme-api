@@ -27,7 +27,6 @@ import {
 import logger from "../utils/logger";
 import CacheUtil from "../utils/cache.util";
 import ConversationSvc from "./conversation.service";
-import { getTimeStamp } from "../utils/helpers";
 import { sendChat } from "../utils/chat-wonder-api";
 
 // ========================================
@@ -75,6 +74,7 @@ export default class ChatSvc {
    * Reduces code duplication across message creation calls
    */
   private static getConversationConnect(
+    inputText?: string,
     conversationId?: string,
     userId?: string
   ) {
@@ -85,7 +85,7 @@ export default class ChatSvc {
     if (userId) {
       return {
         create: {
-          title: `${getTimeStamp()}`,
+          title: inputText,
           user: { connect: { id: userId } },
         },
       };
@@ -101,6 +101,7 @@ export default class ChatSvc {
    * Ensures a conversation exists, either by validating existing ID or creating new one
    */
   private static async ensureConversation(
+    inputText: string,
     userId: string,
     conversationId?: string
   ): Promise<string> {
@@ -111,7 +112,7 @@ export default class ChatSvc {
 
     const conversationData = await ConversationSvc.createConversation(
       userId,
-      `${getTimeStamp()}`
+      inputText
     );
     return conversationData.id;
   }
@@ -387,7 +388,7 @@ export default class ChatSvc {
       message: inputText,
       User: { connect: { id: userId } },
       role: "USER",
-      conversation: this.getConversationConnect(conversationId, userId),
+      conversation: this.getConversationConnect(inputText, conversationId, userId),
     });
   }
 
@@ -395,6 +396,7 @@ export default class ChatSvc {
    * Saves AI message to database
    */
   private static async saveAIMessage(
+    inputText: string,
     response: string,
     userId: string,
     conversationId: string
@@ -403,7 +405,7 @@ export default class ChatSvc {
       message: response,
       User: { connect: { id: userId } },
       role: "AI",
-      conversation: this.getConversationConnect(conversationId, userId),
+      conversation: this.getConversationConnect(inputText, conversationId, userId),
     });
   }
 
@@ -445,6 +447,7 @@ export default class ChatSvc {
 
     // Save AI crisis response
     const aiResponse = await this.saveAIMessage(
+      inputText,
       crisisResponse,
       userId,
       conversationId
@@ -508,6 +511,7 @@ export default class ChatSvc {
 
     // Save AI response
     const aiResponse = await this.saveAIMessage(
+      inputText,
       finalChatResponse,
       userId,
       conversationId
@@ -570,7 +574,7 @@ export default class ChatSvc {
 
     try {
       // 1. Ensure conversation exists
-      conversationId = await this.ensureConversation(userId, conversationId);
+      conversationId = await this.ensureConversation(inputText, userId, conversationId);
       // 2. Detect all context in parallel
       const context = await this.detectChatContext(
         inputText,
