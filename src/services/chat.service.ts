@@ -21,13 +21,14 @@ import EmbeddingSvc from "./embedding.service";
 import { Prisma } from "@prisma/client";
 import {
   BadRequestError,
+  ExternalServiceError,
   InternalServerError,
   NotFoundError,
 } from "../utils/error.util";
 import logger from "../utils/logger";
 import CacheUtil from "../utils/cache.util";
 import ConversationSvc from "./conversation.service";
-import { chatWonderSendChat } from "../utils/chat-wonder-api";
+import { chatWonderSendChat, refreshChatSession, TSendChatPayload } from "../utils/chat-wonder-api";
 
 // ========================================
 // INTERNAL TYPES FOR CHAT PROCESSING
@@ -324,7 +325,8 @@ export default class ChatSvc {
     inputText: string,
     context: ChatContext,
     videoResult: VideoResult,
-    chatSessionId: string
+    chatSessionId: string,
+    userId: string
   ): Promise<string> {
     // Filter out duplicate messages from RAG
     const recentMessageIds = new Set(
@@ -357,12 +359,9 @@ export default class ChatSvc {
     //   temperature: 0.7,
     //   maxTokens: 800,
     // });
+
+    const finalChatResponse = await this.chatWonderSendChatWithRetry(userId, chatSessionId, {user_input: prompt, user_history_select: "relevant_history"});
     
-    const finalChatResponse = await chatWonderSendChat({
-      user_input: prompt,
-      user_history_select: "",
-      session_id: chatSessionId
-    });
 
     const duration = Date.now() - start;
 
@@ -380,13 +379,37 @@ export default class ChatSvc {
     return finalChatResponse;
   }
 
-  // ========================================
-  // PRIVATE HELPERS - MESSAGE PERSISTENCE
-  // ========================================
+  private static async chatWonderSendChatWithRetry(userId: string, chatSessionId: string, payload: Omit<TSendChatPayload, 'session_id'>): Promise<string> {
+    let sessionId = chatSessionId;
+    let maxRetries = 2;
+    let retryCount = 0;
 
-  /**
-   * Saves user message to database
-   */
+    while (retryCount < maxRetries) {
+      try {
+        const response = await chatWonderSendChat({
+          ...payload,
+          session_id: sessionId
+        });
+        return response;
+      } catch (error: any) {
+        console.log("Error in chatWonderSendChat:", error?.message);
+        const code = error?.statusCode;
+        const message = error?.message;
+
+        if (code === 502 && message.includes("401")) {
+            sessionId = await refreshChatSession(userId);
+            console.log("New Session ID:", sessionId);
+            retryCount++;
+        } else {
+          throw error;
+        }
+      }
+    }
+
+    throw new ExternalServiceError("Failed to send chat after retries");
+  }
+
+
   private static async saveUserMessage(
     inputText: string,
     userId: string,
@@ -509,7 +532,8 @@ export default class ChatSvc {
       inputText,
       context,
       videoResult,
-      chatSessionId
+      chatSessionId,
+      userId
     );
 
     // Save user message
