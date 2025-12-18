@@ -325,4 +325,14 @@ export default class RoomRepo {
     });
     return !!room;
   }
+  static async getRoomMessages(roomId: string) {
+    return prisma.room.findUnique({
+      where: {
+        id: roomId,
+      },
+      select: {
+        messages: true,
+      },
+    });
+  }
 }

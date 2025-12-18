@@ -226,5 +226,18 @@ export default class RoomCtrl {
       return res.status(500).json({ message: error.message || error });
     }
   }
-
+  static async getRoomMessages(req: Request, res: Response) {
+    try {
+      if (!req.params.roomId) {
+        return res.status(400).json({ message: "Room ID is required" });
+      }
+      if (!req.user.id) {
+        return res.status(400).json({ message: "Unauthorized" });
+      }
+      const response = await RoomSvc.getRoomMessages(req.params.roomId);
+      return res.status(201).json({ result: response });
+    } catch (err: any) {
+      return res.status(400).json({ message: err.message || err });
+    }
+  }
 }
