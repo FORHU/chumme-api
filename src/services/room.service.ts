@@ -166,4 +166,7 @@ export default class RoomSvc {
   static async findById(roomId: string) {
     return RoomRepo.findById(roomId);
   }
+  static async getRoomMessages(roomId: string) {
+    return RoomRepo.getRoomMessages(roomId);
+  }
 }
