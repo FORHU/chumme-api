@@ -24,7 +24,6 @@ export default class MessageRepo {
   ) {
     const safePage = Math.max(page, 1);
     const safeLimit = Math.max(limit, 1);
-    console.log(roomId, safePage, safeLimit);
     return prisma.message.findMany({
       where: {
         roomId,
