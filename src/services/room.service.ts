@@ -1,5 +1,6 @@
 import RoomRepo from "../repositories/room.repository";
 import RoomMemberRepo from "../repositories/room-member.repository";
+import CacheUtil from "../utils/cache.util";
 
 export default class RoomSvc {
   static async fetchRoomList() {
@@ -166,7 +167,28 @@ export default class RoomSvc {
   static async findById(roomId: string) {
     return RoomRepo.findById(roomId);
   }
-  static async getRoomMessages(roomId: string) {
-    return RoomRepo.getRoomMessages(roomId);
+  static async getRoomMessages(
+    userId: string,
+    roomId: string,
+    page: number,
+    limit: number
+  ) {
+    if (page < 0) {
+      throw new Error("Page must be non-negative");
+    }
+    if (limit < 1 || limit > 50) {
+      throw new Error("Limit must be between 1 and 50");
+    }
+
+    // Include userId in cache key
+    const cacheKey = `messages:user:${userId}:page:${page}:limit:${limit}`;
+    const cached = await CacheUtil.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const response = await RoomRepo.getRoomMessages(roomId);
+    await CacheUtil.set(cacheKey, response);
+    return response;
   }
 }
