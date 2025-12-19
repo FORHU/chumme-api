@@ -181,7 +181,7 @@ export default class RoomSvc {
     }
 
     // Include userId in cache key
-    const cacheKey = `messages:user:${userId}:page:${page}:limit:${limit}`;
+    const cacheKey = `roomMessages:user:${userId}:page:${page}:limit:${limit}`;
     const cached = await CacheUtil.get(cacheKey);
     if (cached) {
       return cached;
