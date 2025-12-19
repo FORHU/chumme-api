@@ -126,7 +126,9 @@ export default (io: Server) => {
 
         if (existing?.length) {
           await UserChatSvc.leaveUserChat(socket.user.id, room_id);
-          console.log(`✔ ${socket.user.id} left the room ${roomName} ${room_id}`);
+          console.log(
+            `✔ ${socket.user.id} left the room ${roomName} ${room_id}`
+          );
         } else {
           return socket.emit("join_room_info", {
             message: "User already left the room",

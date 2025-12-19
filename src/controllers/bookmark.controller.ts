@@ -13,7 +13,7 @@ export default class BookmarkCtrl {
         page,
         limit
       );
-      res.json({
+      return res.json({
         success: true,
         data: bookmark,
         pagination: {
