@@ -18,7 +18,6 @@ export default class AuthRepo {
     mobileNumber?: string;
     otpCode?: string;
     otpExpiry?: Date;
-    chatSessionId?: string;
   }) {
     return prisma.user.create({
       data: {
@@ -31,7 +30,6 @@ export default class AuthRepo {
         otpExpiry: data.otpExpiry,
         isEmailVerified: false,
         provider: null,
-        chatSessionId: data.chatSessionId
       },
       select: {
         id: true,
@@ -42,7 +40,6 @@ export default class AuthRepo {
         isEmailVerified: true,
         createdAt: true,
         updatedAt: true,
-        chatSessionId: true
       },
     });
   }
