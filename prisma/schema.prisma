@@ -45,7 +45,6 @@ model User {
   userEmotionPreferences UserEmotionPreference[]
   userInterests          UserInterest[]
   userChats              UserChat[]
-  chatSessionId          String?
 }
 
 model Session {
