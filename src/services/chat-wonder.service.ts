@@ -4,6 +4,7 @@ import logger from "../utils/logger";
 import CacheUtil from "../utils/cache.util";
 
 import { sendChat, getSessionId } from "../utils/chat-wonder-api";
+import ChatSvc from "./chat.service";
 
 
 interface ChatContext {
@@ -30,6 +31,7 @@ export default class ChatWonderSvc {
     static async sendChat(
       inputText: string,
       userId: string,
+      conversationId?: string
     ) {
       // Validation
       if (!inputText || !inputText.trim()) {
@@ -38,12 +40,14 @@ export default class ChatWonderSvc {
       if (!userId || !userId.trim()) {
         throw new BadRequestError("User ID is required");
       }
-       
-      const chatSessionId = await this.generateChatSessionId(userId) ?? "";
-  
+      
+
       try {
 
-        return this.handleNormalChat(inputText, userId, chatSessionId);
+        conversationId = await ChatSvc.ensureConversation(inputText, userId, conversationId);
+        const chatSessionId = await this.generateChatSessionId(userId) ?? "";
+
+        return this.handleNormalChat(inputText, userId, conversationId, chatSessionId);
       } catch (error: any) {
         if (error instanceof Prisma.PrismaClientKnownRequestError) {
           logger.error(`Database error: ${error?.message}`);
@@ -80,7 +84,8 @@ export default class ChatWonderSvc {
       private static async handleNormalChat(
         inputText: string,
         userId: string,
-        chatSessionId: string
+        conversationId: string,
+        chatSessionId: string,
       ) {
 
         let finalChatResponse = ""
@@ -110,27 +115,27 @@ export default class ChatWonderSvc {
            }
         }
         // Save user message
-        // const chatMessage = await this.saveUserMessage(
-        //   inputText,
-        //   userId,
-        //   ""
-        // );
+        const chatMessage = await ChatSvc.saveUserMessage(
+          inputText,
+          userId,
+          conversationId
+        );
     
         // Save AI response
-        // const aiResponse = await this.saveAIMessage(
-        //   inputText,
-        //   finalChatResponse,
-        //   userId,
-        //   ""
-        // );
+        const aiResponse = await ChatSvc.saveAIMessage(
+          inputText,
+          finalChatResponse,
+          userId,
+          conversationId
+        );
     
     
         await CacheUtil.delByPattern(`chat:list:${userId}:*`);
     
         return {
           response: finalChatResponse,
-          // chatMessageId: chatMessage.id,
-          // aiResponseId: aiResponse.id,
+          chatMessageId: chatMessage.id,
+          aiResponseId: aiResponse.id,
           chatSessionId: currentSessionId
         };
       }

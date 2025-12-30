@@ -100,7 +100,7 @@ export default class ChatSvc {
   /**
    * Ensures a conversation exists, either by validating existing ID or creating new one
    */
-  private static async ensureConversation(
+   static async ensureConversation(
     inputText: string,
     userId: string,
     conversationId?: string
@@ -379,7 +379,7 @@ export default class ChatSvc {
   /**
    * Saves user message to database
    */
-  private static async saveUserMessage(
+  static async saveUserMessage(
     inputText: string,
     userId: string,
     conversationId: string
@@ -395,7 +395,7 @@ export default class ChatSvc {
   /**
    * Saves AI message to database
    */
-  private static async saveAIMessage(
+  static async saveAIMessage(
     inputText: string,
     response: string,
     userId: string,
