@@ -7,7 +7,7 @@ import ChatWonderSvc from "../services/chat-wonder.service";
 
 export default class ChatWonderCtrl {
   static async sendChat(req: Request, res: Response, next: NextFunction) {
-    const { input } = req.body;
+    const { input, conversationId } = req.body;
     const { id: userId } = req.user;
 
     if (!userId) {
@@ -18,6 +18,7 @@ export default class ChatWonderCtrl {
 
     const schema = Joi.object({
       input: Joi.string().min(1).max(500).optional(),
+      conversationId: Joi.optional(),
     });
 
     const { error } = schema.validate(req.body);
@@ -27,7 +28,7 @@ export default class ChatWonderCtrl {
     }
 
     try {
-      const result = await ChatWonderSvc.sendChat(input, userId);
+      const result = await ChatWonderSvc.sendChat(input, userId, conversationId);
       return res.json(result);
     } catch (error) {
       next(error);
