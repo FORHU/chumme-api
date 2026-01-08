@@ -69,7 +69,7 @@ export default class AuthRepo {
       data: {
         isActive: true,
         lastLoginAt: new Date(),
-        updatedAt: new Date(), // This is handled automatically by @updatedAt
+        updatedAt: new Date(),
       },
       select: {
         id: true,
@@ -115,6 +115,14 @@ export default class AuthRepo {
     });
   }
 
+  static async deleteSession(refreshToken: string) {
+    return prisma.session.deleteMany({
+      where: {
+        refreshToken,
+      },
+    });
+  }
+
   static async findUserById(userId: string) {
     return prisma.user.findUnique({
       where: {
@@ -149,6 +157,7 @@ export default class AuthRepo {
       data: data,
     });
   }
+
   static async getAuthUser(userId: string) {
     return prisma.user.findUnique({
       where: {

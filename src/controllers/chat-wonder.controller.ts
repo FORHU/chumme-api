@@ -1,8 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import Joi from "joi";
 import { BadRequestError, InternalServerError } from "../utils/error.util";
-
-import logger from "../utils/logger";
 import ChatWonderSvc from "../services/chat-wonder.service";
 
 export default class ChatWonderCtrl {
@@ -17,22 +15,25 @@ export default class ChatWonderCtrl {
     }
 
     const schema = Joi.object({
-      input: Joi.string().min(1).max(500).optional(),
-      conversationId: Joi.optional(),
+      input: Joi.string().min(1).max(500).required(),
+      conversationId: Joi.string().optional(),
     });
 
     const { error } = schema.validate(req.body);
 
     if (error) {
-      next(new BadRequestError(error.message));
+      return next(new BadRequestError(error.message));
     }
 
     try {
-      const result = await ChatWonderSvc.sendChat(input, userId, conversationId);
+      const result = await ChatWonderSvc.sendChat(
+        input,
+        userId,
+        conversationId
+      );
       return res.json(result);
     } catch (error) {
       next(error);
     }
   }
-
 }
