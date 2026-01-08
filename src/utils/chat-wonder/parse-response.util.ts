@@ -266,6 +266,14 @@ export function parseChatWonderResponse(
         );
         const parsed = JSON.parse(cleanedJson);
 
+        // Validate required fields
+        if (!parsed.message) {
+          logger.warn(
+            '[CHAT.WONDER.PARSER] Parsed JSON missing "message" field'
+          );
+          throw new Error("Invalid JSON: missing message field");
+        }
+
         logger.info(
           `[CHAT.WONDER.PARSER] Successfully parsed JSON with message: ${parsed.message?.substring(0, 50)}...`
         );

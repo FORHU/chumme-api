@@ -253,6 +253,8 @@ RULES:
 - If no videos are available, return an empty array
 - If no artist is available, return an empty array
 - If no images are available, return an empty array
+- Do NOT include tool execution output or any text before/after the JSON
+- Response must start with { and end with }
 - No RAW data in response
 
 USER: "${userMessage}"`;
