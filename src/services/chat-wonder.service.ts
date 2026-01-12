@@ -86,11 +86,8 @@ export default class ChatWonderSvc {
 
     while (retryCount < maxRetries) {
       try {
-        // const chumeePrompt = await this.generateChumeePrompt(inputText);
-        console.log("++++++++++++", inputText);
         const chumeePrompt = await this.additionalPrompt(inputText);
         const chatWonderResObject = await sendChatWithChatWonder({
-          // user_input: `[chumme] ${inputText}`,
           user_input: chumeePrompt,
           user_history_select: "",
           session_id: currentSessionId,
