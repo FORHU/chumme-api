@@ -15,9 +15,9 @@ router.get("/:id", authenticate, ConversationCtrl.getConversationById);
 
 // Get messages in a conversation
 router.get(
-    "/:id/messages",
-    authenticate,
-    ConversationCtrl.getConversationMessages
+  "/:id/messages",
+  authenticate,
+  ConversationCtrl.getConversationMessages
 );
 
 // Update conversation title
