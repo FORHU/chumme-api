@@ -16,14 +16,15 @@ import feedRoute from "./feed.route";
 import bookmarkRoute from "./bookmark.route";
 import conversationRoute from "./conversation.route";
 import userChatRoute from "./user-chat.route";
+import messagesRoute from "./messages.route";
 import chatWonderRoute from "./chat-wonder.route";
 
 const router = express.Router();
 
 router.get("/v1", (_, res) => {
-    res.json({
-        message: "Welcome to my API",
-    });
+  res.json({
+    message: "Welcome to my API",
+  });
 });
 
 router.use("/v1/auth", authRoute);
@@ -42,7 +43,9 @@ router.use("/v1/videos", videoRoute);
 router.use("/v1/feed", feedRoute);
 router.use("/v1/conversations", conversationRoute);
 router.use("/v1/bookmark", bookmarkRoute);
+router.use("/v1/messages", messagesRoute);
 router.use("/v1", healthRoute);
+
 router.use("/v1/chat-wonder", chatWonderRoute);
     
 export default router;
