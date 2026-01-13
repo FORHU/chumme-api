@@ -100,7 +100,7 @@ export default class ChatSvc {
   /**
    * Ensures a conversation exists, either by validating existing ID or creating new one
    */
-  private static async ensureConversation(
+  static async ensureConversation(
     inputText: string,
     userId: string,
     conversationId?: string
@@ -379,7 +379,7 @@ export default class ChatSvc {
   /**
    * Saves user message to database
    */
-  private static async saveUserMessage(
+  static async saveUserMessage(
     inputText: string,
     userId: string,
     conversationId: string
@@ -388,14 +388,18 @@ export default class ChatSvc {
       message: inputText,
       User: { connect: { id: userId } },
       role: "USER",
-      conversation: this.getConversationConnect(inputText, conversationId, userId),
+      conversation: this.getConversationConnect(
+        inputText,
+        conversationId,
+        userId
+      ),
     });
   }
 
   /**
    * Saves AI message to database
    */
-  private static async saveAIMessage(
+  static async saveAIMessage(
     inputText: string,
     response: string,
     userId: string,
@@ -405,7 +409,11 @@ export default class ChatSvc {
       message: response,
       User: { connect: { id: userId } },
       role: "AI",
-      conversation: this.getConversationConnect(inputText, conversationId, userId),
+      conversation: this.getConversationConnect(
+        inputText,
+        conversationId,
+        userId
+      ),
     });
   }
 
@@ -574,7 +582,11 @@ export default class ChatSvc {
 
     try {
       // 1. Ensure conversation exists
-      conversationId = await this.ensureConversation(inputText, userId, conversationId);
+      conversationId = await this.ensureConversation(
+        inputText,
+        userId,
+        conversationId
+      );
       // 2. Detect all context in parallel
       const context = await this.detectChatContext(
         inputText,

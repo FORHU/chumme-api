@@ -18,7 +18,6 @@ export default class AuthRepo {
     mobileNumber?: string;
     otpCode?: string;
     otpExpiry?: Date;
-    chatSessionId?: string;
   }) {
     return prisma.user.create({
       data: {
@@ -31,7 +30,6 @@ export default class AuthRepo {
         otpExpiry: data.otpExpiry,
         isEmailVerified: false,
         provider: null,
-        chatSessionId: data.chatSessionId
       },
       select: {
         id: true,
@@ -42,7 +40,6 @@ export default class AuthRepo {
         isEmailVerified: true,
         createdAt: true,
         updatedAt: true,
-        chatSessionId: true
       },
     });
   }
@@ -72,7 +69,7 @@ export default class AuthRepo {
       data: {
         isActive: true,
         lastLoginAt: new Date(),
-        updatedAt: new Date(), // This is handled automatically by @updatedAt
+        updatedAt: new Date(),
       },
       select: {
         id: true,
@@ -118,6 +115,14 @@ export default class AuthRepo {
     });
   }
 
+  static async deleteSession(refreshToken: string) {
+    return prisma.session.deleteMany({
+      where: {
+        refreshToken,
+      },
+    });
+  }
+
   static async findUserById(userId: string) {
     return prisma.user.findUnique({
       where: {
@@ -152,6 +157,7 @@ export default class AuthRepo {
       data: data,
     });
   }
+
   static async getAuthUser(userId: string) {
     return prisma.user.findUnique({
       where: {

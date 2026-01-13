@@ -17,6 +17,7 @@ import bookmarkRoute from "./bookmark.route";
 import conversationRoute from "./conversation.route";
 import userChatRoute from "./user-chat.route";
 import messagesRoute from "./messages.route";
+import chatWonderRoute from "./chat-wonder.route";
 
 const router = express.Router();
 
@@ -45,4 +46,6 @@ router.use("/v1/bookmark", bookmarkRoute);
 router.use("/v1/messages", messagesRoute);
 router.use("/v1", healthRoute);
 
+router.use("/v1/chat-wonder", chatWonderRoute);
+    
 export default router;
