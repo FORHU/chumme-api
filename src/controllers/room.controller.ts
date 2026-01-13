@@ -16,15 +16,16 @@ export default class RoomCtrl {
    * Only non-deleted users can create rooms
    */
   static async createRoom(req: Request, res: Response) {
-    const { name, note } = req.body;
+    const { name, note, roomSubCategoryId } = req.body;
     const userId = req.user.id;
 
     const schema = Joi.object({
       name: Joi.string().min(1).max(100).required(),
       note: Joi.string(),
+      roomSubCategoryId: Joi.string().uuid().required(),
     });
 
-    const { error } = schema.validate({ name, note });
+    const { error } = schema.validate({ name, note, roomSubCategoryId });
     if (error) {
       return res.status(400).json({ message: error.message });
     }
@@ -34,6 +35,7 @@ export default class RoomCtrl {
         name,
         note,
         ownerId: userId,
+        roomSubCategoryId,
       });
       return res.status(201).json({
         message: "Room created successfully",
@@ -97,7 +99,7 @@ export default class RoomCtrl {
    */
   static async updateRoom(req: Request, res: Response) {
     try {
-      const { name, isPrivate, note, roomId } = req.body;
+      const { name, isPrivate, note, roomId, roomSubCategoryId } = req.body;
       const userId = req.user.id;
       console.log("++++++++++++", req.body);
       const schema = Joi.object({
@@ -105,6 +107,7 @@ export default class RoomCtrl {
         name: Joi.string().min(1).max(100).optional(),
         isPrivate: Joi.boolean().optional(),
         note: Joi.string().min(1).max(500).optional(),
+        roomSubCategoryId: Joi.string().uuid().optional(),
       });
 
       const { error } = schema.validate({
@@ -112,6 +115,7 @@ export default class RoomCtrl {
         name,
         isPrivate,
         note,
+        roomSubCategoryId,
       });
       if (error) {
         return res.status(400).json({ message: error.message });
@@ -122,6 +126,7 @@ export default class RoomCtrl {
           name,
           isPrivate,
           note,
+          roomSubCategoryId,
         },
         userId
       );

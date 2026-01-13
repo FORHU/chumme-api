@@ -5,6 +5,8 @@ import userRoute from "./user.route";
 import postRoute from "./post.route";
 import roomRoute from "./room.route";
 import roomMemberRoute from "./room-member.route";
+import roomCategoryRoute from "./room-category.route";
+import roomSubCategoryRoute from "./room-subcategory.route";
 import onboardingRoute from "./onboarding.route";
 import userInterestRoute from "./user-interest.route";
 import userEmotionRoute from "./user-emotion.route";
@@ -21,9 +23,9 @@ import chatWonderRoute from "./chat-wonder.route";
 const router = express.Router();
 
 router.get("/v1", (_, res) => {
-    res.json({
-        message: "Welcome to my API",
-    });
+  res.json({
+    message: "Welcome to my API",
+  });
 });
 
 router.use("/v1/auth", authRoute);
@@ -33,6 +35,8 @@ router.use("/v1/posts", postRoute);
 router.use("/v1/user-chat", userChatRoute);
 router.use("/v1/rooms", roomRoute);
 router.use("/v1/room-member", roomMemberRoute);
+router.use("/v1/room-categories", roomCategoryRoute);
+router.use("/v1/room-subcategories", roomSubCategoryRoute);
 router.use("/v1/onboarding", onboardingRoute);
 router.use("/v1/interests", userInterestRoute);
 router.use("/v1/emotions", userEmotionRoute);
@@ -44,5 +48,5 @@ router.use("/v1/conversations", conversationRoute);
 router.use("/v1/bookmark", bookmarkRoute);
 router.use("/v1", healthRoute);
 router.use("/v1/chat-wonder", chatWonderRoute);
-    
+
 export default router;

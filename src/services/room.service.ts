@@ -1,5 +1,6 @@
 import RoomRepo from "../repositories/room.repository";
 import RoomMemberRepo from "../repositories/room-member.repository";
+import RoomSubCategoryRepo from "../repositories/room-subcategory.repository";
 import CacheUtil from "../utils/cache.util";
 
 export default class RoomSvc {
@@ -19,10 +20,19 @@ export default class RoomSvc {
     name: string;
     note: string;
     ownerId: string;
+    roomSubCategoryId: string;
   }) {
     const roomByName = await RoomRepo.findRoomName(data.name);
     if (roomByName) {
       throw new Error("Name Already Exist!");
+    }
+
+    // Validate subcategory exists
+    const subCategoryExists = await RoomSubCategoryRepo.getSubCategoryById(
+      data.roomSubCategoryId
+    );
+    if (!subCategoryExists) {
+      throw new Error("Room subcategory not found");
     }
 
     // Create the room
@@ -89,6 +99,7 @@ export default class RoomSvc {
       name?: string;
       isPrivate?: boolean;
       note?: string;
+      roomSubCategoryId?: string;
     },
     userId: string
   ) {
@@ -96,6 +107,16 @@ export default class RoomSvc {
     const isOwner = await RoomRepo.isUserRoomOwner(roomId, userId);
     if (!isOwner) {
       return null;
+    }
+
+    // Validate subcategory if provided
+    if (updateData.roomSubCategoryId) {
+      const subCategoryExists = await RoomSubCategoryRepo.getSubCategoryById(
+        updateData.roomSubCategoryId
+      );
+      if (!subCategoryExists) {
+        throw new Error("Room subcategory not found");
+      }
     }
 
     return RoomRepo.updateRoom(roomId, updateData);

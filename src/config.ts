@@ -6,12 +6,12 @@ export const PORT = Number(process.env.PORT || 3002);
 export const SECRET_KEY = process.env.SECRET_KEY as string;
 export const isDev = process.env.NODE_ENV !== "production";
 export const MAILER_TRANSPORT_HOST = process.env
-    .MAILER_TRANSPORT_HOST as string;
+  .MAILER_TRANSPORT_HOST as string;
 export const MAILER_TRANSPORT_PORT = Number(
-    process.env.MAILER_TRANSPORT_PORT || 465
+  process.env.MAILER_TRANSPORT_PORT || 465
 );
 export const MAILER_TRANSPORT_SECURE =
-    process.env.MAILER_TRANSPORT_SECURE === "true";
+  process.env.MAILER_TRANSPORT_SECURE === "true";
 export const MAILER_EMAIL = process.env.MAILER_EMAIL as string;
 export const MAILER_PASSWORD = process.env.MAILER_PASSWORD as string;
 export const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET as string;
@@ -27,13 +27,14 @@ export const S3_CDN_URL = process.env.S3_CDN_URL as string;
 export const AWS_REGION = process.env.AWS_REGION || "ap-southeast-1";
 export const AWS_ACCESS_KEY_ID = process.env.AWS_ACCESS_KEY_ID as string;
 export const AWS_SECRET_ACCESS_KEY = process.env
-    .AWS_SECRET_ACCESS_KEY as string;
+  .AWS_SECRET_ACCESS_KEY as string;
 export const AWS_S3_BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME as string;
 
 // RabbitMQ Configuration
-export const RABBITMQ_URL = process.env.RABBITMQ_URL || "amqp://admin:admin123@localhost:5672/my_vhost";
+export const RABBITMQ_URL =
+  process.env.RABBITMQ_URL || "amqp://admin:admin123@localhost:5672/my_vhost";
 export const RABBITMQ_EXCHANGE =
-    process.env.RABBITMQ_EXCHANGE || "chumme_exchange";
+  process.env.RABBITMQ_EXCHANGE || "chumme_exchange";
 export const RABBITMQ_QUEUE_PREFIX =
-    process.env.RABBITMQ_QUEUE_PREFIX || "chumme";
-export const CHAT_WONDER_API_URL = process.env.CHAT_WONDER_API_URL || "http://localhost:8001";
+  process.env.RABBITMQ_QUEUE_PREFIX || "chumme";
+export const CHAT_WONDER_API_URL = process.env.CHAT_WONDER_API_URL;

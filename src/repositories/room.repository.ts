@@ -1,4 +1,5 @@
 import { prisma } from "../utils/prisma";
+import { generateKeyName } from "../utils/key-name.util";
 
 export default class RoomRepo {
   static async findRoomName(name: string) {
@@ -39,13 +40,16 @@ export default class RoomRepo {
     name: string;
     note: string;
     ownerId: string;
+    roomSubCategoryId: string;
   }) {
     return prisma.room.create({
       data: {
         name: data.name,
+        key_name: generateKeyName(data.name),
         isPrivate: false,
         note: data.note,
         ownerId: data.ownerId,
+        roomSubCategoryId: data.roomSubCategoryId,
         isDeleted: false,
       },
     });
@@ -69,6 +73,16 @@ export default class RoomRepo {
             avatar: {
               select: {
                 fileUrl: true,
+              },
+            },
+          },
+        },
+        roomSubCategory: {
+          include: {
+            roomCategory: {
+              select: {
+                id: true,
+                name: true,
               },
             },
           },
@@ -142,6 +156,16 @@ export default class RoomRepo {
             },
           },
         },
+        roomSubCategory: {
+          include: {
+            roomCategory: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
         members: {
           select: {
             user: {
@@ -196,6 +220,7 @@ export default class RoomRepo {
       name?: string;
       isPrivate?: boolean;
       note?: string;
+      roomSubCategoryId?: string;
     }
   ) {
     return prisma.room.update({
@@ -204,7 +229,15 @@ export default class RoomRepo {
         isDeleted: false, // Add this condition
       },
       data: {
-        ...data,
+        ...(data.name && {
+          name: data.name,
+          key_name: generateKeyName(data.name),
+        }),
+        ...(data.isPrivate !== undefined && { isPrivate: data.isPrivate }),
+        ...(data.note !== undefined && { note: data.note }),
+        ...(data.roomSubCategoryId && {
+          roomSubCategoryId: data.roomSubCategoryId,
+        }),
         updatedAt: new Date(),
       },
       include: {
