@@ -112,10 +112,14 @@ export default class ChatWonderCtrl {
               "[CHAT-WONDER-STREAM] Stream completed, saving AI response"
             );
 
-            // Save AI response
+            // Parse the full response using the parser
+            const parsedResponse = parseChatWonderResponse(fullResponse);
+            const { raw, ...cleanResponse } = parsedResponse;
+
+            // Save AI response (just the parsed message)
             const aiResponse = await ChatSvc.saveAIMessage(
               input,
-              fullResponse,
+              parsedResponse.message,
               userId,
               conversationId
             );
@@ -123,16 +127,16 @@ export default class ChatWonderCtrl {
             // Clear cache
             await CacheUtil.delByPattern(`chat:list:${userId}:*`);
 
-            // Send completion event with metadata
+            // Send completion event with parsed data
             res.write(
               `data: ${JSON.stringify({
                 type: "complete",
+                ...cleanResponse,
                 metadata: {
                   conversationId,
                   chatMessageId: chatMessage.id,
                   aiResponseId: aiResponse.id,
                   chatSessionId,
-                  rawResponse: fullResponse,
                 },
               })}\n\n`
             );

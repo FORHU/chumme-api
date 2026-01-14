@@ -226,34 +226,55 @@ export function parseChatWonderResponse(
   try {
     let trimmed = rawResponse.trim();
 
-    // Handle JSON wrapped in quotes like "{ \"message\": ... }"
+    // Remove outer quotes and unescape if needed
     if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
-      trimmed = trimmed.slice(1, -1);
-    }
-    if (trimmed.startsWith('"') && trimmed.includes('\\"')) {
-      // Already parsed once, unescape
-      trimmed = JSON.parse(rawResponse);
-    }
-
-    // Handle escaped backslashes and quotes
-    if (typeof trimmed === "string" && trimmed.includes('\\"')) {
-      trimmed = trimmed.replace(/\\"/g, '"');
-    }
-    if (typeof trimmed === "string" && trimmed.includes("\\n")) {
-      trimmed = trimmed.replace(/\\n/g, "");
-    }
-
-    // Try JSON parse first - find the last complete JSON object
-    // This handles cases like: [Tool] ... \n { "message": "..." }
-    const allJsonMatches = trimmed.match(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/g);
-    const jsonMatch = allJsonMatches
-      ? allJsonMatches[allJsonMatches.length - 1]
-      : null;
-
-    if (jsonMatch && jsonMatch.includes('"message"')) {
       try {
-        let cleanedJson = jsonMatch;
+        trimmed = JSON.parse(trimmed);
+      } catch {
+        // If parse fails, just remove quotes
+        trimmed = trimmed.slice(1, -1);
+      }
+    }
 
+    // Unescape common escape sequences
+    if (typeof trimmed === "string") {
+      trimmed = trimmed.replace(/\\"/g, '"').replace(/\\n/g, "");
+    }
+
+    // Extract the LAST complete JSON object (handles duplicates)
+    // Use a simpler approach: find all { } pairs and take the last one
+    const jsonObjects: string[] = [];
+    let braceDepth = 0;
+    let currentJson = "";
+    let jsonStarted = false;
+
+    for (const char of trimmed) {
+      if (char === "{") {
+        if (braceDepth === 0) {
+          currentJson = "";
+          jsonStarted = true;
+        }
+        braceDepth++;
+        currentJson += char;
+      } else if (char === "}") {
+        currentJson += char;
+        braceDepth--;
+        if (braceDepth === 0 && jsonStarted) {
+          jsonObjects.push(currentJson);
+          jsonStarted = false;
+        }
+      } else if (jsonStarted) {
+        currentJson += char;
+      }
+    }
+
+    // Try to parse the last JSON object found
+    const lastJson = jsonObjects[jsonObjects.length - 1];
+    if (lastJson) {
+      try {
+        let cleanedJson = lastJson;
+
+        // Remove markdown code fences if present
         if (cleanedJson.includes("```")) {
           cleanedJson = cleanedJson
             .replace(/```json\s*/g, "")
@@ -278,7 +299,7 @@ export function parseChatWonderResponse(
           `[CHAT.WONDER.PARSER] Successfully parsed JSON with message: ${parsed.message?.substring(0, 50)}...`
         );
 
-        // Handle JSON format - AI returns emotion/confidence at top level
+        // Return structured response
         return {
           message: parsed.message || "Here's something for you.",
           emotion_data: {
@@ -303,11 +324,11 @@ export function parseChatWonderResponse(
         logger.warn(
           `[CHAT.WONDER.PARSER] JSON parse failed: ${parseError.message}`
         );
-        // JSON parse failed, continue to markdown parsing
+        // Fall through to markdown parsing
       }
     }
 
-    // Markdown format parsing
+    // Markdown format parsing fallback
     const message = extractMessage(trimmed);
     const videos = extractVideosFromResponse(trimmed);
     const { emotion, confidence } = detectEmotionFromMessage(message);
@@ -333,8 +354,12 @@ export function parseChatWonderResponse(
       `[CHAT.WONDER.PARSER] Failed to parse response: ${error?.message}`
     );
 
+    // Fallback: return truncated raw response to avoid huge message
+    const fallbackMessage =
+      rawResponse?.substring(0, 200) || "I'm here to help you.";
+
     return {
-      message: rawResponse || "I'm here to help you.",
+      message: fallbackMessage,
       emotion_data: {
         emotion: "neutral",
         confidence: 0.5,
