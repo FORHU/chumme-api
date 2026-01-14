@@ -9,7 +9,6 @@ import {
 } from "../utils/chat-wonder-api";
 import { parseChatWonderResponse } from "../utils/chat-wonder";
 import ChatSvc from "./chat.service";
-import { string } from "joi";
 
 export default class ChatWonderSvc {
   static async sendChat(
@@ -161,8 +160,6 @@ export default class ChatWonderSvc {
     OUTPUT FORMAT - RESPOND IN JSON ONLY:
     {
       "message": "Your casual message here with natural emojis ( NO OTHER TEXT )",
-      "emotion": "detected emotion",
-      "confidence": "a number between 0 and 1, 0.5 being neutral",
       "videos": [
         { "title": "Video title", "artist": "Artist name", "url": "video URL" }
       ],
