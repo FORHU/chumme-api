@@ -15,7 +15,7 @@ export default class ChatWonderCtrl {
 
     if (!userId) {
       return next(
-        new InternalServerError("Authenticated user not found in request")
+        new InternalServerError("Authenticated user not found in request"),
       );
     }
 
@@ -34,7 +34,7 @@ export default class ChatWonderCtrl {
       const result = await ChatWonderSvc.sendChat(
         input,
         userId,
-        conversationId
+        conversationId,
       );
       return res.json(result);
     } catch (error) {
@@ -48,7 +48,7 @@ export default class ChatWonderCtrl {
 
     if (!userId) {
       return next(
-        new InternalServerError("Authenticated user not found in request")
+        new InternalServerError("Authenticated user not found in request"),
       );
     }
 
@@ -68,7 +68,7 @@ export default class ChatWonderCtrl {
       const conversationId = await ChatSvc.ensureConversation(
         input,
         userId,
-        inputConversationId
+        inputConversationId,
       );
 
       // Generate session ID
@@ -76,13 +76,13 @@ export default class ChatWonderCtrl {
         (await ChatWonderSvc.generateChatSessionId(userId)) ?? "";
 
       // Build prompt with chumme format
-      const chummePrompt = await ChatWonderSvc["additionalPrompt"](input);
+      const chummePrompt = await ChatWonderSvc.additionalPrompt(input);
 
       // Save user message before streaming
       const chatMessage = await ChatSvc.saveUserMessage(
         input,
         userId,
-        conversationId
+        conversationId,
       );
 
       // Set headers for Server-Sent Events (SSE)
@@ -93,79 +93,130 @@ export default class ChatWonderCtrl {
 
       let fullResponse = "";
 
-      // Stream from chat-wonder-api
-      await streamChat(chummePrompt, chatSessionId, {
-        onChunk: (chunk: string) => {
-          fullResponse += chunk;
-          // Send chunk as SSE
-          res.write(
-            `data: ${JSON.stringify({ type: "chunk", content: chunk })}\n\n`
-          );
-          // Flush to ensure immediate delivery
-          if (typeof (res as any).flush === "function") {
-            (res as any).flush();
-          }
-        },
-        onComplete: async () => {
-          try {
-            logger.info(
-              "[CHAT-WONDER-STREAM] Stream completed, saving AI response"
-            );
+      let currentSessionId = chatSessionId;
+      let maxRetries = 2;
+      let retryCount = 0;
 
-            // Parse the full response using the parser
-            const parsedResponse = parseChatWonderResponse(fullResponse);
-            const { raw, ...cleanResponse } = parsedResponse;
+      while (retryCount < maxRetries) {
+        try {
+          // Stream from chat-wonder-api
+          await streamChat(chummePrompt, currentSessionId, {
+            onChunk: (chunk: string) => {
+              fullResponse += chunk;
+              // Send chunk as SSE
+              res.write(
+                `data: ${JSON.stringify({ type: "chunk", content: chunk })}\n\n`,
+              );
+              // Flush to ensure immediate delivery
+              if (typeof (res as any).flush === "function") {
+                (res as any).flush();
+              }
+            },
+            onComplete: async () => {
+              try {
+                logger.info(
+                  "[CHAT-WONDER-STREAM] Stream completed, parsing and saving AI response",
+                );
 
-            // Save AI response (just the parsed message)
-            const aiResponse = await ChatSvc.saveAIMessage(
-              input,
-              parsedResponse.message,
-              userId,
-              conversationId
-            );
+                // Parse the full response
+                const parsedResponse = parseChatWonderResponse(fullResponse);
+                const { raw, ...cleanResponse } = parsedResponse;
 
-            // Clear cache
-            await CacheUtil.delByPattern(`chat:list:${userId}:*`);
-
-            // Send completion event with parsed data
-            res.write(
-              `data: ${JSON.stringify({
-                type: "complete",
-                ...cleanResponse,
-                metadata: {
+                // Save AI response (parsed message)
+                const aiResponse = await ChatSvc.saveAIMessage(
+                  input,
+                  parsedResponse.message,
+                  userId,
                   conversationId,
-                  chatMessageId: chatMessage.id,
-                  aiResponseId: aiResponse.id,
-                  chatSessionId,
-                },
-              })}\n\n`
+                );
+
+                // Clear cache
+                await CacheUtil.delByPattern(`chat:list:${userId}:*`);
+
+                // Send completion event with parsed data and metadata
+                res.write(
+                  `data: ${JSON.stringify({
+                    type: "complete",
+                    ...cleanResponse,
+                    metadata: {
+                      conversationId,
+                      chatMessageId: chatMessage.id,
+                      aiResponseId: aiResponse.id,
+                      chatSessionId: currentSessionId,
+                    },
+                  })}\n\n`,
+                );
+                res.end();
+              } catch (err: any) {
+                logger.error(
+                  `[CHAT-WONDER-STREAM] Error saving response: ${err.message}`,
+                );
+                res.write(
+                  `data: ${JSON.stringify({ type: "error", message: err.message })}\n\n`,
+                );
+                res.end();
+              }
+            },
+            onError: (error: Error) => {
+              // Do not throw here. The streamChat function also calls reject(error)
+              // which will be caught by the await in the try-catch block.
+              logger.warn(
+                `[CHAT-WONDER-STREAM] error callback received: ${error.message}`,
+              );
+            },
+          });
+
+          // If we get here, stream started successfully (though completion is async callback)
+          // Ideally streamChat only resolves on close/error, so we can break loop
+          break;
+        } catch (error: any) {
+          const errMessage = error?.message || "";
+
+          // Check if error is related to session
+          if (
+            (errMessage.includes("Unknown session") ||
+              errMessage.includes("401") ||
+              errMessage.includes("session_id")) &&
+            retryCount < maxRetries - 1
+          ) {
+            logger.warn(
+              `[CHAT-WONDER-STREAM] Session error: ${errMessage}. Regenerating session and retrying... (${retryCount + 1}/${maxRetries})`,
             );
-            res.end();
-          } catch (err: any) {
-            logger.error(
-              `[CHAT-WONDER-STREAM] Error saving response: ${err.message}`
-            );
+
+            // regenerate session id
+            const cachedKey = `chat:sessionId:${userId}`;
+            await CacheUtil.del(cachedKey);
+            currentSessionId =
+              (await ChatWonderSvc.generateChatSessionId(userId)) || "";
+
+            // Reset response buffer for retry
+            fullResponse = "";
+
+            retryCount++;
+            continue;
+          }
+
+          logger.error(
+            `[CHAT-WONDER-STREAM] Controller error: ${error?.message}`,
+          );
+          if (!res.headersSent) {
+            res.status(500).json({ error: error?.message || "Stream failed" });
+          } else {
             res.write(
-              `data: ${JSON.stringify({ type: "error", message: err.message })}\n\n`
+              `data: ${JSON.stringify({ type: "error", message: error?.message })}\n\n`,
             );
             res.end();
           }
-        },
-        onError: (error: Error) => {
-          logger.error(`[CHAT-WONDER-STREAM] Stream error: ${error.message}`);
-          res.write(
-            `data: ${JSON.stringify({ type: "error", message: error.message })}\n\n`
-          );
-          res.end();
-        },
-      });
+          break; // Exit loop on non-retryable error
+        }
+      }
     } catch (error: any) {
       logger.error(`[CHAT-WONDER-STREAM] Controller error: ${error?.message}`);
       if (!res.headersSent) {
         res.status(500).json({ error: error?.message || "Stream failed" });
       } else {
         res.write(
-          `data: ${JSON.stringify({ type: "error", message: error?.message })}\n\n`
+          `data: ${JSON.stringify({ type: "error", message: error?.message })}\n\n`,
         );
         res.end();
       }
