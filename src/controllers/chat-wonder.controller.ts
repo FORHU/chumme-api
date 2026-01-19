@@ -76,7 +76,7 @@ export default class ChatWonderCtrl {
         (await ChatWonderSvc.generateChatSessionId(userId)) ?? "";
 
       // Build prompt with chumme format
-      const chummePrompt = await ChatWonderSvc["additionalPrompt"](input);
+      const chummePrompt = await ChatWonderSvc.additionalPrompt(input);
 
       // Save user message before streaming
       const chatMessage = await ChatSvc.saveUserMessage(
@@ -115,17 +115,17 @@ export default class ChatWonderCtrl {
             onComplete: async () => {
               try {
                 logger.info(
-                  "[CHAT-WONDER-STREAM] Stream completed, saving AI response",
-                );
-                console.log(
-                  "[CHAT-WONDER-STREAM] Full response:",
-                  fullResponse,
+                  "[CHAT-WONDER-STREAM] Stream completed, parsing and saving AI response",
                 );
 
-                // Save AI response
+                // Parse the full response
+                const parsedResponse = parseChatWonderResponse(fullResponse);
+                const { raw, ...cleanResponse } = parsedResponse;
+
+                // Save AI response (parsed message)
                 const aiResponse = await ChatSvc.saveAIMessage(
                   input,
-                  fullResponse,
+                  parsedResponse.message,
                   userId,
                   conversationId,
                 );
@@ -133,16 +133,16 @@ export default class ChatWonderCtrl {
                 // Clear cache
                 await CacheUtil.delByPattern(`chat:list:${userId}:*`);
 
-                // Send completion event with metadata
+                // Send completion event with parsed data and metadata
                 res.write(
                   `data: ${JSON.stringify({
                     type: "complete",
+                    ...cleanResponse,
                     metadata: {
                       conversationId,
                       chatMessageId: chatMessage.id,
                       aiResponseId: aiResponse.id,
                       chatSessionId: currentSessionId,
-                      rawResponse: fullResponse,
                     },
                   })}\n\n`,
                 );

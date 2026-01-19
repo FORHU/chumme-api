@@ -35,6 +35,10 @@ export async function streamChat(
       ws.send(JSON.stringify(payload));
     });
 
+    // Track JSON completion to stop after first complete response
+    let braceDepth = 0;
+    let firstJsonComplete = false;
+
     ws.on("message", (data: WebSocket.Data) => {
       const message = data.toString();
 
@@ -43,22 +47,56 @@ export async function streamChat(
         ws.close();
         callbacks.onComplete();
         resolve();
-      } else if (message.startsWith("[Error]")) {
+        return;
+      }
+
+      if (message.startsWith("[Error]")) {
         logger.error(`[CHAT-WONDER-STREAM] Error: ${message}`);
         const error = new Error(message);
         callbacks.onError(error);
         ws.close();
         reject(error);
-      } else if (message.startsWith("[Tool]")) {
-        // Skip tool messages - don't send to frontend
-        logger.debug(`[CHAT-WONDER-STREAM] Tool execution: ${message}`);
-      } else {
-        // Regular content chunk
-        logger.info(
-          `[CHAT-WONDER-STREAM] Received chunk (${message.length} chars): ${message.substring(0, 50)}...`
-        );
-        callbacks.onChunk(message);
+        return;
       }
+
+      if (message.startsWith("[Tool]")) {
+        logger.debug(`[CHAT-WONDER-STREAM] Tool execution: ${message}`);
+        return;
+      }
+
+      // Skip if we already received a complete JSON response
+      if (firstJsonComplete) {
+        logger.debug(
+          `[CHAT-WONDER-STREAM] Skipping chunk after first complete JSON`
+        );
+        return;
+      }
+
+      // Track JSON brace depth to detect completion
+      for (const char of message) {
+        if (char === "{") {
+          braceDepth++;
+        } else if (char === "}") {
+          braceDepth--;
+          // Guard against malformed JSON (more closing than opening braces)
+          if (braceDepth < 0) {
+            logger.warn(
+              "[CHAT-WONDER-STREAM] Malformed JSON: negative brace depth"
+            );
+            braceDepth = 0;
+          }
+          // First complete JSON detected when depth returns to 0
+          if (braceDepth === 0) {
+            firstJsonComplete = true;
+          }
+        }
+      }
+
+      // Send chunk to frontend
+      logger.info(
+        `[CHAT-WONDER-STREAM] Received chunk (${message.length} chars): ${message.substring(0, 50)}...`
+      );
+      callbacks.onChunk(message);
     });
 
     ws.on("error", (error) => {

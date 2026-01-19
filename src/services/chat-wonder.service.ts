@@ -9,13 +9,12 @@ import {
 } from "../utils/chat-wonder-api";
 import { parseChatWonderResponse } from "../utils/chat-wonder";
 import ChatSvc from "./chat.service";
-import { string } from "joi";
 
 export default class ChatWonderSvc {
   static async sendChat(
     inputText: string,
     userId: string,
-    conversationId?: string
+    conversationId?: string,
   ) {
     // Validation
     if (!inputText || !inputText.trim()) {
@@ -29,7 +28,7 @@ export default class ChatWonderSvc {
       conversationId = await ChatSvc.ensureConversation(
         inputText,
         userId,
-        conversationId
+        conversationId,
       );
       const chatSessionId = (await this.generateChatSessionId(userId)) ?? "";
 
@@ -37,7 +36,7 @@ export default class ChatWonderSvc {
         inputText,
         userId,
         conversationId,
-        chatSessionId
+        chatSessionId,
       );
     } catch (error: any) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -61,14 +60,14 @@ export default class ChatWonderSvc {
         chatSessionId = newSessionId;
         await CacheUtil.set(cachedKey, newSessionId, 24 * 60 * 60);
         logger.info(
-          `[CHAT.WONDER.SERVICE] Generated new chatSessionId: ${chatSessionId}`
+          `[CHAT.WONDER.SERVICE] Generated new chatSessionId: ${chatSessionId}`,
         );
       }
       return chatSessionId;
     } catch (error: any) {
       const errMessage = error?.message;
       logger.error(
-        `[CHAT.WONDER.SERVICE] generateChatSessionId Error: ${errMessage}`
+        `[CHAT.WONDER.SERVICE] generateChatSessionId Error: ${errMessage}`,
       );
     }
   }
@@ -77,7 +76,7 @@ export default class ChatWonderSvc {
     inputText: string,
     userId: string,
     conversationId: string,
-    chatSessionId: string
+    chatSessionId: string,
   ) {
     let finalChatResponse = "";
     let currentSessionId = chatSessionId;
@@ -100,7 +99,7 @@ export default class ChatWonderSvc {
         const chatMessage = await ChatSvc.saveUserMessage(
           inputText,
           userId,
-          conversationId
+          conversationId,
         );
 
         // Save AI response (just the message part)
@@ -108,7 +107,7 @@ export default class ChatWonderSvc {
           inputText,
           parsedResponse.message,
           userId,
-          conversationId
+          conversationId,
         );
 
         await CacheUtil.delByPattern(`chat:list:${userId}:*`);
@@ -131,7 +130,7 @@ export default class ChatWonderSvc {
         const errMessage = error?.message;
         const errStatus = error?.status;
         logger.error(
-          `[CHAT.WONDER.SERVICE] Chat Wonder API Error: ${errMessage} (status: ${errStatus})`
+          `[CHAT.WONDER.SERVICE] Chat Wonder API Error: ${errMessage} (status: ${errStatus})`,
         );
         if (
           (errStatus === 401 || errMessage.toLowerCase().includes("401")) &&
@@ -143,7 +142,7 @@ export default class ChatWonderSvc {
           currentSessionId = (await this.generateChatSessionId(userId)) || "";
           retryCount++;
           logger.warn(
-            `[CHAT.WONDER.SERVICE] Retrying sendChat with new session id. Attempt ${retryCount + 1}`
+            `[CHAT.WONDER.SERVICE] Retrying sendChat with new session id. Attempt ${retryCount + 1}`,
           );
         }
       }
@@ -151,18 +150,16 @@ export default class ChatWonderSvc {
 
     // If we exhausted retries without success, throw error
     throw new BadRequestError(
-      "Failed to get response from ChatWonder after retries"
+      "Failed to get response from ChatWonder after retries",
     );
   }
 
-  private static async additionalPrompt(userMessage: string) {
+  public static async additionalPrompt(userMessage: string) {
     return `
     ⚠️ IMPORTANT
     OUTPUT FORMAT - RESPOND IN JSON ONLY:
     {
       "message": "Your casual message here with natural emojis ( NO OTHER TEXT )",
-      "emotion": "detected emotion",
-      "confidence": "a number between 0 and 1, 0.5 being neutral",
       "videos": [
         { "title": "Video title", "artist": "Artist name", "url": "video URL" }
       ],
