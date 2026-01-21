@@ -1,6 +1,7 @@
 import AuthRepo from "../repositories/auth.repository";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
+import { OAuth2Client } from "google-auth-library";
 import { generateOTP, getOTPExpiry, isOTPExpired } from "../utils/otp.utils";
 import { sendTemplatedEmail } from "../utils/helpers";
 import CacheUtil from "../utils/cache.util";
@@ -8,6 +9,7 @@ import {
   ACCESS_TOKEN_SECRET,
   REFRESH_TOKEN_SECRET,
   ACCESS_TOKEN_EXPIRY,
+  GOOGLE_CLIENT_ID,
 } from "../config";
 
 export default class AuthSvc {
@@ -201,7 +203,7 @@ export default class AuthSvc {
       // Verify refresh token
       const decoded = jwt.verify(
         refreshToken,
-        process.env.REFRESH_TOKEN_SECRET!
+        process.env.REFRESH_TOKEN_SECRET!,
       ) as { userId: string };
 
       // Find valid session
@@ -297,7 +299,7 @@ export default class AuthSvc {
   static async resetPassword(
     email: string,
     otpCode: string,
-    newPassword: string
+    newPassword: string,
   ) {
     // Find user by email
     const user = await AuthRepo.findUserByEmail(email);
@@ -309,7 +311,7 @@ export default class AuthSvc {
     // Check if OTP exists
     if (!user.otpCode || !user.otpExpiry) {
       throw new Error(
-        "No password reset request found. Please request a new code."
+        "No password reset request found. Please request a new code.",
       );
     }
 
@@ -380,5 +382,68 @@ export default class AuthSvc {
   }
   static async getAuthUser(userId: string) {
     return AuthRepo.getAuthUser(userId);
+  }
+
+  static async googleSSO(idToken: string) {
+    const client = new OAuth2Client(GOOGLE_CLIENT_ID);
+
+    try {
+      // Verify the ID token with Google
+      const ticket = await client.verifyIdToken({
+        idToken,
+        audience: GOOGLE_CLIENT_ID,
+      });
+
+      const payload = ticket.getPayload();
+      if (!payload || !payload.email) {
+        throw new Error("Invalid Google token payload");
+      }
+
+      // Find or create user
+      const user = await AuthRepo.findOrCreateGoogleUser({
+        email: payload.email,
+        name: payload.name,
+        provider: "google",
+      });
+
+      // Update login status
+      await AuthRepo.updateUserLoginStatus(user.id);
+
+      // Generate tokens
+      const accessToken = jwt.sign({ userId: user.id }, ACCESS_TOKEN_SECRET, {
+        expiresIn: ACCESS_TOKEN_EXPIRY as any,
+      });
+
+      const refreshToken = jwt.sign({ userId: user.id }, REFRESH_TOKEN_SECRET, {
+        expiresIn: "7d",
+      });
+
+      // Create session with refresh token
+      await AuthRepo.createSession({
+        userId: user.id,
+        refreshToken: refreshToken,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      });
+
+      // Cache user data at login time
+      await CacheUtil.set(`user:${user.id}`, user);
+
+      return {
+        accessToken,
+        refreshToken,
+        user: {
+          id: user.id,
+          email: user.email,
+          username: user.username,
+          name: user.name,
+          role: user.role,
+          avatar: user.avatar?.fileUrl,
+          onboardingStatus: user.onboardingCompleted,
+        },
+      };
+    } catch (error: any) {
+      console.error("Google SSO error:", error);
+      throw new Error("Failed to verify Google token");
+    }
   }
 }

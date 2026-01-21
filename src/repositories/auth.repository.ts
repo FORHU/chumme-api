@@ -172,4 +172,62 @@ export default class AuthRepo {
       },
     });
   }
+
+  static async findOrCreateGoogleUser(data: {
+    email: string;
+    name?: string;
+    provider: string;
+  }) {
+    // First try to find existing user by email
+    const existingUser = await prisma.user.findUnique({
+      where: { email: data.email, isDeleted: false },
+      include: {
+        avatar: {
+          select: { fileUrl: true },
+        },
+      },
+    });
+
+    if (existingUser) {
+      // Update provider if user exists but was created with email/password
+      if (!existingUser.provider) {
+        await prisma.user.update({
+          where: { id: existingUser.id },
+          data: { provider: data.provider },
+        });
+      }
+      return existingUser;
+    }
+
+    // Create new user with Google provider
+    // Generate unique username from email
+    const baseUsername = data.email
+      .split("@")[0]
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "");
+    let username = baseUsername;
+    let counter = 1;
+
+    // Ensure username is unique
+    while (await prisma.user.findUnique({ where: { username } })) {
+      username = `${baseUsername}${counter}`;
+      counter++;
+    }
+
+    return prisma.user.create({
+      data: {
+        email: data.email,
+        name: data.name || data.email.split("@")[0],
+        username,
+        password: "GOOGLE_SSO_USER", // Placeholder - Google users don't use password
+        provider: data.provider,
+        isEmailVerified: true, // Google already verified the email
+      },
+      include: {
+        avatar: {
+          select: { fileUrl: true },
+        },
+      },
+    });
+  }
 }
