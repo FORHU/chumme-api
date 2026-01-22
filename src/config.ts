@@ -41,3 +41,7 @@ export const CHAT_WONDER_API_URL = process.env.CHAT_WONDER_API_URL as string;
 
 // Google OAuth Configuration
 export const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID as string;
+
+// Facebook OAuth Configuration
+export const FACEBOOK_APP_ID = process.env.FACEBOOK_APP_ID as string;
+export const FACEBOOK_APP_SECRET = process.env.FACEBOOK_APP_SECRET as string;

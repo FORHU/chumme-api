@@ -6,10 +6,21 @@ export default class RoomCategorySvc {
    * Validates that name is unique
    */
   static async createCategory(name: string, note?: string) {
-    // Check if category with same name already exists
+    // Check if category with same name already exists (case-insensitive)
     const existingCategory = await RoomCategoryRepo.findCategoryByName(name);
     if (existingCategory) {
-      throw new Error("Category with this name already exists");
+      throw new Error(`Category with name "${name}" already exists`);
+    }
+
+    // Also check for key_name collisions
+    const { generateKeyName } = require("../utils/key-name.util");
+    const key_name = generateKeyName(name);
+    const existingByKey =
+      await RoomCategoryRepo.findCategoryByKeyName(key_name);
+    if (existingByKey) {
+      throw new Error(
+        `Category with similar name already exists (collision: ${key_name})`,
+      );
     }
 
     return RoomCategoryRepo.createCategory(name, note);
@@ -39,7 +50,7 @@ export default class RoomCategorySvc {
    */
   static async updateCategory(
     id: string,
-    data: { name?: string; note?: string }
+    data: { name?: string; note?: string },
   ) {
     // Check if category exists
     const category = await RoomCategoryRepo.getCategoryById(id);
@@ -50,7 +61,7 @@ export default class RoomCategorySvc {
     // Check if new name conflicts with existing category
     if (data.name) {
       const existingCategory = await RoomCategoryRepo.findCategoryByName(
-        data.name
+        data.name,
       );
       if (existingCategory && existingCategory.id !== id) {
         throw new Error("Category with this name already exists");
@@ -75,7 +86,7 @@ export default class RoomCategorySvc {
     const hasSubCategories = await RoomCategoryRepo.hasActiveSubCategories(id);
     if (hasSubCategories) {
       throw new Error(
-        "Cannot delete category with active subcategories. Please delete all subcategories first."
+        "Cannot delete category with active subcategories. Please delete all subcategories first.",
       );
     }
 
@@ -109,12 +120,12 @@ export default class RoomCategorySvc {
     const rooms = await RoomCategoryRepo.getRoomsInCategory(categoryId);
     const categoryRoomIds = rooms.map((r) => r.id);
     const invalidRoomIds = roomIds.filter(
-      (id) => !categoryRoomIds.includes(id)
+      (id) => !categoryRoomIds.includes(id),
     );
 
     if (invalidRoomIds.length > 0) {
       throw new Error(
-        `Rooms ${invalidRoomIds.join(", ")} do not belong to category ${categoryId}`
+        `Rooms ${invalidRoomIds.join(", ")} do not belong to category ${categoryId}`,
       );
     }
 

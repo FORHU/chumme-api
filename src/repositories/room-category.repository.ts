@@ -93,7 +93,7 @@ export default class RoomCategoryRepo {
    */
   static async updateCategory(
     id: string,
-    data: { name?: string; note?: string }
+    data: { name?: string; note?: string },
   ) {
     return prisma.roomCategory.update({
       where: {
@@ -128,12 +128,27 @@ export default class RoomCategoryRepo {
   }
 
   /**
-   * Find category by name (for duplicate checking)
+   * Find category by name (for duplicate checking, case-insensitive)
    */
   static async findCategoryByName(name: string) {
     return prisma.roomCategory.findFirst({
       where: {
-        name,
+        name: {
+          equals: name,
+          mode: "insensitive",
+        },
+        deletedAt: null,
+      },
+    });
+  }
+
+  /**
+   * Find category by key_name
+   */
+  static async findCategoryByKeyName(key_name: string) {
+    return prisma.roomCategory.findFirst({
+      where: {
+        key_name,
         deletedAt: null,
       },
     });

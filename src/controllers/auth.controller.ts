@@ -169,7 +169,7 @@ export default class AuthCtrl {
     }
   }
 
-  static async googleAuth(req: Request, res: Response) {
+  static async googleAuthSSO(req: Request, res: Response) {
     const { idToken } = req.body;
 
     const schema = Joi.object({
@@ -182,13 +182,36 @@ export default class AuthCtrl {
     }
 
     try {
-      const result = await AuthSvc.googleSSO(idToken);
+      const result = await AuthSvc.googleAuthSSO(idToken);
       return res.json(result);
     } catch (error: any) {
       console.error("Google auth error:", error);
       return res
         .status(401)
         .json({ message: error.message || "Google authentication failed" });
+    }
+  }
+
+  static async facebookAuthSSO(req: Request, res: Response) {
+    const { accessToken } = req.body;
+
+    const schema = Joi.object({
+      accessToken: Joi.string().required(),
+    });
+
+    const { error } = schema.validate({ accessToken });
+    if (error) {
+      return res.status(400).json({ message: error.message });
+    }
+
+    try {
+      const result = await AuthSvc.facebookAuthSSO(accessToken);
+      return res.json(result);
+    } catch (error: any) {
+      console.error("Facebook auth error:", error);
+      return res
+        .status(401)
+        .json({ message: error.message || "Facebook authentication failed" });
     }
   }
 }

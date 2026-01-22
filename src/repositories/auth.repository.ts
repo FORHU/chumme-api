@@ -29,7 +29,6 @@ export default class AuthRepo {
         otpCode: data.otpCode,
         otpExpiry: data.otpExpiry,
         isEmailVerified: false,
-        provider: null,
       },
       select: {
         id: true,
@@ -93,6 +92,9 @@ export default class AuthRepo {
     userId: string;
     refreshToken: string;
     expiresAt: Date;
+    provider?: string;
+    providerUserId?: string;
+    providerAvatarUrl?: string;
   }) {
     return prisma.session.create({
       data: {
@@ -177,6 +179,7 @@ export default class AuthRepo {
     email: string;
     name?: string;
     provider: string;
+    avatarUrl?: string;
   }) {
     // First try to find existing user by email
     const existingUser = await prisma.user.findUnique({
@@ -189,13 +192,7 @@ export default class AuthRepo {
     });
 
     if (existingUser) {
-      // Update provider if user exists but was created with email/password
-      if (!existingUser.provider) {
-        await prisma.user.update({
-          where: { id: existingUser.id },
-          data: { provider: data.provider },
-        });
-      }
+      // User exists, just return it (provider is tracked in Session now)
       return existingUser;
     }
 
@@ -214,14 +211,92 @@ export default class AuthRepo {
       counter++;
     }
 
+    // Create avatar file if URL provided
+    let avatarId: string | undefined;
+    if (data.avatarUrl) {
+      const avatarFile = await prisma.file.create({
+        data: {
+          filename: `google_avatar_${Date.now()}.jpg`,
+          fileUrl: data.avatarUrl,
+        },
+      });
+      avatarId = avatarFile.id;
+    }
+
     return prisma.user.create({
       data: {
         email: data.email,
         name: data.name || data.email.split("@")[0],
         username,
         password: "GOOGLE_SSO_USER", // Placeholder - Google users don't use password
-        provider: data.provider,
         isEmailVerified: true, // Google already verified the email
+        avatarId,
+      },
+      include: {
+        avatar: {
+          select: { fileUrl: true },
+        },
+      },
+    });
+  }
+
+  static async findOrCreateFacebookUser(data: {
+    email: string;
+    name?: string;
+    provider: string;
+    facebookId?: string;
+    avatarUrl?: string;
+  }) {
+    // First try to find existing user by email
+    const existingUser = await prisma.user.findUnique({
+      where: { email: data.email, isDeleted: false },
+      include: {
+        avatar: {
+          select: { fileUrl: true },
+        },
+      },
+    });
+
+    if (existingUser) {
+      // User exists, just return it (provider is tracked in Session now)
+      return existingUser;
+    }
+
+    // Create new user with Facebook provider
+    // Generate unique username from email
+    const baseUsername = data.email
+      .split("@")[0]
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "");
+    let username = baseUsername;
+    let counter = 1;
+
+    // Ensure username is unique
+    while (await prisma.user.findUnique({ where: { username } })) {
+      username = `${baseUsername}${counter}`;
+      counter++;
+    }
+
+    // Create avatar file if URL provided
+    let avatarId: string | undefined;
+    if (data.avatarUrl) {
+      const avatarFile = await prisma.file.create({
+        data: {
+          filename: `facebook_avatar_${Date.now()}.jpg`,
+          fileUrl: data.avatarUrl,
+        },
+      });
+      avatarId = avatarFile.id;
+    }
+
+    return prisma.user.create({
+      data: {
+        email: data.email,
+        name: data.name || data.email.split("@")[0],
+        username,
+        password: "FACEBOOK_SSO_USER", // Placeholder - Facebook users don't use password
+        isEmailVerified: true, // Facebook already verified the email
+        avatarId,
       },
       include: {
         avatar: {

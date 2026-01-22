@@ -5,6 +5,7 @@ import { OAuth2Client } from "google-auth-library";
 import { generateOTP, getOTPExpiry, isOTPExpired } from "../utils/otp.utils";
 import { sendTemplatedEmail } from "../utils/helpers";
 import CacheUtil from "../utils/cache.util";
+import { completeOAuthLogin } from "../utils/Oauth";
 import {
   ACCESS_TOKEN_SECRET,
   REFRESH_TOKEN_SECRET,
@@ -74,15 +75,23 @@ export default class AuthSvc {
       expiresIn: ACCESS_TOKEN_EXPIRY as any,
     });
 
-    const refreshToken = jwt.sign({ userId: user.id }, REFRESH_TOKEN_SECRET, {
-      expiresIn: "7d",
-    });
+    const refreshToken = jwt.sign(
+      {
+        userId: user.id,
+        jti: crypto.randomBytes(16).toString("hex"),
+      },
+      REFRESH_TOKEN_SECRET,
+      {
+        expiresIn: "7d",
+      },
+    );
 
     // Save refresh token
     await AuthRepo.createSession({
       userId: user.id,
       refreshToken,
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      provider: "chumme", // Email/password login
     });
 
     return {
@@ -152,12 +161,32 @@ export default class AuthSvc {
     }
 
     // Verify password
-    const [salt, storedHash] = user.password.split(":");
-    const hash = crypto
-      .pbkdf2Sync(password, salt, 1000, 64, "sha512")
-      .toString("hex");
+    if (!user.password) {
+      throw "This account uses a social provider. Please login with Google or Facebook.";
+    }
 
-    if (storedHash !== hash) {
+    if (user.password === "GOOGLE_SSO_USER") {
+      throw "Please use Google login for this account.";
+    }
+
+    if (user.password === "FACEBOOK_SSO_USER") {
+      throw "Please use Facebook login for this account.";
+    }
+
+    try {
+      const [salt, storedHash] = user.password.split(":");
+      if (!salt || !storedHash) {
+        throw new Error("Invalid password format");
+      }
+
+      const hash = crypto
+        .pbkdf2Sync(password, salt, 1000, 64, "sha512")
+        .toString("hex");
+
+      if (storedHash !== hash) {
+        throw "Invalid credentials";
+      }
+    } catch (e) {
       throw "Invalid credentials";
     }
 
@@ -169,15 +198,23 @@ export default class AuthSvc {
       expiresIn: ACCESS_TOKEN_EXPIRY as any,
     });
 
-    const refreshToken = jwt.sign({ userId: user.id }, REFRESH_TOKEN_SECRET, {
-      expiresIn: "7d",
-    });
+    const refreshToken = jwt.sign(
+      {
+        userId: user.id,
+        jti: crypto.randomBytes(16).toString("hex"),
+      },
+      REFRESH_TOKEN_SECRET,
+      {
+        expiresIn: "7d",
+      },
+    );
 
     // Create session with refresh token
     await AuthRepo.createSession({
       userId: user.id,
       refreshToken: refreshToken,
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      provider: "chumme", // Email/password login
     });
 
     // Cache user data at login time
@@ -384,7 +421,7 @@ export default class AuthSvc {
     return AuthRepo.getAuthUser(userId);
   }
 
-  static async googleSSO(idToken: string) {
+  static async googleAuthSSO(idToken: string) {
     const client = new OAuth2Client(GOOGLE_CLIENT_ID);
 
     try {
@@ -404,46 +441,60 @@ export default class AuthSvc {
         email: payload.email,
         name: payload.name,
         provider: "google",
+        avatarUrl: payload.picture,
       });
 
-      // Update login status
-      await AuthRepo.updateUserLoginStatus(user.id);
-
-      // Generate tokens
-      const accessToken = jwt.sign({ userId: user.id }, ACCESS_TOKEN_SECRET, {
-        expiresIn: ACCESS_TOKEN_EXPIRY as any,
-      });
-
-      const refreshToken = jwt.sign({ userId: user.id }, REFRESH_TOKEN_SECRET, {
-        expiresIn: "7d",
-      });
-
-      // Create session with refresh token
-      await AuthRepo.createSession({
-        userId: user.id,
-        refreshToken: refreshToken,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      });
-
-      // Cache user data at login time
-      await CacheUtil.set(`user:${user.id}`, user);
-
-      return {
-        accessToken,
-        refreshToken,
-        user: {
-          id: user.id,
-          email: user.email,
-          username: user.username,
-          name: user.name,
-          role: user.role,
-          avatar: user.avatar?.fileUrl,
-          onboardingStatus: user.onboardingCompleted,
-        },
-      };
+      // Complete OAuth login flow with provider info
+      return await completeOAuthLogin(
+        user,
+        "google",
+        payload.sub, // Google user ID
+        payload.picture, // Google profile picture
+      );
     } catch (error: any) {
       console.error("Google SSO error:", error);
       throw new Error("Failed to verify Google token");
+    }
+  }
+
+  static async facebookAuthSSO(accessToken: string) {
+    try {
+      // Verify the access token with Facebook Graph API
+      const response = await fetch(
+        `https://graph.facebook.com/me?fields=id,name,email,picture&access_token=${accessToken}`,
+      );
+
+      if (!response.ok) {
+        throw new Error("Invalid Facebook token");
+      }
+
+      const userData = await response.json();
+
+      if (!userData.email) {
+        throw new Error(
+          "Email not provided by Facebook. Please grant email permission.",
+        );
+      }
+
+      // Find or create user
+      const user = await AuthRepo.findOrCreateFacebookUser({
+        email: userData.email,
+        name: userData.name,
+        provider: "facebook",
+        facebookId: userData.id,
+        avatarUrl: userData.picture?.data?.url,
+      });
+
+      // Complete OAuth login flow with provider info
+      return await completeOAuthLogin(
+        user,
+        "facebook",
+        userData.id, // Facebook user ID
+        userData.picture?.data?.url, // Facebook profile picture
+      );
+    } catch (error: any) {
+      console.error("Facebook SSO error:", error);
+      throw new Error("Failed to verify Facebook token");
     }
   }
 }
