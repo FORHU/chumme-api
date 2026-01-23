@@ -181,7 +181,7 @@ export default class AuthRepo {
     avatarUrl?: string;
   }) {
     // First try to find existing user by email
-    const existingUser = await prisma.user.findUnique({
+    const existingUser = await prisma.user.findFirst({
       where: { email: data.email, isDeleted: false },
       include: {
         avatar: {
@@ -284,7 +284,7 @@ export default class AuthRepo {
     avatarUrl?: string;
   }) {
     // First try to find existing user by email
-    const existingUser = await prisma.user.findUnique({
+    const existingUser = await prisma.user.findFirst({
       where: { email: data.email, isDeleted: false },
       include: {
         avatar: {
