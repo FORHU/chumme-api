@@ -65,23 +65,26 @@ export default class FeedRepo {
           where: { isDeleted: false },
           include: {
             artist: {
-              select: {
-                id: true,
-                name: true,
-                imageUrl: true,
-                genre: true,
-              },
+              select: { id: true, name: true, imageUrl: true, genre: true },
             },
             file: true,
             videoEmotions: {
               include: {
-                emotion: {
-                  select: {
-                    id: true,
-                    name: true,
-                    icon: true,
-                  },
-                },
+                emotion: { select: { id: true, name: true, icon: true } },
+              },
+            },
+          },
+        },
+        MediaPost: {
+          where: { isDeleted: false },
+          include: {
+            artist: {
+              select: { id: true, name: true, imageUrl: true, genre: true },
+            },
+            file: true,
+            mediaPostEmotions: {
+              include: {
+                emotion: { select: { id: true, name: true, icon: true } },
               },
             },
           },
@@ -139,16 +142,15 @@ export default class FeedRepo {
     userId: string,
     page: number = 0,
     limit: number = 20,
-    artistInArray: string[] = []
+    artistInArray: string[] = [],
   ) {
-
     const following = await prisma.follow.findMany({
       where: { followerId: userId, isDeleted: false },
       select: { followingId: true },
     });
 
     const followingIds = following.map((f) => f.followingId);
-    followingIds.push(userId); 
+    followingIds.push(userId);
 
     const orConditions: Prisma.FeedItemWhereInput[] = [
       {
@@ -161,24 +163,25 @@ export default class FeedRepo {
         },
       },
     ];
-
     if (artistInArray.length > 0) {
       orConditions.push({
         type: "VIDEO",
-        video: {
-          is: {
-            artistId: { in: artistInArray },
-            isDeleted: false,
-          },
+        video: { is: { artistId: { in: artistInArray }, isDeleted: false } },
+      });
+      orConditions.push({
+        type: "MEDIA_POST",
+        MediaPost: {
+          is: { artistId: { in: artistInArray }, isDeleted: false },
         },
       });
     } else {
-
       orConditions.push({
         type: "VIDEO",
-        video: {
-          is: { isDeleted: false },
-        },
+        video: { is: { isDeleted: false } },
+      });
+      orConditions.push({
+        type: "MEDIA_POST",
+        MediaPost: { is: { isDeleted: false } },
       });
     }
 
@@ -204,6 +207,19 @@ export default class FeedRepo {
             },
             file: true,
             videoEmotions: {
+              include: {
+                emotion: { select: { id: true, name: true, icon: true } },
+              },
+            },
+          },
+        },
+        MediaPost: {
+          include: {
+            artist: {
+              select: { id: true, name: true, imageUrl: true, genre: true },
+            },
+            file: true,
+            mediaPostEmotions: {
               include: {
                 emotion: { select: { id: true, name: true, icon: true } },
               },

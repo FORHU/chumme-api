@@ -10,7 +10,7 @@ datasource db {
 model User {
   id                     String                  @id @default(uuid())
   email                  String                  @unique
-  password               String?
+  password               String
   name                   String?
   username               String                  @unique
   role                   Role                    @default(USER)
@@ -26,6 +26,7 @@ model User {
   isEmailVerified        Boolean                 @default(false)
   onboardingCompleted    Boolean                 @default(false)
   nationality            String?
+  chatSessionId          String?
   bookmarks              Bookmark[]
   chatMessages           ChatMessage[]
   comments               Comment[]
@@ -38,13 +39,12 @@ model User {
   posts                  Post[]
   roomsOwned             Room[]                  @relation("RoomOwner")
   roomMembers            RoomMember[]
-  chatSessionId          String?
+  sessions               Session[]
   avatar                 File?                   @relation(fields: [avatarId], references: [id])
   userArtists            UserArtist[]
+  userChats              UserChat[]
   userEmotionPreferences UserEmotionPreference[]
   userInterests          UserInterest[]
-  userChats              UserChat[]
-  sessions               Session[]
 }
 
 model Session {
@@ -81,64 +81,55 @@ model UserChat {
   id        String    @id @default(uuid())
   roomId    String
   userId    String
-  user      User      @relation(fields: [userId], references: [id])
-  roomChat  Room      @relation(fields: [roomId], references: [id])
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
+  roomChat  Room      @relation(fields: [roomId], references: [id])
+  user      User      @relation(fields: [userId], references: [id])
 
   @@unique([roomId, userId], name: "room_id_user_id")
 }
 
 model RoomCategory {
-  id        String    @id @default(uuid())
-  name      String    @unique
-  key_name  String    @unique
-  note      String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
-
-  roomSubCategories RoomSubCategory[] // 1 → many
+  id                String            @id @default(uuid())
+  name              String
+  key_name          String
+  note              String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  deletedAt         DateTime?
+  roomSubCategories RoomSubCategory[]
 }
 
 model RoomSubCategory {
-  id       String  @id @default(uuid())
-  name     String
-  key_name String  @unique
-  note     String?
-
+  id             String       @id @default(uuid())
+  name           String
+  key_name       String
+  note           String?
   roomCategoryId String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  deletedAt      DateTime?
+  rooms          Room[]
   roomCategory   RoomCategory @relation(fields: [roomCategoryId], references: [id])
-
-  rooms Room[]
-
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
-
-  @@unique([name, roomCategoryId])
 }
 
 model Room {
-  id        String  @id @default(uuid())
-  name      String?
-  key_name  String?
-  isPrivate Boolean @default(false)
-  ownerId   String
-  note      String?
-  isDeleted Boolean @default(false)
-
+  id                String           @id @default(uuid())
+  name              String?
+  isPrivate         Boolean          @default(false)
+  ownerId           String
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  isDeleted         Boolean          @default(false)
+  note              String?
+  key_name          String?
   roomSubCategoryId String?
+  messages          Message[]
+  owner             User             @relation("RoomOwner", fields: [ownerId], references: [id])
   roomSubCategory   RoomSubCategory? @relation(fields: [roomSubCategoryId], references: [id])
-
-  owner     User         @relation("RoomOwner", fields: [ownerId], references: [id])
-  messages  Message[]
-  userChats UserChat[]
-  members   RoomMember[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  members           RoomMember[]
+  userChats         UserChat[]
 }
 
 model RoomMember {
@@ -166,16 +157,15 @@ model Message {
 }
 
 model Conversation {
-  id            String    @id @default(uuid())
+  id            String        @id @default(uuid())
   userId        String
   title         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
   lastMessageAt DateTime?
-  isDeleted     Boolean   @default(false)
-
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  chatMessages ChatMessage[]
+  isDeleted     Boolean       @default(false)
+  chatMessages  ChatMessage[]
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, lastMessageAt(sort: Desc)])
   @@index([userId, isDeleted])
@@ -183,28 +173,31 @@ model Conversation {
 
 model ChatMessage {
   id             String         @id @default(uuid())
-  conversationId String?
   userId         String
   role           ChatRole       @default(USER)
   createdAt      DateTime       @default(now())
   message        String
   mediaUrl       String?
+  conversationId String?
   conversation   Conversation?  @relation(fields: [conversationId], references: [id])
   User           User           @relation(fields: [userId], references: [id])
   embedding      Embedding?
   emotionMemory  EmotionMemory?
 
   @@index([conversationId, createdAt])
-  @@index([userId, conversationId]) // For embedding queries filtered by user and conversation
+  @@index([userId, conversationId])
 }
 
 model Embedding {
-  id            String      @id @default(uuid())
+  id            String                 @id @default(uuid())
   model         String
   vector        Json?
-  createdAt     DateTime    @default(now())
-  chatMessageId String      @unique
-  chatMessage   ChatMessage @relation(fields: [chatMessageId], references: [id])
+  createdAt     DateTime               @default(now())
+  chatMessageId String                 @unique
+  vector_search Unsupported("vector")?
+  chatMessage   ChatMessage            @relation(fields: [chatMessageId], references: [id])
+
+  @@index([vector_search], map: "embedding_vector_search_idx")
 }
 
 model EmotionMemory {
@@ -452,6 +445,22 @@ model Bookmark {
   user      User      @relation(fields: [userId], references: [id])
 
   @@unique([feedId, userId], name: "userFeed")
+}
+
+model ItemEmbeddings {
+  id           Int                    @id @default(autoincrement())
+  item_id      String?
+  type         String?
+  title        String?
+  url          String?
+  emotions     String?
+  artist       String?
+  platform     String?
+  text_content String?
+  metadata     Json?
+  vector       Unsupported("vector")?
+
+  @@index([vector], map: "item_embeddings_vector_idx")
 }
 
 enum Role {

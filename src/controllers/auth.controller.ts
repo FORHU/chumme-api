@@ -214,4 +214,16 @@ export default class AuthCtrl {
         .json({ message: error.message || "Facebook authentication failed" });
     }
   }
+
+  static async logout(req: Request, res: Response) {
+    const { refreshToken } = req.body;
+    const userId = (req as any).user?.id;
+    try {
+      await AuthSvc.logout(userId, refreshToken);
+      return res.json({ message: "Logged out successfully" });
+    } catch (error: any) {
+      console.error("Logout error:", error);
+      return res.status(400).json({ message: error.message || error });
+    }
+  }
 }

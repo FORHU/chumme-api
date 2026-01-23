@@ -13,5 +13,6 @@ router.post("/reset-password", AuthCtrl.resetPassword);
 router.post("/resend-verification-otp", AuthCtrl.resendVerificationOTP);
 router.post("/google-sso", AuthCtrl.googleAuthSSO);
 router.post("/facebook-sso", AuthCtrl.facebookAuthSSO);
+router.post("/logout", authenticate, AuthCtrl.logout);
 
 export default router;

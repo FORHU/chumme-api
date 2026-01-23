@@ -44,7 +44,7 @@ export default class AuthRepo {
   }
 
   static async findUserByEmail(email: string) {
-    return prisma.user.findUnique({
+    return prisma.user.findFirst({
       where: {
         email,
         isDeleted: false,
@@ -126,7 +126,7 @@ export default class AuthRepo {
   }
 
   static async findUserById(userId: string) {
-    return prisma.user.findUnique({
+    return prisma.user.findFirst({
       where: {
         id: userId,
         isDeleted: false,
@@ -142,7 +142,7 @@ export default class AuthRepo {
   }
 
   static async findUserByUsername(username: string) {
-    return prisma.user.findUnique({
+    return prisma.user.findFirst({
       where: {
         username,
         isDeleted: false,
@@ -154,7 +154,6 @@ export default class AuthRepo {
     return prisma.user.update({
       where: {
         id: userId,
-        isDeleted: false,
       },
       data: data,
     });
@@ -212,14 +211,10 @@ export default class AuthRepo {
           });
         }
 
-        // ONLY update user if they don't have an avatar yet
-        if (
-          existingUser.avatarId === null ||
-          existingUser.avatarId === undefined ||
-          existingUser.avatarId === ""
-        ) {
+        // Connect the avatar to the user (syncing social profile pic)
+        if (existingUser.avatarId !== avatarFile.id) {
           console.log(
-            `[Google SSO] Updating user ${existingUser.id} with new avatarId: ${avatarFile.id}`,
+            `[Google SSO] Connecting user ${existingUser.id} with avatarId: ${avatarFile.id}`,
           );
           return prisma.user.update({
             where: { id: existingUser.id },
@@ -319,14 +314,10 @@ export default class AuthRepo {
           });
         }
 
-        // ONLY update user if they don't have an avatar yet
-        if (
-          existingUser.avatarId === null ||
-          existingUser.avatarId === undefined ||
-          existingUser.avatarId === ""
-        ) {
+        // Connect the avatar to the user (syncing social profile pic)
+        if (existingUser.avatarId !== avatarFile.id) {
           console.log(
-            `[Facebook SSO] Updating user ${existingUser.id} with new avatarId: ${avatarFile.id}`,
+            `[Facebook SSO] Connecting user ${existingUser.id} with avatarId: ${avatarFile.id}`,
           );
           return prisma.user.update({
             where: { id: existingUser.id },
