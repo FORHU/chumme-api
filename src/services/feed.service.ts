@@ -37,10 +37,33 @@ export default class FeedSvc {
               artist: {
                 id: item.video.artist?.id,
                 name: item.video.artist?.name,
+                avatar: item.video.artist?.imageUrl,
               },
               file: {
                 id: item.video.file?.id,
                 fileUrl: item.video.file?.fileUrl,
+              },
+            },
+          };
+        } else if (item.type === "MEDIA_POST" && item.MediaPost) {
+          return {
+            id: item.id,
+            type: "video",
+            content: {
+              id: item.MediaPost.id,
+              title: item.MediaPost.title,
+              platform: item.MediaPost.platform,
+              meta_data: {
+                caption: item.MediaPost.meta_data?.caption || null,
+              },
+              artist: {
+                id: item.MediaPost.artist?.id,
+                name: item.MediaPost.artist?.name,
+                avatar: item.MediaPost.artist?.imageUrl,
+              },
+              file: {
+                id: item.MediaPost.file?.id,
+                fileUrl: item.MediaPost.file?.fileUrl,
               },
             },
           };
@@ -88,12 +111,12 @@ export default class FeedSvc {
     userId: string,
     page: number = 0,
     limit: number = 20,
-    artistInUrlString: string
+    artistInUrlString: string,
   ) {
     let artistStringToArray: Array<string> = [];
 
     if (artistInUrlString) {
-    artistStringToArray = stringBacktickToArray(artistInUrlString);
+      artistStringToArray = stringBacktickToArray(artistInUrlString);
     }
 
     if (page < 0) {
@@ -113,7 +136,7 @@ export default class FeedSvc {
       userId,
       page,
       limit,
-      artistStringToArray
+      artistStringToArray,
     );
 
     const formattedFeed = this.formatFeedItems(feedItems);

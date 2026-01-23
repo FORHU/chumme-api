@@ -18,18 +18,19 @@ export const completeOAuthLogin = async (
   providerUserId?: string,
   providerAvatarUrl?: string,
 ) => {
-  // Update login status
-  await AuthRepo.updateUserLoginStatus(user.id);
+  // Update login status and get the latest user state (with avatar)
+  const updatedUser = await AuthRepo.updateUserLoginStatus(user.id);
+  const finalUser = updatedUser || user;
 
   // Generate tokens
-  const accessToken = jwt.sign({ userId: user.id }, ACCESS_TOKEN_SECRET, {
+  const accessToken = jwt.sign({ userId: finalUser.id }, ACCESS_TOKEN_SECRET, {
     expiresIn: ACCESS_TOKEN_EXPIRY as any,
   });
 
   // Generate unique refresh token with jti (JWT ID) to prevent duplicates
   const refreshToken = jwt.sign(
     {
-      userId: user.id,
+      userId: finalUser.id,
       jti: crypto.randomBytes(16).toString("hex"), // Unique session ID
     },
     REFRESH_TOKEN_SECRET,
@@ -40,7 +41,7 @@ export const completeOAuthLogin = async (
 
   // Create session with provider information
   await AuthRepo.createSession({
-    userId: user.id,
+    userId: finalUser.id,
     refreshToken: refreshToken,
     expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     provider,
@@ -49,19 +50,19 @@ export const completeOAuthLogin = async (
   });
 
   // Cache user data
-  await CacheUtil.set(`user:${user.id}`, user);
+  await CacheUtil.set(`user:${finalUser.id}`, finalUser);
 
   return {
     accessToken,
     refreshToken,
     user: {
-      id: user.id,
-      email: user.email,
-      username: user.username,
-      name: user.name,
-      role: user.role,
-      avatar: user.avatar?.fileUrl,
-      onboardingStatus: user.onboardingCompleted,
+      id: finalUser.id,
+      email: finalUser.email,
+      username: finalUser.username,
+      name: finalUser.name,
+      role: finalUser.role,
+      avatar: finalUser.avatar?.fileUrl,
+      onboardingStatus: finalUser.onboardingCompleted,
     },
   };
 };
