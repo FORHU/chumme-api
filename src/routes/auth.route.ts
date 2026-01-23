@@ -11,5 +11,7 @@ router.post("/refresh-token", AuthCtrl.refreshToken);
 router.post("/forgot-password", AuthCtrl.forgotPassword);
 router.post("/reset-password", AuthCtrl.resetPassword);
 router.post("/resend-verification-otp", AuthCtrl.resendVerificationOTP);
+router.post("/google-sso", AuthCtrl.googleAuthSSO);
+router.post("/facebook-sso", AuthCtrl.facebookAuthSSO);
 
 export default router;

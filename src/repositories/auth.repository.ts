@@ -29,7 +29,6 @@ export default class AuthRepo {
         otpCode: data.otpCode,
         otpExpiry: data.otpExpiry,
         isEmailVerified: false,
-        provider: null,
       },
       select: {
         id: true,
@@ -93,6 +92,9 @@ export default class AuthRepo {
     userId: string;
     refreshToken: string;
     expiresAt: Date;
+    provider?: string;
+    providerUserId?: string;
+    providerAvatarUrl?: string;
   }) {
     return prisma.session.create({
       data: {
@@ -169,6 +171,219 @@ export default class AuthRepo {
         avatar: true,
         username: true,
         role: true,
+      },
+    });
+  }
+
+  static async findOrCreateGoogleUser(data: {
+    email: string;
+    name?: string;
+    provider: string;
+    avatarUrl?: string;
+  }) {
+    // First try to find existing user by email
+    const existingUser = await prisma.user.findUnique({
+      where: { email: data.email, isDeleted: false },
+      include: {
+        avatar: {
+          select: { fileUrl: true },
+        },
+      },
+    });
+
+    if (existingUser) {
+      if (data.avatarUrl) {
+        console.log(
+          `[Google SSO] Avatar sync for ${data.email}. Current avatarId: ${existingUser.avatarId}`,
+        );
+
+        // Check if file already exists with this URL (always saved)
+        let avatarFile = await prisma.file.findFirst({
+          where: { fileUrl: data.avatarUrl, deletedAt: null },
+        });
+
+        if (!avatarFile) {
+          console.log(`[Google SSO] Creating new File record for avatar URL`);
+          avatarFile = await prisma.file.create({
+            data: {
+              filename: `google_avatar_${Date.now()}.jpg`,
+              fileUrl: data.avatarUrl,
+            },
+          });
+        }
+
+        // ONLY update user if they don't have an avatar yet
+        if (
+          existingUser.avatarId === null ||
+          existingUser.avatarId === undefined ||
+          existingUser.avatarId === ""
+        ) {
+          console.log(
+            `[Google SSO] Updating user ${existingUser.id} with new avatarId: ${avatarFile.id}`,
+          );
+          return prisma.user.update({
+            where: { id: existingUser.id },
+            data: { avatarId: avatarFile.id },
+            include: {
+              avatar: { select: { fileUrl: true } },
+            },
+          });
+        }
+      }
+      return existingUser;
+    }
+
+    // Create new user with Google provider
+    const baseUsername = data.email
+      .split("@")[0]
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "");
+    let username = baseUsername;
+    let counter = 1;
+
+    while (await prisma.user.findUnique({ where: { username } })) {
+      username = `${baseUsername}${counter}`;
+      counter++;
+    }
+
+    let avatarId: string | undefined;
+    if (data.avatarUrl) {
+      // Check if file already exists with this URL
+      let avatarFile = await prisma.file.findFirst({
+        where: { fileUrl: data.avatarUrl, deletedAt: null },
+      });
+
+      if (!avatarFile) {
+        avatarFile = await prisma.file.create({
+          data: {
+            filename: `google_avatar_${Date.now()}.jpg`,
+            fileUrl: data.avatarUrl,
+          },
+        });
+      }
+      avatarId = avatarFile.id;
+    }
+
+    return prisma.user.create({
+      data: {
+        email: data.email,
+        name: data.name || data.email.split("@")[0],
+        username,
+        password: "GOOGLE_SSO_USER",
+        isEmailVerified: true,
+        avatarId,
+      },
+      include: {
+        avatar: {
+          select: { fileUrl: true },
+        },
+      },
+    });
+  }
+
+  static async findOrCreateFacebookUser(data: {
+    email: string;
+    name?: string;
+    provider: string;
+    facebookId?: string;
+    avatarUrl?: string;
+  }) {
+    // First try to find existing user by email
+    const existingUser = await prisma.user.findUnique({
+      where: { email: data.email, isDeleted: false },
+      include: {
+        avatar: {
+          select: { fileUrl: true },
+        },
+      },
+    });
+
+    if (existingUser) {
+      if (data.avatarUrl) {
+        console.log(
+          `[Facebook SSO] Avatar sync for ${data.email}. Current avatarId: ${existingUser.avatarId}`,
+        );
+
+        // Check if file already exists with this URL (always saved)
+        let avatarFile = await prisma.file.findFirst({
+          where: { fileUrl: data.avatarUrl, deletedAt: null },
+        });
+
+        if (!avatarFile) {
+          console.log(`[Facebook SSO] Creating new File record for avatar URL`);
+          avatarFile = await prisma.file.create({
+            data: {
+              filename: `facebook_avatar_${Date.now()}.jpg`,
+              fileUrl: data.avatarUrl,
+            },
+          });
+        }
+
+        // ONLY update user if they don't have an avatar yet
+        if (
+          existingUser.avatarId === null ||
+          existingUser.avatarId === undefined ||
+          existingUser.avatarId === ""
+        ) {
+          console.log(
+            `[Facebook SSO] Updating user ${existingUser.id} with new avatarId: ${avatarFile.id}`,
+          );
+          return prisma.user.update({
+            where: { id: existingUser.id },
+            data: { avatarId: avatarFile.id },
+            include: {
+              avatar: { select: { fileUrl: true } },
+            },
+          });
+        }
+      }
+      return existingUser;
+    }
+
+    // Create new user with Facebook provider
+    const baseUsername = data.email
+      .split("@")[0]
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "");
+    let username = baseUsername;
+    let counter = 1;
+
+    while (await prisma.user.findUnique({ where: { username } })) {
+      username = `${baseUsername}${counter}`;
+      counter++;
+    }
+
+    let avatarId: string | undefined;
+    if (data.avatarUrl) {
+      // Check if file already exists with this URL
+      let avatarFile = await prisma.file.findFirst({
+        where: { fileUrl: data.avatarUrl, deletedAt: null },
+      });
+
+      if (!avatarFile) {
+        avatarFile = await prisma.file.create({
+          data: {
+            filename: `facebook_avatar_${Date.now()}.jpg`,
+            fileUrl: data.avatarUrl,
+          },
+        });
+      }
+      avatarId = avatarFile.id;
+    }
+
+    return prisma.user.create({
+      data: {
+        email: data.email,
+        name: data.name || data.email.split("@")[0],
+        username,
+        password: "FACEBOOK_SSO_USER",
+        isEmailVerified: true,
+        avatarId,
+      },
+      include: {
+        avatar: {
+          select: { fileUrl: true },
+        },
       },
     });
   }

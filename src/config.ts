@@ -8,7 +8,7 @@ export const isDev = process.env.NODE_ENV !== "production";
 export const MAILER_TRANSPORT_HOST = process.env
   .MAILER_TRANSPORT_HOST as string;
 export const MAILER_TRANSPORT_PORT = Number(
-  process.env.MAILER_TRANSPORT_PORT || 465
+  process.env.MAILER_TRANSPORT_PORT || 465,
 );
 export const MAILER_TRANSPORT_SECURE =
   process.env.MAILER_TRANSPORT_SECURE === "true";
@@ -38,3 +38,10 @@ export const RABBITMQ_EXCHANGE =
 export const RABBITMQ_QUEUE_PREFIX =
   process.env.RABBITMQ_QUEUE_PREFIX || "chumme";
 export const CHAT_WONDER_API_URL = process.env.CHAT_WONDER_API_URL as string;
+
+// Google OAuth Configuration
+export const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID as string;
+
+// Facebook OAuth Configuration
+export const FACEBOOK_APP_ID = process.env.FACEBOOK_APP_ID as string;
+export const FACEBOOK_APP_SECRET = process.env.FACEBOOK_APP_SECRET as string;

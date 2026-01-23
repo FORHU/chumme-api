@@ -8,7 +8,7 @@ export default class RoomSubCategorySvc {
   static async createSubCategory(
     name: string,
     roomCategoryId: string,
-    note?: string
+    note?: string,
   ) {
     // Verify parent category exists
     const categoryExists =
@@ -17,14 +17,27 @@ export default class RoomSubCategorySvc {
       throw new Error("Parent category not found");
     }
 
-    // Check if subcategory with same name already exists in this category
+    // Check if subcategory with same name already exists in this category (case-insensitive)
     const existingSubCategory = await RoomSubCategoryRepo.findSubCategoryByName(
       name,
-      roomCategoryId
+      roomCategoryId,
     );
     if (existingSubCategory) {
       throw new Error(
-        "Subcategory with this name already exists in this category"
+        `Subcategory with name "${name}" already exists in this category`,
+      );
+    }
+
+    // Also check for key_name collisions within this category
+    const { generateKeyName } = require("../utils/key-name.util");
+    const key_name = generateKeyName(name);
+    const existingByKey = await RoomSubCategoryRepo.findSubCategoryByKeyName(
+      key_name,
+      roomCategoryId,
+    );
+    if (existingByKey) {
+      throw new Error(
+        `Subcategory with similar name already exists in this category (collision: ${key_name})`,
       );
     }
 
@@ -60,7 +73,7 @@ export default class RoomSubCategorySvc {
       name?: string;
       roomCategoryId?: string;
       note?: string;
-    }
+    },
   ) {
     // Check if subcategory exists
     const subCategory = await RoomSubCategoryRepo.getSubCategoryById(id);
@@ -71,7 +84,7 @@ export default class RoomSubCategorySvc {
     // If changing category, verify new category exists
     if (data.roomCategoryId) {
       const categoryExists = await RoomSubCategoryRepo.categoryExists(
-        data.roomCategoryId
+        data.roomCategoryId,
       );
       if (!categoryExists) {
         throw new Error("Parent category not found");
@@ -85,11 +98,11 @@ export default class RoomSubCategorySvc {
       const existingSubCategory =
         await RoomSubCategoryRepo.findSubCategoryByName(
           data.name,
-          targetCategoryId
+          targetCategoryId,
         );
       if (existingSubCategory && existingSubCategory.id !== id) {
         throw new Error(
-          "Subcategory with this name already exists in this category"
+          "Subcategory with this name already exists in this category",
         );
       }
     }
@@ -112,7 +125,7 @@ export default class RoomSubCategorySvc {
     const hasRooms = await RoomSubCategoryRepo.hasActiveRooms(id);
     if (hasRooms) {
       throw new Error(
-        "Cannot delete subcategory with active rooms. Please delete all rooms first."
+        "Cannot delete subcategory with active rooms. Please delete all rooms first.",
       );
     }
 

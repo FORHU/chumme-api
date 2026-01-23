@@ -33,7 +33,6 @@ export default class UserRepo {
         lastLoginAt: true,
         createdAt: true,
         updatedAt: true,
-        provider: true,
         mobileNumber: true,
         isEmailVerified: true,
         onboardingCompleted: true,
@@ -151,7 +150,7 @@ export default class UserRepo {
       username?: string;
       name?: string;
       email?: string;
-    }
+    },
   ) {
     return prisma.user.update({
       where: {
@@ -177,6 +176,4 @@ export default class UserRepo {
       },
     });
   }
-
-
 }

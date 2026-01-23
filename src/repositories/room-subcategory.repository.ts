@@ -8,7 +8,7 @@ export default class RoomSubCategoryRepo {
   static async createSubCategory(
     name: string,
     roomCategoryId: string,
-    note?: string
+    note?: string,
   ) {
     return prisma.roomSubCategory.create({
       data: {
@@ -91,7 +91,7 @@ export default class RoomSubCategoryRepo {
       name?: string;
       roomCategoryId?: string;
       note?: string;
-    }
+    },
   ) {
     return prisma.roomSubCategory.update({
       where: {
@@ -135,12 +135,28 @@ export default class RoomSubCategoryRepo {
   }
 
   /**
-   * Find subcategory by name within a category (for duplicate checking)
+   * Find subcategory by name within a category (case-insensitive)
    */
   static async findSubCategoryByName(name: string, categoryId: string) {
     return prisma.roomSubCategory.findFirst({
       where: {
-        name,
+        name: {
+          equals: name,
+          mode: "insensitive",
+        },
+        roomCategoryId: categoryId,
+        deletedAt: null,
+      },
+    });
+  }
+
+  /**
+   * Find subcategory by key_name within a category
+   */
+  static async findSubCategoryByKeyName(key_name: string, categoryId: string) {
+    return prisma.roomSubCategory.findFirst({
+      where: {
+        key_name,
         roomCategoryId: categoryId,
         deletedAt: null,
       },
