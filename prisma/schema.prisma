@@ -10,7 +10,7 @@ datasource db {
 model User {
   id                     String                  @id @default(uuid())
   email                  String                  @unique
-  password               String
+  password               String?
   name                   String?
   username               String                  @unique
   role                   Role                    @default(USER)
@@ -48,17 +48,15 @@ model User {
 }
 
 model Session {
-  id     String @id @default(uuid())
-  userId String
-
-  provider          String? // google, github, apple, facebook, chumme
-  providerUserId    String?
+  id                String   @id @default(uuid())
+  userId            String
+  createdAt         DateTime @default(now())
+  expiresAt         DateTime
+  refreshToken      String   @unique
+  provider          String?
   providerAvatarUrl String?
-
-  createdAt    DateTime @default(now())
-  expiresAt    DateTime
-  refreshToken String   @unique
-  user         User     @relation(fields: [userId], references: [id])
+  providerUserId    String?
+  user              User     @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([provider, providerUserId])
@@ -332,20 +330,23 @@ model UserEmotionPreference {
 }
 
 model Artist {
-  id                String       @id @default(uuid())
-  name              String       @unique
+  id                String           @id @default(uuid())
+  name              String           @unique
   bio               String?
   imageUrl          String?
   nationality       String?
   genre             String?
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
-  isDeleted         Boolean      @default(false)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  isDeleted         Boolean          @default(false)
   instagramUsername String?
   tiktokUsername    String?
   mediaPosts        MediaPost[]
   userArtists       UserArtist[]
   videos            Video[]
+  musicAlbum        MusicAlbum[]     @relation("MainArtist")
+  featuredArtists   FeaturedArtist[]
+  music             Music[]          @relation("MainArtist")
 }
 
 model UserArtist {
@@ -447,20 +448,86 @@ model Bookmark {
   @@unique([feedId, userId], name: "userFeed")
 }
 
-model ItemEmbeddings {
-  id           Int                    @id @default(autoincrement())
-  item_id      String?
-  type         String?
-  title        String?
-  url          String?
-  emotions     String?
-  artist       String?
-  platform     String?
-  text_content String?
-  metadata     Json?
-  vector       Unsupported("vector")?
+model Playlist {
+  id          String @id @default(uuid())
+  name        String
+  description String
+  imageUrl    String
 
-  @@index([vector], map: "item_embeddings_vector_idx")
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  tracks MusicPlaylist[]
+}
+
+model MusicAlbum {
+  id       String @id @default(uuid())
+  album    String
+  genre    String
+  language String
+
+  musicArtistId String
+  musicArtist   Artist @relation("MainArtist", fields: [musicArtistId], references: [id])
+
+  music Music[]
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model FeaturedArtist {
+  id       String @id @default(uuid())
+  artistId String
+  musicId  String
+
+  artist Artist @relation(fields: [artistId], references: [id])
+  music  Music  @relation(fields: [musicId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([artistId, musicId])
+}
+
+model Music {
+  id String @id @default(uuid())
+
+  musicArtistId String
+  musicArtist   Artist @relation("MainArtist", fields: [musicArtistId], references: [id])
+
+  featuredArtists FeaturedArtist[]
+
+  title         String
+  duration      Float?
+  bpm           Int?
+  hasWordTiming Boolean  @default(false)
+  meta_data     Json
+  release_date  DateTime
+  file_url      String
+
+  musicAlbum   MusicAlbum? @relation(fields: [musicAlbumId], references: [id])
+  musicAlbumId String?
+
+  playlists MusicPlaylist[]
+
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
+  updatedAt DateTime  @updatedAt
+}
+
+model MusicPlaylist {
+  id         String @id @default(uuid())
+  musicId    String
+  playlistId String
+  order      Int    @default(0)
+
+  music    Music    @relation(fields: [musicId], references: [id])
+  playlist Playlist @relation(fields: [playlistId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([musicId, playlistId])
 }
 
 enum Role {

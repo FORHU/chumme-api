@@ -5,7 +5,6 @@ import { OAuth2Client } from "google-auth-library";
 import { generateOTP, getOTPExpiry, isOTPExpired } from "../utils/otp.utils";
 import { sendTemplatedEmail } from "../utils/helpers";
 import CacheUtil from "../utils/cache.util";
-import { completeOAuthLogin } from "../utils/Oauth";
 import {
   ACCESS_TOKEN_SECRET,
   REFRESH_TOKEN_SECRET,
@@ -70,39 +69,11 @@ export default class AuthSvc {
       console.log(`Backup - OTP for ${user.email}: ${otp}`);
     }
 
-    // Generate tokens
-    const accessToken = jwt.sign({ userId: user.id }, ACCESS_TOKEN_SECRET, {
-      expiresIn: ACCESS_TOKEN_EXPIRY as any,
-    });
-
-    const refreshToken = jwt.sign(
-      {
-        userId: user.id,
-        jti: crypto.randomBytes(16).toString("hex"),
-      },
-      REFRESH_TOKEN_SECRET,
-      {
-        expiresIn: "7d",
-      },
-    );
-
-    // Save refresh token
-    await AuthRepo.createSession({
-      userId: user.id,
-      refreshToken,
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      provider: "chumme", // Email/password login
-    });
+    // Generate tokens and create session using the unified helper
+    const authResponse = await this.generateAuthResponse(user, "chumme");
 
     return {
-      user: {
-        id: user.id,
-        email: user.email,
-        username: user.username,
-        name: user.name,
-      },
-      accessToken,
-      refreshToken,
+      ...authResponse,
       message:
         "Registration successful! Please check your email for verification code.",
     };
@@ -190,49 +161,12 @@ export default class AuthSvc {
       throw "Invalid credentials";
     }
 
-    // Update login status
-    await AuthRepo.updateUserLoginStatus(user.id);
+    // Update login status and get the latest user state (with avatar)
+    const updatedUser = await AuthRepo.updateUserLoginStatus(user.id);
+    const finalUser = updatedUser || user;
 
-    // Generate tokens
-    const accessToken = jwt.sign({ userId: user.id }, ACCESS_TOKEN_SECRET, {
-      expiresIn: ACCESS_TOKEN_EXPIRY as any,
-    });
-
-    const refreshToken = jwt.sign(
-      {
-        userId: user.id,
-        jti: crypto.randomBytes(16).toString("hex"),
-      },
-      REFRESH_TOKEN_SECRET,
-      {
-        expiresIn: "7d",
-      },
-    );
-
-    // Create session with refresh token
-    await AuthRepo.createSession({
-      userId: user.id,
-      refreshToken: refreshToken,
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      provider: "chumme", // Email/password login
-    });
-
-    // Cache user data at login time
-    await CacheUtil.set(`user:${user.id}`, user);
-
-    return {
-      accessToken,
-      refreshToken,
-      user: {
-        id: user.id,
-        email: user.email,
-        username: user.username,
-        name: user.name,
-        role: user.role,
-        avatar: user.avatar?.fileUrl,
-        onboardingStatus: user.onboardingCompleted,
-      },
-    };
+    // Generate tokens and create session using the unified helper
+    return this.generateAuthResponse(finalUser, "chumme");
   }
 
   static async refreshToken(refreshToken: string) {
@@ -445,7 +379,7 @@ export default class AuthSvc {
       });
 
       // Complete OAuth login flow with provider info
-      return await completeOAuthLogin(
+      return this.generateAuthResponse(
         user,
         "google",
         payload.sub, // Google user ID
@@ -486,7 +420,7 @@ export default class AuthSvc {
       });
 
       // Complete OAuth login flow with provider info
-      return await completeOAuthLogin(
+      return this.generateAuthResponse(
         user,
         "facebook",
         userData.id, // Facebook user ID
@@ -496,5 +430,67 @@ export default class AuthSvc {
       console.error("Facebook SSO error:", error);
       throw new Error("Failed to verify Facebook token");
     }
+  }
+
+  /**
+   * Common auth response handler
+   * Handles token generation, session creation, and caching
+   */
+  private static async generateAuthResponse(
+    user: any,
+    provider: string,
+    providerUserId?: string,
+    providerAvatarUrl?: string,
+  ) {
+    // Ensure we have the latest login status updated
+    const updatedUser = await AuthRepo.updateUserLoginStatus(user.id);
+    const finalUser = updatedUser || user;
+
+    // Generate tokens
+    const accessToken = jwt.sign(
+      { userId: finalUser.id },
+      ACCESS_TOKEN_SECRET,
+      {
+        expiresIn: ACCESS_TOKEN_EXPIRY as any,
+      },
+    );
+
+    const refreshToken = jwt.sign(
+      {
+        userId: finalUser.id,
+        jti: crypto.randomBytes(16).toString("hex"),
+      },
+      REFRESH_TOKEN_SECRET,
+      {
+        expiresIn: "7d",
+      },
+    );
+
+    // Create session in database
+    await AuthRepo.createSession({
+      userId: finalUser.id,
+      refreshToken,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      provider,
+      providerUserId,
+      providerAvatarUrl,
+    });
+
+    // Cache user data
+    await CacheUtil.set(`user:${finalUser.id}`, finalUser);
+
+    return {
+      accessToken,
+      refreshToken,
+      user: {
+        id: finalUser.id,
+        email: finalUser.email,
+        username: finalUser.username,
+        name: finalUser.name,
+        role: finalUser.role,
+        avatar: finalUser.avatar?.fileUrl,
+        onboardingStatus: finalUser.onboardingCompleted,
+      },
+    };
   }
 }

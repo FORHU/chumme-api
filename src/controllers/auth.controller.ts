@@ -26,7 +26,7 @@ export default class AuthCtrl {
     }
 
     try {
-      const user = await AuthSvc.register({
+      const data = await AuthSvc.register({
         email,
         password,
         username,
@@ -35,7 +35,7 @@ export default class AuthCtrl {
       });
       return res
         .status(201)
-        .json({ message: "User created successfully", user });
+        .json({ message: "User created successfully", data });
     } catch (error: any) {
       return res.status(400).json({ message: error.message || error });
     }
@@ -74,8 +74,8 @@ export default class AuthCtrl {
     }
 
     try {
-      const result = await AuthSvc.login({ email, password });
-      return res.json(result);
+      const data = await AuthSvc.login({ email, password });
+      return res.json({ message: "Login successful", data });
     } catch (error: any) {
       console.error("Login error:", error);
       return res.status(401).json({ message: error.message || error });
@@ -182,8 +182,8 @@ export default class AuthCtrl {
     }
 
     try {
-      const result = await AuthSvc.googleAuthSSO(idToken);
-      return res.json(result);
+      const data = await AuthSvc.googleAuthSSO(idToken);
+      return res.json({ message: "Google authentication successful", data });
     } catch (error: any) {
       console.error("Google auth error:", error);
       return res
@@ -205,8 +205,8 @@ export default class AuthCtrl {
     }
 
     try {
-      const result = await AuthSvc.facebookAuthSSO(accessToken);
-      return res.json(result);
+      const data = await AuthSvc.facebookAuthSSO(accessToken);
+      return res.json({ message: "Facebook authentication successful", data });
     } catch (error: any) {
       console.error("Facebook auth error:", error);
       return res
