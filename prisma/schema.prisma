@@ -469,8 +469,8 @@ model MusicAlbum {
   genre    String
   language String
 
-  musicArtistId String
-  musicArtist   Artist @relation("MainArtist", fields: [musicArtistId], references: [id])
+  musicArtistId String?
+  musicArtist   Artist? @relation("MainArtist", fields: [musicArtistId], references: [id])
 
   music Music[]
 
@@ -495,8 +495,8 @@ model FeaturedArtist {
 model Music {
   id String @id @default(uuid())
 
-  musicArtistId String
-  musicArtist   Artist @relation("MainArtist", fields: [musicArtistId], references: [id])
+  musicArtistId String?
+  musicArtist   Artist? @relation("MainArtist", fields: [musicArtistId], references: [id])
 
   featuredArtists FeaturedArtist[]
 
