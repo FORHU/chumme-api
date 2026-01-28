@@ -1,9 +1,24 @@
 import { Request, Response } from "express";
 import Joi from "joi";
 import MusicSvc from "../services/music.service";
+import S3Util from "../utils/s3.util";
 
 export default class MusicCtrl {
   static async createMusic(req: Request, res: Response) {
+    const file = req.file;
+    if (!file && !req.body.file_url) {
+      return res.status(400).json({ message: "File or file_url is required" });
+    }
+
+    // Parse meta_data if it's a string (e.g. from multipart form)
+    if (typeof req.body.meta_data === "string") {
+      try {
+        req.body.meta_data = JSON.parse(req.body.meta_data);
+      } catch (e) {
+        return res.status(400).json({ message: "Invalid meta_data JSON" });
+      }
+    }
+
     const schema = Joi.object({
       title: Joi.string().required(),
       duration: Joi.number().allow(null),
@@ -11,16 +26,30 @@ export default class MusicCtrl {
       hasWordTiming: Joi.boolean(),
       meta_data: Joi.object().required(),
       release_date: Joi.date().iso().required(),
-      file_url: Joi.string().uri().required(),
+      file_url: Joi.string().uri().when("$hasFile", {
+        is: true,
+        then: Joi.optional(),
+        otherwise: Joi.required(),
+      }),
       musicAlbumId: Joi.string().uuid().allow(null),
-      musicArtistId: Joi.string().uuid().required(),
+      musicArtistId: Joi.string().uuid().allow(null),
       playlistId: Joi.string().uuid().allow(null),
     });
 
-    const { error, value } = schema.validate(req.body);
+    const { error, value } = schema.validate(req.body, {
+      context: { hasFile: !!file },
+    });
     if (error) return res.status(400).json({ message: error.message });
 
     try {
+      if (file) {
+        value.file_url = await S3Util.uploadFile(
+          file.buffer,
+          file.originalname,
+          file.mimetype,
+        );
+      }
+
       const music = await MusicSvc.createMusic(value);
       return res.status(201).json(music);
     } catch (error: any) {
