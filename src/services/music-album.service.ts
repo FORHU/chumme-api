@@ -4,6 +4,8 @@ import { Prisma } from "@prisma/client";
 
 export default class MusicAlbumSvc {
   static async createAlbum(data: any) {
+    const checkAlbum = await MusicAlbumRepo.findByTitle(data.album);
+    if (checkAlbum) throw new Error("Album already exists");
     const album = await MusicAlbumRepo.create(data);
     await CacheUtil.del("music-albums:all");
     if (data.musicArtistId) {

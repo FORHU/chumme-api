@@ -27,6 +27,7 @@ const fileFilter = (
     "audio/aac",
     "audio/x-wav",
     "audio/mpeg3",
+    "application/json",
   ];
 
   if (allowedMimeTypes.includes(file.mimetype)) {

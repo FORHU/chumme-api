@@ -5,13 +5,25 @@ import S3Util from "../utils/s3.util";
 
 export default class MusicCtrl {
   static async createMusic(req: Request, res: Response) {
-    const file = req.file;
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+    const file = files?.file_url?.[0];
+    const metaDataFile = files?.meta_data?.[0];
+
     if (!file && !req.body.file_url) {
       return res.status(400).json({ message: "File or file_url is required" });
     }
 
-    // Parse meta_data if it's a string (e.g. from multipart form)
-    if (typeof req.body.meta_data === "string") {
+    // Process meta_data file if exists
+    if (metaDataFile) {
+      try {
+        req.body.meta_data = JSON.parse(metaDataFile.buffer.toString());
+      } catch (e) {
+        return res
+          .status(400)
+          .json({ message: "Invalid meta_data JSON file content" });
+      }
+    } else if (typeof req.body.meta_data === "string") {
+      // Parse meta_data if it's a string (e.g. from multipart form text field)
       try {
         req.body.meta_data = JSON.parse(req.body.meta_data);
       } catch (e) {
@@ -21,8 +33,8 @@ export default class MusicCtrl {
 
     const schema = Joi.object({
       title: Joi.string().required(),
-      duration: Joi.number().allow(null),
-      bpm: Joi.number().integer().allow(null),
+      duration: Joi.number(),
+      bpm: Joi.number().integer(),
       hasWordTiming: Joi.boolean(),
       meta_data: Joi.object().required(),
       release_date: Joi.date().iso().required(),
@@ -31,9 +43,9 @@ export default class MusicCtrl {
         then: Joi.optional(),
         otherwise: Joi.required(),
       }),
-      musicAlbumId: Joi.string().uuid().allow(null),
-      musicArtistId: Joi.string().uuid().allow(null),
-      playlistId: Joi.string().uuid().allow(null),
+      musicAlbumId: Joi.string().uuid(),
+      musicArtistId: Joi.string().uuid(),
+      // playlistId: Joi.string().uuid(),
     });
 
     const { error, value } = schema.validate(req.body, {
@@ -51,7 +63,9 @@ export default class MusicCtrl {
       }
 
       const music = await MusicSvc.createMusic(value);
-      return res.status(201).json(music);
+      return res.status(201).json({
+        message: "Music created successfully",
+      });
     } catch (error: any) {
       return res.status(500).json({ message: error.message || error });
     }

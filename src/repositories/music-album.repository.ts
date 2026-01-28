@@ -2,6 +2,12 @@ import { prisma } from "../utils/prisma";
 import { Prisma } from "@prisma/client";
 
 export default class MusicAlbumRepo {
+  static async findByTitle(title: string) {
+    return prisma.musicAlbum.findFirst({
+      where: { album: title, deletedAt: null },
+    });
+  }
+
   static async create(data: Prisma.MusicAlbumUncheckedCreateInput) {
     return prisma.musicAlbum.create({
       data,
