@@ -120,7 +120,7 @@ export default class RoomRepo {
   static async getUserAccessibleRooms(
     userId: string,
     skip: number,
-    limit: number
+    limit: number,
   ) {
     return prisma.room.findMany({
       where: {
@@ -221,7 +221,7 @@ export default class RoomRepo {
       isPrivate?: boolean;
       note?: string;
       roomSubCategoryId?: string;
-    }
+    },
   ) {
     return prisma.room.update({
       where: {
@@ -351,12 +351,7 @@ export default class RoomRepo {
     return !!room;
   }
   static async findById(roomId: string) {
-    const room = await prisma.room.findFirst({
-      where: {
-        id: roomId,
-      },
-    });
-    return !!room;
+    return this.findRoomById(roomId);
   }
   static async getRoomMessages(roomId: string) {
     return prisma.room.findUnique({
