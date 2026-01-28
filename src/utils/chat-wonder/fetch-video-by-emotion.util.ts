@@ -12,31 +12,29 @@ import logger from "../logger";
 export async function fetchVideosByEmotion(
   emotions: string | string[],
   userId: string,
-  limit: number = 3
+  limit: number = 3,
 ): Promise<any[]> {
   try {
     const emotionArray = Array.isArray(emotions) ? emotions : [emotions];
-
     logger.info(
-      `[FETCH-VIDEO-BY-EMOTION] Fetching videos for emotions: ${emotionArray.join(", ")}`
+      `[FETCH-VIDEO-BY-EMOTION] Fetching videos for emotions: ${emotionArray.join(", ")}`,
     );
-
     // Try with detected emotions first
     let videos = await VideoRepo.findVideosByEmotions(
       emotionArray,
       undefined, // no artist filter
-      limit
+      limit,
     );
 
     // Fallback to neutral emotions if no results
     if (!videos || videos.length === 0) {
       logger.info(
-        `[FETCH-VIDEO-BY-EMOTION] No videos for ${emotionArray.join(", ")}, trying neutral`
+        `[FETCH-VIDEO-BY-EMOTION] No videos for ${emotionArray.join(", ")}, trying neutral`,
       );
       videos = await VideoRepo.findVideosByEmotions(
         ["neutral", "content", "peaceful"],
         undefined,
-        limit
+        limit,
       );
     }
 
@@ -50,10 +48,11 @@ export async function fetchVideosByEmotion(
     // Format videos for response
     return videos.map((video: any) => ({
       id: video.id,
-      title: video.title || "Video",
-      url: video.file?.fileUrl || video.externalUrl || null,
-      artist: video.artist?.name || null,
-      artistImage: video.artist?.imageUrl || null,
+      title: video.title ?? "Video",
+      // url: video.file?.fileUrl || video.externalUrl || null,
+      artist: video.artist?.name ?? null,
+      artistImage: video.artist?.imageUrl ?? null,
+      externalUrl: video.externalUrl ?? null,
     }));
   } catch (error: any) {
     logger.error(`[FETCH-VIDEO-BY-EMOTION] Error: ${error?.message}`);

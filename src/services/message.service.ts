@@ -6,14 +6,26 @@ export default class MessageSvc {
     await CacheUtil.delByPattern(`messages:user:${userId}:page:*`);
     return MessageRepo.createMessage(roomId, userId, message);
   }
+
+  static async createAdMessage(
+    roomId: string,
+    adContent: string,
+    authorId: string,
+    adMeta: { adType: string; label?: string; campaign?: string },
+  ) {
+    await CacheUtil.delByPattern(`messages:user:*:page:*`);
+    return MessageRepo.createAdMessage(roomId, authorId, adContent, adMeta);
+  }
+
   static async removeMessage(messageId: string) {
     return MessageRepo.removeMessage(messageId);
   }
+
   static async getRoomMessages(
     roomId: string,
     userId: string,
     page: number,
-    limit: number
+    limit: number,
   ) {
     if (page < 0) {
       throw new Error("Page must be non-negative");
