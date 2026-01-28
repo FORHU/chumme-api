@@ -194,8 +194,8 @@ model Embedding {
   vector        Json?
   createdAt     DateTime               @default(now())
   chatMessageId String                 @unique
-  vector_search Unsupported("vector")?
   chatMessage   ChatMessage            @relation(fields: [chatMessageId], references: [id])
+  vector_search Unsupported("vector")?
 
   @@index([vector_search], map: "embedding_vector_search_idx")
 }
