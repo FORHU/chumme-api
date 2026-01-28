@@ -123,6 +123,7 @@ model Room {
   note              String?
   key_name          String?
   roomSubCategoryId String?
+  //   shouldInsertAd    Boolean          @default(false)
   messages          Message[]
   owner             User             @relation("RoomOwner", fields: [ownerId], references: [id])
   roomSubCategory   RoomSubCategory? @relation(fields: [roomSubCategoryId], references: [id])
@@ -148,11 +149,23 @@ model Message {
   authorId  String
   content   String
   isSystem  Boolean  @default(false)
+  //   isAd      Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   author    User     @relation(fields: [authorId], references: [id])
   room      Room     @relation(fields: [roomId], references: [id])
+  //   adMeta    AdMeta?
 }
+
+// model AdMeta {
+//   id        String  @id @default(uuid())
+//   messageId String  @unique
+//   adType    String
+//   label     String  @default("Sponsored")
+//   campaign  String?
+// 
+//   message Message @relation(fields: [messageId], references: [id])
+// }
 
 model Conversation {
   id            String        @id @default(uuid())
@@ -525,7 +538,9 @@ model MusicPlaylist {
   music    Music    @relation(fields: [musicId], references: [id])
   playlist Playlist @relation(fields: [playlistId], references: [id])
 
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
+  updatedAt DateTime  @updatedAt
 
   @@unique([musicId, playlistId])
 }

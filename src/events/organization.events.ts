@@ -4,6 +4,7 @@ import authenticateSocket from "../middleware/authenticate-sockets.middleware";
 import UserChatSvc from "../services/user-chat.service";
 import MessageSvc from "../services/message.service";
 import RoomMemberSvc from "../services/room-member.service";
+import MessageAdSvc from "../services/message-ad.service";
 interface ChatMessage {
   username: string;
   text: string;
@@ -30,8 +31,18 @@ export default (io: Server) => {
 
     socket.join("organization-chat");
 
-    socket.on("join_room", async ({ room_id, roomName }) => {
+    socket.on("join_room", async (data: any) => {
       try {
+        const room_id = typeof data === "string" ? data : data.room_id;
+        const roomName =
+          typeof data === "object" ? data.roomName : "Unknown Room";
+
+        if (!room_id) {
+          return socket.emit("join_room_failed", {
+            message: "room_id missing",
+          });
+        }
+
         const room = await RoomSvc.findById(room_id);
         if (!room) {
           return socket.emit("join_room_failed", {
@@ -41,7 +52,7 @@ export default (io: Server) => {
         }
         const existing = await UserChatSvc.findUserInRoom(
           socket.user.id,
-          room_id
+          room_id,
         );
 
         if (existing?.length === 0) {
@@ -49,7 +60,7 @@ export default (io: Server) => {
           await UserChatSvc.createUserChat(
             socket.user.id,
             room_id,
-            userChatRole
+            userChatRole,
           );
           console.log(`✔ ${socket.user.id} join the room ${room_id}`);
         } else {
@@ -88,7 +99,7 @@ export default (io: Server) => {
 
       const isMember = await UserChatSvc.findUserInRoom(
         socket.user.id,
-        room_id
+        room_id,
       );
 
       if (!isMember?.length) {
@@ -97,6 +108,8 @@ export default (io: Server) => {
         });
       }
 
+      await MessageSvc.createMessage(room_id, socket.user.id, message);
+
       io.to(room_id).emit("send_message_to_room", {
         room_id,
         sender: socket.user,
@@ -104,14 +117,54 @@ export default (io: Server) => {
         attachments: [],
         createdAt: new Date().toISOString(),
       });
-      await MessageSvc.createMessage(room_id, socket.user.id, message);
+
+      const shouldAd = await MessageAdSvc.shouldInsertAd(room_id);
+
+      if (shouldAd) {
+        const room = await RoomSvc.findById(room_id);
+        // Use ownerId as authorId for the ad message if room exists
+        const authorId =
+          typeof room === "object" && room
+            ? (room as any).ownerId
+            : socket.user.id;
+
+        const adContent = "🔥 Sponsored: Get 20% OFF today!";
+        const adMeta = {
+          adType: "banner",
+          label: "Sponsored",
+          campaign: "winter_sale_2026",
+        };
+
+        await MessageSvc.createAdMessage(room_id, adContent, authorId, adMeta);
+
+        io.to(room_id).emit("send_message_to_room", {
+          room_id,
+          sender: { id: authorId, name: "Sponsored", username: "sponsored" },
+          content: adContent,
+          attachments: [],
+          createdAt: new Date().toISOString(),
+          isAd: true,
+          adMeta,
+        });
+      }
+
       console.log(
-        `✔ ${socket.user.name} sent a message in ${roomName}: \** ${message} **/ at ${new Date().toISOString()}`
+        `✔ ${socket.user.name} sent a message in ${roomName}: \** ${message} **/ at ${new Date().toISOString()}`,
       );
     });
 
-    socket.on("leave_room", async ({ room_id, roomName }) => {
+    socket.on("leave_room", async (data: any) => {
       try {
+        const room_id = typeof data === "string" ? data : data.room_id;
+        const roomName =
+          typeof data === "object" ? data.roomName : "Unknown Room";
+
+        if (!room_id) {
+          return socket.emit("leave_room_failed", {
+            message: "room_id missing",
+          });
+        }
+
         const room = await RoomSvc.findById(room_id);
         if (!room) {
           return socket.emit("leave_room_failed", {
@@ -121,13 +174,13 @@ export default (io: Server) => {
 
         const existing = await UserChatSvc.findUserInRoom(
           socket.user.id,
-          room_id
+          room_id,
         );
 
         if (existing?.length) {
           await UserChatSvc.leaveUserChat(socket.user.id, room_id);
           console.log(
-            `✔ ${socket.user.id} left the room ${roomName} ${room_id}`
+            `✔ ${socket.user.id} left the room ${roomName} ${room_id}`,
           );
         } else {
           return socket.emit("join_room_info", {
@@ -170,7 +223,7 @@ export default (io: Server) => {
       if (socket.user?.id) await RoomMemberSvc.leaveAllRooms(socket.user.id);
       console.log(
         "Client disconnected from organization namespace",
-        socket.user.id
+        socket.user.id,
       );
     });
   });
