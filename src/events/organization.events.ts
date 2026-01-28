@@ -4,7 +4,7 @@ import authenticateSocket from "../middleware/authenticate-sockets.middleware";
 import UserChatSvc from "../services/user-chat.service";
 import MessageSvc from "../services/message.service";
 import RoomMemberSvc from "../services/room-member.service";
-import MessageAdSvc from "../services/message-ad.service";
+
 interface ChatMessage {
   username: string;
   text: string;
@@ -117,36 +117,6 @@ export default (io: Server) => {
         attachments: [],
         createdAt: new Date().toISOString(),
       });
-
-      const shouldAd = await MessageAdSvc.shouldInsertAd(room_id);
-
-      if (shouldAd) {
-        const room = await RoomSvc.findById(room_id);
-        // Use ownerId as authorId for the ad message if room exists
-        const authorId =
-          typeof room === "object" && room
-            ? (room as any).ownerId
-            : socket.user.id;
-
-        const adContent = "🔥 Sponsored: Get 20% OFF today!";
-        const adMeta = {
-          adType: "banner",
-          label: "Sponsored",
-          campaign: "winter_sale_2026",
-        };
-
-        await MessageSvc.createAdMessage(room_id, adContent, authorId, adMeta);
-
-        io.to(room_id).emit("send_message_to_room", {
-          room_id,
-          sender: { id: authorId, name: "Sponsored", username: "sponsored" },
-          content: adContent,
-          attachments: [],
-          createdAt: new Date().toISOString(),
-          isAd: true,
-          adMeta,
-        });
-      }
 
       console.log(
         `✔ ${socket.user.name} sent a message in ${roomName}: \** ${message} **/ at ${new Date().toISOString()}`,

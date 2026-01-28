@@ -5,7 +5,7 @@ export default class MessageRepo {
     return prisma.message.create({
       data: {
         content: message,
-        //         isAd: false,
+
         room: {
           connect: { id: roomId },
         },
@@ -15,26 +15,6 @@ export default class MessageRepo {
       },
     });
   }
-
-  //   static async createAdMessage(
-  //     roomId: string,
-  //     authorId: string,
-  //     content: string,
-  //     adMeta: { adType: string; label?: string; campaign?: string },
-  //   ) {
-  //     return prisma.message.create({
-  //       data: {
-  //         roomId,
-  //         authorId,
-  //         content,
-  //         isAd: true,
-  //         isSystem: true,
-  //         adMeta: {
-  //           create: adMeta,
-  //         },
-  //       },
-  //     });
-  //   }
 
   static async count(where: any) {
     return prisma.message.count({ where });
@@ -74,8 +54,7 @@ export default class MessageRepo {
         createdAt: true,
         updatedAt: true,
         isSystem: true,
-        //         isAd: true,
-        //         adMeta: true,
+
         roomId: true,
         id: true,
       },

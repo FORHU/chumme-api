@@ -7,16 +7,6 @@ export default class MessageSvc {
     return MessageRepo.createMessage(roomId, userId, message);
   }
 
-  static async createAdMessage(
-    roomId: string,
-    adContent: string,
-    authorId: string,
-    adMeta: { adType: string; label?: string; campaign?: string },
-  ) {
-    await CacheUtil.delByPattern(`messages:user:*:page:*`);
-    return MessageRepo.createAdMessage(roomId, authorId, adContent, adMeta);
-  }
-
   static async removeMessage(messageId: string) {
     return MessageRepo.removeMessage(messageId);
   }
