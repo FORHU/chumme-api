@@ -4,12 +4,19 @@ import { upload } from "../middleware/upload.middleware";
 
 const router = express.Router();
 
+/*
+ * presigned url routes
+ */
+router.post("/get-upload-url", FileCtrl.getUploadUrl);
+router.get("/get-download-url", FileCtrl.getDownloadUrl);
+
+/*
+ * file routes
+ */
 router.post("/", FileCtrl.saveFile);
 router.post("/upload", upload.single("file"), FileCtrl.uploadFile);
+router.put("/upsert", FileCtrl.upsertFile);
 router.get("/:id", FileCtrl.getFile);
 router.delete("/:id", FileCtrl.deleteFile);
-router.put("/upsert", FileCtrl.upsertFile);
-router.get("/:userId", FileCtrl.upsertFile);
-
 
 export default router;

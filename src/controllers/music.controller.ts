@@ -1,34 +1,16 @@
 import { Request, Response } from "express";
 import Joi from "joi";
 import MusicSvc from "../services/music.service";
-import S3Util from "../utils/s3.util";
 
 export default class MusicCtrl {
   static async createMusic(req: Request, res: Response) {
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-    const file = files?.file_url?.[0];
-    const metaDataFile = files?.meta_data?.[0];
+    const file = files?.fileData?.[0];
 
-    if (!file && !req.body.file_url) {
-      return res.status(400).json({ message: "File or file_url is required" });
-    }
-
-    // Process meta_data file if exists
-    if (metaDataFile) {
-      try {
-        req.body.meta_data = JSON.parse(metaDataFile.buffer.toString());
-      } catch (e) {
-        return res
-          .status(400)
-          .json({ message: "Invalid meta_data JSON file content" });
-      }
-    } else if (typeof req.body.meta_data === "string") {
-      // Parse meta_data if it's a string (e.g. from multipart form text field)
-      try {
-        req.body.meta_data = JSON.parse(req.body.meta_data);
-      } catch (e) {
-        return res.status(400).json({ message: "Invalid meta_data JSON" });
-      }
+    if (!file && !req.body.musicFileId) {
+      return res
+        .status(400)
+        .json({ message: "File upload (fileData) or musicFileId is required" });
     }
 
     const schema = Joi.object({
@@ -36,16 +18,15 @@ export default class MusicCtrl {
       duration: Joi.number(),
       bpm: Joi.number().integer(),
       hasWordTiming: Joi.boolean(),
-      meta_data: Joi.object().required(),
       release_date: Joi.date().iso().required(),
-      file_url: Joi.string().uri().when("$hasFile", {
+      musicFileId: Joi.string().uuid().when("$hasFile", {
         is: true,
         then: Joi.optional(),
         otherwise: Joi.required(),
       }),
       musicAlbumId: Joi.string().uuid(),
       musicArtistId: Joi.string().uuid(),
-      // playlistId: Joi.string().uuid(),
+      isKaraoke: Joi.boolean(),
     });
 
     const { error, value } = schema.validate(req.body, {
@@ -54,17 +35,28 @@ export default class MusicCtrl {
     if (error) return res.status(400).json({ message: error.message });
 
     try {
-      if (file) {
-        value.file_url = await S3Util.uploadFile(
-          file.buffer,
-          file.originalname,
-          file.mimetype,
-        );
+      // Check if music already exists by title
+      const existing = await MusicSvc.getMusicByTitle(value.title);
+      if (existing) {
+        return res.status(400).json({
+          message: "Music with this title already exists",
+          data: existing,
+        });
       }
 
-      const music = await MusicSvc.createMusic(value);
+      // Pass file to service if uploaded
+      const fileData = file
+        ? {
+            buffer: file.buffer,
+            originalname: file.originalname,
+            mimetype: file.mimetype,
+          }
+        : undefined;
+
+      const music = await MusicSvc.createMusic(value, fileData);
       return res.status(201).json({
         message: "Music created successfully",
+        data: music,
       });
     } catch (error: any) {
       return res.status(500).json({ message: error.message || error });
@@ -102,12 +94,12 @@ export default class MusicCtrl {
       duration: Joi.number().allow(null),
       bpm: Joi.number().integer().allow(null),
       hasWordTiming: Joi.boolean(),
-      meta_data: Joi.object(),
       release_date: Joi.date().iso(),
-      file_url: Joi.string().uri(),
+      musicFileId: Joi.string().uuid(),
       musicAlbumId: Joi.string().uuid().allow(null),
       musicArtistId: Joi.string().uuid(),
       playlistId: Joi.string().uuid().allow(null),
+      isKaraoke: Joi.boolean(),
     }).min(1);
 
     const { error, value } = schema.validate(req.body);

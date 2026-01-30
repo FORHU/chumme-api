@@ -21,6 +21,7 @@ export default class RoomSvc {
     note: string;
     ownerId: string;
     roomSubCategoryId: string;
+    key_name?: string;
   }) {
     const roomByName = await RoomRepo.findRoomName(data.name);
     if (roomByName) {
@@ -29,7 +30,7 @@ export default class RoomSvc {
 
     // Validate subcategory exists
     const subCategoryExists = await RoomSubCategoryRepo.getSubCategoryById(
-      data.roomSubCategoryId
+      data.roomSubCategoryId,
     );
     if (!subCategoryExists) {
       throw new Error("Room subcategory not found");
@@ -55,7 +56,7 @@ export default class RoomSvc {
   static async getAllRooms(
     userId: string,
     page: number = 1,
-    limit: number = 10
+    limit: number = 10,
   ) {
     const skip = (page - 1) * limit;
 
@@ -101,7 +102,7 @@ export default class RoomSvc {
       note?: string;
       roomSubCategoryId?: string;
     },
-    userId: string
+    userId: string,
   ) {
     // Check if user is the owner of the room
     const isOwner = await RoomRepo.isUserRoomOwner(roomId, userId);
@@ -112,7 +113,7 @@ export default class RoomSvc {
     // Validate subcategory if provided
     if (updateData.roomSubCategoryId) {
       const subCategoryExists = await RoomSubCategoryRepo.getSubCategoryById(
-        updateData.roomSubCategoryId
+        updateData.roomSubCategoryId,
       );
       if (!subCategoryExists) {
         throw new Error("Room subcategory not found");
@@ -131,7 +132,7 @@ export default class RoomSvc {
     return RoomRepo.softDeleteRoom(roomId);
   }
 
-  static async joinRoom(roomId: string, userId: string) {
+  static async joinRoom(roomId: string, userId: string, keyName?: string) {
     const user = await RoomRepo.findUserById(userId);
     if (!user || user.isDeleted) {
       return { success: false, message: "User not found or has been deleted" };
@@ -142,9 +143,14 @@ export default class RoomSvc {
       return { success: false, message: "Room not found" };
     }
 
+    // Key Name Validation
+    if (room.key_name && room.key_name !== keyName) {
+      return { success: false, message: "Invalid Room Key Name" };
+    }
+
     const isAlreadyMember = await RoomMemberRepo.isUserRoomMember(
       roomId,
-      userId
+      userId,
     );
     if (isAlreadyMember) {
       return {
@@ -192,7 +198,7 @@ export default class RoomSvc {
     userId: string,
     roomId: string,
     page: number,
-    limit: number
+    limit: number,
   ) {
     if (page < 0) {
       throw new Error("Page must be non-negative");

@@ -45,7 +45,44 @@ model User {
   userChats              UserChat[]
   userEmotionPreferences UserEmotionPreference[]
   userInterests          UserInterest[]
+  // ✅ FRIENDS
+  // sentFriendRequests     UserFriend[]            @relation("FriendRequestSender")
+  // receivedFriendRequests UserFriend[]            @relation("FriendRequestReceiver")
+
+  // ✅ COLLABORATIONS
+  // sentCollaborations     UserCollaboration[] @relation("CollabSender")
+  // receivedCollaborations UserCollaboration[] @relation("CollabReceiver")
+  musicRecords MusicRecord[] @relation("MusicRecordUsers")
 }
+
+// model UserFriend {
+//   id               String   @id @default(uuid())
+//   senderId         String
+//   receiverId       String
+//   invitationStatus STATUS   @default(PENDING)
+//   createdAt        DateTime @default(now())
+//   updatedAt        DateTime @updatedAt
+
+//   sender   User @relation("FriendRequestSender", fields: [senderId], references: [id])
+//   receiver User @relation("FriendRequestReceiver", fields: [receiverId], references: [id])
+
+//   @@unique([senderId, receiverId])
+// }
+
+// model UserCollaboration {
+//   id                String            @id @default(uuid())
+//   senderId          String
+//   receiverId        String
+//   collaborationType CollaborationType @default(CROWDSINGING)
+//   invitationStatus  STATUS            @default(PENDING)
+//   createdAt         DateTime          @default(now())
+//   updatedAt         DateTime          @updatedAt
+
+//   sender   User @relation("CollabSender", fields: [senderId], references: [id])
+//   receiver User @relation("CollabReceiver", fields: [receiverId], references: [id])
+
+//   @@unique([senderId, receiverId, collaborationType])
+// }
 
 model Session {
   id                String   @id @default(uuid())
@@ -63,16 +100,18 @@ model Session {
 }
 
 model File {
-  id         String      @id @default(uuid())
-  filename   String?
-  fileUrl    String?
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
-  deletedAt  DateTime?
-  metaData   Json?
-  mediaPosts MediaPost[]
-  users      User[]
-  videos     Video[]
+  id           String        @id @default(uuid())
+  filename     String?
+  fileUrl      String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  deletedAt    DateTime?
+  metaData     Json?
+  mediaPosts   MediaPost[]
+  users        User[]
+  videos       Video[]
+  musicFiles   Music[]       @relation("MusicFile")
+  musicRecords MusicRecord[] @relation("MusicRecordFile")
 }
 
 model UserChat {
@@ -504,9 +543,10 @@ model Music {
   duration      Float?
   bpm           Int?
   hasWordTiming Boolean  @default(false)
-  meta_data     Json
   release_date  DateTime
-  file_url      String
+  musicFileId   String
+  musicFile     File     @relation("MusicFile", fields: [musicFileId], references: [id])
+  isKaraoke     Boolean  @default(false)
 
   musicAlbum   MusicAlbum? @relation(fields: [musicAlbumId], references: [id])
   musicAlbumId String?
@@ -516,6 +556,23 @@ model Music {
   createdAt DateTime  @default(now())
   deletedAt DateTime?
   updatedAt DateTime  @updatedAt
+
+  records MusicRecord[]
+}
+
+model MusicRecord {
+  id String @id @default(uuid())
+
+  users User[] @relation("MusicRecordUsers")
+
+  musicId String
+  music   Music  @relation(fields: [musicId], references: [id])
+
+  fileId String
+  file   File   @relation("MusicRecordFile", fields: [fileId], references: [id])
+
+  createdAt DateTime  @default(now())
+  deletedAt DateTime? @updatedAt
 }
 
 model MusicPlaylist {
@@ -557,3 +614,14 @@ enum ChatRole {
   AI
   ADMIN
 }
+
+// enum CollaborationType {
+//   CROWDSINGING
+//   RELAYSINGING
+// }
+
+// enum STATUS {
+//   PENDING
+//   ACCEPTED
+//   REJECTED
+// }

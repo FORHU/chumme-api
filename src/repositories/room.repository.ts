@@ -41,11 +41,12 @@ export default class RoomRepo {
     note: string;
     ownerId: string;
     roomSubCategoryId: string;
+    key_name?: string;
   }) {
     return prisma.room.create({
       data: {
         name: data.name,
-        key_name: generateKeyName(data.name),
+        key_name: data.key_name ?? generateKeyName(data.name),
         isPrivate: false,
         note: data.note,
         ownerId: data.ownerId,

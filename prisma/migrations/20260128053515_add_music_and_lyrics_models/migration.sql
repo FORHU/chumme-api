@@ -1,5 +1,11 @@
 
-CREATE EXTENSION IF NOT EXISTS vector;
+-- Try to create vector extension (only works if pgvector is installed)
+DO $$ 
+BEGIN
+  CREATE EXTENSION IF NOT EXISTS vector;
+EXCEPTION WHEN OTHERS THEN
+  RAISE NOTICE 'pgvector extension not available, skipping vector features';
+END $$;
 
 /*
   Warnings:
@@ -7,8 +13,13 @@ CREATE EXTENSION IF NOT EXISTS vector;
   - You are about to drop the column `provider` on the `User` table. All the data in the column will be lost.
 
 */
--- AlterTable
-ALTER TABLE "Embedding" ADD COLUMN     "vector_search" vector;
+-- AlterTable (only add vector_search if extension exists)
+DO $$
+BEGIN
+  ALTER TABLE "Embedding" ADD COLUMN "vector_search" vector;
+EXCEPTION WHEN OTHERS THEN
+  RAISE NOTICE 'Could not add vector_search column, pgvector not available';
+END $$;
 
 -- AlterTable
 ALTER TABLE "Session" ADD COLUMN     "provider" TEXT,
@@ -94,8 +105,13 @@ CREATE UNIQUE INDEX "FeaturedArtist_artistId_musicId_key" ON "FeaturedArtist"("a
 -- CreateIndex
 CREATE UNIQUE INDEX "MusicPlaylist_musicId_playlistId_key" ON "MusicPlaylist"("musicId", "playlistId");
 
--- CreateIndex
-CREATE INDEX "embedding_vector_search_idx" ON "Embedding"("vector_search");
+-- CreateIndex (only if vector_search column exists)
+DO $$
+BEGIN
+  CREATE INDEX "embedding_vector_search_idx" ON "Embedding"("vector_search");
+EXCEPTION WHEN OTHERS THEN
+  RAISE NOTICE 'Could not create vector_search index, column may not exist';
+END $$;
 
 
 -- CreateIndex
