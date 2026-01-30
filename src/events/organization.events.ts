@@ -50,6 +50,15 @@ export default (io: Server) => {
             message: "Room does not exist",
           });
         }
+
+        // Key Name Validation
+        const key_name = typeof data === "object" ? data.key_name : undefined;
+        if (room.key_name && room.key_name !== key_name) {
+          return socket.emit("join_room_failed", {
+            room_id,
+            message: "Invalid Room Key Name",
+          });
+        }
         const existing = await UserChatSvc.findUserInRoom(
           socket.user.id,
           room_id,

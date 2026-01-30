@@ -23,6 +23,7 @@ import chatWonderRoute from "./chat-wonder.route";
 import musicAlbumRoute from "./music-album.route";
 import musicRoute from "./music.route";
 import playlistRoute from "./playlist.route";
+import musicRecordRoute from "./music-record.route";
 
 const router = express.Router();
 
@@ -57,5 +58,6 @@ router.use("/v1/chat-wonder", chatWonderRoute);
 router.use("/v1/music-albums", musicAlbumRoute);
 router.use("/v1/music", musicRoute);
 router.use("/v1/playlists", playlistRoute);
+router.use("/v1/music-records", musicRecordRoute);
 
 export default router;

@@ -16,6 +16,11 @@ export default class MusicRepo {
             }
           : undefined,
       },
+      include: {
+        musicFile: true,
+        musicArtist: true,
+        musicAlbum: true,
+      },
     });
   }
 
@@ -30,6 +35,17 @@ export default class MusicRepo {
           },
         },
         musicAlbum: true,
+        musicFile: true,
+      },
+    });
+  }
+
+  static async findByTitle(title: string) {
+    return prisma.music.findFirst({
+      where: { title, deletedAt: null },
+      include: {
+        musicArtist: true,
+        musicFile: true,
       },
     });
   }
@@ -56,6 +72,7 @@ export default class MusicRepo {
       include: {
         musicArtist: true,
         featuredArtists: true,
+        musicFile: true,
       },
       orderBy: {
         createdAt: "desc",
@@ -88,6 +105,11 @@ export default class MusicRepo {
               },
             }
           : undefined,
+      },
+      include: {
+        musicFile: true,
+        musicArtist: true,
+        musicAlbum: true,
       },
     });
   }

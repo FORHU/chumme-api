@@ -16,16 +16,22 @@ export default class RoomCtrl {
    * Only non-deleted users can create rooms
    */
   static async createRoom(req: Request, res: Response) {
-    const { name, note, roomSubCategoryId } = req.body;
+    const { name, note, roomSubCategoryId, key_name } = req.body;
     const userId = req.user.id;
 
     const schema = Joi.object({
       name: Joi.string().min(1).max(100).required(),
       note: Joi.string(),
       roomSubCategoryId: Joi.string().uuid().required(),
+      key_name: Joi.string(),
     });
 
-    const { error } = schema.validate({ name, note, roomSubCategoryId });
+    const { error } = schema.validate({
+      name,
+      note,
+      roomSubCategoryId,
+      key_name,
+    });
     if (error) {
       return res.status(400).json({ message: error.message });
     }
@@ -36,6 +42,7 @@ export default class RoomCtrl {
         note,
         ownerId: userId,
         roomSubCategoryId,
+        key_name,
       });
       return res.status(201).json({
         message: "Room created successfully",
@@ -101,7 +108,6 @@ export default class RoomCtrl {
     try {
       const { name, isPrivate, note, roomId, roomSubCategoryId } = req.body;
       const userId = req.user.id;
-      console.log("++++++++++++", req.body);
       const schema = Joi.object({
         roomId: Joi.string().required(),
         name: Joi.string().min(1).max(100).optional(),
@@ -128,7 +134,7 @@ export default class RoomCtrl {
           note,
           roomSubCategoryId,
         },
-        userId
+        userId,
       );
       if (!room) {
         return res
@@ -181,17 +187,19 @@ export default class RoomCtrl {
   static async joinRoom(req: Request, res: Response) {
     try {
       const { id } = req.params;
+      const { key_name } = req.body;
       const userId = req.user.id;
 
       const schema = Joi.object({
         id: Joi.string().uuid().required(),
+        key_name: Joi.string().optional(),
       });
 
-      const { error } = schema.validate({ id });
+      const { error } = schema.validate({ id, key_name });
       if (error) {
         return res.status(400).json({ message: error.message });
       }
-      const result = await RoomSvc.joinRoom(id, userId);
+      const result = await RoomSvc.joinRoom(id, userId, key_name);
       if (!result.success) {
         return res.status(400).json({ message: result.message });
       }
@@ -245,7 +253,7 @@ export default class RoomCtrl {
         req.params.roomId,
         req?.user?.id,
         page,
-        limit
+        limit,
       );
       return res.json({
         success: true,

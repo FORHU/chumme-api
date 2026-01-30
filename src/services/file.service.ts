@@ -1,4 +1,5 @@
 import FileRepo from "../repositories/file.repository";
+import S3PresignedUtil from "../utils/s3-presigned.util";
 import S3Util from "../utils/s3.util";
 
 export default class FileSvc {
@@ -80,5 +81,15 @@ export default class FileSvc {
     await FileRepo.deleteFile(fileId);
 
     return { message: "File deleted successfully" };
+  }
+
+  static async getUploadUrl(key: string, contentType: string) {
+    const response = await S3PresignedUtil.getUploadUrl(key, contentType);
+    return { message: "File Uploaded Successfully", data: response };
+  }
+
+  static async getDownloadUrl(key: string) {
+    const response = await S3PresignedUtil.getDownloadUrl(key);
+    return { message: "File Downloaded Successfully", data: response };
   }
 }
