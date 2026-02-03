@@ -1,7 +1,10 @@
 import express from "express";
 import MusicRecordCtrl from "../controllers/music-record.controller";
+import { authenticate } from "../middleware/auth.middleware";
 
 const router = express.Router();
+
+router.use(authenticate);
 
 // List all music records (with pagination)
 router.get("/list", MusicRecordCtrl.getAll);
