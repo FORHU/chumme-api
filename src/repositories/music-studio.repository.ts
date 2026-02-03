@@ -269,6 +269,22 @@ export default class MusicStudioRepo {
   }
 
   /**
+   * Update all active members' roles in a studio (e.g., bulk upgrade to SINGER)
+   */
+  static async updateAllMembersRole(studioId: string, role: StudioRole) {
+    await prisma.studioMember.updateMany({
+      where: {
+        studioId,
+        isActive: true,
+      },
+      data: { role },
+    });
+
+    // Return the updated list
+    return this.getStudioUsers(studioId);
+  }
+
+  /**
    * Link a MusicRecord to the studio (after recording is saved)
    */
   static async linkMusicRecord(studioId: string, musicRecordId: string) {
