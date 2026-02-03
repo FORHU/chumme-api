@@ -6,6 +6,7 @@ export default class MusicCtrl {
   static async createMusic(req: Request, res: Response) {
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
     const file = files?.fileData?.[0];
+    const metaDataFile = files?.meta_data?.[0];
 
     if (!file && !req.body.musicFileId) {
       return res
@@ -27,6 +28,7 @@ export default class MusicCtrl {
       musicAlbumId: Joi.string().uuid(),
       musicArtistId: Joi.string().uuid(),
       isKaraoke: Joi.boolean(),
+      meta_data: Joi.object().optional(),
     });
 
     const { error, value } = schema.validate(req.body, {
@@ -50,10 +52,26 @@ export default class MusicCtrl {
             buffer: file.buffer,
             originalname: file.originalname,
             mimetype: file.mimetype,
+            size: file.size,
           }
         : undefined;
 
-      const music = await MusicSvc.createMusic(value, fileData);
+      // Handle custom metadata from file or body
+      let customMetaData = value.meta_data;
+      if (metaDataFile) {
+        try {
+          customMetaData = JSON.parse(metaDataFile.buffer.toString());
+        } catch (e) {
+          return res
+            .status(400)
+            .json({ message: "Invalid JSON in meta_data file" });
+        }
+      }
+
+      const music = await MusicSvc.createMusic(
+        { ...value, metaData: customMetaData },
+        fileData,
+      );
       return res.status(201).json({
         message: "Music created successfully",
         data: music,
