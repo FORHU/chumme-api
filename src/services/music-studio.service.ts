@@ -260,7 +260,14 @@ export default class MusicStudioSvc {
       throw new Error("Only the owner can close the studio");
     }
 
+    // 1. Clear session data from cache (Wipe everything instantly)
+    const MusicStudioCacheSvc = (await import("./music-studio-cache.service"))
+      .default;
+    await MusicStudioCacheSvc.clearStudioSession(studioId);
+
+    // 2. Delete from DB
     await MusicStudioRepo.delete(studioId);
+
     return { message: "Studio closed successfully" };
   }
 

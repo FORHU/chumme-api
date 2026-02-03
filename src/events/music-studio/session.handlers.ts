@@ -337,7 +337,6 @@ export const registerSessionHandlers = (
       }
 
       await MusicStudioSvc.closeStudio(studioId, socket.user.id);
-      await MusicStudioCacheSvc.clearStudioSession(studioId);
 
       io.to(studioId).emit("studio_closed", {
         studioId,
