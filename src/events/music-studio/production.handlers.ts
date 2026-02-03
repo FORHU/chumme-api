@@ -13,6 +13,8 @@ export const registerProductionHandlers = (
   io: Server,
   socket: AuthenticatedSocket,
 ) => {
+  // Throttling for high-frequency events
+  const lastLyricSync = new Map<string, number>();
   /**
    * RECORDING COUNTDOWN
    */
@@ -252,6 +254,12 @@ export const registerProductionHandlers = (
         const { studioId, lineIndex } = data;
 
         if (!studioId || lineIndex === undefined) return;
+
+        // Throttling: only allow 3 syncs per second (333ms)
+        const now = Date.now();
+        const lastSync = lastLyricSync.get(studioId) || 0;
+        if (now - lastSync < 333) return;
+        lastLyricSync.set(studioId, now);
 
         const isOwner = await MusicStudioSvc.isOwner(studioId, socket.user.id);
         const membership = await MusicStudioRepo.getMembership(

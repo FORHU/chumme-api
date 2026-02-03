@@ -3,6 +3,7 @@ import { StudioRole } from "@prisma/client";
 import MusicStudioSvc from "../../services/music-studio.service";
 import MusicStudioRepo from "../../repositories/music-studio.repository";
 import MusicStudioCacheSvc from "../../services/music-studio-cache.service";
+import { PresenceBatcher } from "../../utils/presence-batcher";
 import {
   AuthenticatedSocket,
   CreateStudioPayload,
@@ -14,6 +15,7 @@ import {
 export const registerSessionHandlers = (
   io: Server,
   socket: AuthenticatedSocket,
+  presenceBatcher: PresenceBatcher,
 ) => {
   /**
    * CREATE STUDIO
@@ -121,12 +123,7 @@ export const registerSessionHandlers = (
         queue: queue,
       });
 
-      socket.to(studioId).emit("user_joined_studio", {
-        userId: socket.user.id,
-        user: socket.user,
-        studioId,
-        allUsers: activeUsers,
-      });
+      presenceBatcher.addJoin(studioId, socket.user.id);
 
       console.log(
         `[MusicStudio] ✔ ${socket.user.name} joined studio: ${studioId} (Redis cached)`,
@@ -300,12 +297,7 @@ export const registerSessionHandlers = (
         message: "Left studio successfully",
       });
 
-      socket.to(studioId).emit("user_left_studio", {
-        userId: socket.user.id,
-        user: socket.user,
-        studioId,
-        allUsers: usersInRoom,
-      });
+      presenceBatcher.addLeave(studioId, socket.user.id);
 
       await Promise.all([
         MusicStudioCacheSvc.removeMember(studioId, socket.user.id),
@@ -364,23 +356,48 @@ export const registerSessionHandlers = (
 
       for (const studio of studios) {
         const studioId = studio.id;
+        const userId = socket.user.id;
 
-        socket.to(studioId).emit("user_left_studio", {
-          userId: socket.user.id,
-          user: socket.user,
-          studioId: studioId,
-          reason: "disconnected",
-        });
+        // 1. Mark as disconnected in Redis
+        await MusicStudioCacheSvc.updateMemberStatus(studioId, userId, false);
 
-        await Promise.all([
-          MusicStudioCacheSvc.removeMember(studioId, socket.user.id),
-          MusicStudioCacheSvc.removeSingerRequest(studioId, socket.user.id),
-        ]);
+        // 2. Wait for 15 seconds (grace period)
+        setTimeout(async () => {
+          try {
+            // 3. Check if they are still disconnected (they might have joined back on this or another server)
+            const member = await MusicStudioCacheSvc.getMember(
+              studioId,
+              userId,
+            );
 
-        await MusicStudioRepo.removeUser(studioId, socket.user.id);
+            if (member && !member.isConnected) {
+              // Still disconnected after 15s -> Perform final cleanup
+              presenceBatcher.addLeave(studioId, userId);
+
+              await Promise.all([
+                MusicStudioCacheSvc.removeMember(studioId, userId),
+                MusicStudioCacheSvc.removeSingerRequest(studioId, userId),
+                MusicStudioRepo.removeUser(studioId, userId),
+              ]);
+
+              console.log(
+                `[MusicStudio] User ${userId} removed after grace period from ${studioId}`,
+              );
+            } else {
+              console.log(
+                `[MusicStudio] User ${userId} reconnected to ${studioId}, cancellation of removal`,
+              );
+            }
+          } catch (err) {
+            console.error("[MusicStudio] Grace period cleanup error:", err);
+          }
+        }, 15000); // 15 seconds
       }
 
-      console.log("[MusicStudio] Client disconnected:", socket.user.id);
+      console.log(
+        "[MusicStudio] Client disconnected (grace period started):",
+        socket.user.id,
+      );
     } catch (err) {
       console.error("[MusicStudio] Disconnect error:", err);
     }

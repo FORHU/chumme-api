@@ -9,6 +9,8 @@ import setup from "./setup";
 import cors from "cors";
 import { createServer } from "http";
 import { Server } from "socket.io";
+import { createAdapter } from "@socket.io/redis-adapter";
+import RedisUtil from "./utils/redis.util";
 import { errorHandler } from "./middleware/error-handler.middleware";
 
 const app = express();
@@ -16,18 +18,18 @@ const app = express();
 app.set("trust proxy", 1);
 
 app.use(
-    cors({
-        origin: "*",
-        credentials: true,
-    })
+  cors({
+    origin: "*",
+    credentials: true,
+  }),
 );
 
 app.use(express.json());
 
 // Set up rate limiting middleware
 const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 1000, // limit each IP to 100 requests per windowMs
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 1000, // limit each IP to 100 requests per windowMs
 });
 
 if (!isDev) app.use(limiter);
@@ -43,11 +45,11 @@ app.use(errorHandler);
 const server = createServer(app);
 
 export const io = new Server(server, {
-    cors: {
-        origin: "*",
-        methods: ["GET", "POST"],
-        credentials: true,
-    },
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"],
+    credentials: true,
+  },
 });
 
 import events from "./events";
@@ -57,30 +59,34 @@ events(io);
 
 // Connect to PostgreSQL via Prisma and RabbitMQ
 connectToPrisma()
-    .then(async () => {
-        // Run setup
-        setup();
+  .then(async () => {
+    // Run setup
+    await setup();
 
-        // Initialize RabbitMQ crawler listeners
-        try {
-            await instagramPostListener.connect();
-            await instagramPostListener.startListening();
-            await videoPostListener.connect();
-            await videoPostListener.startListening();
+    // Initialize Redis Adapter for horizontal scaling
+    const { pubClient, subClient } = RedisUtil.getAdapterClients();
+    await Promise.all([pubClient.connect(), subClient.connect()]);
+    io.adapter(createAdapter(pubClient, subClient));
+    console.log("[Socket] Redis adapter initialized");
 
-            console.log(
-                "Video Post RabbitMQ listener initialized successfully"
-            );
-        } catch (error) {
-            console.error(
-                "Failed to initialize Video Post RabbitMQ listener:",
-                error
-            );
-            // Don't crash the server if RabbitMQ fails
-        }
-    })
-    .catch((err: any) => {
-        console.log(err);
-    });
+    // Initialize RabbitMQ crawler listeners
+    try {
+      await instagramPostListener.connect();
+      await instagramPostListener.startListening();
+      await videoPostListener.connect();
+      await videoPostListener.startListening();
+
+      console.log("Video Post RabbitMQ listener initialized successfully");
+    } catch (error) {
+      console.error(
+        "Failed to initialize Video Post RabbitMQ listener:",
+        error,
+      );
+      // Don't crash the server if RabbitMQ fails
+    }
+  })
+  .catch((err: any) => {
+    console.log(err);
+  });
 
 export default server;
