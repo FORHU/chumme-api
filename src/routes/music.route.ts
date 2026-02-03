@@ -13,7 +13,7 @@ router.get("/:id", MusicCtrl.getMusicById);
 router.post(
   "/create",
   upload.fields([
-    { name: "file_url", maxCount: 1 },
+    { name: "fileData", maxCount: 1 },
     { name: "meta_data", maxCount: 1 },
   ]),
   MusicCtrl.createMusic,

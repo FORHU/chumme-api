@@ -52,7 +52,9 @@ model User {
   // ✅ COLLABORATIONS
   // sentCollaborations     UserCollaboration[] @relation("CollabSender")
   // receivedCollaborations UserCollaboration[] @relation("CollabReceiver")
-  musicRecords MusicRecord[] @relation("MusicRecordUsers")
+  musicRecords      MusicRecord[]  @relation("MusicRecordUsers")
+  ownedStudios      MusicStudio[]  @relation("StudioOwner")
+  studioMemberships StudioMember[] @relation("StudioMembership")
 }
 
 // model UserFriend {
@@ -103,15 +105,16 @@ model File {
   id           String        @id @default(uuid())
   filename     String?
   fileUrl      String?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  deletedAt    DateTime?
   metaData     Json?
   mediaPosts   MediaPost[]
   users        User[]
   videos       Video[]
   musicFiles   Music[]       @relation("MusicFile")
   musicRecords MusicRecord[] @relation("MusicRecordFile")
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 }
 
 model UserChat {
@@ -560,6 +563,49 @@ model Music {
   records MusicRecord[]
 }
 
+model StudioMember {
+  id String @id @default(uuid())
+
+  userId String
+  user   User   @relation("StudioMembership", fields: [userId], references: [id])
+
+  studioId String
+  studio   MusicStudio @relation("StudioMembers", fields: [studioId], references: [id])
+
+  role     StudioRole @default(LISTENER)
+  isActive Boolean    @default(true)
+
+  joinedAt DateTime  @default(now())
+  leftAt   DateTime?
+
+  @@unique([userId, studioId])
+  @@index([studioId])
+  @@index([userId])
+}
+
+model MusicStudio {
+  id   String  @id @default(uuid())
+  name String
+  note String?
+
+  keyName String? // Optional - if null, studio is public
+
+  // Owner relation - user who created the studio
+  ownerId String
+  owner   User   @relation("StudioOwner", fields: [ownerId], references: [id])
+
+  // Members - users currently in the studio (via junction table)
+  members StudioMember[] @relation("StudioMembers")
+
+  // Recording output
+  musicRecordId String?
+  musicRecord   MusicRecord? @relation(fields: [musicRecordId], references: [id])
+
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
+  updatedAt DateTime  @updatedAt
+}
+
 model MusicRecord {
   id String @id @default(uuid())
 
@@ -571,8 +617,9 @@ model MusicRecord {
   fileId String
   file   File   @relation("MusicRecordFile", fields: [fileId], references: [id])
 
-  createdAt DateTime  @default(now())
-  deletedAt DateTime? @updatedAt
+  createdAt    DateTime      @default(now())
+  deletedAt    DateTime?     @updatedAt
+  musicStudios MusicStudio[]
 }
 
 model MusicPlaylist {
@@ -613,6 +660,12 @@ enum ChatRole {
   USER
   AI
   ADMIN
+}
+
+enum StudioRole {
+  LISTENER
+  SINGER
+  PRODUCER
 }
 
 // enum CollaborationType {
