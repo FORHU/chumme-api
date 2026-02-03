@@ -191,6 +191,158 @@ export default (io: Server) => {
     });
 
     /**
+     * REQUEST SINGER ROLE
+     * Listener requests to become a singer
+     */
+    socket.on("request_singer", async (data: StudioActionPayload) => {
+      try {
+        const { studioId } = data;
+
+        if (!studioId) {
+          return socket.emit("request_singer_failed", {
+            message: "studioId is required",
+          });
+        }
+
+        // Check if user is in the studio
+        const membership = await MusicStudioRepo.getMembership(
+          studioId,
+          socket.user.id,
+        );
+
+        if (!membership || !membership.isActive) {
+          return socket.emit("request_singer_failed", {
+            message: "You must be in the studio to request singer role",
+          });
+        }
+
+        if (membership.role !== StudioRole.LISTENER) {
+          return socket.emit("request_singer_failed", {
+            message: "You are already a singer or producer",
+          });
+        }
+
+        // Notify all producers/owner in the studio
+        socket.to(studioId).emit("singer_request", {
+          userId: socket.user.id,
+          user: socket.user,
+          studioId,
+        });
+
+        socket.emit("request_singer_sent", {
+          message: "Your request to sing has been sent",
+        });
+
+        console.log(
+          `[MusicStudio] ${socket.user.name} requested singer role in ${studioId}`,
+        );
+      } catch (err: any) {
+        console.error("[MusicStudio] Request singer error:", err);
+        socket.emit("request_singer_failed", {
+          message: err.message || "Failed to request singer role",
+        });
+      }
+    });
+
+    /**
+     * APPROVE SINGER REQUEST
+     * Producer/Owner approves a listener to become singer
+     */
+    socket.on(
+      "approve_singer",
+      async (data: { studioId: string; userId: string }) => {
+        try {
+          const { studioId, userId } = data;
+
+          if (!studioId || !userId) {
+            return socket.emit("approve_singer_failed", {
+              message: "studioId and userId are required",
+            });
+          }
+
+          // Use existing updateMemberRole which checks permissions
+          await MusicStudioSvc.updateMemberRole(
+            studioId,
+            socket.user.id,
+            userId,
+            StudioRole.SINGER,
+          );
+
+          // Notify the requester
+          io.to(studioId).emit("singer_approved", {
+            userId,
+            approvedBy: socket.user.id,
+            studioId,
+          });
+
+          console.log(
+            `[MusicStudio] ${socket.user.name} approved ${userId} as singer`,
+          );
+        } catch (err: any) {
+          console.error("[MusicStudio] Approve singer error:", err);
+          socket.emit("approve_singer_failed", {
+            message: err.message || "Failed to approve singer",
+          });
+        }
+      },
+    );
+
+    /**
+     * REJECT SINGER REQUEST
+     * Producer/Owner rejects a listener's request
+     */
+    socket.on(
+      "reject_singer",
+      async (data: { studioId: string; userId: string }) => {
+        try {
+          const { studioId, userId } = data;
+
+          if (!studioId || !userId) {
+            return socket.emit("reject_singer_failed", {
+              message: "studioId and userId are required",
+            });
+          }
+
+          // Check if requester is owner/producer
+          const studio = await MusicStudioRepo.findById(studioId);
+          if (!studio) {
+            return socket.emit("reject_singer_failed", {
+              message: "Studio not found",
+            });
+          }
+
+          const isOwner = studio.ownerId === socket.user.id;
+          const membership = await MusicStudioRepo.getMembership(
+            studioId,
+            socket.user.id,
+          );
+
+          if (!isOwner && membership?.role !== StudioRole.PRODUCER) {
+            return socket.emit("reject_singer_failed", {
+              message: "Only owner or producers can reject requests",
+            });
+          }
+
+          // Notify the requester directly
+          io.to(studioId).emit("singer_rejected", {
+            userId,
+            rejectedBy: socket.user.id,
+            studioId,
+          });
+
+          console.log(
+            `[MusicStudio] ${socket.user.name} rejected ${userId}'s singer request`,
+          );
+        } catch (err: any) {
+          console.error("[MusicStudio] Reject singer error:", err);
+          socket.emit("reject_singer_failed", {
+            message: err.message || "Failed to reject singer request",
+          });
+        }
+      },
+    );
+
+    /**
      * LEAVE STUDIO
      * User leaves the karaoke room
      */
