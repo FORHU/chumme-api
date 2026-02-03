@@ -12,15 +12,16 @@ interface CreateMusicInput {
   musicFileId?: string;
   musicAlbumId?: string;
   musicArtistId?: string;
-  isKaraoke?: boolean;
   playlistId?: string;
   order?: number;
+  metaData?: any;
 }
 
 interface FileUpload {
   buffer: Buffer;
   originalname: string;
   mimetype: string;
+  size: number;
 }
 
 export default class MusicSvc {
@@ -49,6 +50,7 @@ export default class MusicSvc {
       const fileRecord = await FileRepo.createFile({
         filename: strippedName,
         fileUrl: fileUrl,
+        metaData: data.metaData || null,
       });
 
       data.musicFileId = fileRecord.id;

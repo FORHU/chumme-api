@@ -224,6 +224,10 @@ export default class MusicStudioSvc {
     const fileRecord = await FileRepo.createFile({
       filename: data.filename,
       fileUrl: fileUrl,
+      metaData: {
+        mimetype: data.mimetype,
+        size: data.audioBuffer.length,
+      },
     });
 
     // Get singers/producers for recording credits
