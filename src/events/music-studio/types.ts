@@ -28,10 +28,19 @@ export interface UpdateRolePayload {
   role: StudioRole;
 }
 
+export interface RequestUploadUrlPayload {
+  studioId: string;
+  filename: string;
+  mimetype: string;
+}
+
 export interface SaveRecordingPayload {
   studioId: string;
   musicId: string;
-  audioData?: Buffer;
+  fileKey?: string; // S3 key for pre-uploaded file
+  filename?: string;
+  mimetype?: string;
+  audioData?: Buffer | ArrayBuffer; // Support both for flexibility
 }
 
 export type SocketHandler = (io: Server, socket: AuthenticatedSocket) => void;

@@ -17,7 +17,12 @@ export default class MusicStudioCacheSvc {
    */
   static async addMember(studioId: string, userId: string, userData: any) {
     const key = `${this.STUDIO_PREFIX}${studioId}:members`;
-    await this.client.hSet(key, userId, JSON.stringify(userData));
+    const data = {
+      ...userData,
+      isConnected: true,
+      lastSeen: new Date().toISOString(),
+    };
+    await this.client.hSet(key, userId, JSON.stringify(data));
     await this.client.expire(key, this.TTL);
   }
 
@@ -30,12 +35,39 @@ export default class MusicStudioCacheSvc {
   }
 
   /**
+   * Update member connection status
+   */
+  static async updateMemberStatus(
+    studioId: string,
+    userId: string,
+    isConnected: boolean,
+  ) {
+    const key = `${this.STUDIO_PREFIX}${studioId}:members`;
+    const memberJson = await this.client.hGet(key, userId);
+    if (memberJson) {
+      const memberData = JSON.parse(memberJson);
+      memberData.isConnected = isConnected;
+      memberData.lastSeen = new Date().toISOString();
+      await this.client.hSet(key, userId, JSON.stringify(memberData));
+    }
+  }
+
+  /**
    * Get all active members in the studio
    */
   static async getMembers(studioId: string) {
     const key = `${this.STUDIO_PREFIX}${studioId}:members`;
     const members = await this.client.hGetAll(key);
     return Object.values(members).map((m) => JSON.parse(m));
+  }
+
+  /**
+   * Get a specific member from the studio cache
+   */
+  static async getMember(studioId: string, userId: string) {
+    const key = `${this.STUDIO_PREFIX}${studioId}:members`;
+    const memberJson = await this.client.hGet(key, userId);
+    return memberJson ? JSON.parse(memberJson) : null;
   }
 
   /**

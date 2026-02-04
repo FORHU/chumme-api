@@ -13,8 +13,10 @@ export default class RedisUtil {
     });
 
     this.redisClient.on("ready", () => {
-      console.log(`[RedisUtil] Connected to Redis at ${REDIS_HOST}:${REDIS_PORT}`)
-    })
+      console.log(
+        `[RedisUtil] Connected to Redis at ${REDIS_HOST}:${REDIS_PORT}`,
+      );
+    });
 
     this.redisClient.on("error", (err) => {
       console.error("[RedisUtil] Redis connection error:", err);
@@ -25,5 +27,14 @@ export default class RedisUtil {
 
   static useConnection() {
     return this.redisClient;
+  }
+
+  /**
+   * Returns a pair of duplicated clients for the Socket.io Redis adapter
+   */
+  static getAdapterClients() {
+    const pubClient = this.redisClient.duplicate();
+    const subClient = this.redisClient.duplicate();
+    return { pubClient, subClient };
   }
 }

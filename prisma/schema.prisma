@@ -477,6 +477,10 @@ model FeedItem {
 
   @@index([createdAt])
   @@index([type])
+  @@index([artistId])
+  @@index([mediaPostId])
+  @@index([postId])
+  @@index([videoId])
 }
 
 model Bookmark {
@@ -519,6 +523,8 @@ model MusicAlbum {
   deletedAt DateTime?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+
+  @@index([musicArtistId])
 }
 
 model FeaturedArtist {
@@ -561,6 +567,10 @@ model Music {
   updatedAt DateTime  @updatedAt
 
   records MusicRecord[]
+
+  @@index([musicArtistId])
+  @@index([musicAlbumId])
+  @@index([musicFileId])
 }
 
 model StudioMember {

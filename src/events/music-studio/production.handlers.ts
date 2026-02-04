@@ -7,12 +7,16 @@ import {
   AuthenticatedSocket,
   StudioActionPayload,
   SaveRecordingPayload,
+  RequestUploadUrlPayload,
 } from "./types";
+import s3PresignedUtil from "../../utils/s3-presigned.util";
 
 export const registerProductionHandlers = (
   io: Server,
   socket: AuthenticatedSocket,
 ) => {
+  // Throttling for high-frequency events
+  const lastLyricSync = new Map<string, number>();
   /**
    * RECORDING COUNTDOWN
    */
@@ -128,15 +132,54 @@ export const registerProductionHandlers = (
   });
 
   /**
+   * REQUEST UPLOAD URL
+   */
+  socket.on("request_upload_url", async (data: RequestUploadUrlPayload) => {
+    try {
+      const { studioId, filename, mimetype } = data;
+
+      if (!studioId || !filename || !mimetype) {
+        return socket.emit("request_upload_url_failed", {
+          message: "studioId, filename, and mimetype are required",
+        });
+      }
+
+      const isOwner = await MusicStudioSvc.isOwner(studioId, socket.user.id);
+      if (!isOwner) {
+        return socket.emit("request_upload_url_failed", {
+          message: "Only the owner can request upload URL",
+        });
+      }
+
+      const timestamp = Date.now();
+      const key = `recordings/${studioId}/${timestamp}-${filename}`;
+      const uploadUrl = await s3PresignedUtil.getUploadUrl(key, mimetype);
+
+      socket.emit("upload_url_generated", {
+        uploadUrl,
+        fileKey: key,
+      });
+
+      console.log(`[MusicStudio] Upload URL generated for studio: ${studioId}`);
+    } catch (err: any) {
+      socket.emit("request_upload_url_failed", {
+        message: err.message || "Failed to generate upload URL",
+      });
+    }
+  });
+
+  /**
    * SAVE RECORDING
    */
   socket.on("save_recording", async (data: SaveRecordingPayload) => {
     try {
-      const { studioId, musicId, audioData } = data;
+      const { studioId, musicId, audioData, fileKey, filename, mimetype } =
+        data;
 
-      if (!studioId || !musicId || !audioData) {
+      if (!studioId || !musicId || (!audioData && !fileKey)) {
         return socket.emit("save_recording_failed", {
-          message: "Missing required fields",
+          message:
+            "Missing required fields (studioId, musicId, and either audioData or fileKey)",
         });
       }
 
@@ -154,11 +197,14 @@ export const registerProductionHandlers = (
         studioId,
         musicId,
         userIds,
-        audioBuffer: Buffer.isBuffer(audioData)
-          ? audioData
-          : Buffer.from(audioData as ArrayBuffer),
-        filename: `studio_${studioId}_${Date.now()}.webm`,
-        mimetype: "audio/webm",
+        audioBuffer: audioData
+          ? Buffer.isBuffer(audioData)
+            ? audioData
+            : Buffer.from(audioData as ArrayBuffer)
+          : undefined,
+        fileKey,
+        filename: filename || `studio_${studioId}_${Date.now()}.webm`,
+        mimetype: mimetype || "audio/webm",
       });
 
       await MusicStudioCacheSvc.setStudioState(studioId, "IDLE");
@@ -166,6 +212,7 @@ export const registerProductionHandlers = (
       io.to(studioId).emit("recording_saved", {
         studioId,
         musicRecordId: result.data.id,
+        presignedUrl: (result.data.file as any).presignedUrl,
         message: "Recording saved successfully",
       });
 
@@ -189,6 +236,12 @@ export const registerProductionHandlers = (
         if (!studioId) {
           return socket.emit("play_recording_failed", {
             message: "studioId is required",
+          });
+        }
+
+        if (!audioData) {
+          return socket.emit("play_recording_failed", {
+            message: "audioData is required for playback",
           });
         }
 
@@ -252,6 +305,12 @@ export const registerProductionHandlers = (
         const { studioId, lineIndex } = data;
 
         if (!studioId || lineIndex === undefined) return;
+
+        // Throttling: only allow 3 syncs per second (333ms)
+        const now = Date.now();
+        const lastSync = lastLyricSync.get(studioId) || 0;
+        if (now - lastSync < 333) return;
+        lastLyricSync.set(studioId, now);
 
         const isOwner = await MusicStudioSvc.isOwner(studioId, socket.user.id);
         const membership = await MusicStudioRepo.getMembership(

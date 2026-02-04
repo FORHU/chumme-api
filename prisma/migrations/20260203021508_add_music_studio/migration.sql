@@ -1,0 +1,3 @@
+-- This migration was applied manually to sync with database state.
+-- The actual MusicStudio and StudioMember tables were created by migration 20260203104500_add_music_studio_and_members.
+-- This placeholder exists to maintain migration history consistency.
