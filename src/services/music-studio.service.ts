@@ -3,6 +3,8 @@ import MusicStudioRepo from "../repositories/music-studio.repository";
 import MusicRecordRepo from "../repositories/music-record.repository";
 import FileRepo from "../repositories/file.repository";
 import S3Util from "../utils/s3.util";
+import s3PresignedUtil from "../utils/s3-presigned.util";
+import { S3_CDN_URL } from "../config";
 
 interface CreateStudioInput {
   name: string;
@@ -15,7 +17,8 @@ interface SaveRecordingInput {
   studioId: string;
   musicId: string;
   userIds: string[];
-  audioBuffer: Buffer;
+  audioBuffer?: Buffer;
+  fileKey?: string;
   filename: string;
   mimetype: string;
 }
@@ -213,12 +216,30 @@ export default class MusicStudioSvc {
       throw new Error("Studio not found");
     }
 
-    // Upload audio to S3
-    const fileUrl = await S3Util.uploadFile(
-      data.audioBuffer,
-      data.filename,
-      data.mimetype,
-    );
+    // Handle audio - either upload buffer or use existing fileKey
+    let fileUrl: string;
+    let fileSize: number = 0;
+
+    if (data.fileKey) {
+      // If fileKey is provided, we assume it's already uploaded via pre-signed URL
+      if (!S3_CDN_URL) throw new Error("S3_CDN_URL is not configured");
+      fileUrl = `${S3_CDN_URL}/${data.fileKey}`;
+    } else if (data.audioBuffer) {
+      fileUrl = await S3Util.uploadFile(
+        data.audioBuffer,
+        data.filename,
+        data.mimetype,
+      );
+      fileSize = data.audioBuffer.length;
+    } else {
+      throw new Error("Either audioBuffer or fileKey must be provided");
+    }
+
+    // Extract or use provided S3 key
+    let finalS3Key = data.fileKey;
+    if (!finalS3Key && fileUrl && S3_CDN_URL) {
+      finalS3Key = fileUrl.replace(`${S3_CDN_URL}/`, "");
+    }
 
     // Create file record
     const fileRecord = await FileRepo.createFile({
@@ -226,13 +247,16 @@ export default class MusicStudioSvc {
       fileUrl: fileUrl,
       metaData: {
         mimetype: data.mimetype,
-        size: data.audioBuffer.length,
+        size: fileSize,
+        s3Key: finalS3Key, // Standardized key storage
       },
     });
 
     // Get singers/producers for recording credits
     const singers = await MusicStudioRepo.getStudioSingers(data.studioId);
-    const singerIds = singers.map((s) => s.id);
+    const singerIds = singers.map(
+      (s: { id: string; name: string | null }) => s.id,
+    );
 
     // Create music record with singers as participants
     const musicRecord = await MusicRecordRepo.create({
@@ -243,6 +267,12 @@ export default class MusicStudioSvc {
 
     // Link the recording to the studio
     await MusicStudioRepo.linkMusicRecord(data.studioId, musicRecord.id);
+
+    // Add pre-signed URL for immediate playback (even for newly uploaded files)
+    if (finalS3Key) {
+      (musicRecord.file as any).presignedUrl =
+        await s3PresignedUtil.getDownloadUrl(finalS3Key);
+    }
 
     return {
       message: "Recording saved successfully",

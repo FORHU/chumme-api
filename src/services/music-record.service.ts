@@ -1,4 +1,5 @@
 import MusicRecordRepo from "../repositories/music-record.repository";
+import s3PresignedUtil from "../utils/s3-presigned.util";
 
 interface CreateMusicRecordInput {
   userIds: string[];
@@ -25,13 +26,21 @@ export default class MusicRecordSvc {
   }
 
   /**
-   * Get a music record by ID
+   * Get a music record by ID with pre-signed URL
    */
   static async getById(id: string) {
     const record = await MusicRecordRepo.findById(id);
     if (!record) {
       throw new Error("Music record not found");
     }
+
+    // Add pre-signed URL if s3Key exists in metadata
+    if (record.file?.metaData && (record.file.metaData as any).s3Key) {
+      (record.file as any).presignedUrl = await s3PresignedUtil.getDownloadUrl(
+        (record.file.metaData as any).s3Key,
+      );
+    }
+
     return { message: "Music record fetched successfully", data: record };
   }
 
