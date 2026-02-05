@@ -12,7 +12,6 @@ import {
   SetRelayModePayload,
   UpdateVocalRolePayload,
 } from "./types";
-import RelayManager from "../../utils/relay-manager";
 
 export const registerProductionHandlers = (
   io: Server,
@@ -160,22 +159,6 @@ export const registerProductionHandlers = (
         if (!isOwner && membership?.role !== StudioRole.PRODUCER) return;
 
         await MusicStudioCacheSvc.setLyricIndex(studioId, lineIndex);
-
-        // --- AUTOMATED PHRASING LOGIC ---
-        const nextSingerId = await RelayManager.getNextAutoSingerId(
-          studioId,
-          lineIndex,
-        );
-
-        if (nextSingerId) {
-          await MusicStudioCacheSvc.setCurrentSinger(studioId, nextSingerId);
-          io.to(studioId).emit("microphone_passed", {
-            studioId,
-            currentSinger: nextSingerId,
-            passedBy: "SYSTEM",
-            reason: "AUTO_RELAY",
-          });
-        }
 
         socket.to(studioId).emit("lyric_progress", {
           studioId,
