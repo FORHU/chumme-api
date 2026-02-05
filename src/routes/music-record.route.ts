@@ -9,8 +9,8 @@ router.use(authenticate);
 // List all music records (with pagination)
 router.get("/list", MusicRecordCtrl.getAll);
 
-// Get recordings by user
-router.get("/user/:userId", MusicRecordCtrl.getByUserId);
+// Get recordings by studio
+router.get("/studio/:studioId", MusicRecordCtrl.getByStudioId);
 
 // Get recordings by music/song
 router.get("/music/:musicId", MusicRecordCtrl.getByMusicId);

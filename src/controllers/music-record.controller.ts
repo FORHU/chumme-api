@@ -8,17 +8,15 @@ export default class MusicRecordCtrl {
    */
   static async create(req: Request, res: Response) {
     try {
-      const { userIds, musicId, fileId } = req.body;
+      const { studioId, musicId, fileId } = req.body;
 
-      if (!userIds || !musicId || !fileId) {
-        return res
-          .status(400)
-          .json({
-            message: "userIds (array), musicId, and fileId are required",
-          });
+      if (!studioId || !musicId || !fileId) {
+        return res.status(400).json({
+          message: "studioId, musicId, and fileId are required",
+        });
       }
 
-      const result = await MusicRecordSvc.create({ userIds, musicId, fileId });
+      const result = await MusicRecordSvc.create({ studioId, musicId, fileId });
       return res.status(201).json(result);
     } catch (err: any) {
       return res.status(400).json({ message: err.message || err });
@@ -57,16 +55,16 @@ export default class MusicRecordCtrl {
   }
 
   /**
-   * GET /music-records/user/:userId
-   * Get all music records by a specific user
+   * GET /music-records/studio/:studioId
+   * Get all music records by a specific studio
    */
-  static async getByUserId(req: Request, res: Response) {
+  static async getByStudioId(req: Request, res: Response) {
     try {
-      const { userId } = req.params;
+      const { studioId } = req.params;
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
 
-      const result = await MusicRecordSvc.getByUserId(userId, page, limit);
+      const result = await MusicRecordSvc.getByStudioId(studioId, page, limit);
       return res.status(200).json(result);
     } catch (err: any) {
       return res.status(400).json({ message: err.message || err });

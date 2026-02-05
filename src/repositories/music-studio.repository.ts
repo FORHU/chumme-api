@@ -1,10 +1,13 @@
 import { prisma } from "../utils/prisma";
-import { StudioRole } from "@prisma/client";
+import { StudioRole, StudioType, RelayMode } from "@prisma/client";
 
 interface CreateMusicStudioData {
   name: string;
   keyName?: string; // Optional - if not set, studio is public
   note?: string;
+  studioType: StudioType;
+  relayMode?: RelayMode;
+  relayInterval?: number;
   ownerId: string;
 }
 
@@ -19,13 +22,17 @@ export default class MusicStudioRepo {
         name: data.name,
         keyName: data.keyName,
         note: data.note,
+        studioType: data.studioType,
         ownerId: data.ownerId,
+        relayMode: data.relayMode || RelayMode.AUTO,
+        relayInterval: data.relayInterval || 1,
         // Auto-add owner as PRODUCER member
         members: {
           create: {
             userId: data.ownerId,
             role: StudioRole.PRODUCER,
             isActive: true,
+            vocalRoleIndex: 1,
           },
         },
       },
@@ -34,7 +41,7 @@ export default class MusicStudioRepo {
         members: {
           include: { user: true },
         },
-        musicRecord: true,
+        records: true,
       },
     });
   }
@@ -60,7 +67,7 @@ export default class MusicStudioRepo {
             },
           },
         },
-        musicRecord: {
+        records: {
           include: {
             music: {
               include: {
@@ -107,7 +114,7 @@ export default class MusicStudioRepo {
             where: { isActive: true },
             include: { user: true },
           },
-          musicRecord: true,
+          records: true,
         },
         orderBy: { createdAt: "desc" },
         skip,
@@ -141,7 +148,7 @@ export default class MusicStudioRepo {
           where: { isActive: true },
           include: { user: true },
         },
-        musicRecord: true,
+        records: true,
       },
       orderBy: { createdAt: "desc" },
     });
@@ -164,7 +171,7 @@ export default class MusicStudioRepo {
           where: { isActive: true },
           include: { user: true },
         },
-        musicRecord: true,
+        records: true,
       },
       orderBy: { createdAt: "desc" },
     });
@@ -205,6 +212,8 @@ export default class MusicStudioRepo {
         studioId,
         role,
         isActive: true,
+        vocalRoleIndex:
+          role === StudioRole.SINGER || role === StudioRole.PRODUCER ? 1 : null,
       },
       include: { user: true, studio: true },
     });
@@ -252,6 +261,23 @@ export default class MusicStudioRepo {
   }
 
   /**
+   * Update a member's vocal role index
+   */
+  static async updateVocalRole(
+    studioId: string,
+    userId: string,
+    vocalRoleIndex: number | null,
+  ) {
+    return prisma.studioMember.update({
+      where: {
+        userId_studioId: { userId, studioId },
+      },
+      data: { vocalRoleIndex },
+      include: { user: true },
+    });
+  }
+
+  /**
    * Update a member's role
    */
   static async updateMemberRole(
@@ -285,21 +311,6 @@ export default class MusicStudioRepo {
   }
 
   /**
-   * Link a MusicRecord to the studio (after recording is saved)
-   */
-  static async linkMusicRecord(studioId: string, musicRecordId: string) {
-    return prisma.musicStudio.update({
-      where: { id: studioId },
-      data: {
-        musicRecordId: musicRecordId,
-      },
-      include: {
-        musicRecord: true,
-      },
-    });
-  }
-
-  /**
    * Update studio details
    */
   static async update(id: string, data: Partial<CreateMusicStudioData>) {
@@ -312,7 +323,7 @@ export default class MusicStudioRepo {
           where: { isActive: true },
           include: { user: true },
         },
-        musicRecord: true,
+        records: true,
       },
     });
   }

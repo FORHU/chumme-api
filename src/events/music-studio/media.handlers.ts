@@ -1,6 +1,9 @@
 import { Server } from "socket.io";
 import MusicStudioSvc from "../../services/music-studio.service";
+import MusicStudioRepo from "../../repositories/music-studio.repository";
+import MusicStudioCacheSvc from "../../services/music-studio-cache.service";
 import { AuthenticatedSocket } from "./types";
+import { StudioType } from "@prisma/client";
 
 export const registerMediaHandlers = (
   io: Server,
@@ -23,6 +26,17 @@ export const registerMediaHandlers = (
         socket.user.id,
       );
       if (!canStream) return;
+
+      // Mode-specific check: RELAYSINGING (only current singer can stream)
+      const cachedType = await MusicStudioCacheSvc.getStudioType(studioId);
+
+      if (cachedType === StudioType.RELAYSINGING) {
+        const currentSinger =
+          await MusicStudioCacheSvc.getCurrentSinger(studioId);
+        if (currentSinger && currentSinger !== socket.user.id) {
+          return; // Not the current singer, drop the chunk
+        }
+      }
 
       // Broadcast to other users in the studio
       socket.to(studioId).emit("audio_chunk", {

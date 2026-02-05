@@ -22,16 +22,17 @@ export const registerSessionHandlers = (
    */
   socket.on("create_studio", async (data: CreateStudioPayload) => {
     try {
-      const { name, keyName, note, maxMembers } = data;
+      const { name, studioType, keyName, note, maxMembers } = data;
 
-      if (!name) {
+      if (!name || !studioType) {
         return socket.emit("create_studio_failed", {
-          message: "name is required",
+          message: "name and studioType are required",
         });
       }
 
       const result = await MusicStudioSvc.createStudio({
         name,
+        studioType,
         keyName,
         note,
         ownerId: socket.user.id,
@@ -96,22 +97,39 @@ export const registerSessionHandlers = (
         });
       }
 
-      await MusicStudioCacheSvc.addMember(studioId, socket.user.id, {
-        userId: socket.user.id,
-        name: socket.user.name,
-        role:
-          role ||
-          (result.membership?.role as StudioRole) ||
-          StudioRole.LISTENER,
-      });
+      await Promise.all([
+        MusicStudioCacheSvc.addMember(studioId, socket.user.id, {
+          userId: socket.user.id,
+          name: socket.user.name,
+          role:
+            role ||
+            (result.membership?.role as StudioRole) ||
+            StudioRole.LISTENER,
+          vocalRoleIndex: (result.membership as any)?.vocalRoleIndex || null,
+        }),
+        MusicStudioCacheSvc.setStudioType(studioId, result.data!.studioType),
+        MusicStudioCacheSvc.setRelayMode(studioId, result.data!.relayMode),
+        MusicStudioCacheSvc.setRelayInterval(
+          studioId,
+          result.data!.relayInterval || 1,
+        ),
+      ]);
 
-      const [activeUsers, currentState, pendingRequests, queue] =
-        await Promise.all([
-          MusicStudioCacheSvc.getMembers(studioId),
-          MusicStudioCacheSvc.getStudioState(studioId),
-          MusicStudioCacheSvc.getSingerRequests(studioId),
-          MusicStudioCacheSvc.getQueue(studioId),
-        ]);
+      const [
+        activeUsers,
+        currentState,
+        pendingRequests,
+        queue,
+        currentMusicId,
+        currentSinger,
+      ] = await Promise.all([
+        MusicStudioCacheSvc.getMembers(studioId),
+        MusicStudioCacheSvc.getStudioState(studioId),
+        MusicStudioCacheSvc.getSingerRequests(studioId),
+        MusicStudioCacheSvc.getQueue(studioId),
+        MusicStudioCacheSvc.getActiveSong(studioId),
+        MusicStudioCacheSvc.getCurrentSinger(studioId),
+      ]);
 
       socket.emit("join_studio_success", {
         studioId,
@@ -121,6 +139,8 @@ export const registerSessionHandlers = (
         state: currentState,
         requests: pendingRequests,
         queue: queue,
+        musicId: currentMusicId,
+        currentSinger,
       });
 
       presenceBatcher.addJoin(studioId, socket.user.id);
@@ -304,6 +324,13 @@ export const registerSessionHandlers = (
         MusicStudioCacheSvc.removeSingerRequest(studioId, socket.user.id),
       ]);
 
+      // Room Cleanup: If this was the last person, clear the session ephemeral data
+      const remainingMembers = await MusicStudioCacheSvc.getMembers(studioId);
+      if (remainingMembers.length === 0) {
+        await MusicStudioCacheSvc.clearStudioSession(studioId);
+        console.log(`[MusicStudio] 🧹 Cleaned up empty studio: ${studioId}`);
+      }
+
       console.log(
         `[MusicStudio] ✔ ${socket.user.name} left studio: ${studioId}`,
       );
@@ -379,6 +406,16 @@ export const registerSessionHandlers = (
                 MusicStudioCacheSvc.removeSingerRequest(studioId, userId),
                 MusicStudioRepo.removeUser(studioId, userId),
               ]);
+
+              // Room Cleanup after disconnect grace period
+              const remainingMembers =
+                await MusicStudioCacheSvc.getMembers(studioId);
+              if (remainingMembers.length === 0) {
+                await MusicStudioCacheSvc.clearStudioSession(studioId);
+                console.log(
+                  `[MusicStudio] 🧹 Cleaned up empty studio after disconnect: ${studioId}`,
+                );
+              }
 
               console.log(
                 `[MusicStudio] User ${userId} removed after grace period from ${studioId}`,

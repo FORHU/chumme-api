@@ -141,6 +141,42 @@ export default class MusicStudioCacheSvc {
   }
 
   /**
+   * Set active song for the studio
+   */
+  static async setActiveSong(studioId: string, musicId: string) {
+    const key = `${this.STUDIO_PREFIX}${studioId}:activeSong`;
+    await this.client.set(key, musicId, { EX: this.TTL });
+  }
+
+  /**
+   * Get currently active song in the studio
+   */
+  static async getActiveSong(studioId: string) {
+    const key = `${this.STUDIO_PREFIX}${studioId}:activeSong`;
+    return await this.client.get(key);
+  }
+
+  /**
+   * Set the current active singer (for RELAYSINGING mode)
+   */
+  static async setCurrentSinger(studioId: string, userId: string | null) {
+    const key = `${this.STUDIO_PREFIX}${studioId}:currentSinger`;
+    if (userId) {
+      await this.client.set(key, userId, { EX: this.TTL });
+    } else {
+      await this.client.del(key);
+    }
+  }
+
+  /**
+   * Get the current active singer
+   */
+  static async getCurrentSinger(studioId: string) {
+    const key = `${this.STUDIO_PREFIX}${studioId}:currentSinger`;
+    return await this.client.get(key);
+  }
+
+  /**
    * Set max members for a studio
    */
   static async setMaxMembers(studioId: string, count: number) {
@@ -203,6 +239,72 @@ export default class MusicStudioCacheSvc {
   }
 
   /**
+   * Set the studio type (RELAYSINGING, CROWDSINGING) in Redis
+   */
+  static async setStudioType(studioId: string, type: string) {
+    const key = `${this.STUDIO_PREFIX}${studioId}:type`;
+    await this.client.set(key, type, { EX: this.TTL });
+  }
+
+  /**
+   * Get the studio type from Redis
+   */
+  static async getStudioType(studioId: string) {
+    const key = `${this.STUDIO_PREFIX}${studioId}:type`;
+    return await this.client.get(key);
+  }
+
+  /**
+   * Set the studio relay mode (MANUAL, INTERVAL, PHRASING)
+   */
+  static async setRelayMode(studioId: string, mode: string) {
+    const key = `${this.STUDIO_PREFIX}${studioId}:relayMode`;
+    await this.client.set(key, mode, { EX: this.TTL });
+  }
+
+  /**
+   * Get the studio relay mode
+   */
+  static async getRelayMode(studioId: string) {
+    const key = `${this.STUDIO_PREFIX}${studioId}:relayMode`;
+    return (await this.client.get(key)) || "MANUAL";
+  }
+
+  /**
+   * Set the relay interval (for INTERVAL mode)
+   */
+  static async setRelayInterval(studioId: string, interval: number) {
+    const key = `${this.STUDIO_PREFIX}${studioId}:relayInterval`;
+    await this.client.set(key, interval.toString(), { EX: this.TTL });
+  }
+
+  /**
+   * Get the relay interval
+   */
+  static async getRelayInterval(studioId: string) {
+    const key = `${this.STUDIO_PREFIX}${studioId}:relayInterval`;
+    const interval = await this.client.get(key);
+    return interval ? parseInt(interval) : 1;
+  }
+
+  /**
+   * Set the phrasing performance map (for PHRASING mode)
+   */
+  static async setPhrasing(studioId: string, phrasing: any[]) {
+    const key = `${this.STUDIO_PREFIX}${studioId}:phrasing`;
+    await this.client.set(key, JSON.stringify(phrasing), { EX: this.TTL });
+  }
+
+  /**
+   * Get the phrasing performance map
+   */
+  static async getPhrasing(studioId: string): Promise<any[]> {
+    const key = `${this.STUDIO_PREFIX}${studioId}:phrasing`;
+    const data = await this.client.get(key);
+    return data ? JSON.parse(data) : [];
+  }
+
+  /**
    * Clear all session data (on studio close)
    */
   static async clearStudioSession(studioId: string) {
@@ -213,6 +315,12 @@ export default class MusicStudioCacheSvc {
       `${this.STUDIO_PREFIX}${studioId}:lyric`,
       `${this.STUDIO_PREFIX}${studioId}:maxMembers`,
       `${this.STUDIO_PREFIX}${studioId}:queue`,
+      `${this.STUDIO_PREFIX}${studioId}:activeSong`,
+      `${this.STUDIO_PREFIX}${studioId}:currentSinger`,
+      `${this.STUDIO_PREFIX}${studioId}:type`,
+      `${this.STUDIO_PREFIX}${studioId}:relayMode`,
+      `${this.STUDIO_PREFIX}${studioId}:relayInterval`,
+      `${this.STUDIO_PREFIX}${studioId}:phrasing`,
     ];
     await this.client.del(keys);
   }

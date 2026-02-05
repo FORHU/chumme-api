@@ -1,22 +1,23 @@
-import { StudioRole } from "@prisma/client";
+import { StudioRole, StudioType, RelayMode } from "@prisma/client";
 import MusicStudioRepo from "../repositories/music-studio.repository";
 import MusicRecordRepo from "../repositories/music-record.repository";
 import FileRepo from "../repositories/file.repository";
 import S3Util from "../utils/s3.util";
-import s3PresignedUtil from "../utils/s3-presigned.util";
 import { S3_CDN_URL } from "../config";
 
 interface CreateStudioInput {
   name: string;
   keyName?: string; // Optional - if not set, studio is public
   note?: string;
+  studioType: StudioType;
+  relayMode?: RelayMode;
+  relayInterval?: number;
   ownerId: string;
 }
 
 interface SaveRecordingInput {
   studioId: string;
   musicId: string;
-  userIds: string[];
   audioBuffer?: Buffer;
   fileKey?: string;
   filename: string;
@@ -252,27 +253,18 @@ export default class MusicStudioSvc {
       },
     });
 
-    // Get singers/producers for recording credits
-    const singers = await MusicStudioRepo.getStudioSingers(data.studioId);
-    const singerIds = singers.map(
-      (s: { id: string; name: string | null }) => s.id,
-    );
+    // Get active singers and producers from studio membership
+    const singerIds = studio.members
+      .filter((m) => m.role === "SINGER" || m.role === "PRODUCER")
+      .map((m) => m.userId);
 
-    // Create music record with singers as participants
+    // Create music record linked to this studio with singer credits
     const musicRecord = await MusicRecordRepo.create({
-      userIds: singerIds.length > 0 ? singerIds : data.userIds,
+      studioId: data.studioId,
       musicId: data.musicId,
       fileId: fileRecord.id,
+      singerIds,
     });
-
-    // Link the recording to the studio
-    await MusicStudioRepo.linkMusicRecord(data.studioId, musicRecord.id);
-
-    // Add pre-signed URL for immediate playback (even for newly uploaded files)
-    if (finalS3Key) {
-      (musicRecord.file as any).presignedUrl =
-        await s3PresignedUtil.getDownloadUrl(finalS3Key);
-    }
 
     return {
       message: "Recording saved successfully",

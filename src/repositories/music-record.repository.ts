@@ -1,9 +1,10 @@
 import { prisma } from "../utils/prisma";
 
 interface CreateMusicRecordData {
-  userIds: string[];
+  studioId: string;
   musicId: string;
   fileId: string;
+  singerIds?: string[]; // Optional array of user IDs who participated
 }
 
 export default class MusicRecordRepo {
@@ -13,20 +14,22 @@ export default class MusicRecordRepo {
   static async create(data: CreateMusicRecordData) {
     return prisma.musicRecord.create({
       data: {
-        users: {
-          connect: data.userIds.map((id) => ({ id })),
-        },
+        studioId: data.studioId,
         musicId: data.musicId,
         fileId: data.fileId,
+        singers: data.singerIds
+          ? { connect: data.singerIds.map((id) => ({ id })) }
+          : undefined,
       },
       include: {
-        users: true,
+        studio: true,
         music: {
           include: {
             musicArtist: true,
           },
         },
         file: true,
+        singers: true,
       },
     });
   }
@@ -38,7 +41,7 @@ export default class MusicRecordRepo {
     return prisma.musicRecord.findUnique({
       where: { id },
       include: {
-        users: true,
+        studio: true,
         music: {
           include: {
             musicArtist: true,
@@ -66,7 +69,7 @@ export default class MusicRecordRepo {
       prisma.musicRecord.findMany({
         where: { deletedAt: null },
         include: {
-          users: true,
+          studio: true,
           music: {
             include: {
               musicArtist: true,
@@ -95,10 +98,10 @@ export default class MusicRecordRepo {
   }
 
   /**
-   * Get MusicRecords by userId with pagination
+   * Get MusicRecords by studioId with pagination
    */
-  static async findByUserId(
-    userId: string,
+  static async findByStudioId(
+    studioId: string,
     params: { page?: number; limit?: number } = {},
   ) {
     const page = params.page || 1;
@@ -108,13 +111,11 @@ export default class MusicRecordRepo {
     const [data, total] = await Promise.all([
       prisma.musicRecord.findMany({
         where: {
-          users: {
-            some: { id: userId },
-          },
+          studioId: studioId,
           deletedAt: null,
         },
         include: {
-          users: true,
+          studio: true,
           music: {
             include: {
               musicArtist: true,
@@ -128,9 +129,7 @@ export default class MusicRecordRepo {
       }),
       prisma.musicRecord.count({
         where: {
-          users: {
-            some: { id: userId },
-          },
+          studioId: studioId,
           deletedAt: null,
         },
       }),
@@ -162,7 +161,7 @@ export default class MusicRecordRepo {
       prisma.musicRecord.findMany({
         where: { musicId, deletedAt: null },
         include: {
-          users: true,
+          studio: true,
           file: true,
         },
         orderBy: { createdAt: "desc" },

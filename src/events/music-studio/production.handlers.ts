@@ -1,15 +1,18 @@
 import { Server } from "socket.io";
-import { StudioRole } from "@prisma/client";
+import { StudioRole, StudioType } from "@prisma/client";
+import MusicRepo from "../../repositories/music.repository";
 import MusicStudioSvc from "../../services/music-studio.service";
 import MusicStudioRepo from "../../repositories/music-studio.repository";
 import MusicStudioCacheSvc from "../../services/music-studio-cache.service";
 import {
   AuthenticatedSocket,
+  PassMicrophonePayload,
   StudioActionPayload,
-  SaveRecordingPayload,
-  RequestUploadUrlPayload,
+  UpdateRolePayload,
+  SetRelayModePayload,
+  UpdateVocalRolePayload,
 } from "./types";
-import s3PresignedUtil from "../../utils/s3-presigned.util";
+import RelayManager from "../../utils/relay-manager";
 
 export const registerProductionHandlers = (
   io: Server,
@@ -132,170 +135,6 @@ export const registerProductionHandlers = (
   });
 
   /**
-   * REQUEST UPLOAD URL
-   */
-  socket.on("request_upload_url", async (data: RequestUploadUrlPayload) => {
-    try {
-      const { studioId, filename, mimetype } = data;
-
-      if (!studioId || !filename || !mimetype) {
-        return socket.emit("request_upload_url_failed", {
-          message: "studioId, filename, and mimetype are required",
-        });
-      }
-
-      const isOwner = await MusicStudioSvc.isOwner(studioId, socket.user.id);
-      if (!isOwner) {
-        return socket.emit("request_upload_url_failed", {
-          message: "Only the owner can request upload URL",
-        });
-      }
-
-      const timestamp = Date.now();
-      const key = `recordings/${studioId}/${timestamp}-${filename}`;
-      const uploadUrl = await s3PresignedUtil.getUploadUrl(key, mimetype);
-
-      socket.emit("upload_url_generated", {
-        uploadUrl,
-        fileKey: key,
-      });
-
-      console.log(`[MusicStudio] Upload URL generated for studio: ${studioId}`);
-    } catch (err: any) {
-      socket.emit("request_upload_url_failed", {
-        message: err.message || "Failed to generate upload URL",
-      });
-    }
-  });
-
-  /**
-   * SAVE RECORDING
-   */
-  socket.on("save_recording", async (data: SaveRecordingPayload) => {
-    try {
-      const { studioId, musicId, audioData, fileKey, filename, mimetype } =
-        data;
-
-      if (!studioId || !musicId || (!audioData && !fileKey)) {
-        return socket.emit("save_recording_failed", {
-          message:
-            "Missing required fields (studioId, musicId, and either audioData or fileKey)",
-        });
-      }
-
-      const isOwner = await MusicStudioSvc.isOwner(studioId, socket.user.id);
-      if (!isOwner) {
-        return socket.emit("save_recording_failed", {
-          message: "Only the owner can save the recording",
-        });
-      }
-
-      const studioUsers = await MusicStudioRepo.getStudioUsers(studioId);
-      const userIds = studioUsers.map((u: { id: string }) => u.id);
-
-      const result = await MusicStudioSvc.saveRecording({
-        studioId,
-        musicId,
-        userIds,
-        audioBuffer: audioData
-          ? Buffer.isBuffer(audioData)
-            ? audioData
-            : Buffer.from(audioData as ArrayBuffer)
-          : undefined,
-        fileKey,
-        filename: filename || `studio_${studioId}_${Date.now()}.webm`,
-        mimetype: mimetype || "audio/webm",
-      });
-
-      await MusicStudioCacheSvc.setStudioState(studioId, "IDLE");
-
-      io.to(studioId).emit("recording_saved", {
-        studioId,
-        musicRecordId: result.data.id,
-        presignedUrl: (result.data.file as any).presignedUrl,
-        message: "Recording saved successfully",
-      });
-
-      console.log(`[MusicStudio] Recording saved for studio: ${studioId}`);
-    } catch (err: any) {
-      socket.emit("save_recording_failed", {
-        message: err.message || "Failed to save recording",
-      });
-    }
-  });
-
-  /**
-   * PLAY RECORDING
-   */
-  socket.on(
-    "play_recording",
-    async (data: { studioId: string; audioData?: Buffer }) => {
-      try {
-        const { studioId, audioData } = data;
-
-        if (!studioId) {
-          return socket.emit("play_recording_failed", {
-            message: "studioId is required",
-          });
-        }
-
-        if (!audioData) {
-          return socket.emit("play_recording_failed", {
-            message: "audioData is required for playback",
-          });
-        }
-
-        io.to(studioId).emit("playback_started", {
-          studioId,
-          startedBy: socket.user.id,
-          timestamp: new Date().toISOString(),
-          audioData,
-        });
-
-        console.log(`[MusicStudio] Playback in ${studioId}`);
-      } catch (err: any) {
-        socket.emit("play_recording_failed", {
-          message: err.message || "Failed to play recording",
-        });
-      }
-    },
-  );
-
-  /**
-   * DISCARD RECORDING
-   */
-  socket.on("discard_recording", async (data: StudioActionPayload) => {
-    try {
-      const { studioId } = data;
-
-      if (!studioId) {
-        return socket.emit("discard_recording_failed", {
-          message: "studioId is required",
-        });
-      }
-
-      const isOwner = await MusicStudioSvc.isOwner(studioId, socket.user.id);
-      if (!isOwner) {
-        return socket.emit("discard_recording_failed", {
-          message: "Only the owner can discard recording",
-        });
-      }
-
-      io.to(studioId).emit("recording_discarded", {
-        studioId,
-        discardedBy: socket.user.id,
-        timestamp: new Date().toISOString(),
-      });
-
-      console.log(`[MusicStudio] Discarded in ${studioId}`);
-    } catch (err: any) {
-      socket.emit("discard_recording_failed", {
-        message: err.message || "Failed to discard recording",
-      });
-    }
-  });
-
-  /**
    * SYNC LYRICS
    */
   socket.on(
@@ -321,6 +160,22 @@ export const registerProductionHandlers = (
         if (!isOwner && membership?.role !== StudioRole.PRODUCER) return;
 
         await MusicStudioCacheSvc.setLyricIndex(studioId, lineIndex);
+
+        // --- AUTOMATED PHRASING LOGIC ---
+        const nextSingerId = await RelayManager.getNextAutoSingerId(
+          studioId,
+          lineIndex,
+        );
+
+        if (nextSingerId) {
+          await MusicStudioCacheSvc.setCurrentSinger(studioId, nextSingerId);
+          io.to(studioId).emit("microphone_passed", {
+            studioId,
+            currentSinger: nextSingerId,
+            passedBy: "SYSTEM",
+            reason: "AUTO_RELAY",
+          });
+        }
 
         socket.to(studioId).emit("lyric_progress", {
           studioId,
@@ -348,7 +203,11 @@ export const registerProductionHandlers = (
           });
         }
 
-        const isOwner = await MusicStudioSvc.isOwner(studioId, socket.user.id);
+        const [music, isOwner] = await Promise.all([
+          MusicRepo.findById(musicId),
+          MusicStudioSvc.isOwner(studioId, socket.user.id),
+        ]);
+
         const membership = await MusicStudioRepo.getMembership(
           studioId,
           socket.user.id,
@@ -360,10 +219,18 @@ export const registerProductionHandlers = (
           });
         }
 
-        await Promise.all([
+        const promises: Promise<any>[] = [
           MusicStudioCacheSvc.setStudioState(studioId, "IDLE"),
           MusicStudioCacheSvc.setLyricIndex(studioId, 0),
-        ]);
+          MusicStudioCacheSvc.setActiveSong(studioId, musicId),
+        ];
+
+        // If song has phrasing templates, load them to cache
+        if (music && music.isKaraoke && music.parts) {
+          promises.push(MusicStudioCacheSvc.setPhrasing(studioId, music.parts));
+        }
+
+        await Promise.all(promises);
 
         io.to(studioId).emit("song_changed", {
           studioId,
@@ -379,4 +246,124 @@ export const registerProductionHandlers = (
       }
     },
   );
+
+  /**
+   * GET KARAOKE LIST
+   * Fetch songs where isKaraoke is true
+   */
+  socket.on("get_karaoke_list", async (data: { studioId: string }) => {
+    try {
+      const songs = await MusicRepo.findAll({ isKaraoke: true });
+      socket.emit("karaoke_list", {
+        studioId: data.studioId,
+        songs,
+      });
+    } catch (err: any) {
+      socket.emit("get_karaoke_list_failed", {
+        message: err.message || "Failed to fetch karaoke songs",
+      });
+    }
+  });
+
+  /**
+   * PASS MICROPHONE (RELAYSINGING)
+   */
+  socket.on("pass_microphone", async (data: PassMicrophonePayload) => {
+    try {
+      const { studioId, targetUserId } = data;
+
+      if (!studioId) return;
+
+      const isOwner = await MusicStudioSvc.isOwner(studioId, socket.user.id);
+      const membership = await MusicStudioRepo.getMembership(
+        studioId,
+        socket.user.id,
+      );
+      const currentSingerId =
+        await MusicStudioCacheSvc.getCurrentSinger(studioId);
+
+      const canPass =
+        isOwner ||
+        membership?.role === StudioRole.PRODUCER ||
+        (membership?.role === StudioRole.SINGER &&
+          socket.user.id === currentSingerId);
+
+      if (!canPass) {
+        return socket.emit("pass_microphone_failed", {
+          message: "You don't have permission to pass the mic right now",
+        });
+      }
+
+      await MusicStudioCacheSvc.setCurrentSinger(studioId, targetUserId);
+
+      io.to(studioId).emit("microphone_passed", {
+        studioId,
+        currentSinger: targetUserId,
+        passedBy: socket.user.id,
+      });
+
+      console.log(`[MusicStudio] Mic passed to ${targetUserId} in ${studioId}`);
+    } catch (err: any) {
+      socket.emit("pass_microphone_failed", { message: err.message });
+    }
+  });
+
+  /**
+   * SET RELAY MODE
+   */
+  socket.on("set_relay_mode", async (data: SetRelayModePayload) => {
+    try {
+      const { studioId, mode, interval } = data;
+      const isOwner = await MusicStudioSvc.isOwner(studioId, socket.user.id);
+      if (!isOwner) return;
+
+      await Promise.all([
+        MusicStudioRepo.update(studioId, {
+          relayMode: mode,
+          relayInterval: interval,
+        }),
+        MusicStudioCacheSvc.setRelayMode(studioId, mode),
+        interval
+          ? MusicStudioCacheSvc.setRelayInterval(studioId, interval)
+          : Promise.resolve(),
+      ]);
+
+      io.to(studioId).emit("relay_mode_changed", {
+        studioId,
+        mode,
+        interval,
+      });
+    } catch (err: any) {
+      socket.emit("relay_action_failed", { message: err.message });
+    }
+  });
+
+  /**
+   * UPDATE VOCAL ROLE
+   */
+  socket.on("update_vocal_role", async (data: UpdateVocalRolePayload) => {
+    try {
+      const { studioId, userId, vocalRoleIndex } = data;
+      const isOwner = await MusicStudioSvc.isOwner(studioId, socket.user.id);
+      if (!isOwner) return;
+
+      // Update DB
+      await MusicStudioRepo.updateVocalRole(studioId, userId, vocalRoleIndex);
+
+      // Update Cache/Members
+      const member = await MusicStudioCacheSvc.getMember(studioId, userId);
+      if (member) {
+        member.vocalRoleIndex = vocalRoleIndex;
+        await MusicStudioCacheSvc.addMember(studioId, userId, member);
+      }
+
+      io.to(studioId).emit("vocal_role_updated", {
+        studioId,
+        userId,
+        vocalRoleIndex,
+      });
+    } catch (err: any) {
+      socket.emit("vocal_role_failed", { message: err.message });
+    }
+  });
 };
