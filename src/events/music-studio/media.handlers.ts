@@ -8,7 +8,8 @@ export const registerMediaHandlers = (
 ) => {
   /**
    * AUDIO CHUNK
-   * Real-time audio streaming between users
+   * Real-time audio streaming between users (CROWDSINGING mode)
+   * All singers can stream simultaneously
    */
   socket.on(
     "audio_chunk",
@@ -17,7 +18,7 @@ export const registerMediaHandlers = (
 
       if (!studioId || !chunk) return;
 
-      // Role-based streaming check
+      // Role-based streaming check (Singers/Producers only)
       const canStream = await MusicStudioSvc.canRecord(
         studioId,
         socket.user.id,

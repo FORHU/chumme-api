@@ -1,39 +1,24 @@
 import { Request, Response } from "express";
 import Joi from "joi";
 import MusicSvc from "../services/music.service";
+import FileSvc from "../services/file.service";
 
 export default class MusicCtrl {
   static async createMusic(req: Request, res: Response) {
-    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-    const file = files?.fileData?.[0];
-    const metaDataFile = files?.meta_data?.[0];
-
-    if (!file && !req.body.musicFileId) {
-      return res
-        .status(400)
-        .json({ message: "File upload (fileData) or musicFileId is required" });
-    }
-
     const schema = Joi.object({
       title: Joi.string().required(),
       duration: Joi.number(),
       bpm: Joi.number().integer(),
       hasWordTiming: Joi.boolean(),
       release_date: Joi.date().iso().required(),
-      musicFileId: Joi.string().uuid().when("$hasFile", {
-        is: true,
-        then: Joi.optional(),
-        otherwise: Joi.required(),
-      }),
-      musicAlbumId: Joi.string().uuid(),
+      musicFileId: Joi.string().uuid().required(),
+      musicAlbumId: Joi.string().uuid().allow(null),
       musicArtistId: Joi.string().uuid(),
       isKaraoke: Joi.boolean(),
       meta_data: Joi.object().optional(),
     });
 
-    const { error, value } = schema.validate(req.body, {
-      context: { hasFile: !!file },
-    });
+    const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ message: error.message });
 
     try {
@@ -46,32 +31,10 @@ export default class MusicCtrl {
         });
       }
 
-      // Pass file to service if uploaded
-      const fileData = file
-        ? {
-            buffer: file.buffer,
-            originalname: file.originalname,
-            mimetype: file.mimetype,
-            size: file.size,
-          }
-        : undefined;
-
-      // Handle custom metadata from file or body
-      let customMetaData = value.meta_data;
-      if (metaDataFile) {
-        try {
-          customMetaData = JSON.parse(metaDataFile.buffer.toString());
-        } catch (e) {
-          return res
-            .status(400)
-            .json({ message: "Invalid JSON in meta_data file" });
-        }
-      }
-
-      const music = await MusicSvc.createMusic(
-        { ...value, metaData: customMetaData },
-        fileData,
-      );
+      const music = await MusicSvc.createMusic({
+        ...value,
+        metaData: value.meta_data,
+      });
       return res.status(201).json({
         message: "Music created successfully",
         data: music,
@@ -92,12 +55,18 @@ export default class MusicCtrl {
   }
 
   static async getMusics(req: Request, res: Response) {
-    const { albumId, artistId, playlistId } = req.query as any;
+    const { albumId, artistId, playlistId, isKaraoke } = req.query as any;
     try {
       const musics = await MusicSvc.getMusics({
         albumId,
         artistId,
         playlistId,
+        isKaraoke:
+          isKaraoke === "true"
+            ? true
+            : isKaraoke === "false"
+              ? false
+              : undefined,
       });
       return res.json(musics);
     } catch (error: any) {

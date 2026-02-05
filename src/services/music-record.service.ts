@@ -1,8 +1,7 @@
 import MusicRecordRepo from "../repositories/music-record.repository";
-import s3PresignedUtil from "../utils/s3-presigned.util";
 
 interface CreateMusicRecordInput {
-  userIds: string[];
+  studioId: string;
   musicId: string;
   fileId: string;
 }
@@ -12,13 +11,8 @@ export default class MusicRecordSvc {
    * Create a new music recording (karaoke recording)
    */
   static async create(data: CreateMusicRecordInput) {
-    if (
-      !data.userIds ||
-      !data.userIds.length ||
-      !data.musicId ||
-      !data.fileId
-    ) {
-      throw new Error("userIds (array), musicId, and fileId are required");
+    if (!data.studioId || !data.musicId || !data.fileId) {
+      throw new Error("studioId, musicId, and fileId are required");
     }
 
     const record = await MusicRecordRepo.create(data);
@@ -34,13 +28,6 @@ export default class MusicRecordSvc {
       throw new Error("Music record not found");
     }
 
-    // Add pre-signed URL if s3Key exists in metadata
-    if (record.file?.metaData && (record.file.metaData as any).s3Key) {
-      (record.file as any).presignedUrl = await s3PresignedUtil.getDownloadUrl(
-        (record.file.metaData as any).s3Key,
-      );
-    }
-
     return { message: "Music record fetched successfully", data: record };
   }
 
@@ -53,12 +40,15 @@ export default class MusicRecordSvc {
   }
 
   /**
-   * Get all music records by a specific user
+   * Get all music records by a specific studio
    */
-  static async getByUserId(userId: string, page?: number, limit?: number) {
-    const result = await MusicRecordRepo.findByUserId(userId, { page, limit });
+  static async getByStudioId(studioId: string, page?: number, limit?: number) {
+    const result = await MusicRecordRepo.findByStudioId(studioId, {
+      page,
+      limit,
+    });
     return {
-      message: "User's music records fetched successfully",
+      message: "Studio's music records fetched successfully",
       ...result,
     };
   }

@@ -1,5 +1,5 @@
 import { Socket, Server } from "socket.io";
-import { StudioRole } from "@prisma/client";
+import { StudioRole, StudioType, RelayMode } from "@prisma/client";
 
 export interface AuthenticatedSocket extends Socket {
   user?: any;
@@ -7,6 +7,7 @@ export interface AuthenticatedSocket extends Socket {
 
 export interface CreateStudioPayload {
   name: string;
+  studioType: StudioType;
   keyName?: string;
   note?: string;
   maxMembers?: number;
@@ -41,6 +42,23 @@ export interface SaveRecordingPayload {
   filename?: string;
   mimetype?: string;
   audioData?: Buffer | ArrayBuffer; // Support both for flexibility
+}
+
+export interface PassMicrophonePayload {
+  studioId: string;
+  targetUserId: string | null; // null to clear mic
+}
+
+export interface SetRelayModePayload {
+  studioId: string;
+  mode: RelayMode;
+  interval?: number;
+}
+
+export interface UpdateVocalRolePayload {
+  studioId: string;
+  userId: string;
+  vocalRoleIndex: number;
 }
 
 export type SocketHandler = (io: Server, socket: AuthenticatedSocket) => void;

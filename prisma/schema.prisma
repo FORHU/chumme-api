@@ -52,39 +52,11 @@ model User {
   // ✅ COLLABORATIONS
   // sentCollaborations     UserCollaboration[] @relation("CollabSender")
   // receivedCollaborations UserCollaboration[] @relation("CollabReceiver")
-  musicRecords      MusicRecord[]  @relation("MusicRecordUsers")
   ownedStudios      MusicStudio[]  @relation("StudioOwner")
   studioMemberships StudioMember[] @relation("StudioMembership")
+  playlists         Playlist[]
+  musicRecords      MusicRecord[]  @relation("MusicRecordSingers")
 }
-
-// model UserFriend {
-//   id               String   @id @default(uuid())
-//   senderId         String
-//   receiverId       String
-//   invitationStatus STATUS   @default(PENDING)
-//   createdAt        DateTime @default(now())
-//   updatedAt        DateTime @updatedAt
-
-//   sender   User @relation("FriendRequestSender", fields: [senderId], references: [id])
-//   receiver User @relation("FriendRequestReceiver", fields: [receiverId], references: [id])
-
-//   @@unique([senderId, receiverId])
-// }
-
-// model UserCollaboration {
-//   id                String            @id @default(uuid())
-//   senderId          String
-//   receiverId        String
-//   collaborationType CollaborationType @default(CROWDSINGING)
-//   invitationStatus  STATUS            @default(PENDING)
-//   createdAt         DateTime          @default(now())
-//   updatedAt         DateTime          @updatedAt
-
-//   sender   User @relation("CollabSender", fields: [senderId], references: [id])
-//   receiver User @relation("CollabReceiver", fields: [receiverId], references: [id])
-
-//   @@unique([senderId, receiverId, collaborationType])
-// }
 
 model Session {
   id                String   @id @default(uuid())
@@ -231,15 +203,12 @@ model ChatMessage {
 }
 
 model Embedding {
-  id            String                 @id @default(uuid())
+  id            String      @id @default(uuid())
   model         String
   vector        Json?
-  createdAt     DateTime               @default(now())
-  chatMessageId String                 @unique
-  chatMessage   ChatMessage            @relation(fields: [chatMessageId], references: [id])
-  vector_search Unsupported("vector")?
-
-  @@index([vector_search], map: "embedding_vector_search_idx")
+  createdAt     DateTime    @default(now())
+  chatMessageId String      @unique
+  chatMessage   ChatMessage @relation(fields: [chatMessageId], references: [id])
 }
 
 model EmotionMemory {
@@ -501,12 +470,30 @@ model Playlist {
   name        String
   description String
   imageUrl    String
+  userId      String
+  user        User   @relation(fields: [userId], references: [id])
 
   deletedAt DateTime?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
   tracks MusicPlaylist[]
+}
+
+model MusicPlaylist {
+  id         String @id @default(uuid())
+  musicId    String
+  playlistId String
+  order      Int    @default(0)
+
+  music    Music    @relation(fields: [musicId], references: [id])
+  playlist Playlist @relation(fields: [playlistId], references: [id])
+
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
+  updatedAt DateTime  @updatedAt
+
+  @@unique([musicId, playlistId])
 }
 
 model MusicAlbum {
@@ -567,10 +554,34 @@ model Music {
   updatedAt DateTime  @updatedAt
 
   records MusicRecord[]
+  parts   MusicPart[]
 
   @@index([musicArtistId])
   @@index([musicAlbumId])
   @@index([musicFileId])
+}
+
+model MusicPart {
+  id String @id @default(uuid())
+
+  // Can link to a template (Music) OR a specific result (MusicRecord)
+  musicId String?
+  music   Music?  @relation(fields: [musicId], references: [id])
+
+  recordId String?
+  record   MusicRecord? @relation(fields: [recordId], references: [id])
+
+  name           String? // e.g. "Verse 1", "Chorus"
+  startLine      Int // Maps to Whisper segment ID
+  endLine        Int // Maps to Whisper segment ID
+  vocalRoleIndex Int     @default(1) // Which role sings this part? (1, 2, 3...)
+  order          Int     @default(0) // The sequence in the song
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([recordId])
+  @@index([musicId])
 }
 
 model StudioMember {
@@ -585,6 +596,8 @@ model StudioMember {
   role     StudioRole @default(LISTENER)
   isActive Boolean    @default(true)
 
+  vocalRoleIndex Int? // Assigns the member to a specific singing role (1, 2, 3...)
+
   joinedAt DateTime  @default(now())
   leftAt   DateTime?
 
@@ -598,7 +611,10 @@ model MusicStudio {
   name String
   note String?
 
-  keyName String? // Optional - if null, studio is public
+  keyName       String? // Optional - if null, studio is public
+  studioType    StudioType
+  relayMode     RelayMode  @default(AUTO)
+  relayInterval Int? // Only used if relayMode is INTERVAL
 
   // Owner relation - user who created the studio
   ownerId String
@@ -607,9 +623,8 @@ model MusicStudio {
   // Members - users currently in the studio (via junction table)
   members StudioMember[] @relation("StudioMembers")
 
-  // Recording output
-  musicRecordId String?
-  musicRecord   MusicRecord? @relation(fields: [musicRecordId], references: [id])
+  // Recordings produced in this studio
+  records MusicRecord[] @relation("StudioRecords")
 
   createdAt DateTime  @default(now())
   deletedAt DateTime?
@@ -619,33 +634,23 @@ model MusicStudio {
 model MusicRecord {
   id String @id @default(uuid())
 
-  users User[] @relation("MusicRecordUsers")
-
   musicId String
   music   Music  @relation(fields: [musicId], references: [id])
 
   fileId String
   file   File   @relation("MusicRecordFile", fields: [fileId], references: [id])
 
-  createdAt    DateTime      @default(now())
-  deletedAt    DateTime?     @updatedAt
-  musicStudios MusicStudio[]
-}
+  // Studios where this recording was produced
+  studioId String
+  studio   MusicStudio @relation("StudioRecords", fields: [studioId], references: [id])
 
-model MusicPlaylist {
-  id         String @id @default(uuid())
-  musicId    String
-  playlistId String
-  order      Int    @default(0)
+  createdAt  DateTime    @default(now())
+  deletedAt  DateTime?
+  updatedAt  DateTime    @updatedAt
+  musicParts MusicPart[]
 
-  music    Music    @relation(fields: [musicId], references: [id])
-  playlist Playlist @relation(fields: [playlistId], references: [id])
-
-  createdAt DateTime  @default(now())
-  deletedAt DateTime?
-  updatedAt DateTime  @updatedAt
-
-  @@unique([musicId, playlistId])
+  // Singers/Producers who participated in this session
+  singers User[] @relation("MusicRecordSingers")
 }
 
 enum Role {
@@ -678,13 +683,15 @@ enum StudioRole {
   PRODUCER
 }
 
-// enum CollaborationType {
-//   CROWDSINGING
-//   RELAYSINGING
-// }
+enum StudioType {
+  RELAYSINGING
+  CROWDSINGING
+  COMPETITION
+}
 
-// enum STATUS {
-//   PENDING
-//   ACCEPTED
-//   REJECTED
-// }
+enum RelayMode {
+  AUTO
+  MANUAL
+  INTERVAL
+  PHRASING
+}

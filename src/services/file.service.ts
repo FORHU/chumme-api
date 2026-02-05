@@ -47,12 +47,14 @@ export default class FileSvc {
     fileBuffer: Buffer,
     filename: string,
     mimeType: string,
+    metaData?: any,
   ) {
     const fileUrl = await S3Util.uploadFile(fileBuffer, filename, mimeType);
 
     const file = await FileRepo.createFile({
       filename: filename,
       fileUrl: fileUrl,
+      metaData: metaData,
     });
     return file;
   }

@@ -3,10 +3,11 @@ import { Prisma } from "@prisma/client";
 
 export default class MusicRepo {
   static async create(data: any) {
-    const { playlistId, order, metaData, ...musicData } = data;
+    const { playlistId, order, metaData, parts, ...musicData } = data;
     return prisma.music.create({
       data: {
         ...musicData,
+        parts: parts ? { create: parts } : undefined,
         playlists: playlistId
           ? {
               create: {
@@ -20,6 +21,7 @@ export default class MusicRepo {
         musicFile: true,
         musicArtist: true,
         musicAlbum: true,
+        parts: true,
       },
     });
   }
@@ -36,6 +38,7 @@ export default class MusicRepo {
         },
         musicAlbum: true,
         musicFile: true,
+        parts: true,
       },
     });
   }
@@ -54,12 +57,14 @@ export default class MusicRepo {
     albumId?: string;
     artistId?: string;
     playlistId?: string;
+    isKaraoke?: boolean;
   }) {
-    const { albumId, artistId, playlistId } = params;
+    const { albumId, artistId, playlistId, isKaraoke } = params;
     return prisma.music.findMany({
       where: {
         musicAlbumId: albumId,
         musicArtistId: artistId,
+        isKaraoke: isKaraoke,
         playlists: playlistId
           ? {
               some: {
