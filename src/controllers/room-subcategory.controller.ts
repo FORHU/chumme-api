@@ -7,25 +7,23 @@ export default class RoomSubCategoryCtrl {
    * Create a new room subcategory
    */
   static async createSubCategory(req: Request, res: Response) {
-    const { name, roomCategoryId, note } = req.body;
-
     const schema = Joi.object({
       name: Joi.string().min(1).max(100).required(),
       roomCategoryId: Joi.string().uuid().required(),
+      ownerId: Joi.string().uuid().required(),
+      metaData: Joi.object().required(),
+      position: Joi.object().required(),
+      imageUrl: Joi.string().uri().optional(),
       note: Joi.string().max(500).optional(),
     });
 
-    const { error } = schema.validate({ name, roomCategoryId, note });
+    const { error, value } = schema.validate(req.body);
     if (error) {
       return res.status(400).json({ message: error.message });
     }
 
     try {
-      const subCategory = await RoomSubCategorySvc.createSubCategory(
-        name,
-        roomCategoryId,
-        note
-      );
+      const subCategory = await RoomSubCategorySvc.createSubCategory(value);
       return res.status(201).json({
         message: "Room subcategory created successfully",
         subCategory,
@@ -90,34 +88,23 @@ export default class RoomSubCategoryCtrl {
    */
   static async updateSubCategory(req: Request, res: Response) {
     const { id } = req.params;
-    const { name, roomCategoryId, note } = req.body;
-
     const schema = Joi.object({
-      id: Joi.string().uuid().required(),
       name: Joi.string().min(1).max(100).optional(),
       roomCategoryId: Joi.string().uuid().optional(),
+      ownerId: Joi.string().uuid().optional(),
+      metaData: Joi.object().optional(),
+      position: Joi.object().optional(),
+      imageUrl: Joi.string().uri().optional(),
       note: Joi.string().max(500).optional(),
-    });
+    }).min(1);
 
-    const { error } = schema.validate({ id, name, roomCategoryId, note });
+    const { error, value } = schema.validate(req.body);
     if (error) {
       return res.status(400).json({ message: error.message });
     }
 
-    // At least one field must be provided
-    if (!name && !roomCategoryId && note === undefined) {
-      return res.status(400).json({
-        message:
-          "At least one field (name, roomCategoryId, or note) must be provided",
-      });
-    }
-
     try {
-      const subCategory = await RoomSubCategorySvc.updateSubCategory(id, {
-        name,
-        roomCategoryId,
-        note,
-      });
+      const subCategory = await RoomSubCategorySvc.updateSubCategory(id, value);
       return res.json({
         message: "Room subcategory updated successfully",
         subCategory,

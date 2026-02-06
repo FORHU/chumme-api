@@ -16,33 +16,25 @@ export default class RoomCtrl {
    * Only non-deleted users can create rooms
    */
   static async createRoom(req: Request, res: Response) {
-    const { name, note, roomSubCategoryId, key_name } = req.body;
     const userId = req.user.id;
-
     const schema = Joi.object({
       name: Joi.string().min(1).max(100).required(),
-      note: Joi.string(),
+      note: Joi.string().required(),
       roomSubCategoryId: Joi.string().uuid().required(),
-      key_name: Joi.string(),
+      position: Joi.object().required(),
+      metaData: Joi.object().required(),
+      key_name: Joi.string().optional(),
     });
 
-    const { error } = schema.validate({
-      name,
-      note,
-      roomSubCategoryId,
-      key_name,
-    });
+    const { error, value } = schema.validate(req.body);
     if (error) {
       return res.status(400).json({ message: error.message });
     }
 
     try {
       const room = await RoomSvc.createRoom({
-        name,
-        note,
+        ...value,
         ownerId: userId,
-        roomSubCategoryId,
-        key_name,
       });
       return res.status(201).json({
         message: "Room created successfully",
@@ -106,7 +98,7 @@ export default class RoomCtrl {
    */
   static async updateRoom(req: Request, res: Response) {
     try {
-      const { name, isPrivate, note, roomId, roomSubCategoryId } = req.body;
+      const { roomId } = req.body;
       const userId = req.user.id;
       const schema = Joi.object({
         roomId: Joi.string().required(),
@@ -114,28 +106,17 @@ export default class RoomCtrl {
         isPrivate: Joi.boolean().optional(),
         note: Joi.string().min(1).max(500).optional(),
         roomSubCategoryId: Joi.string().uuid().optional(),
-      });
+        position: Joi.object().optional(),
+        metaData: Joi.object().optional(),
+      }).min(2); // roomId + at least one other field
 
-      const { error } = schema.validate({
-        roomId,
-        name,
-        isPrivate,
-        note,
-        roomSubCategoryId,
-      });
+      const { error, value } = schema.validate(req.body);
       if (error) {
         return res.status(400).json({ message: error.message });
       }
-      const room = await RoomSvc.updateRoom(
-        roomId,
-        {
-          name,
-          isPrivate,
-          note,
-          roomSubCategoryId,
-        },
-        userId,
-      );
+
+      const { roomId: _, ...updateData } = value;
+      const room = await RoomSvc.updateRoom(roomId, updateData, userId);
       if (!room) {
         return res
           .status(404)

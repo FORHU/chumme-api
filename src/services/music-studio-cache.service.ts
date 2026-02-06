@@ -177,6 +177,27 @@ export default class MusicStudioCacheSvc {
   }
 
   /**
+   * Set the current active role index (0 for "All-Sing", 1+ for specific roles)
+   */
+  static async setCurrentRoleIndex(studioId: string, roleIndex: number | null) {
+    const key = `${this.STUDIO_PREFIX}${studioId}:currentRoleIndex`;
+    if (roleIndex !== null) {
+      await this.client.set(key, roleIndex.toString(), { EX: this.TTL });
+    } else {
+      await this.client.del(key);
+    }
+  }
+
+  /**
+   * Get the current active role index
+   */
+  static async getCurrentRoleIndex(studioId: string) {
+    const key = `${this.STUDIO_PREFIX}${studioId}:currentRoleIndex`;
+    const index = await this.client.get(key);
+    return index !== null ? parseInt(index) : null;
+  }
+
+  /**
    * Set max members for a studio
    */
   static async setMaxMembers(studioId: string, count: number) {
@@ -321,6 +342,7 @@ export default class MusicStudioCacheSvc {
       `${this.STUDIO_PREFIX}${studioId}:relayMode`,
       `${this.STUDIO_PREFIX}${studioId}:relayInterval`,
       `${this.STUDIO_PREFIX}${studioId}:phrasing`,
+      `${this.STUDIO_PREFIX}${studioId}:currentRoleIndex`,
     ];
     await this.client.del(keys);
   }

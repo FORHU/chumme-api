@@ -41,16 +41,15 @@ export default class RoomRepo {
     note: string;
     ownerId: string;
     roomSubCategoryId: string;
+    position: any;
+    metaData: any;
     key_name?: string;
   }) {
     return prisma.room.create({
       data: {
-        name: data.name,
+        ...data,
         key_name: data.key_name ?? generateKeyName(data.name),
         isPrivate: false,
-        note: data.note,
-        ownerId: data.ownerId,
-        roomSubCategoryId: data.roomSubCategoryId,
         isDeleted: false,
       },
     });
@@ -222,6 +221,8 @@ export default class RoomRepo {
       isPrivate?: boolean;
       note?: string;
       roomSubCategoryId?: string;
+      position?: any;
+      metaData?: any;
     },
   ) {
     return prisma.room.update({
@@ -230,14 +231,9 @@ export default class RoomRepo {
         isDeleted: false, // Add this condition
       },
       data: {
+        ...data,
         ...(data.name && {
-          name: data.name,
           key_name: generateKeyName(data.name),
-        }),
-        ...(data.isPrivate !== undefined && { isPrivate: data.isPrivate }),
-        ...(data.note !== undefined && { note: data.note }),
-        ...(data.roomSubCategoryId && {
-          roomSubCategoryId: data.roomSubCategoryId,
         }),
         updatedAt: new Date(),
       },

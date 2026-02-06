@@ -106,6 +106,7 @@ export const registerSingerHandlers = (
             userId: userId,
             name: result.data.user.name,
             role: StudioRole.SINGER,
+            vocalRoleIndex: result.data.vocalRoleIndex,
           }),
         ]);
 

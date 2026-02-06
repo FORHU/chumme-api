@@ -7,20 +7,25 @@ export default class RoomCategoryCtrl {
    * Create a new room category
    */
   static async createCategory(req: Request, res: Response) {
-    const { name, note } = req.body;
-
     const schema = Joi.object({
       name: Joi.string().min(1).max(100).required(),
+      members: Joi.number().integer().min(0).required(),
+      color: Joi.string().required(),
+      size: Joi.string().required(),
+      position: Joi.object().required(),
+      isAd: Joi.boolean().required(),
+      metaData: Joi.object().required(),
+      imageUrl: Joi.string().uri().optional(),
       note: Joi.string().max(500).optional(),
-    }).unknown(true); // Allow extra fields in request body
+    });
 
-    const { error } = schema.validate({ name, note });
+    const { error, value } = schema.validate(req.body);
     if (error) {
       return res.status(400).json({ message: error.message });
     }
 
     try {
-      const category = await RoomCategorySvc.createCategory(name, note);
+      const category = await RoomCategorySvc.createCategory(value);
       return res.status(201).json({
         message: "Room category created successfully",
         category,
@@ -70,31 +75,25 @@ export default class RoomCategoryCtrl {
    */
   static async updateCategory(req: Request, res: Response) {
     const { id } = req.params;
-    const { name, note } = req.body;
-
     const schema = Joi.object({
-      id: Joi.string().uuid().required(),
       name: Joi.string().min(1).max(100).optional(),
+      members: Joi.number().integer().min(0).optional(),
+      color: Joi.string().optional(),
+      size: Joi.string().optional(),
+      position: Joi.object().optional(),
+      isAd: Joi.boolean().optional(),
+      metaData: Joi.object().optional(),
+      imageUrl: Joi.string().uri().optional(),
       note: Joi.string().max(500).optional(),
-    });
+    }).min(1);
 
-    const { error } = schema.validate({ id, name, note });
+    const { error, value } = schema.validate(req.body);
     if (error) {
       return res.status(400).json({ message: error.message });
     }
 
-    // At least one field must be provided
-    if (!name && note === undefined) {
-      return res.status(400).json({
-        message: "At least one field (name or note) must be provided",
-      });
-    }
-
     try {
-      const category = await RoomCategorySvc.updateCategory(id, {
-        name,
-        note,
-      });
+      const category = await RoomCategorySvc.updateCategory(id, value);
       return res.json({
         message: "Room category updated successfully",
         category,

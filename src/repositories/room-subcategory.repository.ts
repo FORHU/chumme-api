@@ -5,17 +5,19 @@ export default class RoomSubCategoryRepo {
   /**
    * Create a new room subcategory
    */
-  static async createSubCategory(
-    name: string,
-    roomCategoryId: string,
-    note?: string,
-  ) {
+  static async createSubCategory(data: {
+    name: string;
+    roomCategoryId: string;
+    ownerId: string;
+    metaData: any;
+    position: any;
+    imageUrl?: string;
+    note?: string;
+  }) {
     return prisma.roomSubCategory.create({
       data: {
-        name,
-        key_name: generateKeyName(name),
-        roomCategoryId,
-        note,
+        ...data,
+        key_name: generateKeyName(data.name),
       },
       include: {
         roomCategory: {
@@ -90,6 +92,10 @@ export default class RoomSubCategoryRepo {
     data: {
       name?: string;
       roomCategoryId?: string;
+      ownerId?: string;
+      metaData?: any;
+      position?: any;
+      imageUrl?: string;
       note?: string;
     },
   ) {
@@ -99,12 +105,10 @@ export default class RoomSubCategoryRepo {
         deletedAt: null,
       },
       data: {
+        ...data,
         ...(data.name && {
-          name: data.name,
           key_name: generateKeyName(data.name),
         }),
-        ...(data.roomCategoryId && { roomCategoryId: data.roomCategoryId }),
-        ...(data.note !== undefined && { note: data.note }),
         updatedAt: new Date(),
       },
       include: {

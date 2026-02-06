@@ -1,13 +1,17 @@
 import { Server } from "socket.io";
-import { StudioRole } from "@prisma/client";
+import { StudioRole, StudioType } from "@prisma/client";
 import MusicRepo from "../../repositories/music.repository";
 import MusicStudioSvc from "../../services/music-studio.service";
 import MusicStudioRepo from "../../repositories/music-studio.repository";
 import MusicStudioCacheSvc from "../../services/music-studio-cache.service";
+import RelayManager from "../../utils/relay-manager";
 import {
   AuthenticatedSocket,
+  PassMicrophonePayload,
   StudioActionPayload,
   UpdateRolePayload,
+  SetRelayModePayload,
+  UpdateVocalRolePayload,
 } from "./types";
 
 export const registerProductionHandlers = (
@@ -162,6 +166,28 @@ export const registerProductionHandlers = (
           lineIndex,
           syncedBy: socket.user.id,
         });
+
+        // --- AUTOMATED MIC ROTATION LOGIC ---
+        const { nextSingerId, targetRoleIndex } =
+          await RelayManager.getNextAutoSingerId(studioId, lineIndex);
+
+        if (targetRoleIndex !== null) {
+          await MusicStudioCacheSvc.setCurrentRoleIndex(
+            studioId,
+            targetRoleIndex,
+          );
+        }
+
+        if (nextSingerId) {
+          await MusicStudioCacheSvc.setCurrentSinger(studioId, nextSingerId);
+          io.to(studioId).emit("microphone_passed", {
+            studioId,
+            currentSinger: nextSingerId,
+            currentRoleIndex: targetRoleIndex,
+            passedBy: "SYSTEM",
+            reason: "AUTO_RELAY",
+          });
+        }
       } catch (err: any) {
         console.error("[MusicStudio] Sync lyrics error:", err);
       }
@@ -212,9 +238,47 @@ export const registerProductionHandlers = (
 
         await Promise.all(promises);
 
+        // --- INITIAL SINGER ASSIGNMENT ---
+        const { nextSingerId, targetRoleIndex } =
+          await RelayManager.getNextAutoSingerId(studioId, 0);
+
+        if (targetRoleIndex !== null) {
+          await MusicStudioCacheSvc.setCurrentRoleIndex(
+            studioId,
+            targetRoleIndex,
+          );
+        }
+
+        if (nextSingerId) {
+          await MusicStudioCacheSvc.setCurrentSinger(studioId, nextSingerId);
+        } else {
+          // If no new singer is suggested, check if anyone is currently holding it.
+          // If not, we might want to pick the "first" eligible person regardless of "newness".
+          const existingSinger =
+            await MusicStudioCacheSvc.getCurrentSinger(studioId);
+          if (!existingSinger) {
+            const members = await MusicStudioCacheSvc.getMembers(studioId);
+            const firstEligible = members.find(
+              (m) =>
+                m.role === StudioRole.SINGER || m.role === StudioRole.PRODUCER,
+            );
+            if (firstEligible) {
+              await MusicStudioCacheSvc.setCurrentSinger(
+                studioId,
+                firstEligible.userId,
+              );
+            }
+          }
+        }
+
+        const finalSinger =
+          await MusicStudioCacheSvc.getCurrentSinger(studioId);
+
         io.to(studioId).emit("song_changed", {
           studioId,
           musicId,
+          currentSinger: finalSinger || null,
+          currentRoleIndex: targetRoleIndex,
           selectedBy: socket.user.id,
         });
 
@@ -242,6 +306,121 @@ export const registerProductionHandlers = (
       socket.emit("get_karaoke_list_failed", {
         message: err.message || "Failed to fetch karaoke songs",
       });
+    }
+  });
+
+  /**
+   * PASS MICROPHONE (RELAYSINGING)
+   */
+  socket.on("pass_microphone", async (data: PassMicrophonePayload) => {
+    try {
+      const { studioId, targetUserId } = data;
+
+      if (!studioId) return;
+
+      const isOwner = await MusicStudioSvc.isOwner(studioId, socket.user.id);
+      const membership = await MusicStudioRepo.getMembership(
+        studioId,
+        socket.user.id,
+      );
+      const currentSingerId =
+        await MusicStudioCacheSvc.getCurrentSinger(studioId);
+
+      const canPass =
+        isOwner ||
+        membership?.role === StudioRole.PRODUCER ||
+        (membership?.role === StudioRole.SINGER &&
+          socket.user.id === currentSingerId);
+
+      if (!canPass) {
+        return socket.emit("pass_microphone_failed", {
+          message: "You don't have permission to pass the mic right now",
+        });
+      }
+
+      // Check if target is eligible to sing
+      if (targetUserId) {
+        const targetCanSing = await MusicStudioSvc.canRecord(
+          studioId,
+          targetUserId,
+        );
+        if (!targetCanSing) {
+          return socket.emit("pass_microphone_failed", {
+            message: "Target user is not a singer or producer",
+          });
+        }
+      }
+
+      await MusicStudioCacheSvc.setCurrentSinger(studioId, targetUserId);
+
+      io.to(studioId).emit("microphone_passed", {
+        studioId,
+        currentSinger: targetUserId,
+        passedBy: socket.user.id,
+      });
+
+      console.log(`[MusicStudio] Mic passed to ${targetUserId} in ${studioId}`);
+    } catch (err: any) {
+      socket.emit("pass_microphone_failed", { message: err.message });
+    }
+  });
+
+  /**
+   * SET RELAY MODE
+   */
+  socket.on("set_relay_mode", async (data: SetRelayModePayload) => {
+    try {
+      const { studioId, mode, interval } = data;
+      const isOwner = await MusicStudioSvc.isOwner(studioId, socket.user.id);
+      if (!isOwner) return;
+
+      await Promise.all([
+        MusicStudioRepo.update(studioId, {
+          relayMode: mode,
+          relayInterval: interval,
+        }),
+        MusicStudioCacheSvc.setRelayMode(studioId, mode),
+        interval
+          ? MusicStudioCacheSvc.setRelayInterval(studioId, interval)
+          : Promise.resolve(),
+      ]);
+
+      io.to(studioId).emit("relay_mode_changed", {
+        studioId,
+        mode,
+        interval,
+      });
+    } catch (err: any) {
+      socket.emit("relay_action_failed", { message: err.message });
+    }
+  });
+
+  /**
+   * UPDATE VOCAL ROLE
+   */
+  socket.on("update_vocal_role", async (data: UpdateVocalRolePayload) => {
+    try {
+      const { studioId, userId, vocalRoleIndex } = data;
+      const isOwner = await MusicStudioSvc.isOwner(studioId, socket.user.id);
+      if (!isOwner) return;
+
+      // Update DB
+      await MusicStudioRepo.updateVocalRole(studioId, userId, vocalRoleIndex);
+
+      // Update Cache/Members
+      const member = await MusicStudioCacheSvc.getMember(studioId, userId);
+      if (member) {
+        member.vocalRoleIndex = vocalRoleIndex;
+        await MusicStudioCacheSvc.addMember(studioId, userId, member);
+      }
+
+      io.to(studioId).emit("vocal_role_updated", {
+        studioId,
+        userId,
+        vocalRoleIndex,
+      });
+    } catch (err: any) {
+      socket.emit("vocal_role_failed", { message: err.message });
     }
   });
 };

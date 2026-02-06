@@ -5,16 +5,28 @@ export default class RoomCategorySvc {
    * Create a new room category
    * Validates that name is unique
    */
-  static async createCategory(name: string, note?: string) {
+  static async createCategory(data: {
+    name: string;
+    members: number;
+    color: string;
+    size: string;
+    position: any;
+    isAd: boolean;
+    metaData: any;
+    imageUrl?: string;
+    note?: string;
+  }) {
     // Check if category with same name already exists (case-insensitive)
-    const existingCategory = await RoomCategoryRepo.findCategoryByName(name);
+    const existingCategory = await RoomCategoryRepo.findCategoryByName(
+      data.name,
+    );
     if (existingCategory) {
-      throw new Error(`Category with name "${name}" already exists`);
+      throw new Error(`Category with name "${data.name}" already exists`);
     }
 
     // Also check for key_name collisions
     const { generateKeyName } = require("../utils/key-name.util");
-    const key_name = generateKeyName(name);
+    const key_name = generateKeyName(data.name);
     const existingByKey =
       await RoomCategoryRepo.findCategoryByKeyName(key_name);
     if (existingByKey) {
@@ -23,7 +35,7 @@ export default class RoomCategorySvc {
       );
     }
 
-    return RoomCategoryRepo.createCategory(name, note);
+    return RoomCategoryRepo.createCategory(data);
   }
 
   /**
@@ -50,7 +62,17 @@ export default class RoomCategorySvc {
    */
   static async updateCategory(
     id: string,
-    data: { name?: string; note?: string },
+    data: {
+      name?: string;
+      members?: number;
+      color?: string;
+      size?: string;
+      position?: any;
+      isAd?: boolean;
+      metaData?: any;
+      imageUrl?: string;
+      note?: string;
+    },
   ) {
     // Check if category exists
     const category = await RoomCategoryRepo.getCategoryById(id);
