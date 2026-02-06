@@ -10,9 +10,9 @@ async function main() {
   console.log("🌱 Starting modular database seeding...");
   ``;
   try {
-    // await seedInterests(prisma);
-    // await seedEmotions(prisma);
-    // await seedArtists(prisma);
+    await seedInterests(prisma);
+    await seedEmotions(prisma);
+    await seedArtists(prisma);
     // await seedFeedItems(prisma);
 
     console.log("🎉 All seeder modules executed successfully!");
