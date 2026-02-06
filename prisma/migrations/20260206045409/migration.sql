@@ -5,12 +5,7 @@
 
 */
 -- DropIndex
-DROP INDEX IF EXISTS "embedding_vector_search_idx";
+DROP INDEX "embedding_vector_search_idx";
 
 -- AlterTable
-DO $$
-BEGIN
-  ALTER TABLE "Embedding" DROP COLUMN IF EXISTS "vector_search";
-EXCEPTION WHEN OTHERS THEN
-  RAISE NOTICE 'Could not drop vector_search column, it might not exist';
-END $$;
+ALTER TABLE "Embedding" DROP COLUMN "vector_search";
