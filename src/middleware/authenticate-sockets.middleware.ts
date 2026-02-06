@@ -9,7 +9,7 @@ interface AuthenticatedSocket extends Socket {
 
 const authenticateSocket = async (
   socket: AuthenticatedSocket,
-  next: (err?: Error) => void
+  next: (err?: Error) => void,
 ) => {
   try {
     const authHeader = socket.handshake.headers["authorization"];

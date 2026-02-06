@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import Joi from "joi";
 import MusicRecordSvc from "../services/music-record.service";
 
 export default class MusicRecordCtrl {
@@ -7,16 +8,35 @@ export default class MusicRecordCtrl {
    * Create a new music recording
    */
   static async create(req: Request, res: Response) {
+    const schema = Joi.object({
+      studioId: Joi.string().uuid().required(),
+      musicId: Joi.string().uuid().required(),
+      fileId: Joi.string().uuid(),
+      file: Joi.object({
+        filename: Joi.string().optional(),
+        fileUrl: Joi.string().uri().optional(),
+        meta_data: Joi.object().optional(),
+      }).optional(),
+      singerIds: Joi.array().items(Joi.string().uuid()).optional(),
+      meta_data: Joi.object().optional(),
+    }).or("fileId", "file");
+
+    const { error, value } = schema.validate(req.body);
+    if (error) {
+      return res.status(400).json({ message: error.message });
+    }
+
     try {
-      const { studioId, musicId, fileId } = req.body;
-
-      if (!studioId || !musicId || !fileId) {
-        return res.status(400).json({
-          message: "studioId, musicId, and fileId are required",
-        });
-      }
-
-      const result = await MusicRecordSvc.create({ studioId, musicId, fileId });
+      const result = await MusicRecordSvc.create({
+        ...value,
+        metaData: value.meta_data,
+        file: value.file
+          ? {
+              ...value.file,
+              metaData: value.file.meta_data,
+            }
+          : undefined,
+      });
       return res.status(201).json(result);
     } catch (err: any) {
       return res.status(400).json({ message: err.message || err });

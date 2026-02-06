@@ -17,6 +17,7 @@ export default class MusicRecordRepo {
         studioId: data.studioId,
         musicId: data.musicId,
         fileId: data.fileId,
+        metaData: (data as any).metaData,
         singers: data.singerIds
           ? { connect: data.singerIds.map((id) => ({ id })) }
           : undefined,
@@ -53,6 +54,8 @@ export default class MusicRecordRepo {
           },
         },
         file: true,
+        singers: true,
+        musicParts: true,
       },
     });
   }
@@ -76,6 +79,7 @@ export default class MusicRecordRepo {
             },
           },
           file: true,
+          singers: true,
         },
         orderBy: { createdAt: "desc" },
         skip,
@@ -122,6 +126,7 @@ export default class MusicRecordRepo {
             },
           },
           file: true,
+          singers: true,
         },
         orderBy: { createdAt: "desc" },
         skip,
@@ -163,6 +168,7 @@ export default class MusicRecordRepo {
         include: {
           studio: true,
           file: true,
+          singers: true,
         },
         orderBy: { createdAt: "desc" },
         skip,

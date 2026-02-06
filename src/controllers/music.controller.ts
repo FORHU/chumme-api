@@ -15,6 +15,7 @@ export default class MusicCtrl {
       musicAlbumId: Joi.string().uuid().allow(null),
       musicArtistId: Joi.string().uuid(),
       isKaraoke: Joi.boolean(),
+      vocalRolesCount: Joi.number().integer().min(1),
       meta_data: Joi.object().optional(),
     });
 
@@ -87,6 +88,7 @@ export default class MusicCtrl {
       musicArtistId: Joi.string().uuid(),
       playlistId: Joi.string().uuid().allow(null),
       isKaraoke: Joi.boolean(),
+      vocalRolesCount: Joi.number().integer().min(1),
     }).min(1);
 
     const { error, value } = schema.validate(req.body);

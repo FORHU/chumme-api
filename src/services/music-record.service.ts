@@ -1,9 +1,17 @@
 import MusicRecordRepo from "../repositories/music-record.repository";
+import FileRepo from "../repositories/file.repository";
 
 interface CreateMusicRecordInput {
   studioId: string;
   musicId: string;
-  fileId: string;
+  fileId?: string;
+  file?: {
+    filename?: string;
+    fileUrl?: string;
+    metaData?: any;
+  };
+  singerIds?: string[];
+  metaData?: any;
 }
 
 export default class MusicRecordSvc {
@@ -11,11 +19,26 @@ export default class MusicRecordSvc {
    * Create a new music recording (karaoke recording)
    */
   static async create(data: CreateMusicRecordInput) {
-    if (!data.studioId || !data.musicId || !data.fileId) {
-      throw new Error("studioId, musicId, and fileId are required");
+    let finalFileId = data.fileId;
+
+    // If file details are provided directly, create the File record first
+    if (!finalFileId && data.file) {
+      const newFile = await FileRepo.createFile({
+        filename: data.file.filename,
+        fileUrl: data.file.fileUrl,
+        metaData: data.file.metaData,
+      });
+      finalFileId = newFile.id;
     }
 
-    const record = await MusicRecordRepo.create(data);
+    if (!finalFileId) {
+      throw new Error("fileId or file details are required");
+    }
+
+    const record = await MusicRecordRepo.create({
+      ...data,
+      fileId: finalFileId,
+    });
     return { message: "Music record created successfully", data: record };
   }
 

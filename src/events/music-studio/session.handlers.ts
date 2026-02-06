@@ -180,6 +180,7 @@ export const registerSessionHandlers = (
         userId: targetUserId,
         name: result.data.user.name,
         role: role,
+        vocalRoleIndex: result.data.vocalRoleIndex,
       });
 
       io.to(studioId).emit("role_updated", {
@@ -188,6 +189,23 @@ export const registerSessionHandlers = (
         newRole: role,
         updatedBy: socket.user.id,
       });
+
+      // --- MIC RELEASE LOGIC ---
+      const currentSingerId =
+        await MusicStudioCacheSvc.getCurrentSinger(studioId);
+      if (
+        currentSingerId === targetUserId &&
+        role !== StudioRole.SINGER &&
+        role !== StudioRole.PRODUCER
+      ) {
+        await MusicStudioCacheSvc.setCurrentSinger(studioId, null);
+        io.to(studioId).emit("microphone_passed", {
+          studioId,
+          currentSinger: null,
+          passedBy: "SYSTEM",
+          reason: "ROLE_REVOKED",
+        });
+      }
 
       console.log(
         `[MusicStudio] ✔ ${socket.user.name} updated role for ${targetUserId} to ${role}`,
@@ -273,6 +291,7 @@ export const registerSessionHandlers = (
             userId: member.id,
             name: member.name,
             role: member.role,
+            vocalRoleIndex: member.vocalRoleIndex,
           }),
         ),
       );
@@ -308,6 +327,19 @@ export const registerSessionHandlers = (
 
       await MusicStudioSvc.leaveStudio(studioId, socket.user.id);
       socket.leave(studioId);
+
+      // --- MIC RELEASE LOGIC ---
+      const currentSingerId =
+        await MusicStudioCacheSvc.getCurrentSinger(studioId);
+      if (currentSingerId === socket.user.id) {
+        await MusicStudioCacheSvc.setCurrentSinger(studioId, null);
+        io.to(studioId).emit("microphone_passed", {
+          studioId,
+          currentSinger: null,
+          passedBy: "SYSTEM",
+          reason: "USER_LEFT",
+        });
+      }
 
       const socketsInRoom = await io.in(studioId).fetchSockets();
       const usersInRoom = socketsInRoom.map((s: any) => s.user);
@@ -406,6 +438,19 @@ export const registerSessionHandlers = (
                 MusicStudioCacheSvc.removeSingerRequest(studioId, userId),
                 MusicStudioRepo.removeUser(studioId, userId),
               ]);
+
+              // --- MIC RELEASE LOGIC (After Grace Period) ---
+              const currentSingerId =
+                await MusicStudioCacheSvc.getCurrentSinger(studioId);
+              if (currentSingerId === userId) {
+                await MusicStudioCacheSvc.setCurrentSinger(studioId, null);
+                io.to(studioId).emit("microphone_passed", {
+                  studioId,
+                  currentSinger: null,
+                  passedBy: "SYSTEM",
+                  reason: "USER_DISCONNECTED",
+                });
+              }
 
               // Room Cleanup after disconnect grace period
               const remainingMembers =

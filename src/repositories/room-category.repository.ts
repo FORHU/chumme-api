@@ -5,12 +5,21 @@ export default class RoomCategoryRepo {
   /**
    * Create a new room category
    */
-  static async createCategory(name: string, note?: string) {
+  static async createCategory(data: {
+    name: string;
+    members: number;
+    color: string;
+    size: string;
+    position: any;
+    isAd: boolean;
+    metaData: any;
+    imageUrl?: string;
+    note?: string;
+  }) {
     return prisma.roomCategory.create({
       data: {
-        name,
-        key_name: generateKeyName(name),
-        note,
+        ...data,
+        key_name: generateKeyName(data.name),
       },
     });
   }
@@ -93,7 +102,17 @@ export default class RoomCategoryRepo {
    */
   static async updateCategory(
     id: string,
-    data: { name?: string; note?: string },
+    data: {
+      name?: string;
+      members?: number;
+      color?: string;
+      size?: string;
+      position?: any;
+      isAd?: boolean;
+      metaData?: any;
+      imageUrl?: string;
+      note?: string;
+    },
   ) {
     return prisma.roomCategory.update({
       where: {
@@ -101,11 +120,10 @@ export default class RoomCategoryRepo {
         deletedAt: null,
       },
       data: {
+        ...data,
         ...(data.name && {
-          name: data.name,
           key_name: generateKeyName(data.name),
         }),
-        ...(data.note !== undefined && { note: data.note }),
         updatedAt: new Date(),
       },
     });

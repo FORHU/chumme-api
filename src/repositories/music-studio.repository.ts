@@ -289,7 +289,11 @@ export default class MusicStudioRepo {
       where: {
         userId_studioId: { userId, studioId },
       },
-      data: { role },
+      data: {
+        role,
+        vocalRoleIndex:
+          role === StudioRole.SINGER || role === StudioRole.PRODUCER ? 1 : null,
+      },
       include: { user: true },
     });
   }
@@ -303,7 +307,11 @@ export default class MusicStudioRepo {
         studioId,
         isActive: true,
       },
-      data: { role },
+      data: {
+        role,
+        vocalRoleIndex:
+          role === StudioRole.SINGER || role === StudioRole.PRODUCER ? 1 : null,
+      },
     });
 
     // Return the updated list
@@ -358,7 +366,14 @@ export default class MusicStudioRepo {
         },
       },
     });
-    return members.map((m) => ({ ...m.user, role: m.role }));
+    return members.map((m) => ({
+      id: m.user.id,
+      name: m.user.name,
+      username: m.user.username,
+      avatar: m.user.avatar,
+      role: m.role,
+      vocalRoleIndex: m.vocalRoleIndex,
+    }));
   }
 
   /**

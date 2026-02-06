@@ -14,6 +14,7 @@ interface CreateMusicInput {
   order?: number;
   metaData?: any;
   isKaraoke?: boolean;
+  vocalRolesCount?: number;
 }
 
 interface FileUpload {
@@ -49,6 +50,8 @@ export default class MusicSvc {
     const parts: any[] = [];
     if (data.isKaraoke && data.metaData?.transcription?.segments) {
       const segments = data.metaData.transcription.segments;
+      const rolesCount = data.vocalRolesCount || 2;
+
       // Grouping logic: Support both \n\n and \r\n\r\n
       const content = data.metaData.transcription.content || "";
       const sections = content.split(/\n\n|\r\n\r\n/);
@@ -58,31 +61,52 @@ export default class MusicSvc {
         sections.forEach((section: string, index: number) => {
           const trimmedSection = section.trim();
           if (!trimmedSection) return;
-          const lines = trimmedSection
+
+          // Header detection: [Verse], Chorus:, (Bridge), etc.
+          const headerMatch = trimmedSection.match(
+            /^\[([\w\s]+)\]|^([\w\s]+):|^\(([\w\s]+)\)/,
+          );
+          let partName = headerMatch
+            ? (headerMatch[1] || headerMatch[2] || headerMatch[3]).trim()
+            : `Part ${index + 1}`;
+
+          // Strip header from content to get actual lines
+          const linesOnly = headerMatch
+            ? trimmedSection.replace(headerMatch[0], "").trim()
+            : trimmedSection;
+
+          const lines = linesOnly
             .split(/\n|\r\n/)
             .filter((l: string) => l.trim());
+
+          if (lines.length === 0) return;
+
           const startLine = currentLine;
           const endLine = currentLine + lines.length - 1;
 
+          // Auto-assign Role 0 to Chorus or sections named "All"
+          const isCollective = /chorus|all/i.test(partName);
+          const vocalRoleIndex = isCollective ? 0 : (index % rolesCount) + 1;
+
           parts.push({
-            name: `Part ${index + 1}`,
+            name: partName,
             startLine,
             endLine: Math.min(endLine, segments.length - 1),
-            vocalRoleIndex: (index % 2) + 1,
+            vocalRoleIndex,
             order: index + 1,
           });
           currentLine += lines.length;
         });
       }
 
-      // If no parts were created (even if sections > 1 reached but failed to produce parts), use fallback
+      // Fallback: If no parts were created, use the "Group of 4" rule
       if (parts.length === 0) {
         for (let i = 0; i < segments.length; i += 4) {
           parts.push({
             name: `Segment ${Math.floor(i / 4) + 1}`,
             startLine: i,
             endLine: Math.min(i + 3, segments.length - 1),
-            vocalRoleIndex: (Math.floor(i / 4) % 2) + 1,
+            vocalRoleIndex: (Math.floor(i / 4) % rolesCount) + 1,
             order: Math.floor(i / 4) + 1,
           });
         }

@@ -5,35 +5,40 @@ export default class RoomSubCategorySvc {
    * Create a new room subcategory
    * Validates parent category exists and name is unique within category
    */
-  static async createSubCategory(
-    name: string,
-    roomCategoryId: string,
-    note?: string,
-  ) {
+  static async createSubCategory(data: {
+    name: string;
+    roomCategoryId: string;
+    ownerId: string;
+    metaData: any;
+    position: any;
+    imageUrl?: string;
+    note?: string;
+  }) {
     // Verify parent category exists
-    const categoryExists =
-      await RoomSubCategoryRepo.categoryExists(roomCategoryId);
+    const categoryExists = await RoomSubCategoryRepo.categoryExists(
+      data.roomCategoryId,
+    );
     if (!categoryExists) {
       throw new Error("Parent category not found");
     }
 
     // Check if subcategory with same name already exists in this category (case-insensitive)
     const existingSubCategory = await RoomSubCategoryRepo.findSubCategoryByName(
-      name,
-      roomCategoryId,
+      data.name,
+      data.roomCategoryId,
     );
     if (existingSubCategory) {
       throw new Error(
-        `Subcategory with name "${name}" already exists in this category`,
+        `Subcategory with name "${data.name}" already exists in this category`,
       );
     }
 
     // Also check for key_name collisions within this category
     const { generateKeyName } = require("../utils/key-name.util");
-    const key_name = generateKeyName(name);
+    const key_name = generateKeyName(data.name);
     const existingByKey = await RoomSubCategoryRepo.findSubCategoryByKeyName(
       key_name,
-      roomCategoryId,
+      data.roomCategoryId,
     );
     if (existingByKey) {
       throw new Error(
@@ -41,7 +46,7 @@ export default class RoomSubCategorySvc {
       );
     }
 
-    return RoomSubCategoryRepo.createSubCategory(name, roomCategoryId, note);
+    return RoomSubCategoryRepo.createSubCategory(data);
   }
 
   /**
@@ -72,6 +77,10 @@ export default class RoomSubCategorySvc {
     data: {
       name?: string;
       roomCategoryId?: string;
+      ownerId?: string;
+      metaData?: any;
+      position?: any;
+      imageUrl?: string;
       note?: string;
     },
   ) {
