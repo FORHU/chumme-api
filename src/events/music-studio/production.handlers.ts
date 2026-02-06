@@ -108,10 +108,15 @@ export const registerProductionHandlers = (
         }
 
         if (nextSingerId) {
+          const singerInfo = await MusicStudioCacheSvc.getMember(
+            studioId,
+            nextSingerId,
+          );
           await MusicStudioCacheSvc.setCurrentSinger(studioId, nextSingerId);
           io.to(studioId).emit("microphone_passed", {
             studioId,
             currentSinger: nextSingerId,
+            currentSingerName: singerInfo?.name || "Unknown",
             currentRoleIndex: targetRoleIndex,
             passedBy: "SYSTEM",
             reason: "AUTO_RELAY",
@@ -202,11 +207,20 @@ export const registerProductionHandlers = (
 
         const finalSinger =
           await MusicStudioCacheSvc.getCurrentSinger(studioId);
+        let finalSingerName = null;
+        if (finalSinger) {
+          const singerInfo = await MusicStudioCacheSvc.getMember(
+            studioId,
+            finalSinger,
+          );
+          finalSingerName = singerInfo?.name || "Unknown";
+        }
 
         io.to(studioId).emit("song_changed", {
           studioId,
           musicId,
           currentSinger: finalSinger || null,
+          currentSingerName: finalSingerName,
           currentRoleIndex: targetRoleIndex,
           selectedBy: socket.user.id,
         });
@@ -281,10 +295,15 @@ export const registerProductionHandlers = (
       }
 
       await MusicStudioCacheSvc.setCurrentSinger(studioId, targetUserId);
+      const singerInfo = targetUserId
+        ? await MusicStudioCacheSvc.getMember(studioId, targetUserId)
+        : null;
 
       io.to(studioId).emit("microphone_passed", {
         studioId,
         currentSinger: targetUserId,
+        currentSingerName:
+          singerInfo?.name || (targetUserId ? "Unknown" : null),
         passedBy: socket.user.id,
       });
 

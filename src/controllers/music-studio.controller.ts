@@ -275,6 +275,16 @@ export default class MusicStudioCtrl {
       mimetype: Joi.string().required(),
       size: Joi.number(),
       metaData: Joi.any(),
+      performanceMapping: Joi.array()
+        .items(
+          Joi.object({
+            startLine: Joi.number().required(),
+            endLine: Joi.number().required(),
+            singerId: Joi.string().required(),
+            vocalRoleIndex: Joi.number().optional(),
+          }),
+        )
+        .optional(),
     });
 
     const { error, value } = schema.validate(req.body);
