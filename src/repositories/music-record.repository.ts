@@ -12,8 +12,9 @@ export default class MusicRecordRepo {
   /**
    * Create a new MusicRecord (user's karaoke recording)
    */
-  static async create(data: CreateMusicRecordData) {
-    return prisma.musicRecord.create({
+  static async create(data: CreateMusicRecordData, tx?: any) {
+    const client = tx || prisma;
+    return client.musicRecord.create({
       data: {
         studioId: data.studioId,
         musicId: data.musicId,

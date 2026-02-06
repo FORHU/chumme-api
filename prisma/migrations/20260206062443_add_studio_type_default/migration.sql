@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "MusicStudio" ALTER COLUMN "studioType" SET DEFAULT 'RELAYSINGING';

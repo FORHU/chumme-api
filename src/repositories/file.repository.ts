@@ -3,12 +3,16 @@ import S3Util from "../utils/s3.util";
 
 export default class FileRepo {
   // Save / create file record
-  static async createFile(data: {
-    filename?: string | null;
-    fileUrl?: string | null;
-    metaData?: any;
-  }) {
-    return prisma.file.create({
+  static async createFile(
+    data: {
+      filename?: string | null;
+      fileUrl?: string | null;
+      metaData?: any;
+    },
+    tx?: any,
+  ) {
+    const client = tx || prisma;
+    return client.file.create({
       data: {
         filename: data.filename ?? null,
         fileUrl: data.fileUrl ?? null,
