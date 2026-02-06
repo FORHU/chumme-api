@@ -8,6 +8,7 @@ import RelayManager from "../../utils/relay-manager";
 import {
   AuthenticatedSocket,
   PassMicrophonePayload,
+  SaveRecordingPayload,
   StudioActionPayload,
   UpdateRolePayload,
   SetRelayModePayload,
@@ -61,78 +62,6 @@ export const registerProductionHandlers = (
       }
     },
   );
-
-  /**
-   * START RECORDING
-   */
-  socket.on("start_recording", async (data: StudioActionPayload) => {
-    try {
-      const { studioId } = data;
-
-      if (!studioId) {
-        return socket.emit("start_recording_failed", {
-          message: "studioId is required",
-        });
-      }
-
-      const isOwner = await MusicStudioSvc.isOwner(studioId, socket.user.id);
-      if (!isOwner) {
-        return socket.emit("start_recording_failed", {
-          message: "Only the owner can start recording",
-        });
-      }
-
-      await MusicStudioCacheSvc.setStudioState(studioId, "RECORDING");
-
-      io.to(studioId).emit("recording_started", {
-        studioId,
-        startedBy: socket.user.id,
-        timestamp: new Date().toISOString(),
-      });
-
-      console.log(`[MusicStudio] Recording started in ${studioId}`);
-    } catch (err: any) {
-      socket.emit("start_recording_failed", {
-        message: err.message || "Failed to start recording",
-      });
-    }
-  });
-
-  /**
-   * STOP RECORDING
-   */
-  socket.on("stop_recording", async (data: StudioActionPayload) => {
-    try {
-      const { studioId } = data;
-
-      if (!studioId) {
-        return socket.emit("stop_recording_failed", {
-          message: "studioId is required",
-        });
-      }
-
-      const isOwner = await MusicStudioSvc.isOwner(studioId, socket.user.id);
-      if (!isOwner) {
-        return socket.emit("stop_recording_failed", {
-          message: "Only the owner can stop recording",
-        });
-      }
-
-      await MusicStudioCacheSvc.setStudioState(studioId, "IDLE");
-
-      io.to(studioId).emit("recording_stopped", {
-        studioId,
-        stoppedBy: socket.user.id,
-        timestamp: new Date().toISOString(),
-      });
-
-      console.log(`[MusicStudio] Recording stopped in ${studioId}`);
-    } catch (err: any) {
-      socket.emit("stop_recording_failed", {
-        message: err.message || "Failed to stop recording",
-      });
-    }
-  });
 
   /**
    * SYNC LYRICS

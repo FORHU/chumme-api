@@ -38,10 +38,11 @@ export interface RequestUploadUrlPayload {
 export interface SaveRecordingPayload {
   studioId: string;
   musicId: string;
-  fileKey?: string; // S3 key for pre-uploaded file
-  filename?: string;
-  mimetype?: string;
-  audioData?: Buffer | ArrayBuffer; // Support both for flexibility
+  fileUrl: string;
+  filename: string;
+  mimetype: string;
+  size?: number;
+  metaData?: any;
 }
 
 export interface PassMicrophonePayload {

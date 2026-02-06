@@ -24,6 +24,15 @@ router.post("/:id/leave", MusicStudioCtrl.leaveStudio);
 router.patch("/:id", MusicStudioCtrl.updateStudio);
 router.patch("/:id/members/:userId/role", MusicStudioCtrl.updateMemberRole);
 
+// Recording flow via HTTP
+router.post(
+  "/:id/start-recording",
+  authenticate,
+  MusicStudioCtrl.startRecording,
+);
+router.post("/:id/stop-recording", authenticate, MusicStudioCtrl.stopRecording);
+router.post("/:id/save-recording", authenticate, MusicStudioCtrl.saveRecording);
+
 // Delete
 router.delete("/:id", MusicStudioCtrl.closeStudio);
 

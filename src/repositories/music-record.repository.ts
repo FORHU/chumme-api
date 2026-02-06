@@ -5,6 +5,7 @@ interface CreateMusicRecordData {
   musicId: string;
   fileId: string;
   singerIds?: string[]; // Optional array of user IDs who participated
+  metaData?: any;
 }
 
 export default class MusicRecordRepo {

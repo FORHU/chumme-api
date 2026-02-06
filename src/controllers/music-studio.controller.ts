@@ -1,6 +1,8 @@
 import { Request, Response } from "express";
 import Joi from "joi";
 import MusicStudioSvc from "../services/music-studio.service";
+import MusicRepo from "../repositories/music.repository";
+import { io } from "../app";
 
 export default class MusicStudioCtrl {
   /**
@@ -11,6 +13,7 @@ export default class MusicStudioCtrl {
       name: Joi.string().required(),
       keyName: Joi.string(), // Optional - if not set, studio is public
       note: Joi.string(),
+      studioType: Joi.string().valid("RELAYSINGING", "CROWDSINGING").required(),
     });
 
     const { error, value } = schema.validate(req.body);
@@ -198,6 +201,91 @@ export default class MusicStudioCtrl {
 
     try {
       const result = await MusicStudioSvc.closeStudio(id, (req as any).user.id);
+      return res.json(result);
+    } catch (err: any) {
+      return res.status(400).json({ message: err.message || err });
+    }
+  }
+
+  /**
+   * Start recording (HTTP)
+   */
+  static async startRecording(req: Request, res: Response) {
+    const { id } = req.params;
+    try {
+      const result = await MusicStudioSvc.startRecording(
+        id,
+        (req as any).user.id,
+      );
+
+      // Notify studio members via socket
+      io.to(id).emit("recording_started", {
+        studioId: id,
+        startedBy: (req as any).user.id,
+        timestamp: result.timestamp,
+      });
+
+      return res.json(result);
+    } catch (err: any) {
+      return res.status(400).json({ message: err.message || err });
+    }
+  }
+
+  /**
+   * Stop recording (HTTP)
+   */
+  static async stopRecording(req: Request, res: Response) {
+    const { id } = req.params;
+    try {
+      const result = await MusicStudioSvc.stopRecording(
+        id,
+        (req as any).user.id,
+      );
+
+      // Notify studio members via socket
+      io.to(id).emit("recording_stopped", {
+        studioId: id,
+        stoppedBy: (req as any).user.id,
+        timestamp: result.timestamp,
+      });
+
+      return res.json(result);
+    } catch (err: any) {
+      return res.status(400).json({ message: err.message || err });
+    }
+  }
+
+  /**
+   * Save recording (HTTP)
+   */
+  static async saveRecording(req: Request, res: Response) {
+    const { id } = req.params;
+    const schema = Joi.object({
+      musicId: Joi.string().required(),
+      fileUrl: Joi.string().uri().required(),
+      filename: Joi.string().required(),
+      mimetype: Joi.string().required(),
+      size: Joi.number(),
+      metaData: Joi.any(),
+    });
+
+    const { error, value } = schema.validate(req.body);
+    if (error) return res.status(400).json({ message: error.message });
+
+    try {
+      const result = await MusicStudioSvc.saveRecording({
+        ...value,
+        studioId: id,
+      });
+
+      // Notify studio members via socket
+      io.to(id).emit("recording_saved", {
+        studioId: id,
+        musicRecordId: result.data.id,
+        musicRecord: result.data,
+        savedBy: (req as any).user.id,
+      });
+
       return res.json(result);
     } catch (err: any) {
       return res.status(400).json({ message: err.message || err });

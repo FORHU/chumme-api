@@ -2,6 +2,7 @@ import { StudioRole, StudioType, RelayMode } from "@prisma/client";
 import MusicStudioRepo from "../repositories/music-studio.repository";
 import MusicRecordRepo from "../repositories/music-record.repository";
 import FileRepo from "../repositories/file.repository";
+import MusicStudioCacheSvc from "./music-studio-cache.service";
 import S3Util from "../utils/s3.util";
 import { S3_CDN_URL } from "../config";
 
@@ -18,10 +19,11 @@ interface CreateStudioInput {
 interface SaveRecordingInput {
   studioId: string;
   musicId: string;
-  audioBuffer?: Buffer;
-  fileKey?: string;
+  fileUrl: string;
   filename: string;
   mimetype: string;
+  size?: number;
+  metaData?: any; // Session/Performance metadata
 }
 
 export default class MusicStudioSvc {
@@ -56,6 +58,40 @@ export default class MusicStudioSvc {
       throw new Error("Studio not found");
     }
     return { message: "Studio fetched successfully", data: studio };
+  }
+
+  /**
+   * Start recording in a studio
+   */
+  static async startRecording(studioId: string, userId: string) {
+    const isOwner = await this.isOwner(studioId, userId);
+    if (!isOwner) {
+      throw new Error("Only the owner can start recording");
+    }
+
+    await MusicStudioCacheSvc.setStudioState(studioId, "RECORDING");
+
+    return {
+      message: "Recording started",
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Stop recording in a studio
+   */
+  static async stopRecording(studioId: string, userId: string) {
+    const isOwner = await this.isOwner(studioId, userId);
+    if (!isOwner) {
+      throw new Error("Only the owner can stop recording");
+    }
+
+    await MusicStudioCacheSvc.setStudioState(studioId, "IDLE");
+
+    return {
+      message: "Recording stopped",
+      timestamp: new Date().toISOString(),
+    };
   }
 
   /**
@@ -217,39 +253,13 @@ export default class MusicStudioSvc {
       throw new Error("Studio not found");
     }
 
-    // Handle audio - either upload buffer or use existing fileKey
-    let fileUrl: string;
-    let fileSize: number = 0;
-
-    if (data.fileKey) {
-      // If fileKey is provided, we assume it's already uploaded via pre-signed URL
-      if (!S3_CDN_URL) throw new Error("S3_CDN_URL is not configured");
-      fileUrl = `${S3_CDN_URL}/${data.fileKey}`;
-    } else if (data.audioBuffer) {
-      fileUrl = await S3Util.uploadFile(
-        data.audioBuffer,
-        data.filename,
-        data.mimetype,
-      );
-      fileSize = data.audioBuffer.length;
-    } else {
-      throw new Error("Either audioBuffer or fileKey must be provided");
-    }
-
-    // Extract or use provided S3 key
-    let finalS3Key = data.fileKey;
-    if (!finalS3Key && fileUrl && S3_CDN_URL) {
-      finalS3Key = fileUrl.replace(`${S3_CDN_URL}/`, "");
-    }
-
-    // Create file record
+    // Create file record using data provided by frontend (already uploaded)
     const fileRecord = await FileRepo.createFile({
       filename: data.filename,
-      fileUrl: fileUrl,
+      fileUrl: data.fileUrl,
       metaData: {
         mimetype: data.mimetype,
-        size: fileSize,
-        s3Key: finalS3Key, // Standardized key storage
+        size: data.size || 0,
       },
     });
 
@@ -264,6 +274,7 @@ export default class MusicStudioSvc {
       musicId: data.musicId,
       fileId: fileRecord.id,
       singerIds,
+      metaData: data.metaData,
     });
 
     return {
