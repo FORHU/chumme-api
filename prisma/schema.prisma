@@ -594,7 +594,7 @@ model MusicStudio {
   updatedAt     DateTime       @updatedAt
   relayInterval Int?
   relayMode     RelayMode      @default(AUTO)
-  studioType    StudioType
+  studioType    StudioType     @default(RELAYSINGING)
   records       MusicRecord[]  @relation("StudioRecords")
   owner         User           @relation("StudioOwner", fields: [ownerId], references: [id])
   members       StudioMember[] @relation("StudioMembers")

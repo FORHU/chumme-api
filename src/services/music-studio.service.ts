@@ -1,8 +1,10 @@
+import { prisma } from "../utils/prisma";
 import { StudioRole, StudioType, RelayMode } from "@prisma/client";
 import MusicStudioRepo from "../repositories/music-studio.repository";
 import MusicRecordRepo from "../repositories/music-record.repository";
 import FileRepo from "../repositories/file.repository";
 import MusicStudioCacheSvc from "./music-studio-cache.service";
+import logger from "../utils/logger";
 import S3Util from "../utils/s3.util";
 import { S3_CDN_URL } from "../config";
 
@@ -71,9 +73,16 @@ export default class MusicStudioSvc {
 
     await MusicStudioCacheSvc.setStudioState(studioId, "RECORDING");
 
+    const timestamp = new Date().toISOString();
+    logger.info(`[MusicStudio] Recording started`, {
+      studioId,
+      userId,
+      timestamp,
+    });
+
     return {
       message: "Recording started",
-      timestamp: new Date().toISOString(),
+      timestamp,
     };
   }
 
@@ -88,9 +97,16 @@ export default class MusicStudioSvc {
 
     await MusicStudioCacheSvc.setStudioState(studioId, "IDLE");
 
+    const timestamp = new Date().toISOString();
+    logger.info(`[MusicStudio] Recording stopped`, {
+      studioId,
+      userId,
+      timestamp,
+    });
+
     return {
       message: "Recording stopped",
-      timestamp: new Date().toISOString(),
+      timestamp,
     };
   }
 
@@ -253,34 +269,58 @@ export default class MusicStudioSvc {
       throw new Error("Studio not found");
     }
 
-    // Create file record using data provided by frontend (already uploaded)
-    const fileRecord = await FileRepo.createFile({
-      filename: data.filename,
-      fileUrl: data.fileUrl,
-      metaData: {
-        mimetype: data.mimetype,
-        size: data.size || 0,
-      },
-    });
+    try {
+      const result = await prisma.$transaction(async (tx) => {
+        // Create file record using data provided by frontend (already uploaded)
+        const fileRecord = await FileRepo.createFile(
+          {
+            filename: data.filename,
+            fileUrl: data.fileUrl,
+            metaData: {
+              mimetype: data.mimetype,
+              size: data.size || 0,
+            },
+          },
+          tx,
+        );
 
-    // Get active singers and producers from studio membership
-    const singerIds = studio.members
-      .filter((m) => m.role === "SINGER" || m.role === "PRODUCER")
-      .map((m) => m.userId);
+        // Get active singers and producers from studio membership
+        const singerIds = studio.members
+          .filter((m) => m.role === "SINGER" || m.role === "PRODUCER")
+          .map((m) => m.userId);
 
-    // Create music record linked to this studio with singer credits
-    const musicRecord = await MusicRecordRepo.create({
-      studioId: data.studioId,
-      musicId: data.musicId,
-      fileId: fileRecord.id,
-      singerIds,
-      metaData: data.metaData,
-    });
+        // Create music record linked to this studio with singer credits
+        const musicRecord = await MusicRecordRepo.create(
+          {
+            studioId: data.studioId,
+            musicId: data.musicId,
+            fileId: fileRecord.id,
+            singerIds,
+            metaData: data.metaData,
+          },
+          tx,
+        );
 
-    return {
-      message: "Recording saved successfully",
-      data: musicRecord,
-    };
+        return musicRecord;
+      });
+
+      logger.info(`[MusicStudio] Recording saved: ${result.id}`, {
+        studioId: data.studioId,
+        musicId: data.musicId,
+        userIds: result.singers?.map((s: any) => s.id),
+      });
+
+      return {
+        message: "Recording saved successfully",
+        data: result,
+      };
+    } catch (err: any) {
+      logger.error(`[MusicStudio] Failed to save recording`, {
+        error: err.message,
+        studioId: data.studioId,
+      });
+      throw err;
+    }
   }
 
   /**

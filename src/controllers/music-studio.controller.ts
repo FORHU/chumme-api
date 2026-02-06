@@ -13,7 +13,9 @@ export default class MusicStudioCtrl {
       name: Joi.string().required(),
       keyName: Joi.string(), // Optional - if not set, studio is public
       note: Joi.string(),
-      studioType: Joi.string().valid("RELAYSINGING", "CROWDSINGING").required(),
+      studioType: Joi.string()
+        .valid("RELAYSINGING", "CROWDSINGING", "COMPETITION")
+        .required(),
     });
 
     const { error, value } = schema.validate(req.body);
@@ -176,6 +178,12 @@ export default class MusicStudioCtrl {
     const schema = Joi.object({
       name: Joi.string(),
       note: Joi.string().allow("", null),
+      keyName: Joi.string(),
+      studioType: Joi.string().valid(
+        "RELAYSINGING",
+        "CROWDSINGING",
+        "COMPETITION",
+      ),
     }).min(1);
 
     const { error, value } = schema.validate(req.body);
