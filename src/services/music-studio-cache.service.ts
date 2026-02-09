@@ -326,6 +326,57 @@ export default class MusicStudioCacheSvc {
   }
 
   /**
+   * Add music to the queue
+   */
+  static async addMusicToQueue(studioId: string, musicData: any) {
+    const key = `${this.STUDIO_PREFIX}${studioId}:musicQueue`;
+    const length = await this.client.lLen(key);
+    if (length >= 10) {
+      throw new Error("Queue is full (max 10 songs)");
+    }
+    await this.client.rPush(key, JSON.stringify(musicData));
+    await this.client.expire(key, this.TTL);
+  }
+
+  /**
+   * Get the music queue
+   */
+  static async getMusicQueue(studioId: string) {
+    const key = `${this.STUDIO_PREFIX}${studioId}:musicQueue`;
+    const queue = await this.client.lRange(key, 0, -1);
+    return queue.map((item) => JSON.parse(item));
+  }
+
+  /**
+   * Remove music from queue by index
+   */
+  static async removeMusicFromQueue(studioId: string, index: number) {
+    const key = `${this.STUDIO_PREFIX}${studioId}:musicQueue`;
+    // Mark as deleted then remove (Redis list manipulation)
+    // UUID is safe unique marker
+    const marker = "__DELETED__";
+    await this.client.lSet(key, index, marker);
+    await this.client.lRem(key, 0, marker);
+  }
+
+  /**
+   * Pop the next music from queue
+   */
+  static async popNextMusic(studioId: string) {
+    const key = `${this.STUDIO_PREFIX}${studioId}:musicQueue`;
+    const item = await this.client.lPop(key);
+    return item ? JSON.parse(item) : null;
+  }
+
+  /**
+   * Clear music queue
+   */
+  static async clearMusicQueue(studioId: string) {
+    const key = `${this.STUDIO_PREFIX}${studioId}:musicQueue`;
+    await this.client.del(key);
+  }
+
+  /**
    * Clear all session data (on studio close)
    */
   static async clearStudioSession(studioId: string) {
@@ -343,6 +394,7 @@ export default class MusicStudioCacheSvc {
       `${this.STUDIO_PREFIX}${studioId}:relayInterval`,
       `${this.STUDIO_PREFIX}${studioId}:phrasing`,
       `${this.STUDIO_PREFIX}${studioId}:currentRoleIndex`,
+      `${this.STUDIO_PREFIX}${studioId}:musicQueue`,
     ];
     await this.client.del(keys);
   }
