@@ -119,8 +119,18 @@ export default class MusicStudioSvc {
   /**
    * Get all studios with pagination
    */
-  static async getAllStudios(page?: number, limit?: number) {
-    const result = await MusicStudioRepo.findAll({ page, limit });
+  static async getAllStudios(
+    page?: number,
+    limit?: number,
+    studioType?: StudioType,
+    isPrivate?: boolean,
+  ) {
+    const result = await MusicStudioRepo.findAll({
+      page,
+      limit,
+      studioType,
+      isPrivate,
+    });
     return { message: "Studios fetched successfully", ...result };
   }
 

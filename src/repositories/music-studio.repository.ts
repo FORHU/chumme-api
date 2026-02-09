@@ -100,14 +100,29 @@ export default class MusicStudioRepo {
   /**
    * Get all active studios with pagination
    */
-  static async findAll(params: { page?: number; limit?: number } = {}) {
+  static async findAll(
+    params: {
+      page?: number;
+      limit?: number;
+      studioType?: StudioType;
+      isPrivate?: boolean;
+    } = {},
+  ) {
     const page = params.page || 1;
     const limit = params.limit || 10;
     const skip = (page - 1) * limit;
 
+    const whereClause = {
+      deletedAt: null,
+      ...(params.studioType && { studioType: params.studioType }),
+      ...(params.isPrivate !== undefined && {
+        keyName: params.isPrivate ? { not: null } : null,
+      }),
+    };
+
     const [data, total] = await Promise.all([
       prisma.musicStudio.findMany({
-        where: { deletedAt: null },
+        where: whereClause,
         include: {
           owner: true,
           members: {
@@ -121,7 +136,7 @@ export default class MusicStudioRepo {
         take: limit,
       }),
       prisma.musicStudio.count({
-        where: { deletedAt: null },
+        where: whereClause,
       }),
     ]);
 

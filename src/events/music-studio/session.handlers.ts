@@ -70,6 +70,7 @@ export const registerSessionHandlers = (
   socket.on("join_studio", async (data: JoinStudioPayload) => {
     try {
       const { studioId, keyName, role } = data;
+      console.log("[DEBUG] Socket join_studio:", { studioId, keyName, role });
 
       if (!studioId) {
         return socket.emit("join_studio_failed", {
