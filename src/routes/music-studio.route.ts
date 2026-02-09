@@ -12,26 +12,37 @@ router.get("/my-studios", MusicStudioCtrl.getMyStudios);
 router.get("/joined", MusicStudioCtrl.getJoinedStudios);
 
 // Single studio
-router.get("/:id", MusicStudioCtrl.getStudioById);
-router.get("/:id/users", MusicStudioCtrl.getStudioUsers);
+router.get("/:studioId", MusicStudioCtrl.getStudioById);
+router.get("/:studioId/users", MusicStudioCtrl.getStudioUsers);
 
 // Create & manage
 router.post("/create", MusicStudioCtrl.createStudio);
-router.post("/:id/join", MusicStudioCtrl.joinStudio);
-router.post("/:id/leave", MusicStudioCtrl.leaveStudio);
+router.post("/:studioId/join", MusicStudioCtrl.joinStudio);
+router.post("/:studioId/leave", MusicStudioCtrl.leaveStudio);
 
 // Update
-router.patch("/:id", MusicStudioCtrl.updateStudio);
-router.patch("/:id/members/:userId/role", MusicStudioCtrl.updateMemberRole);
+router.patch("/:studioId", MusicStudioCtrl.updateStudio);
+router.patch(
+  "/:studioId/members/:userId/role",
+  MusicStudioCtrl.updateMemberRole,
+);
 
 // Recording flow via HTTP
 router.post(
-  "/:id/start-recording",
+  "/:studioId/start-recording",
   authenticate,
   MusicStudioCtrl.startRecording,
 );
-router.post("/:id/stop-recording", authenticate, MusicStudioCtrl.stopRecording);
-router.post("/:id/save-recording", authenticate, MusicStudioCtrl.saveRecording);
+router.post(
+  "/:studioId/stop-recording",
+  authenticate,
+  MusicStudioCtrl.stopRecording,
+);
+router.post(
+  "/:studioId/save-recording",
+  authenticate,
+  MusicStudioCtrl.saveRecording,
+);
 
 // Delete
 router.delete("/:id", MusicStudioCtrl.closeStudio);
