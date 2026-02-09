@@ -57,7 +57,11 @@ export default class MusicRecordRepo {
         },
         file: true,
         singers: true,
-        musicParts: true,
+        musicParts: {
+          include: {
+            singer: true,
+          },
+        },
       },
     });
   }
@@ -82,6 +86,11 @@ export default class MusicRecordRepo {
           },
           file: true,
           singers: true,
+          musicParts: {
+            include: {
+              singer: true,
+            },
+          },
         },
         orderBy: { createdAt: "desc" },
         skip,
@@ -129,6 +138,11 @@ export default class MusicRecordRepo {
           },
           file: true,
           singers: true,
+          musicParts: {
+            include: {
+              singer: true,
+            },
+          },
         },
         orderBy: { createdAt: "desc" },
         skip,
@@ -171,6 +185,11 @@ export default class MusicRecordRepo {
           studio: true,
           file: true,
           singers: true,
+          musicParts: {
+            include: {
+              singer: true,
+            },
+          },
         },
         orderBy: { createdAt: "desc" },
         skip,

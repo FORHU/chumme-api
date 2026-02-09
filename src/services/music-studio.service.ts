@@ -26,6 +26,12 @@ interface SaveRecordingInput {
   mimetype: string;
   size?: number;
   metaData?: any; // Session/Performance metadata
+  performanceMapping?: {
+    startLine: number;
+    endLine: number;
+    singerId: string;
+    vocalRoleIndex?: number;
+  }[];
 }
 
 export default class MusicStudioSvc {
@@ -300,6 +306,20 @@ export default class MusicStudioSvc {
           },
           tx,
         );
+
+        // If performance mapping provided, create music parts for this record
+        if (data.performanceMapping && data.performanceMapping.length > 0) {
+          await tx.musicPart.createMany({
+            data: data.performanceMapping.map((p, index) => ({
+              recordId: musicRecord.id,
+              startLine: p.startLine,
+              endLine: p.endLine,
+              singerId: p.singerId,
+              vocalRoleIndex: p.vocalRoleIndex || 1,
+              order: index,
+            })),
+          });
+        }
 
         return musicRecord;
       });

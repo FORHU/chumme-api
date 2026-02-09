@@ -48,6 +48,7 @@ model User {
   userChats              UserChat[]
   userEmotionPreferences UserEmotionPreference[]
   userInterests          UserInterest[]
+  musicParts             MusicPart[]
   musicRecords           MusicRecord[]           @relation("MusicRecordSingers")
 }
 
@@ -561,6 +562,8 @@ model MusicPart {
   updatedAt      DateTime     @updatedAt
   music          Music?       @relation(fields: [musicId], references: [id])
   record         MusicRecord? @relation(fields: [recordId], references: [id])
+  singerId       String?
+  singer         User?        @relation(fields: [singerId], references: [id])
 
   @@index([recordId])
   @@index([musicId])
@@ -601,19 +604,20 @@ model MusicStudio {
 }
 
 model MusicRecord {
-  id         String      @id @default(uuid())
-  musicId    String
-  fileId     String
-  createdAt  DateTime    @default(now())
-  deletedAt  DateTime?
-  studioId   String
-  updatedAt  DateTime    @updatedAt
-  metaData   Json?
-  musicParts MusicPart[]
-  file       File        @relation("MusicRecordFile", fields: [fileId], references: [id])
-  music      Music       @relation(fields: [musicId], references: [id])
-  studio     MusicStudio @relation("StudioRecords", fields: [studioId], references: [id])
-  singers    User[]      @relation("MusicRecordSingers")
+  id             String      @id @default(uuid())
+  musicId        String
+  fileId         String
+  studioId       String
+  metaData       Json?
+  recordDuration Float?
+  musicParts     MusicPart[]
+  file           File        @relation("MusicRecordFile", fields: [fileId], references: [id])
+  music          Music       @relation(fields: [musicId], references: [id])
+  studio         MusicStudio @relation("StudioRecords", fields: [studioId], references: [id])
+  singers        User[]      @relation("MusicRecordSingers")
+  createdAt      DateTime    @default(now())
+  deletedAt      DateTime?
+  updatedAt      DateTime    @updatedAt
 }
 
 enum Role {

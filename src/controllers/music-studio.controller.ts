@@ -95,7 +95,7 @@ export default class MusicStudioCtrl {
    * Join a studio
    */
   static async joinStudio(req: Request, res: Response) {
-    const { id } = req.params;
+    const { studioId } = req.params;
     const schema = Joi.object({
       keyName: Joi.string(), // Optional for public studios
       role: Joi.string().valid("LISTENER", "SINGER", "PRODUCER"),
@@ -106,7 +106,7 @@ export default class MusicStudioCtrl {
 
     try {
       const result = await MusicStudioSvc.joinStudio(
-        id,
+        studioId,
         (req as any).user.id,
         value.keyName,
         value.role,
@@ -121,10 +121,10 @@ export default class MusicStudioCtrl {
    * Leave a studio
    */
   static async leaveStudio(req: Request, res: Response) {
-    const { id } = req.params;
+    const { studioId } = req.params;
 
     try {
-      const result = await MusicStudioSvc.leaveStudio(id, (req as any).user.id);
+      const result = await MusicStudioSvc.leaveStudio(studioId, (req as any).user.id);
       return res.json(result);
     } catch (err: any) {
       return res.status(400).json({ message: err.message || err });
@@ -275,6 +275,16 @@ export default class MusicStudioCtrl {
       mimetype: Joi.string().required(),
       size: Joi.number(),
       metaData: Joi.any(),
+      performanceMapping: Joi.array()
+        .items(
+          Joi.object({
+            startLine: Joi.number().required(),
+            endLine: Joi.number().required(),
+            singerId: Joi.string().required(),
+            vocalRoleIndex: Joi.number().optional(),
+          }),
+        )
+        .optional(),
     });
 
     const { error, value } = schema.validate(req.body);
