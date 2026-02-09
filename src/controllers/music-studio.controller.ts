@@ -36,10 +36,10 @@ export default class MusicStudioCtrl {
    * Get a studio by ID
    */
   static async getStudioById(req: Request, res: Response) {
-    const { id } = req.params;
+    const { studioId } = req.params;
 
     try {
-      const result = await MusicStudioSvc.getStudioById(id);
+      const result = await MusicStudioSvc.getStudioById(studioId);
       return res.json(result);
     } catch (err: any) {
       return res.status(404).json({ message: err.message || err });
@@ -50,12 +50,16 @@ export default class MusicStudioCtrl {
    * Get all studios with pagination
    */
   static async getStudios(req: Request, res: Response) {
-    const { page, limit } = req.query;
-
+    const { page, limit, studioType, isPrivate } = req.query;
+    if (!studioType) {
+      return res.status(400).json({ message: "Studio type is required" });
+    }
     try {
       const result = await MusicStudioSvc.getAllStudios(
         page ? Number(page) : undefined,
         limit ? Number(limit) : undefined,
+        studioType as any,
+        isPrivate !== undefined ? isPrivate === "true" : undefined,
       );
       return res.json(result);
     } catch (err: any) {
@@ -96,6 +100,12 @@ export default class MusicStudioCtrl {
    */
   static async joinStudio(req: Request, res: Response) {
     const { studioId } = req.params;
+    console.log("[DEBUG] HTTP joinStudio:", { studioId, params: req.params });
+
+    if (!studioId) {
+      return res.status(400).json({ message: "Studio ID is required" });
+    }
+
     const schema = Joi.object({
       keyName: Joi.string(), // Optional for public studios
       role: Joi.string().valid("LISTENER", "SINGER", "PRODUCER"),
@@ -124,7 +134,10 @@ export default class MusicStudioCtrl {
     const { studioId } = req.params;
 
     try {
-      const result = await MusicStudioSvc.leaveStudio(studioId, (req as any).user.id);
+      const result = await MusicStudioSvc.leaveStudio(
+        studioId,
+        (req as any).user.id,
+      );
       return res.json(result);
     } catch (err: any) {
       return res.status(400).json({ message: err.message || err });
@@ -135,10 +148,10 @@ export default class MusicStudioCtrl {
    * Get users in a studio
    */
   static async getStudioUsers(req: Request, res: Response) {
-    const { id } = req.params;
+    const { studioId } = req.params;
 
     try {
-      const result = await MusicStudioSvc.getStudioUsers(id);
+      const result = await MusicStudioSvc.getStudioUsers(studioId);
       return res.json(result);
     } catch (err: any) {
       return res.status(500).json({ message: err.message || err });
@@ -149,7 +162,7 @@ export default class MusicStudioCtrl {
    * Update a member's role (owner/producer only)
    */
   static async updateMemberRole(req: Request, res: Response) {
-    const { id, userId } = req.params;
+    const { studioId, userId } = req.params;
     const schema = Joi.object({
       role: Joi.string().valid("LISTENER", "SINGER", "PRODUCER").required(),
     });
@@ -159,7 +172,7 @@ export default class MusicStudioCtrl {
 
     try {
       const result = await MusicStudioSvc.updateMemberRole(
-        id,
+        studioId,
         (req as any).user.id,
         userId,
         value.role,
@@ -174,7 +187,7 @@ export default class MusicStudioCtrl {
    * Update studio details (owner only)
    */
   static async updateStudio(req: Request, res: Response) {
-    const { id } = req.params;
+    const { studioId } = req.params;
     const schema = Joi.object({
       name: Joi.string(),
       note: Joi.string().allow("", null),
@@ -191,7 +204,7 @@ export default class MusicStudioCtrl {
 
     try {
       const result = await MusicStudioSvc.updateStudio(
-        id,
+        studioId,
         (req as any).user.id,
         value,
       );
@@ -205,10 +218,13 @@ export default class MusicStudioCtrl {
    * Close/delete a studio (owner only)
    */
   static async closeStudio(req: Request, res: Response) {
-    const { id } = req.params;
+    const { studioId } = req.params;
 
     try {
-      const result = await MusicStudioSvc.closeStudio(id, (req as any).user.id);
+      const result = await MusicStudioSvc.closeStudio(
+        studioId,
+        (req as any).user.id,
+      );
       return res.json(result);
     } catch (err: any) {
       return res.status(400).json({ message: err.message || err });
@@ -219,16 +235,16 @@ export default class MusicStudioCtrl {
    * Start recording (HTTP)
    */
   static async startRecording(req: Request, res: Response) {
-    const { id } = req.params;
+    const { studioId } = req.params;
     try {
       const result = await MusicStudioSvc.startRecording(
-        id,
+        studioId,
         (req as any).user.id,
       );
 
       // Notify studio members via socket
-      io.to(id).emit("recording_started", {
-        studioId: id,
+      io.to(studioId).emit("recording_started", {
+        studioId: studioId,
         startedBy: (req as any).user.id,
         timestamp: result.timestamp,
       });
@@ -243,16 +259,16 @@ export default class MusicStudioCtrl {
    * Stop recording (HTTP)
    */
   static async stopRecording(req: Request, res: Response) {
-    const { id } = req.params;
+    const { studioId } = req.params;
     try {
       const result = await MusicStudioSvc.stopRecording(
-        id,
+        studioId,
         (req as any).user.id,
       );
 
       // Notify studio members via socket
-      io.to(id).emit("recording_stopped", {
-        studioId: id,
+      io.to(studioId).emit("recording_stopped", {
+        studioId: studioId,
         stoppedBy: (req as any).user.id,
         timestamp: result.timestamp,
       });
@@ -267,7 +283,7 @@ export default class MusicStudioCtrl {
    * Save recording (HTTP)
    */
   static async saveRecording(req: Request, res: Response) {
-    const { id } = req.params;
+    const { studioId } = req.params;
     const schema = Joi.object({
       musicId: Joi.string().required(),
       fileUrl: Joi.string().uri().required(),
@@ -293,12 +309,12 @@ export default class MusicStudioCtrl {
     try {
       const result = await MusicStudioSvc.saveRecording({
         ...value,
-        studioId: id,
+        studioId: studioId,
       });
 
       // Notify studio members via socket
-      io.to(id).emit("recording_saved", {
-        studioId: id,
+      io.to(studioId).emit("recording_saved", {
+        studioId: studioId,
         musicRecordId: result.data.id,
         musicRecord: result.data,
         savedBy: (req as any).user.id,

@@ -56,9 +56,12 @@ export default class MusicCtrl {
   }
 
   static async getMusics(req: Request, res: Response) {
-    const { albumId, artistId, playlistId, isKaraoke } = req.query as any;
+    const { page, limit, albumId, artistId, playlistId, isKaraoke } =
+      req.query as any;
     try {
-      const musics = await MusicSvc.getMusics({
+      const result = await MusicSvc.getMusics({
+        page: page ? Number(page) : undefined,
+        limit: limit ? Number(limit) : undefined,
         albumId,
         artistId,
         playlistId,
@@ -69,7 +72,7 @@ export default class MusicCtrl {
               ? false
               : undefined,
       });
-      return res.json(musics);
+      return res.json(result);
     } catch (error: any) {
       return res.status(500).json({ message: error.message || error });
     }

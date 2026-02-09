@@ -54,35 +54,65 @@ export default class MusicRepo {
   }
 
   static async findAll(params: {
+    page?: number;
+    limit?: number;
     albumId?: string;
     artistId?: string;
     playlistId?: string;
     isKaraoke?: boolean;
   }) {
-    const { albumId, artistId, playlistId, isKaraoke } = params;
-    return prisma.music.findMany({
-      where: {
-        musicAlbumId: albumId,
-        musicArtistId: artistId,
-        isKaraoke: isKaraoke,
-        playlists: playlistId
-          ? {
-              some: {
-                playlistId: playlistId,
-              },
-            }
-          : undefined,
-        deletedAt: null,
+    const {
+      page = 1,
+      limit = 10,
+      albumId,
+      artistId,
+      playlistId,
+      isKaraoke,
+    } = params;
+    const skip = (page - 1) * limit;
+
+    const whereClause: Prisma.MusicWhereInput = {
+      deletedAt: null,
+      ...(albumId && { musicAlbumId: albumId }),
+      ...(artistId && { musicArtistId: artistId }),
+      ...(isKaraoke !== undefined && { isKaraoke }),
+      ...(playlistId && {
+        playlists: {
+          some: {
+            playlistId: playlistId,
+          },
+        },
+      }),
+    };
+
+    const [data, total] = await Promise.all([
+      prisma.music.findMany({
+        where: whereClause,
+        take: limit,
+        skip: skip,
+        include: {
+          musicArtist: true,
+          featuredArtists: true,
+          musicFile: true,
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+      }),
+      prisma.music.count({
+        where: whereClause,
+      }),
+    ]);
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
       },
-      include: {
-        musicArtist: true,
-        featuredArtists: true,
-        musicFile: true,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+    };
   }
 
   static async update(id: string, data: any) {

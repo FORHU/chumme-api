@@ -45,6 +45,6 @@ router.post(
 );
 
 // Delete
-router.delete("/:id", MusicStudioCtrl.closeStudio);
+router.delete("/:studioId", MusicStudioCtrl.closeStudio);
 
 export default router;

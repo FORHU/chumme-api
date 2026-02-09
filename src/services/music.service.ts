@@ -143,6 +143,8 @@ export default class MusicSvc {
   }
 
   static async getMusics(params: {
+    page?: number;
+    limit?: number;
     albumId?: string;
     artistId?: string;
     playlistId?: string;
@@ -152,9 +154,9 @@ export default class MusicSvc {
     const cached = await CacheUtil.get(cachedKey);
     if (cached) return cached;
 
-    const musics = await MusicRepo.findAll(params);
-    await CacheUtil.set(cachedKey, musics);
-    return musics;
+    const result = await MusicRepo.findAll(params);
+    await CacheUtil.set(cachedKey, result);
+    return result;
   }
 
   static async getMusicByTitle(title: string) {
