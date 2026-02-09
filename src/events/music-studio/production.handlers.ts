@@ -5,6 +5,7 @@ import MusicStudioSvc from "../../services/music-studio.service";
 import MusicStudioRepo from "../../repositories/music-studio.repository";
 import MusicStudioCacheSvc from "../../services/music-studio-cache.service";
 import RelayManager from "../../utils/relay-manager";
+import MusicQueueSvc from "../../services/music-queue.service";
 import {
   AuthenticatedSocket,
   PassMicrophonePayload,
@@ -132,78 +133,7 @@ export const registerProductionHandlers = (
    * SELECT SONG
    */
   /**
-   * Helper: Change Active Song
-   */
-  const changeActiveSong = async (
-    studioId: string,
-    musicId: string,
-    userId: string,
-  ) => {
-    const music = await MusicRepo.findById(musicId);
-    if (!music) throw new Error("Music not found");
-
-    // Reset Studio State
-    const promises: Promise<any>[] = [
-      MusicStudioCacheSvc.setStudioState(studioId, "IDLE"),
-      MusicStudioCacheSvc.setLyricIndex(studioId, 0),
-      MusicStudioCacheSvc.setActiveSong(studioId, musicId),
-    ];
-
-    if (music.isKaraoke && music.parts) {
-      promises.push(MusicStudioCacheSvc.setPhrasing(studioId, music.parts));
-    }
-    await Promise.all(promises);
-
-    // Initial Singer Assignment
-    const { nextSingerId, targetRoleIndex } =
-      await RelayManager.getNextAutoSingerId(studioId, 0);
-
-    if (targetRoleIndex !== null) {
-      await MusicStudioCacheSvc.setCurrentRoleIndex(studioId, targetRoleIndex);
-    }
-
-    if (nextSingerId) {
-      await MusicStudioCacheSvc.setCurrentSinger(studioId, nextSingerId);
-    } else {
-      const existingSinger =
-        await MusicStudioCacheSvc.getCurrentSinger(studioId);
-      if (!existingSinger) {
-        const members = await MusicStudioCacheSvc.getMembers(studioId);
-        const firstEligible = members.find(
-          (m) => m.role === StudioRole.SINGER || m.role === StudioRole.PRODUCER,
-        );
-        if (firstEligible) {
-          await MusicStudioCacheSvc.setCurrentSinger(
-            studioId,
-            firstEligible.userId,
-          );
-        }
-      }
-    }
-
-    const finalSinger = await MusicStudioCacheSvc.getCurrentSinger(studioId);
-    let finalSingerName = null;
-    if (finalSinger) {
-      const singerInfo = await MusicStudioCacheSvc.getMember(
-        studioId,
-        finalSinger,
-      );
-      finalSingerName = singerInfo?.name || "Unknown";
-    }
-
-    io.to(studioId).emit("song_changed", {
-      studioId,
-      musicId,
-      currentSinger: finalSinger || null,
-      currentSingerName: finalSingerName,
-      currentRoleIndex: targetRoleIndex,
-      selectedBy: userId,
-    });
-    console.log(`[MusicStudio] Song changed to ${musicId} in ${studioId}`);
-  };
-
-  /**
-   * SELECT SONG (Play Immediately)
+   * SELECT SONG
    */
   socket.on(
     "select_song",
@@ -224,7 +154,13 @@ export const registerProductionHandlers = (
           });
         }
 
-        await changeActiveSong(studioId, musicId, socket.user.id);
+        const result = await MusicQueueSvc.playNow(
+          studioId,
+          musicId,
+          socket.user.id,
+        );
+
+        io.to(studioId).emit("song_changed", result);
       } catch (err: any) {
         socket.emit("select_song_failed", {
           message: err.message || "Failed to select song",
@@ -259,24 +195,13 @@ export const registerProductionHandlers = (
           });
         }
 
-        // Verify music exists
-        const music = await MusicRepo.findById(musicId);
-        if (!music) throw new Error("Music not found");
+        const queue = await MusicQueueSvc.addToQueue(
+          studioId,
+          musicId,
+          socket.user.id,
+          socket.user.name,
+        );
 
-        // Add to queue
-        const queueItem = {
-          musicId: music.id,
-          title: music.title,
-          artist: music.musicArtist?.name || "Unknown Artist",
-          cover: music.musicArtist?.imageUrl || null,
-          queuedBy: socket.user.id,
-          queuedByName: socket.user.name,
-        };
-
-        await MusicStudioCacheSvc.addMusicToQueue(studioId, queueItem);
-
-        // Emit update
-        const queue = await MusicStudioCacheSvc.getMusicQueue(studioId);
         io.to(studioId).emit("queue_updated", { studioId, queue });
       } catch (err: any) {
         socket.emit("queue_song_failed", {
@@ -296,9 +221,6 @@ export const registerProductionHandlers = (
         const { studioId, index } = data;
         if (!studioId || index === undefined) return;
 
-        // Permissions: Owner/Producer can remove anyone's. Requester can remove their own?
-        // For simplicity: Owner/Producer only for now, or check queuedBy.
-        // Let's stick to Owner/Producer for management simplicity.
         const isOwner = await MusicStudioSvc.isOwner(studioId, socket.user.id);
         const membership = await MusicStudioRepo.getMembership(
           studioId,
@@ -311,9 +233,8 @@ export const registerProductionHandlers = (
           });
         }
 
-        await MusicStudioCacheSvc.removeMusicFromQueue(studioId, index);
+        const queue = await MusicQueueSvc.removeFromQueue(studioId, index);
 
-        const queue = await MusicStudioCacheSvc.getMusicQueue(studioId);
         io.to(studioId).emit("queue_updated", { studioId, queue });
       } catch (err: any) {
         socket.emit("queue_action_failed", {
@@ -343,16 +264,13 @@ export const registerProductionHandlers = (
         });
       }
 
-      const nextItem = await MusicStudioCacheSvc.popNextMusic(studioId);
-      if (nextItem) {
-        await changeActiveSong(studioId, nextItem.musicId, socket.user.id);
+      const { songChangedData, newQueue } = await MusicQueueSvc.playNext(
+        studioId,
+        socket.user.id,
+      );
 
-        // Emit updated queue
-        const queue = await MusicStudioCacheSvc.getMusicQueue(studioId);
-        io.to(studioId).emit("queue_updated", { studioId, queue });
-      } else {
-        socket.emit("queue_action_failed", { message: "Queue is empty" });
-      }
+      io.to(studioId).emit("song_changed", songChangedData);
+      io.to(studioId).emit("queue_updated", { studioId, queue: newQueue });
     } catch (err: any) {
       socket.emit("queue_action_failed", {
         message: err.message || "Failed to play next song",
