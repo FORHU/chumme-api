@@ -1,6 +1,6 @@
 import FeedRepo from "../repositories/feed.repository";
 import CacheUtil from "../utils/cache.util";
-import { stringBacktickToArray } from "../utils/helpers";
+import { stringBacktickToArray, shuffleArray } from "../utils/helpers";
 export default class FeedSvc {
   /**
    * Helper method to format feed items
@@ -89,16 +89,15 @@ export default class FeedSvc {
     const cacheKey = `feed:page:${page}:limit:${limit}`;
     const cached = await CacheUtil.get(cacheKey);
     if (cached) {
-      return cached;
+      return shuffleArray(cached);
     }
 
     const feedItems = await FeedRepo.getFeed(page, limit);
     const formattedFeed = this.formatFeedItems(feedItems);
 
-    // Cache the formatted result
     await CacheUtil.set(cacheKey, formattedFeed);
 
-    return formattedFeed;
+    return shuffleArray(formattedFeed);
   }
 
   /**
@@ -126,10 +125,10 @@ export default class FeedSvc {
       throw new Error("Limit must be between 1 and 50");
     }
 
-    const cacheKey = `feed:personalized:${userId}:page:${page}:limit:${limit}`;
+    const cacheKey = `feed:personalized:${userId}:page:${page}:limit:${limit}:artist:${artistInUrlString || "all"}`;
     const cached = await CacheUtil.get(cacheKey);
     if (cached) {
-      return cached;
+      return shuffleArray(cached);
     }
 
     const feedItems = await FeedRepo.getPersonalizedFeed(
@@ -142,6 +141,6 @@ export default class FeedSvc {
     const formattedFeed = this.formatFeedItems(feedItems);
     await CacheUtil.set(cacheKey, formattedFeed);
 
-    return formattedFeed;
+    return shuffleArray(formattedFeed);
   }
 }
