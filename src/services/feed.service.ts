@@ -48,7 +48,6 @@ export default class FeedSvc {
         } else if (item.type === "MEDIA_POST" && item.MediaPost) {
           return {
             id: item.id,
-            type: "video",
             content: {
               id: item.MediaPost.id,
               title: item.MediaPost.title,
