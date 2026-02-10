@@ -13,8 +13,13 @@ export default class RoomSubCategoryCtrl {
       ownerId: Joi.string().uuid().required(),
       metaData: Joi.object().required(),
       position: Joi.object().required(),
+      color: Joi.string().required(),
+      isAd: Joi.boolean().required(),
+      membersCount: Joi.number().integer().min(0).required(),
+      size: Joi.string().required(),
       imageUrl: Joi.string().uri().optional(),
       note: Joi.string().max(500).optional(),
+      artistId: Joi.string().uuid().optional(),
     });
 
     const { error, value } = schema.validate(req.body);
@@ -94,8 +99,13 @@ export default class RoomSubCategoryCtrl {
       ownerId: Joi.string().uuid().optional(),
       metaData: Joi.object().optional(),
       position: Joi.object().optional(),
+      color: Joi.string().optional(),
+      isAd: Joi.boolean().optional(),
+      membersCount: Joi.number().integer().min(0).optional(),
+      size: Joi.string().optional(),
       imageUrl: Joi.string().uri().optional(),
       note: Joi.string().max(500).optional(),
+      artistId: Joi.string().uuid().optional(),
     }).min(1);
 
     const { error, value } = schema.validate(req.body);

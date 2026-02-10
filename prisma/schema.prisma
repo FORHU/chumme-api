@@ -96,58 +96,74 @@ model UserChat {
 }
 
 model RoomCategory {
-  id                String            @id @default(uuid())
-  name              String
-  key_name          String
-  note              String?
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
-  deletedAt         DateTime?
-  color             String
-  imageUrl          String?
-  isAd              Boolean
-  members           Int
-  metaData          Json
-  position          Json
-  size              String
+  id       String  @id @default(uuid())
+  name     String
+  key_name String  @unique
+  note     String?
+
+  color        String
+  imageUrl     String?
+  isAd         Boolean
+  membersCount Int
+  metaData     Json
+  position     Json
+  size         String
+
   roomSubCategories RoomSubCategory[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 }
 
 model RoomSubCategory {
-  id             String       @id @default(uuid())
-  name           String
-  key_name       String
-  note           String?
+  id       String  @id @default(uuid())
+  name     String
+  note     String?
+  key_name String  @unique
+  ownerId  String
+
+  color        String
+  imageUrl     String?
+  isAd         Boolean
+  membersCount Int
+  metaData     Json
+  position     Json
+  size         String
+
+  artistId String?
+  artist   Artist? @relation(fields: [artistId], references: [id])
+
   roomCategoryId String
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  deletedAt      DateTime?
-  imageUrl       String?
-  metaData       Json
-  ownerId        String
-  position       Json
-  rooms          Room[]
   roomCategory   RoomCategory @relation(fields: [roomCategoryId], references: [id])
+  rooms          Room[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 }
 
 model Room {
-  id                String           @id @default(uuid())
-  name              String?
-  isPrivate         Boolean          @default(false)
-  ownerId           String
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
-  isDeleted         Boolean          @default(false)
+  id        String  @id @default(uuid())
+  name      String?
+  isPrivate Boolean @default(false)
+
   note              String?
   key_name          String?
   roomSubCategoryId String?
   metaData          Json
   position          Json
   messages          Message[]
-  owner             User             @relation("RoomOwner", fields: [ownerId], references: [id])
-  roomSubCategory   RoomSubCategory? @relation(fields: [roomSubCategoryId], references: [id])
-  members           RoomMember[]
-  userChats         UserChat[]
+
+  ownerId         String
+  owner           User             @relation("RoomOwner", fields: [ownerId], references: [id])
+  roomSubCategory RoomSubCategory? @relation(fields: [roomSubCategoryId], references: [id])
+  members         RoomMember[]
+  userChats       UserChat[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  isDeleted Boolean  @default(false)
 }
 
 model RoomMember {
@@ -347,23 +363,24 @@ model UserEmotionPreference {
 }
 
 model Artist {
-  id                String           @id @default(uuid())
-  name              String           @unique
+  id                String            @id @default(uuid())
+  name              String            @unique
   bio               String?
   imageUrl          String?
   nationality       String?
   genre             String?
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
-  isDeleted         Boolean          @default(false)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  isDeleted         Boolean           @default(false)
   instagramUsername String?
   tiktokUsername    String?
   featuredArtists   FeaturedArtist[]
   mediaPosts        MediaPost[]
-  music             Music[]          @relation("MainArtist")
-  musicAlbum        MusicAlbum[]     @relation("MainArtist")
+  music             Music[]           @relation("MainArtist")
+  musicAlbum        MusicAlbum[]      @relation("MainArtist")
   userArtists       UserArtist[]
   videos            Video[]
+  roomSubCategories RoomSubCategory[]
 }
 
 model UserArtist {

@@ -11,8 +11,13 @@ export default class RoomSubCategoryRepo {
     ownerId: string;
     metaData: any;
     position: any;
+    color: string;
+    isAd: boolean;
+    membersCount: number;
+    size: string;
     imageUrl?: string;
     note?: string;
+    artistId?: string;
   }) {
     return prisma.roomSubCategory.create({
       data: {
@@ -24,6 +29,13 @@ export default class RoomSubCategoryRepo {
           select: {
             id: true,
             name: true,
+          },
+        },
+        artist: {
+          select: {
+            id: true,
+            name: true,
+            imageUrl: true,
           },
         },
       },
@@ -50,6 +62,13 @@ export default class RoomSubCategoryRepo {
         _count: {
           select: {
             rooms: true,
+          },
+        },
+        artist: {
+          select: {
+            id: true,
+            name: true,
+            imageUrl: true,
           },
         },
       },
@@ -80,6 +99,13 @@ export default class RoomSubCategoryRepo {
             rooms: true,
           },
         },
+        artist: {
+          select: {
+            id: true,
+            name: true,
+            imageUrl: true,
+          },
+        },
       },
     });
   }
@@ -95,8 +121,13 @@ export default class RoomSubCategoryRepo {
       ownerId?: string;
       metaData?: any;
       position?: any;
+      color?: string;
+      isAd?: boolean;
+      membersCount?: number;
+      size?: string;
       imageUrl?: string;
       note?: string;
+      artistId?: string;
     },
   ) {
     return prisma.roomSubCategory.update({
@@ -116,6 +147,13 @@ export default class RoomSubCategoryRepo {
           select: {
             id: true,
             name: true,
+          },
+        },
+        artist: {
+          select: {
+            id: true,
+            name: true,
+            imageUrl: true,
           },
         },
       },

@@ -7,7 +7,7 @@ export default class RoomCategorySvc {
    */
   static async createCategory(data: {
     name: string;
-    members: number;
+    membersCount: number;
     color: string;
     size: string;
     position: any;
@@ -64,7 +64,7 @@ export default class RoomCategorySvc {
     id: string,
     data: {
       name?: string;
-      members?: number;
+      membersCount?: number;
       color?: string;
       size?: string;
       position?: any;

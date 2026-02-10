@@ -85,6 +85,13 @@ export default class RoomRepo {
                 name: true,
               },
             },
+            artist: {
+              select: {
+                id: true,
+                name: true,
+                imageUrl: true,
+              },
+            },
           },
         },
         members: {
@@ -162,6 +169,13 @@ export default class RoomRepo {
               select: {
                 id: true,
                 name: true,
+              },
+            },
+            artist: {
+              select: {
+                id: true,
+                name: true,
+                imageUrl: true,
               },
             },
           },

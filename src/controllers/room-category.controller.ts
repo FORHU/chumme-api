@@ -9,7 +9,7 @@ export default class RoomCategoryCtrl {
   static async createCategory(req: Request, res: Response) {
     const schema = Joi.object({
       name: Joi.string().min(1).max(100).required(),
-      members: Joi.number().integer().min(0).required(),
+      membersCount: Joi.number().integer().min(0).required(),
       color: Joi.string().required(),
       size: Joi.string().required(),
       position: Joi.object().required(),
@@ -77,7 +77,7 @@ export default class RoomCategoryCtrl {
     const { id } = req.params;
     const schema = Joi.object({
       name: Joi.string().min(1).max(100).optional(),
-      members: Joi.number().integer().min(0).optional(),
+      membersCount: Joi.number().integer().min(0).optional(),
       color: Joi.string().optional(),
       size: Joi.string().optional(),
       position: Joi.object().optional(),

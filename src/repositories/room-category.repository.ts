@@ -7,7 +7,7 @@ export default class RoomCategoryRepo {
    */
   static async createCategory(data: {
     name: string;
-    members: number;
+    membersCount: number;
     color: string;
     size: string;
     position: any;
@@ -40,6 +40,13 @@ export default class RoomCategoryRepo {
             note: true,
             createdAt: true,
             updatedAt: true,
+            artist: {
+              select: {
+                id: true,
+                name: true,
+                imageUrl: true,
+              },
+            },
             rooms: {
               where: { isDeleted: false },
               select: {
@@ -78,6 +85,13 @@ export default class RoomCategoryRepo {
             note: true,
             createdAt: true,
             updatedAt: true,
+            artist: {
+              select: {
+                id: true,
+                name: true,
+                imageUrl: true,
+              },
+            },
             rooms: {
               where: { isDeleted: false },
               select: {
@@ -104,7 +118,7 @@ export default class RoomCategoryRepo {
     id: string,
     data: {
       name?: string;
-      members?: number;
+      membersCount?: number;
       color?: string;
       size?: string;
       position?: any;

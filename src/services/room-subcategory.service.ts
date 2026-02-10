@@ -11,8 +11,13 @@ export default class RoomSubCategorySvc {
     ownerId: string;
     metaData: any;
     position: any;
+    color: string;
+    isAd: boolean;
+    membersCount: number;
+    size: string;
     imageUrl?: string;
     note?: string;
+    artistId?: string;
   }) {
     // Verify parent category exists
     const categoryExists = await RoomSubCategoryRepo.categoryExists(
@@ -80,8 +85,13 @@ export default class RoomSubCategorySvc {
       ownerId?: string;
       metaData?: any;
       position?: any;
+      color?: string;
+      isAd?: boolean;
+      membersCount?: number;
+      size?: string;
       imageUrl?: string;
       note?: string;
+      artistId?: string;
     },
   ) {
     // Check if subcategory exists

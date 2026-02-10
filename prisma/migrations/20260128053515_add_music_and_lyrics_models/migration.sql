@@ -16,9 +16,13 @@ END $$;
 -- AlterTable (only add vector_search if extension exists)
 DO $$
 BEGIN
-  ALTER TABLE "Embedding" ADD COLUMN "vector_search" vector;
+  IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') THEN
+    EXECUTE 'ALTER TABLE "Embedding" ADD COLUMN "vector_search" vector';
+  ELSE
+    RAISE NOTICE 'pgvector extension not available, skipping vector_search column';
+  END IF;
 EXCEPTION WHEN OTHERS THEN
-  RAISE NOTICE 'Could not add vector_search column, pgvector not available';
+  RAISE NOTICE 'Could not add vector_search column: %', SQLERRM;
 END $$;
 
 -- AlterTable
@@ -108,9 +112,13 @@ CREATE UNIQUE INDEX "MusicPlaylist_musicId_playlistId_key" ON "MusicPlaylist"("m
 -- CreateIndex (only if vector_search column exists)
 DO $$
 BEGIN
-  CREATE INDEX "embedding_vector_search_idx" ON "Embedding"("vector_search");
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Embedding' AND column_name = 'vector_search') THEN
+    EXECUTE 'CREATE INDEX "embedding_vector_search_idx" ON "Embedding"("vector_search")';
+  ELSE
+    RAISE NOTICE 'vector_search column does not exist, skipping index creation';
+  END IF;
 EXCEPTION WHEN OTHERS THEN
-  RAISE NOTICE 'Could not create vector_search index, column may not exist';
+  RAISE NOTICE 'Could not create vector_search index: %', SQLERRM;
 END $$;
 
 
