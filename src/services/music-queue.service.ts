@@ -4,9 +4,18 @@ import RelayManager from "../utils/relay-manager";
 import { StudioRole } from "@prisma/client";
 import MusicStudioRepo from "../repositories/music-studio.repository";
 
+/**
+ * Music Queue Service
+ * Handles business logic for queuing, playing, and managing songs in a studio.
+ * Uses MusicStudioCacheSvc for Redis operations.
+ */
 export default class MusicQueueSvc {
   /**
    * Add a song to the queue
+   * - Validates music exists in the database
+   * - Formats queue item with title, artist, cover image
+   * - Stores in Redis via MusicStudioCacheSvc (max 10 songs)
+   * @returns Updated queue array
    */
   static async addToQueue(
     studioId: string,
@@ -32,6 +41,7 @@ export default class MusicQueueSvc {
 
   /**
    * Remove a song from the queue by index
+   * @returns Updated queue array
    */
   static async removeFromQueue(studioId: string, index: number) {
     await MusicStudioCacheSvc.removeMusicFromQueue(studioId, index);
@@ -40,6 +50,13 @@ export default class MusicQueueSvc {
 
   /**
    * Play a specific song immediately (Change Active Song)
+   * Side Effects:
+   * - Sets studio state to IDLE
+   * - Resets lyric index to 0
+   * - Sets active song in Redis
+   * - Loads phrasing if karaoke song
+   * - Assigns initial singer for RELAYSINGING mode
+   * @returns Data for 'song_changed' socket event
    */
   static async playNow(studioId: string, musicId: string, userId: string) {
     const music = await MusicRepo.findById(musicId);
@@ -108,6 +125,10 @@ export default class MusicQueueSvc {
 
   /**
    * Play the next song from the queue
+   * - Pops (removes) the first song from the queue
+   * - Calls playNow to activate it
+   * @returns { songChangedData, newQueue }
+   * @throws Error if queue is empty
    */
   static async playNext(studioId: string, userId: string) {
     const nextItem = await MusicStudioCacheSvc.popNextMusic(studioId);

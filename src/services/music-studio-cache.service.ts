@@ -327,6 +327,8 @@ export default class MusicStudioCacheSvc {
 
   /**
    * Add music to the queue
+   * Redis Key: studio:{id}:musicQueue (List of JSON strings)
+   * Limit: Max 10 songs per studio
    */
   static async addMusicToQueue(studioId: string, musicData: any) {
     const key = `${this.STUDIO_PREFIX}${studioId}:musicQueue`;
@@ -340,6 +342,7 @@ export default class MusicStudioCacheSvc {
 
   /**
    * Get the music queue
+   * Returns: Array of music objects (FIFO order)
    */
   static async getMusicQueue(studioId: string) {
     const key = `${this.STUDIO_PREFIX}${studioId}:musicQueue`;
@@ -349,6 +352,7 @@ export default class MusicStudioCacheSvc {
 
   /**
    * Remove music from queue by index
+   * Strategy: Mark as deleted (__DELETED__) then remove from list
    */
   static async removeMusicFromQueue(studioId: string, index: number) {
     const key = `${this.STUDIO_PREFIX}${studioId}:musicQueue`;
@@ -361,6 +365,7 @@ export default class MusicStudioCacheSvc {
 
   /**
    * Pop the next music from queue
+   * Operation: LPOP (Removes and returns the first item)
    */
   static async popNextMusic(studioId: string) {
     const key = `${this.STUDIO_PREFIX}${studioId}:musicQueue`;
@@ -370,6 +375,7 @@ export default class MusicStudioCacheSvc {
 
   /**
    * Clear music queue
+   * Operation: DEL key
    */
   static async clearMusicQueue(studioId: string) {
     const key = `${this.STUDIO_PREFIX}${studioId}:musicQueue`;
