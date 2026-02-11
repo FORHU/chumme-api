@@ -71,4 +71,18 @@ export default class S3Util {
     await s3Client.send(command);
     logger.info(`[S3] Deleted: ${key}`);
   }
+
+  /**
+   * Delete file from S3 by Key
+   * @param key - S3 Key
+   */
+  static async deleteFileByKey(key: string): Promise<void> {
+    const command = new DeleteObjectCommand({
+      Bucket: AWS_S3_BUCKET_NAME,
+      Key: key,
+    });
+
+    await s3Client.send(command);
+    logger.info(`[S3] Deleted: ${key}`);
+  }
 }
