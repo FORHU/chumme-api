@@ -2,10 +2,12 @@ import { prisma } from "../utils/prisma";
 import { StudioRole, StudioType, RelayMode } from "@prisma/client";
 import MusicStudioRepo from "../repositories/music-studio.repository";
 import MusicRecordRepo from "../repositories/music-record.repository";
+import TempMusicRecordRepo from "../repositories/temp-music-record.repository";
 import FileRepo from "../repositories/file.repository";
 import MusicStudioCacheSvc from "./music-studio-cache.service";
 import logger from "../utils/logger";
 import S3Util from "../utils/s3.util";
+import { overlayAudioFiles, concatenateAudioFiles } from "../utils/audio.utils";
 import { S3_CDN_URL } from "../config";
 
 interface CreateStudioInput {
@@ -21,11 +23,7 @@ interface CreateStudioInput {
 interface SaveRecordingInput {
   studioId: string;
   musicId: string;
-  fileUrl: string;
-  filename: string;
-  mimetype: string;
-  size?: number;
-  metaData?: any; // Session/Performance metadata
+  metaData?: any;
   performanceMapping?: {
     startLine: number;
     endLine: number;
@@ -79,11 +77,14 @@ export default class MusicStudioSvc {
 
     await MusicStudioCacheSvc.setStudioState(studioId, "RECORDING");
 
-    const timestamp = new Date().toISOString();
+    const startTime = Date.now(); // Master start time in Unix milliseconds (UTC)
+    await MusicStudioCacheSvc.setRecordingStartTime(studioId, startTime);
+
+    const timestamp = new Date(startTime).toISOString();
     logger.info(`[MusicStudio] Recording started`, {
       studioId,
       userId,
-      timestamp,
+      startTime,
     });
 
     return {
@@ -276,8 +277,85 @@ export default class MusicStudioSvc {
   }
 
   /**
-   * Save a recording and link it to the studio
-   * Only singers and producers are credited
+   * Preview a recording: merge temp chunks and return a temporary S3 URL
+   * Does NOT create a MusicRecord or delete temp data.
+   */
+  static async previewRecording(data: { studioId: string; musicId: string }) {
+    const studio = await MusicStudioRepo.findById(data.studioId);
+    if (!studio) {
+      throw new Error("Studio not found");
+    }
+
+    try {
+      // 1. Fetch temp records for this music + studio combo
+      const tempRecords = await TempMusicRecordRepo.findByMusicIdAndStudioId(
+        data.musicId,
+        data.studioId,
+      );
+      if (!tempRecords.length) {
+        throw new Error("No audio chunks found for this studio session");
+      }
+
+      // 2. Collect S3 URLs
+      const audioUrls = tempRecords
+        .map((r) => r.file?.fileUrl)
+        .filter(Boolean) as string[];
+
+      const offsets = tempRecords.map((r) => r.startTimeOffset || 0);
+
+      if (!audioUrls.length) {
+        throw new Error("No audio files found in temp chunks");
+      }
+
+      // 3. Merge audio based on studio type
+      let mergedBuffer: Buffer;
+      if (studio.studioType === StudioType.RELAYSINGING) {
+        mergedBuffer = await concatenateAudioFiles(audioUrls);
+      } else {
+        mergedBuffer = await overlayAudioFiles(audioUrls, offsets);
+      }
+
+      // 4. Upload preview file to S3 (Predictable key for overwriting)
+      const previewKey = `previews/preview_${data.studioId}_${data.musicId}.mp3`;
+      const previewUrl = await S3Util.uploadFileWithKey(
+        mergedBuffer,
+        previewKey,
+        "audio/mpeg",
+      );
+
+      logger.info(`[MusicStudio] Preview generated: ${previewUrl}`, {
+        studioId: data.studioId,
+        musicId: data.musicId,
+      });
+
+      return {
+        message: "Preview generated successfully",
+        data: {
+          previewUrl,
+          chunkCount: tempRecords.length,
+        },
+      };
+    } catch (err: any) {
+      logger.error(`[MusicStudio] Failed to generate preview`, {
+        error: err.message,
+        studioId: data.studioId,
+      });
+      throw err;
+    }
+  }
+
+  /**
+   * Save a recording: merge temp chunks, upload to S3, create MusicRecord
+   *
+   * Flow:
+   * 1. Fetch TempMusicRecords by studioId
+   * 2. Merge audio files with overlayAudioFiles (FFmpeg)
+   * 3. Upload merged buffer to S3 (normal upload, not presigned)
+   * 4. Create File record in DB
+   * 5. Create MusicRecord with singer credits
+   * 6. Delete TempMusicRecords by studioId
+   * 7. Delete temp S3 files by URL
+   * 8. Return the created MusicRecord + File
    */
   static async saveRecording(data: SaveRecordingInput) {
     const studio = await MusicStudioRepo.findById(data.studioId);
@@ -286,63 +364,117 @@ export default class MusicStudioSvc {
     }
 
     try {
-      const result = await prisma.$transaction(async (tx) => {
-        // Create file record using data provided by frontend (already uploaded)
-        const fileRecord = await FileRepo.createFile(
-          {
-            filename: data.filename,
-            fileUrl: data.fileUrl,
-            metaData: {
-              mimetype: data.mimetype,
-              size: data.size || 0,
-            },
-          },
-          tx,
-        );
+      // 1. Fetch temp records for this music + studio combo
+      const tempRecords = await TempMusicRecordRepo.findByMusicIdAndStudioId(
+        data.musicId,
+        data.studioId,
+      );
+      if (!tempRecords.length) {
+        throw new Error("No audio chunks found for this studio session");
+      }
 
-        // Get active singers and producers from studio membership
-        const singerIds = studio.members
-          .filter((m) => m.role === "SINGER" || m.role === "PRODUCER")
-          .map((m) => m.userId);
+      // 2. Collect S3 URLs and offsets
+      const audioUrls = tempRecords
+        .map((r) => r.file?.fileUrl)
+        .filter(Boolean) as string[];
 
-        // Create music record linked to this studio with singer credits
-        const musicRecord = await MusicRecordRepo.create(
-          {
-            studioId: data.studioId,
-            musicId: data.musicId,
-            fileId: fileRecord.id,
-            singerIds,
-            metaData: data.metaData,
-          },
-          tx,
-        );
+      const offsets = tempRecords.map((r) => r.startTimeOffset || 0);
 
-        // If performance mapping provided, create music parts for this record
-        if (data.performanceMapping && data.performanceMapping.length > 0) {
-          await tx.musicPart.createMany({
-            data: data.performanceMapping.map((p, index) => ({
-              recordId: musicRecord.id,
-              startLine: p.startLine,
-              endLine: p.endLine,
-              singerId: p.singerId,
-              vocalRoleIndex: p.vocalRoleIndex || 1,
-              order: index,
-            })),
-          });
-        }
+      if (!audioUrls.length) {
+        throw new Error("No audio files found in temp chunks");
+      }
 
-        return musicRecord;
+      // 3. Merge audio based on studio type
+      let mergedBuffer: Buffer;
+      if (studio.studioType === StudioType.RELAYSINGING) {
+        // Sequential: User 1 part -> User 2 part -> ...
+        mergedBuffer = await concatenateAudioFiles(audioUrls);
+      } else {
+        // Overlay/Mixing: All voices simultaneously (CrowdSinging)
+        // Pass offsets to align tracks
+        mergedBuffer = await overlayAudioFiles(audioUrls, offsets);
+      }
+
+      // 4. Upload merged file to S3
+      const mergedFilename = `recording_${data.studioId}_${data.musicId}.mp3`;
+      const mergedUrl = await S3Util.uploadFile(
+        mergedBuffer,
+        mergedFilename,
+        "audio/mpeg",
+      );
+
+      // 5. Create File record in DB
+      const fileRecord = await FileRepo.createFile({
+        filename: mergedFilename,
+        fileUrl: mergedUrl,
+        metaData: {
+          mimetype: "audio/mpeg",
+          size: mergedBuffer.length,
+        },
       });
 
-      logger.info(`[MusicStudio] Recording saved: ${result.id}`, {
+      // 6. Get singer IDs from studio membership (SINGER + PRODUCER roles)
+      const singerIds = studio.members
+        .filter((m: any) => m.role === "SINGER" || m.role === "PRODUCER")
+        .map((m: any) => m.userId);
+
+      // 7. Create MusicRecord
+      const musicRecord = await MusicRecordRepo.create({
         studioId: data.studioId,
         musicId: data.musicId,
-        userIds: result.singers?.map((s: any) => s.id),
+        fileId: fileRecord.id,
+        singerIds,
+        metaData: data.metaData,
+      });
+
+      // 8. If performance mapping provided, create music parts
+      if (data.performanceMapping && data.performanceMapping.length > 0) {
+        await prisma.musicPart.createMany({
+          data: data.performanceMapping.map((p, index) => ({
+            recordId: musicRecord.id,
+            startLine: p.startLine,
+            endLine: p.endLine,
+            singerId: p.singerId,
+            vocalRoleIndex: p.vocalRoleIndex || 1,
+            order: index,
+          })),
+        });
+      }
+
+      // 9. Cleanup: delete temp records from DB
+      await TempMusicRecordRepo.deleteByMusicIdAndStudioId(
+        data.musicId,
+        data.studioId,
+      );
+
+      // 10. Cleanup: delete temp S3 files
+      for (const url of audioUrls) {
+        try {
+          await S3Util.deleteFile(url);
+        } catch (e) {
+          logger.warn(`[MusicStudio] Failed to delete temp S3 file: ${url}`);
+        }
+      }
+
+      // 11. Cleanup: delete preview file if it exists
+      try {
+        const previewKey = `previews/preview_${data.studioId}_${data.musicId}.mp3`;
+        const previewUrl = `${S3_CDN_URL}/${previewKey}`;
+        await S3Util.deleteFile(previewUrl);
+      } catch (e) {
+        // Silently fail if preview doesn't exist
+      }
+
+      logger.info(`[MusicStudio] Recording saved: ${musicRecord.id}`, {
+        studioId: data.studioId,
+        musicId: data.musicId,
+        singerIds,
+        chunksMerged: tempRecords.length,
       });
 
       return {
         message: "Recording saved successfully",
-        data: result,
+        data: musicRecord,
       };
     } catch (err: any) {
       logger.error(`[MusicStudio] Failed to save recording`, {
@@ -372,7 +504,38 @@ export default class MusicStudioSvc {
       .default;
     await MusicStudioCacheSvc.clearStudioSession(studioId);
 
-    // 2. Delete from DB
+    // 2. Fetch temporary records to clean up S3
+    const tempRecords = await TempMusicRecordRepo.findByStudioId(studioId);
+    const musicIds = new Set(tempRecords.map((r) => r.musicId));
+
+    // 3. Delete raw chunks from S3
+    for (const record of tempRecords) {
+      if (record.file?.fileUrl) {
+        try {
+          await S3Util.deleteFile(record.file.fileUrl);
+        } catch (e) {
+          logger.warn(
+            `[MusicStudio] Failed to delete chunk on studio close: ${record.file.fileUrl}`,
+          );
+        }
+      }
+    }
+
+    // 4. Delete preview files for each musicId from S3
+    for (const musicId of musicIds) {
+      try {
+        const previewKey = `previews/preview_${studioId}_${musicId}.mp3`;
+        const previewUrl = `${S3_CDN_URL}/${previewKey}`;
+        await S3Util.deleteFile(previewUrl);
+      } catch (e) {
+        // Silently fail if preview doesn't exist
+      }
+    }
+
+    // 5. Delete temporary records from DB
+    await TempMusicRecordRepo.deleteByStudioId(studioId);
+
+    // 6. Delete studio from DB
     await MusicStudioRepo.delete(studioId);
 
     return { message: "Studio closed successfully" };

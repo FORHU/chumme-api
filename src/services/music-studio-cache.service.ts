@@ -383,6 +383,23 @@ export default class MusicStudioCacheSvc {
   }
 
   /**
+   * Set the recording start time (server reference time)
+   */
+  static async setRecordingStartTime(studioId: string, timestamp: number) {
+    const key = `${this.STUDIO_PREFIX}${studioId}:recordingStartTime`;
+    await this.client.set(key, timestamp.toString(), { EX: this.TTL });
+  }
+
+  /**
+   * Get the recording start time
+   */
+  static async getRecordingStartTime(studioId: string) {
+    const key = `${this.STUDIO_PREFIX}${studioId}:recordingStartTime`;
+    const time = await this.client.get(key);
+    return time ? parseInt(time) : null;
+  }
+
+  /**
    * Clear all session data (on studio close)
    */
   static async clearStudioSession(studioId: string) {
@@ -401,6 +418,7 @@ export default class MusicStudioCacheSvc {
       `${this.STUDIO_PREFIX}${studioId}:phrasing`,
       `${this.STUDIO_PREFIX}${studioId}:currentRoleIndex`,
       `${this.STUDIO_PREFIX}${studioId}:musicQueue`,
+      `${this.STUDIO_PREFIX}${studioId}:recordingStartTime`,
     ];
     await this.client.del(keys);
   }

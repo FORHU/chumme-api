@@ -280,16 +280,47 @@ export default class MusicStudioCtrl {
   }
 
   /**
+   * Preview recording (HTTP)
+   * Merges temp chunks and returns a temporary URL without saving to DB
+   */
+  static async previewRecording(req: Request, res: Response) {
+    const { studioId } = req.params;
+    const { musicId } = req.body;
+
+    if (!studioId || !musicId) {
+      return res.status(400).json({ message: "Missing studioId or musicId" });
+    }
+
+    try {
+      const result = await MusicStudioSvc.previewRecording({
+        studioId,
+        musicId,
+      });
+
+      return res.json(result);
+    } catch (err: any) {
+      return res.status(400).json({ message: err.message || err });
+    }
+  }
+
+  /**
    * Save recording (HTTP)
+   * Server merges temp audio chunks, uploads to S3, creates MusicRecord
    */
   static async saveRecording(req: Request, res: Response) {
     const { studioId } = req.params;
+    const { musicId } = req.body;
+
+    if (!studioId) {
+      return res.status(400).json({ message: "Missing studio ID" });
+    }
+
+    if (!musicId) {
+      return res.status(400).json({ message: "Missing music ID" });
+    }
+
     const schema = Joi.object({
       musicId: Joi.string().required(),
-      fileUrl: Joi.string().uri().required(),
-      filename: Joi.string().required(),
-      mimetype: Joi.string().required(),
-      size: Joi.number(),
       metaData: Joi.any(),
       performanceMapping: Joi.array()
         .items(
@@ -310,6 +341,7 @@ export default class MusicStudioCtrl {
       const result = await MusicStudioSvc.saveRecording({
         ...value,
         studioId: studioId,
+        musicId: musicId,
       });
 
       // Notify studio members via socket

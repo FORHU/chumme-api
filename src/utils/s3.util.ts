@@ -39,6 +39,17 @@ export default class S3Util {
     const extension = filename.split(".").pop();
     const key = `uploads/${timestamp}-${randomStr}.${extension}`;
 
+    return this.uploadFileWithKey(file, key, mimeType);
+  }
+
+  /**
+   * Upload file to S3 with a specific key (useful for overwriting)
+   */
+  static async uploadFileWithKey(
+    file: Buffer,
+    key: string,
+    mimeType: string,
+  ): Promise<string> {
     const command = new PutObjectCommand({
       Bucket: AWS_S3_BUCKET_NAME,
       Key: key,
@@ -47,8 +58,6 @@ export default class S3Util {
     });
 
     await s3Client.send(command);
-    // const url = `https://${AWS_S3_BUCKET_NAME}.s3.${AWS_REGION}.amazonaws.com/${key}`;
-    // logger.info(`[S3] Uploaded: ${url}`);
     return `${S3_CDN_URL}/${key}`;
   }
 

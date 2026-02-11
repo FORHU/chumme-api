@@ -3,6 +3,8 @@ import MusicStudioSvc from "../../services/music-studio.service";
 import MusicStudioCacheSvc from "../../services/music-studio-cache.service";
 import { AuthenticatedSocket } from "./types";
 import { StudioType } from "@prisma/client";
+import FileSvc from "../../services/file.service";
+import TempMusicRecordSvc from "../../services/temp-music-record.service";
 
 export const registerMediaHandlers = (
   io: Server,
@@ -10,24 +12,53 @@ export const registerMediaHandlers = (
 ) => {
   /**
    * AUDIO CHUNK
-   * Real-time audio streaming between users
+   * Real-time audio streaming between studio users.
+   *
+   * Flow:
+   * 1. Validate input (studioId, chunk, userId, musicId)
+   * 2. Verify file exists in DB
+   * 3. Role gate — only SINGER / PRODUCER can stream
+   * 4. Mode gate:
+   *    - CROWDSINGING / COMPETITION → everyone streams freely
+   *    - RELAYSINGING → only the current singer (unless chorus / role 0)
+   * 5. Broadcast chunk to other studio members
+   * 6. Persist chunk as TempMusicRecord for later FFmpeg merge
    */
   socket.on(
     "audio_chunk",
-    async (data: { studioId: string; chunk: Buffer | string }) => {
-      const { studioId, chunk } = data;
+    async (data: {
+      studioId: string;
+      chunk: Record<string, any>;
+      userId: string;
+      musicId: string;
+      order?: number;
+      timestamp?: number; // Client capture time   "timestamp": 1707663450000,
+    }) => {
+      const { studioId, chunk, userId, musicId, order, timestamp } = data;
 
-      if (!studioId || !chunk) return;
+      // 1. Validate required fields
+      if (!studioId || !chunk || !userId || !musicId) return;
 
-      // Role-based streaming check (Singers/Producers only)
+      // 2. Verify file exists
+      const file = await FileSvc.getFileById(chunk.fileId);
+      if (!file) return;
+
+      // 3. Role gate — only Singers & Producers can stream audio
       const canStream = await MusicStudioSvc.canRecord(
         studioId,
         socket.user.id,
       );
       if (!canStream) return;
 
-      // Mode-specific check: RELAYSINGING (only current singer can stream)
-      const cachedType = await MusicStudioCacheSvc.getStudioType(studioId);
+      // 4. Mode gate — RELAYSINGING: only the current singer can stream
+      const studioStatePromise = MusicStudioCacheSvc.getStudioType(studioId);
+      const startTimePromise =
+        MusicStudioCacheSvc.getRecordingStartTime(studioId);
+
+      const [cachedType, recordingStartTime] = await Promise.all([
+        studioStatePromise,
+        startTimePromise,
+      ]);
 
       if (cachedType === StudioType.RELAYSINGING) {
         const [currentSinger, currentRoleIndex] = await Promise.all([
@@ -35,20 +66,48 @@ export const registerMediaHandlers = (
           MusicStudioCacheSvc.getCurrentRoleIndex(studioId),
         ]);
 
-        // Role 0 is "All-Sing" / Chorus bypass
-        if (currentRoleIndex === 0) {
-          // Allow everyone to stream
-        } else if (currentSinger && currentSinger !== socket.user.id) {
-          return; // Not the current singer, drop the chunk
+        // Role 0 = "All-Sing" / Chorus → everyone streams
+        if (currentRoleIndex !== 0) {
+          if (currentSinger && currentSinger !== socket.user.id) {
+            return; // Not the current singer — drop chunk
+          }
         }
       }
 
-      // Broadcast to other users in the studio
+      // 5. Calculate start time offset (for sync)
+      // Note: recordingStartTime and timestamp must be Unix milliseconds (UTC)
+      // for international compatibility across different time zones.
+      let startTimeOffset: number | undefined;
+      if (recordingStartTime && timestamp) {
+        // Offset in seconds (Universal relative time)
+        startTimeOffset = (timestamp - recordingStartTime) / 1000;
+        // Clamp to positive
+        if (startTimeOffset < 0) startTimeOffset = 0;
+      }
+
+      // 6. Broadcast to other users in the studio
       socket.to(studioId).emit("audio_chunk", {
         userId: socket.user.id,
-        chunk,
-        timestamp: Date.now(),
+        file,
+        timestamp: timestamp || Date.now(),
+        startTimeOffset,
       });
+
+      // 7. Persist chunk for later FFmpeg merge (saveRecording flow)
+      try {
+        await TempMusicRecordSvc.saveChunk({
+          fileId: chunk.fileId,
+          studioId,
+          userId: socket.user.id,
+          musicId,
+          order,
+          startTimeOffset,
+          metaData: chunk.metaData,
+          recordDuration: chunk.duration,
+        });
+      } catch (err) {
+        console.error("[MusicStudio] Failed to save temp chunk:", err);
+      }
     },
   );
 };

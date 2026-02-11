@@ -68,18 +68,19 @@ model Session {
 }
 
 model File {
-  id           String        @id @default(uuid())
-  filename     String?
-  fileUrl      String?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  deletedAt    DateTime?
-  metaData     Json?
-  mediaPosts   MediaPost[]
-  musicFiles   Music[]       @relation("MusicFile")
-  musicRecords MusicRecord[] @relation("MusicRecordFile")
-  users        User[]
-  videos       Video[]
+  id               String            @id @default(uuid())
+  filename         String?
+  fileUrl          String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  deletedAt        DateTime?
+  metaData         Json?
+  mediaPosts       MediaPost[]
+  musicFiles       Music[]           @relation("MusicFile")
+  musicRecords     MusicRecord[]     @relation("MusicRecordFile")
+  users            User[]
+  videos           Video[]
+  tempMusicRecords TempMusicRecord[] @relation("TempMusicFile")
 }
 
 model UserChat {
@@ -604,20 +605,21 @@ model StudioMember {
 }
 
 model MusicStudio {
-  id            String         @id @default(uuid())
+  id            String            @id @default(uuid())
   name          String
   note          String?
   keyName       String?
   ownerId       String
-  createdAt     DateTime       @default(now())
+  createdAt     DateTime          @default(now())
   deletedAt     DateTime?
-  updatedAt     DateTime       @updatedAt
+  updatedAt     DateTime          @updatedAt
   relayInterval Int?
-  relayMode     RelayMode      @default(AUTO)
-  studioType    StudioType     @default(RELAYSINGING)
-  records       MusicRecord[]  @relation("StudioRecords")
-  owner         User           @relation("StudioOwner", fields: [ownerId], references: [id])
-  members       StudioMember[] @relation("StudioMembers")
+  relayMode     RelayMode         @default(AUTO)
+  studioType    StudioType        @default(RELAYSINGING)
+  records       MusicRecord[]     @relation("StudioRecords")
+  owner         User              @relation("StudioOwner", fields: [ownerId], references: [id])
+  members       StudioMember[]    @relation("StudioMembers")
+  tempRecords   TempMusicRecord[] @relation("StudioTempRecords")
 }
 
 model MusicRecord {
@@ -635,6 +637,24 @@ model MusicRecord {
   createdAt      DateTime    @default(now())
   deletedAt      DateTime?
   updatedAt      DateTime    @updatedAt
+}
+
+model TempMusicRecord {
+  id              String      @id @default(uuid())
+  musicId         String
+  fileId          String
+  studioId        String
+  order           Int?
+  startTimeOffset Float?
+  metaData        Json?
+  recordDuration  Float?
+  studio          MusicStudio @relation("StudioTempRecords", fields: [studioId], references: [id])
+  file            File        @relation("TempMusicFile", fields: [fileId], references: [id])
+  createdAt       DateTime    @default(now())
+  deletedAt       DateTime?
+  updatedAt       DateTime    @updatedAt
+
+  @@index([studioId])
 }
 
 enum Role {

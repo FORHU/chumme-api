@@ -9,7 +9,9 @@
     "test": "NODE_ENV=development mocha --require ts-node/register 'test/**/*.spec.ts'",
     "build": "tsc",
     "start": "node ./dist/src/server.js",
-    "db:setup": "npx prisma generate && npx prisma migrate dev"
+    "db:setup": "npx prisma generate && npx prisma migrate dev",
+    "test:audio": "mocha --require ts-node/register --timeout 60000 test/audio-utils.spec.ts",
+    "test:integration": "mocha --require ts-node/register --timeout 60000 test/recording-flow.spec.ts"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"

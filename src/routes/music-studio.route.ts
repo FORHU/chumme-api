@@ -43,6 +43,11 @@ router.post(
   authenticate,
   MusicStudioCtrl.saveRecording,
 );
+router.post(
+  "/:studioId/preview-recording",
+  authenticate,
+  MusicStudioCtrl.previewRecording,
+);
 
 // Delete
 router.delete("/:studioId", MusicStudioCtrl.closeStudio);
