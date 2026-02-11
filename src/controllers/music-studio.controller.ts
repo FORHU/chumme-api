@@ -295,6 +295,7 @@ export default class MusicStudioCtrl {
       const result = await MusicStudioSvc.previewRecording({
         studioId,
         musicId,
+        userId: (req as any).user.id,
       });
 
       return res.json(result);

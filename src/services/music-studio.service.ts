@@ -95,6 +95,7 @@ export default class MusicStudioSvc {
 
   /**
    * Stop recording in a studio
+   * After stopping, automatically triggers preview generation in the background.
    */
   static async stopRecording(studioId: string, userId: string) {
     const isOwner = await this.isOwner(studioId, userId);
@@ -110,6 +111,17 @@ export default class MusicStudioSvc {
       userId,
       timestamp,
     });
+
+    // Auto-generate preview in the background (fire & forget)
+    const musicId = await MusicStudioCacheSvc.getActiveSong(studioId);
+    if (musicId) {
+      this.previewRecording({ studioId, musicId, userId }).catch((err) => {
+        logger.warn(
+          `[MusicStudio] Auto-preview failed after stop: ${err.message}`,
+          { studioId, musicId },
+        );
+      });
+    }
 
     return {
       message: "Recording stopped",
@@ -279,8 +291,18 @@ export default class MusicStudioSvc {
   /**
    * Preview a recording: merge temp chunks and return a temporary S3 URL
    * Does NOT create a MusicRecord or delete temp data.
+   * Only owner or producers can trigger this.
    */
-  static async previewRecording(data: { studioId: string; musicId: string }) {
+  static async previewRecording(data: {
+    studioId: string;
+    musicId: string;
+    userId: string;
+  }) {
+    const isAuthorized = await this.canRecord(data.studioId, data.userId);
+    if (!isAuthorized) {
+      throw new Error("Only owner or producers can trigger a preview");
+    }
+
     const studio = await MusicStudioRepo.findById(data.studioId);
     if (!studio) {
       throw new Error("Studio not found");
@@ -327,6 +349,16 @@ export default class MusicStudioSvc {
         studioId: data.studioId,
         musicId: data.musicId,
       });
+
+      // Broadcast to all users in the studio so they can listen
+      const io = (global as any).io;
+      if (io) {
+        io.to(data.studioId).emit("preview_ready", {
+          studioId: data.studioId,
+          previewUrl,
+          chunkCount: tempRecords.length,
+        });
+      }
 
       return {
         message: "Preview generated successfully",
