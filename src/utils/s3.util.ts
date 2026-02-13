@@ -76,10 +76,26 @@ export default class S3Util {
    * @param fileUrl - Full S3 URL
    */
   static async deleteFile(fileUrl: string): Promise<void> {
-    const key = fileUrl.split(".com/")[1];
+    // Correctly parse the key from any S3 or Cloudfront URL
+    // 1. Try splitting by .com/ (Standard S3)
+    // 2. Try splitting by .net/ (Cloudfront)
+    // 3. Fallback to extracting everything after the first slash if protocol is present
+    let key: string | undefined;
+    if (fileUrl.includes(".com/")) {
+      key = fileUrl.split(".com/")[1];
+    } else if (fileUrl.includes(".net/")) {
+      key = fileUrl.split(".net/")[1];
+    } else {
+      // Try to find the first single slash after http(s)://
+      const matches = fileUrl.match(/^https?:\/\/[^\/]+\/(.+)$/);
+      if (matches) {
+        key = matches[1];
+      }
+    }
 
     if (!key) {
-      throw new Error("Invalid S3 URL format");
+      logger.warn(`[S3] Could not parse key from URL: ${fileUrl}`);
+      return; // Skip deletion instead of throwing to prevent crashing the flow
     }
 
     const command = new DeleteObjectCommand({
