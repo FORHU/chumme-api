@@ -104,7 +104,7 @@ export default class MusicStudioSvc {
 
   /**
    * Stop recording in a studio
-   * After stopping, automatically triggers preview generation in the background.
+   * Preview must be triggered manually via the preview-recording endpoint.
    */
   static async stopRecording(studioId: string, userId: string) {
     const isOwner = await this.isOwner(studioId, userId);
@@ -120,21 +120,6 @@ export default class MusicStudioSvc {
       userId,
       timestamp,
     });
-
-    // Auto-generate preview in the background (fire & forget)
-    // Auto-generate preview after a 3-second grace period
-    // This allows "in-flight" audio chunks to be saved before merging begins.
-    const musicId = await MusicStudioCacheSvc.getActiveSong(studioId);
-    if (musicId) {
-      setTimeout(() => {
-        this.previewRecording({ studioId, musicId, userId }).catch((err) => {
-          logger.warn(
-            `[MusicStudio] Auto-preview failed after stop: ${err.message}`,
-            { studioId, musicId },
-          );
-        });
-      }, 3000); // 3-second delay
-    }
 
     return {
       message: "Recording stopped",
@@ -374,8 +359,14 @@ export default class MusicStudioSvc {
         data.studioId,
       );
       if (!tempRecords.length) {
+        logger.info(
+          `[MusicStudio] No temp records for preview: studio=${data.studioId}, music=${data.musicId}`,
+        );
         throw new Error("No audio chunks found for this studio session");
       }
+      logger.info(
+        `[MusicStudio] Found ${tempRecords.length} temp records for studio=${data.studioId}`,
+      );
 
       // 2. Fetch active members to filter out disconnected users
       const activeMembers = await MusicStudioCacheSvc.getMembers(data.studioId);
@@ -400,16 +391,23 @@ export default class MusicStudioSvc {
       if (!audioUrls.length) {
         throw new Error("No audio files found in temp chunks");
       }
+      logger.info(
+        `[MusicStudio] Preview audio URLs (first 2): ${audioUrls.slice(0, 2).join(", ")}`,
+      );
 
       // 3. Merge vocals based on studio type
       let vocalsBuffer: Buffer;
       if (studio.studioType === StudioType.RELAYSINGING) {
-        // Pass the offset of the first chunk to ensure alignment with backing track
         const initialOffset = tempRecords[0]?.startTimeOffset || 0;
+        logger.info(`[MusicStudio] Concatenating ${audioUrls.length} files`);
         vocalsBuffer = await concatenateAudioFiles(audioUrls, initialOffset);
       } else {
+        logger.info(`[MusicStudio] Overlaying ${audioUrls.length} files`);
         vocalsBuffer = await overlayAudioFiles(audioUrls, offsets);
       }
+      logger.info(
+        `[MusicStudio] Vocals buffer size: ${vocalsBuffer?.length || 0} bytes`,
+      );
 
       // 4. Mix vocals with backing track
       const mergedBuffer = await mixVocalsWithBacking(
@@ -417,8 +415,13 @@ export default class MusicStudioSvc {
         backingTrackUrl,
       );
 
-      // 5. Upload preview file to S3 (Predictable key for overwriting)
+      // 5. Check if merged buffer is valid
+      if (!mergedBuffer || mergedBuffer.length === 0) {
+        throw new Error("Mixed audio buffer is empty (0 bytes)");
+      }
+      // 6. Upload preview file to S3 (Predictable key for overwriting)
       const previewKey = `previews/preview_${data.studioId}_${data.musicId}.mp3`;
+      logger.info(`[MusicStudio] Uploading preview: ${previewKey}`);
       const previewUrl = await S3Util.uploadFileWithKey(
         mergedBuffer,
         previewKey,
@@ -483,14 +486,17 @@ export default class MusicStudioSvc {
     const backingTrackUrl = music.musicFile.fileUrl;
 
     try {
-      // 1. Fetch temp records for this music + studio combo
       const tempRecords = await TempMusicRecordRepo.findByMusicIdAndStudioId(
         data.musicId,
         data.studioId,
       );
       if (!tempRecords.length) {
+        logger.info(
+          `[MusicStudio] No temp records for studio=${data.studioId}, music=${data.musicId}`,
+        );
         throw new Error("No audio chunks found for this studio session");
       }
+      logger.info(`[MusicStudio] Found ${tempRecords.length} temp records`);
 
       // 2. Fetch active members to filter out disconnected users
       const activeMembers = await MusicStudioCacheSvc.getMembers(data.studioId);
@@ -502,8 +508,14 @@ export default class MusicStudioSvc {
       });
 
       if (!filteredRecords.length) {
+        logger.info(
+          `[MusicStudio] No chunks from active members in studio=${data.studioId}. Active IDs: ${Array.from(activeUserIds)}`,
+        );
         throw new Error("No audio chunks found from active studio members");
       }
+      logger.info(
+        `[MusicStudio] Filtered to ${filteredRecords.length} records from active users`,
+      );
 
       // 3. Collect S3 URLs and offsets
       const audioUrls = filteredRecords

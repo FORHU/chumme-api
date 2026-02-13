@@ -22,7 +22,9 @@ export const REDIS_PORT = Number(process.env.REDIS_PORT || 6379);
 export const REDIS_PASSWORD = process.env.REDIS_PASSWORD as string;
 export const REDIS_TTL_SECONDS = Number(process.env.REDIS_TTL_SECONDS) || 3600;
 export const SERVICE_ACCOUNT = process.env.SERVICE_ACCOUNT as string;
-export const S3_CDN_URL = process.env.S3_CDN_URL as string;
+export const S3_CDN_URL = (process.env.S3_CDN_URL as string)
+  ?.replace(/cloudfront\.netr$/, "cloudfront.net")
+  ?.replace(/\.$/, "");
 // AWS S3 Configuration
 export const AWS_REGION = process.env.AWS_REGION || "ap-southeast-1";
 export const AWS_ACCESS_KEY_ID = process.env.AWS_ACCESS_KEY_ID as string;

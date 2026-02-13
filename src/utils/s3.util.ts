@@ -39,6 +39,7 @@ export default class S3Util {
     const extension = filename.split(".").pop();
     const key = `uploads/${timestamp}-${randomStr}.${extension}`;
 
+    logger.info(`[S3] Uploading file: ${key} (${file.length} bytes)`);
     return this.uploadFileWithKey(file, key, mimeType);
   }
 
@@ -58,6 +59,7 @@ export default class S3Util {
     });
 
     await s3Client.send(command);
+    logger.info(`[S3] Uploaded successfully: ${key} (${file.length} bytes)`);
 
     let baseUrl = S3_CDN_URL;
     if (
@@ -68,7 +70,31 @@ export default class S3Util {
       baseUrl = `https://${baseUrl}`;
     }
 
-    return `${baseUrl}/${key}`;
+    return this.sanitizeUrl(`${baseUrl}/${key}`);
+  }
+
+  /**
+   * Clean up URLs from potential environment mistakes (e.g. cloudfront.netr typo)
+   */
+  private static sanitizeUrl(url: string | undefined): string {
+    if (!url) return "";
+
+    // Fix the cloudfront.netr typo and remove trailing dots
+    let cleanUrl = url
+      .replace(/cloudfront\.netr/i, "cloudfront.net")
+      .replace(/\.+$/, "");
+
+    // Ensure it starts with https:// if it has a domain
+    if (
+      cleanUrl &&
+      !cleanUrl.startsWith("http://") &&
+      !cleanUrl.startsWith("https://") &&
+      !cleanUrl.startsWith("/")
+    ) {
+      cleanUrl = `https://${cleanUrl}`;
+    }
+
+    return cleanUrl;
   }
 
   /**

@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import Joi from "joi";
 import MusicStudioSvc from "../services/music-studio.service";
 import MusicRepo from "../repositories/music.repository";
+import logger from "../utils/logger";
 import { io } from "../app";
 
 export default class MusicStudioCtrl {
@@ -286,7 +287,10 @@ export default class MusicStudioCtrl {
   static async previewRecording(req: Request, res: Response) {
     const { studioId } = req.params;
     const { musicId } = req.body;
-
+    logger.info(`[MusicStudioCtrl] previewRecording called`, {
+      studioId,
+      musicId,
+    });
     if (!studioId || !musicId) {
       return res.status(400).json({ message: "Missing studioId or musicId" });
     }

@@ -4,10 +4,37 @@ import ffprobePath from "ffprobe-static";
 import path from "path";
 import fs from "fs";
 import os from "os";
+import logger from "./logger";
 
 // Set the ffmpeg and ffprobe paths
 if (ffmpegPath) ffmpeg.setFfmpegPath(ffmpegPath);
 if (ffprobePath.path) ffmpeg.setFfprobePath(ffprobePath.path);
+
+/**
+ * Ensure a URL is a valid https URL, free of common typos and trailing dots.
+ * Without this, FFmpeg treats bare hostnames as local file paths.
+ */
+function ensureCleanUrl(url: string): string {
+  if (!url) return url;
+  let clean = url.trim();
+
+  // Fix cloudfront.netr typo
+  clean = clean.replace(/cloudfront\.netr\//i, "cloudfront.net/");
+  // Remove trailing dots (e.g. .mp3. -> .mp3)
+  clean = clean.replace(/\.+$/, "");
+
+  // Prepend https:// if no protocol and not a local/Windows path
+  if (
+    !clean.startsWith("http://") &&
+    !clean.startsWith("https://") &&
+    !clean.startsWith("/") &&
+    !/^[a-zA-Z]:\\/.test(clean)
+  ) {
+    clean = `https://${clean}`;
+  }
+
+  return clean;
+}
 
 /**
  * Overlays multiple audio files into a single file.
@@ -35,11 +62,7 @@ export const overlayAudioFiles = (
 
     // Add all inputs with sanitization
     inputFiles.forEach((file) => {
-      // Remove trailing dots and fix cloudfront typo
-      const sanitizedFile = file
-        .replace(/\.+$/, "")
-        .replace(/cloudfront\.netr\//i, "cloudfront.net/");
-      command.input(sanitizedFile);
+      command.input(ensureCleanUrl(file));
     });
 
     // If more than one file, use complex filter for delays and mixing
@@ -99,18 +122,27 @@ export const overlayAudioFiles = (
 
     passThrough.on("end", () => {
       const buffer = Buffer.concat(chunks as Uint8Array[]);
-      console.log("Audio overlay finished successfully");
+      logger.info("Audio overlay finished successfully");
       resolve(buffer);
     });
 
     passThrough.on("error", (err) => {
-      console.error("Error in output stream:", err);
+      logger.error("Error in output stream:", err);
       reject(err);
     });
 
     command
+      .on("start", (commandLine) => {
+        logger.info(`[FFmpeg] Started overlay: ${commandLine}`);
+      })
+      .on("stderr", (stderrLine) => {
+        // Only log actual errors or important info to avoid flooding
+        if (stderrLine.includes("Error") || stderrLine.includes("fail")) {
+          logger.error(`[FFmpeg Error] ${stderrLine}`);
+        }
+      })
       .on("error", (err) => {
-        console.error("An error occurred during audio overlay:", err);
+        logger.error("An error occurred during audio overlay:", err);
         reject(err);
       })
       .format("mp3") // Explicitly set format since we are outputting to stream
@@ -137,10 +169,7 @@ export const concatenateAudioFiles = (
 
     // Add all inputs with sanitization
     inputFiles.forEach((file) => {
-      const sanitizedFile = file
-        .replace(/\.+$/, "")
-        .replace(/cloudfront\.netr\//i, "cloudfront.net/");
-      command.input(sanitizedFile);
+      command.input(ensureCleanUrl(file));
     });
 
     // We use a complex filter to handle potential initial offset
@@ -188,18 +217,26 @@ export const concatenateAudioFiles = (
 
     passThrough.on("end", () => {
       const buffer = Buffer.concat(chunks as Uint8Array[]);
-      console.log("Audio concatenation finished successfully");
+      logger.info("Audio concatenation finished successfully");
       resolve(buffer);
     });
 
     passThrough.on("error", (err) => {
-      console.error("Error in output stream:", err);
+      logger.error("Error in output stream:", err);
       reject(err);
     });
 
     command
+      .on("start", (commandLine) => {
+        logger.info(`[FFmpeg] Started concatenation: ${commandLine}`);
+      })
+      .on("stderr", (stderrLine) => {
+        if (stderrLine.includes("Error") || stderrLine.includes("fail")) {
+          logger.error(`[FFmpeg Error] ${stderrLine}`);
+        }
+      })
       .on("error", (err) => {
-        console.error("An error occurred during audio concatenation:", err);
+        logger.error("An error occurred during audio concatenation:", err);
         reject(err);
       })
       .format("mp3")
@@ -225,8 +262,10 @@ export const mixVocalsWithBacking = (
 
     fs.writeFileSync(tempVocalsPath, new Uint8Array(vocalsBuffer));
 
+    const cleanBackingUrl = ensureCleanUrl(backingTrackUrl);
+
     const command = ffmpeg();
-    command.input(backingTrackUrl);
+    command.input(cleanBackingUrl);
     command.input(tempVocalsPath);
 
     /**
@@ -253,13 +292,13 @@ export const mixVocalsWithBacking = (
       try {
         fs.unlinkSync(tempVocalsPath);
       } catch (err) {
-        console.warn("Failed to delete temp vocals file:", err);
+        logger.warn("Failed to delete temp vocals file:", err);
       }
       resolve(buffer);
     });
 
     passThrough.on("error", (err) => {
-      console.error("Error in output stream:", err);
+      logger.error("Error in output stream:", err);
       try {
         fs.unlinkSync(tempVocalsPath);
       } catch (e) {}
@@ -267,8 +306,16 @@ export const mixVocalsWithBacking = (
     });
 
     command
+      .on("start", (commandLine) => {
+        logger.info(`[FFmpeg] Started mixing: ${commandLine}`);
+      })
+      .on("stderr", (stderrLine) => {
+        if (stderrLine.includes("Error") || stderrLine.includes("fail")) {
+          logger.error(`[FFmpeg Error] ${stderrLine}`);
+        }
+      })
       .on("error", (err) => {
-        console.error("An error occurred during audio mixing:", err);
+        logger.error("An error occurred during audio mixing:", err);
         try {
           fs.unlinkSync(tempVocalsPath);
         } catch (e) {}
@@ -329,14 +376,14 @@ export const removeVocals = (inputUrl: string): Promise<Buffer> => {
 
     passThrough.on("error", (err) => {
       errorOccurred = true;
-      console.error("Error in output stream:", err);
+      logger.error("Error in output stream:", err);
       reject(err);
     });
 
     command
       .on("error", (err) => {
         errorOccurred = true;
-        console.error("An error occurred during vocal removal:", err);
+        logger.error("An error occurred during vocal removal:", err);
         reject(err);
       })
       .format("mp3")
