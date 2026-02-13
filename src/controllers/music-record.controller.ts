@@ -122,4 +122,17 @@ export default class MusicRecordCtrl {
       return res.status(statusCode).json({ message: err.message || err });
     }
   }
+
+  static async getMusicByUserId(req: Request, res: Response) {
+    try {
+      const userId = req.params.userId;
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+
+      const result = await MusicRecordSvc.getByUserId(userId, page, limit);
+      return res.status(200).json(result);
+    } catch (err: any) {
+      return res.status(400).json({ message: err.message || err });
+    }
+  }
 }

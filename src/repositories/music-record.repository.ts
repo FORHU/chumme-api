@@ -220,4 +220,51 @@ export default class MusicRecordRepo {
       data: { deletedAt: new Date() },
     });
   }
+
+  /**
+   * Get MusicRecords by userId (all recordings of a user) with pagination
+   */
+  static async findByUserId(
+    userId: string,
+    params: { page?: number; limit?: number } = {},
+  ) {
+    const page = params.page || 1;
+    const limit = params.limit || 10;
+    const skip = (page - 1) * limit;
+
+    const [data, total] = await Promise.all([
+      prisma.musicRecord.findMany({
+        where: { singers: { some: { id: userId } } },
+        include: {
+          file: true,
+          music: {
+            include: {
+              musicArtist: true,
+            },
+          },
+          musicParts: {
+            include: {
+              singer: true,
+            },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: limit,
+      }),
+      prisma.musicRecord.count({
+        where: { singers: { some: { id: userId } } },
+      }),
+    ]);
+
+    return {
+      data,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
 }

@@ -72,6 +72,7 @@ export default class MusicQueueSvc {
     if (music.isKaraoke && music.parts) {
       promises.push(MusicStudioCacheSvc.setPhrasing(studioId, music.parts));
     }
+    const backingTrackUrl = music.musicFile.fileUrl;
     await Promise.all(promises);
 
     // Initial Singer Assignment
@@ -116,6 +117,7 @@ export default class MusicQueueSvc {
     return {
       studioId,
       musicId,
+      backingTrackUrl,
       currentSinger: finalSinger || null,
       currentSingerName: finalSingerName,
       currentRoleIndex: targetRoleIndex,

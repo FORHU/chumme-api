@@ -38,11 +38,13 @@ export interface RequestUploadUrlPayload {
 export interface SaveRecordingPayload {
   studioId: string;
   musicId: string;
-  fileUrl: string;
-  filename: string;
-  mimetype: string;
-  size?: number;
   metaData?: any;
+  performanceMapping?: {
+    startLine: number;
+    endLine: number;
+    singerId: string;
+    vocalRoleIndex?: number;
+  }[];
 }
 
 export interface PassMicrophonePayload {
