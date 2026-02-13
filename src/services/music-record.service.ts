@@ -101,4 +101,18 @@ export default class MusicRecordSvc {
     await MusicRecordRepo.delete(id);
     return { message: "Music record deleted successfully" };
   }
+
+  /**
+   * Get all recordings of a specific user
+   */
+  static async getByUserId(userId: string, page?: number, limit?: number) {
+    const result = await MusicRecordRepo.findByUserId(userId, {
+      page,
+      limit,
+    });
+    return {
+      message: "User's music records fetched successfully",
+      ...result,
+    };
+  }
 }

@@ -15,6 +15,9 @@ router.get("/studio/:studioId", MusicRecordCtrl.getByStudioId);
 // Get recordings by music/song
 router.get("/music/:musicId", MusicRecordCtrl.getByMusicId);
 
+// fetch Music By User Id
+router.get("/album/:userId", MusicRecordCtrl.getMusicByUserId);
+
 // Get single music record
 router.get("/:id", MusicRecordCtrl.getById);
 

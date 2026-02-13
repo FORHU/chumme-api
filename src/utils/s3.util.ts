@@ -58,7 +58,17 @@ export default class S3Util {
     });
 
     await s3Client.send(command);
-    return `${S3_CDN_URL}/${key}`;
+
+    let baseUrl = S3_CDN_URL;
+    if (
+      baseUrl &&
+      !baseUrl.startsWith("http://") &&
+      !baseUrl.startsWith("https://")
+    ) {
+      baseUrl = `https://${baseUrl}`;
+    }
+
+    return `${baseUrl}/${key}`;
   }
 
   /**
@@ -93,5 +103,26 @@ export default class S3Util {
 
     await s3Client.send(command);
     logger.info(`[S3] Deleted: ${key}`);
+  }
+
+  /**
+   * Check if file exists in S3
+   * @param key - S3 Key
+   */
+  static async fileExists(key: string): Promise<boolean> {
+    try {
+      const { HeadObjectCommand } = await import("@aws-sdk/client-s3");
+      const command = new HeadObjectCommand({
+        Bucket: AWS_S3_BUCKET_NAME,
+        Key: key,
+      });
+      await s3Client.send(command);
+      return true;
+    } catch (err: any) {
+      if (err.name === "NotFound" || err.$metadata?.httpStatusCode === 404) {
+        return false;
+      }
+      throw err;
+    }
   }
 }

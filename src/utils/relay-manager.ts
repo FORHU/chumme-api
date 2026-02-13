@@ -68,7 +68,8 @@ export default class RelayManager {
     const singers = members
       .filter(
         (m: any) =>
-          m.role === StudioRole.SINGER || m.role === StudioRole.PRODUCER,
+          (m.role === StudioRole.SINGER || m.role === StudioRole.PRODUCER) &&
+          m.isConnected === true,
       )
       .sort((a: any, b: any) => {
         if (a.vocalRoleIndex !== b.vocalRoleIndex) {
