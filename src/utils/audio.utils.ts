@@ -33,9 +33,13 @@ export const overlayAudioFiles = (
 
     const command = ffmpeg();
 
-    // Add all inputs
+    // Add all inputs with sanitization
     inputFiles.forEach((file) => {
-      command.input(file);
+      // Remove trailing dots and fix cloudfront typo
+      const sanitizedFile = file
+        .replace(/\.+$/, "")
+        .replace(/cloudfront\.netr\//i, "cloudfront.net/");
+      command.input(sanitizedFile);
     });
 
     // If more than one file, use complex filter for delays and mixing
@@ -131,9 +135,12 @@ export const concatenateAudioFiles = (
 
     const command = ffmpeg();
 
-    // Add all inputs
+    // Add all inputs with sanitization
     inputFiles.forEach((file) => {
-      command.input(file);
+      const sanitizedFile = file
+        .replace(/\.+$/, "")
+        .replace(/cloudfront\.netr\//i, "cloudfront.net/");
+      command.input(sanitizedFile);
     });
 
     // We use a complex filter to handle potential initial offset

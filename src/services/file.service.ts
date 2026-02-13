@@ -3,6 +3,32 @@ import S3PresignedUtil from "../utils/s3-presigned.util";
 import S3Util from "../utils/s3.util";
 
 export default class FileSvc {
+  /**
+   * Proactively clean up malformed URLs (typos in envs, trailing dots, etc)
+   */
+  static sanitizeUrl(url?: string | null): string | null {
+    if (!url) return null;
+
+    let sanitized = url.trim();
+
+    // 1. Ensure protocol
+    if (
+      !sanitized.startsWith("http://") &&
+      !sanitized.startsWith("https://") &&
+      !sanitized.startsWith("file://")
+    ) {
+      sanitized = `https://${sanitized}`;
+    }
+
+    // 2. Fix the specific 'cloudfront.netr' typo reported by user
+    sanitized = sanitized.replace(/cloudfront\.netr\//i, "cloudfront.net/");
+
+    // 3. Remove trailing dots (FFmpeg/Android incompatible)
+    sanitized = sanitized.replace(/\.+$/, "");
+
+    return sanitized;
+  }
+
   static async saveFile(data: { filename?: string; fileUrl?: string }) {
     if (!data.fileUrl && !data.filename) {
       throw new Error(
@@ -12,7 +38,7 @@ export default class FileSvc {
 
     const file = await FileRepo.createFile({
       filename: data.filename ?? null,
-      fileUrl: data.fileUrl ?? null,
+      fileUrl: this.sanitizeUrl(data.fileUrl),
     });
 
     return file;
@@ -37,7 +63,7 @@ export default class FileSvc {
 
     const result = await FileRepo.upsertFile(data.id, {
       filename: data.filename ?? null,
-      fileUrl: data.fileUrl ?? null,
+      fileUrl: this.sanitizeUrl(data.fileUrl),
     });
 
     return result; // { file, isUpdate }
@@ -53,7 +79,7 @@ export default class FileSvc {
 
     const file = await FileRepo.createFile({
       filename: filename,
-      fileUrl: fileUrl,
+      fileUrl: this.sanitizeUrl(fileUrl),
       metaData: metaData,
     });
     return file;
