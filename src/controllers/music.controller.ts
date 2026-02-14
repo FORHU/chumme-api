@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import Joi from "joi";
 import MusicSvc from "../services/music.service";
-import FileSvc from "../services/file.service";
+import MusicLibrarySvc from "../services/music-library.service";
 
 export default class MusicCtrl {
   static async createMusic(req: Request, res: Response) {
@@ -206,8 +206,8 @@ export default class MusicCtrl {
         });
       }
 
-      // 5. Upload Audio File
-      const fileRecord = await FileSvc.uploadFile(
+      // 5. Upload Audio File to MusicLibrary
+      const fileRecord = await MusicLibrarySvc.uploadMusicFile(
         audioFile.buffer,
         audioFile.originalname,
         audioFile.mimetype,

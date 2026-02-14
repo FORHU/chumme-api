@@ -7,7 +7,7 @@ import {
   mixVocalsWithBacking,
 } from "../utils/audio.utils";
 import S3Util from "../utils/s3.util";
-import FileRepo from "../repositories/file.repository";
+import MusicLibraryRepo from "../repositories/music-library.repository";
 import MusicRecordRepo from "../repositories/music-record.repository";
 import TempMusicRecordRepo from "../repositories/temp-music-record.repository";
 import { prisma } from "../utils/prisma";
@@ -169,8 +169,8 @@ export class AudioMergeWorker {
         "audio/mpeg",
       );
 
-      // Create File + MusicRecord in DB
-      const fileRecord = await FileRepo.createFile({
+      // Create MusicLibrary + MusicRecord in DB
+      const fileRecord = await MusicLibraryRepo.create({
         filename: mergedFilename,
         fileUrl: mergedUrl,
         metaData: {

@@ -20,7 +20,7 @@ export default class MusicRepo {
 
     // 1. Update File Metadata if needed (Prisma doesn't allow update on create relation)
     if (musicFileId && finalMetaData) {
-      await prisma.file.update({
+      await prisma.musicLibrary.update({
         where: { id: musicFileId },
         data: { metaData: finalMetaData },
       });

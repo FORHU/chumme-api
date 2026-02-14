@@ -3,7 +3,7 @@ import MusicStudioSvc from "../../services/music-studio.service";
 import MusicStudioCacheSvc from "../../services/music-studio-cache.service";
 import { AuthenticatedSocket } from "./types";
 import { StudioType } from "@prisma/client";
-import FileSvc from "../../services/file.service";
+import MusicLibrarySvc from "../../services/music-library.service";
 import TempMusicRecordSvc from "../../services/temp-music-record.service";
 
 export const registerMediaHandlers = (
@@ -47,8 +47,8 @@ export const registerMediaHandlers = (
         return;
       }
 
-      // 2. Verify file exists
-      const file = await FileSvc.getFileById(chunk.fileId);
+      // 2. Verify file exists in MusicLibrary
+      const file = await MusicLibrarySvc.getMusicFileById(chunk.fileId);
       if (!file) {
         console.log("[MusicStudio] audio_chunk dropped: file not found", {
           fileId: chunk.fileId,

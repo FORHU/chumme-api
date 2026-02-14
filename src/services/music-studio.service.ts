@@ -7,7 +7,7 @@ import MusicStudioRepo from "../repositories/music-studio.repository";
 import MusicRecordRepo from "../repositories/music-record.repository";
 import TempMusicRecordRepo from "../repositories/temp-music-record.repository";
 import MusicRepo from "../repositories/music.repository";
-import FileRepo from "../repositories/file.repository";
+import MusicLibraryRepo from "../repositories/music-library.repository";
 import MusicStudioCacheSvc from "./music-studio-cache.service";
 import logger from "../utils/logger";
 import S3Util from "../utils/s3.util";

@@ -68,6 +68,19 @@ model Session {
 }
 
 model File {
+  id         String      @id @default(uuid())
+  filename   String?
+  fileUrl    String?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  deletedAt  DateTime?
+  metaData   Json?
+  mediaPosts MediaPost[]
+  users      User[]
+  videos     Video[]
+}
+
+model MusicLibrary {
   id               String            @id @default(uuid())
   filename         String?
   fileUrl          String?
@@ -75,12 +88,9 @@ model File {
   updatedAt        DateTime          @updatedAt
   deletedAt        DateTime?
   metaData         Json?
-  mediaPosts       MediaPost[]
-  musicFiles       Music[]           @relation("MusicFile")
-  musicRecords     MusicRecord[]     @relation("MusicRecordFile")
-  users            User[]
-  videos           Video[]
-  tempMusicRecords TempMusicRecord[] @relation("TempMusicFile")
+  musicFiles       Music[]           @relation("MusicLibraryFile")
+  musicRecords     MusicRecord[]     @relation("MusicRecordLibraryFile")
+  tempMusicRecords TempMusicRecord[] @relation("TempMusicLibraryFile")
 }
 
 model UserChat {
@@ -557,7 +567,7 @@ model Music {
   featuredArtists FeaturedArtist[]
   musicAlbum      MusicAlbum?      @relation(fields: [musicAlbumId], references: [id])
   musicArtist     Artist?          @relation("MainArtist", fields: [musicArtistId], references: [id])
-  musicFile       File             @relation("MusicFile", fields: [musicFileId], references: [id])
+  musicFile       MusicLibrary     @relation("MusicLibraryFile", fields: [musicFileId], references: [id])
   parts           MusicPart[]
   playlists       MusicPlaylist[]
   records         MusicRecord[]
@@ -623,24 +633,24 @@ model MusicStudio {
 }
 
 model MusicRecord {
-  id             String      @id @default(uuid())
+  id             String       @id @default(uuid())
   musicId        String
   fileId         String
   studioId       String
   metaData       Json?
   recordDuration Float?
   musicParts     MusicPart[]
-  file           File        @relation("MusicRecordFile", fields: [fileId], references: [id])
-  music          Music       @relation(fields: [musicId], references: [id])
-  studio         MusicStudio @relation("StudioRecords", fields: [studioId], references: [id])
-  singers        User[]      @relation("MusicRecordSingers")
-  createdAt      DateTime    @default(now())
+  file           MusicLibrary @relation("MusicRecordLibraryFile", fields: [fileId], references: [id])
+  music          Music        @relation(fields: [musicId], references: [id])
+  studio         MusicStudio  @relation("StudioRecords", fields: [studioId], references: [id])
+  singers        User[]       @relation("MusicRecordSingers")
+  createdAt      DateTime     @default(now())
   deletedAt      DateTime?
-  updatedAt      DateTime    @updatedAt
+  updatedAt      DateTime     @updatedAt
 }
 
 model TempMusicRecord {
-  id              String      @id @default(uuid())
+  id              String       @id @default(uuid())
   musicId         String
   fileId          String
   studioId        String
@@ -648,11 +658,11 @@ model TempMusicRecord {
   startTimeOffset Float?
   metaData        Json?
   recordDuration  Float?
-  studio          MusicStudio @relation("StudioTempRecords", fields: [studioId], references: [id])
-  file            File        @relation("TempMusicFile", fields: [fileId], references: [id])
-  createdAt       DateTime    @default(now())
+  studio          MusicStudio  @relation("StudioTempRecords", fields: [studioId], references: [id])
+  file            MusicLibrary @relation("TempMusicLibraryFile", fields: [fileId], references: [id])
+  createdAt       DateTime     @default(now())
   deletedAt       DateTime?
-  updatedAt       DateTime    @updatedAt
+  updatedAt       DateTime     @updatedAt
 
   @@index([studioId])
 }
