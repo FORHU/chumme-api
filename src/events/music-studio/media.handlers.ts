@@ -37,18 +37,37 @@ export const registerMediaHandlers = (
       const { studioId, chunk, userId, musicId, order, timestamp } = data;
 
       // 1. Validate required fields
-      if (!studioId || !chunk || !userId || !musicId) return;
+      if (!studioId || !chunk || !userId || !musicId) {
+        console.log("[MusicStudio] audio_chunk dropped: missing fields", {
+          studioId,
+          hasChunk: !!chunk,
+          userId,
+          musicId,
+        });
+        return;
+      }
 
       // 2. Verify file exists
       const file = await FileSvc.getFileById(chunk.fileId);
-      if (!file) return;
+      if (!file) {
+        console.log("[MusicStudio] audio_chunk dropped: file not found", {
+          fileId: chunk.fileId,
+        });
+        return;
+      }
 
       // 3. Role gate — only Singers & Producers can stream audio
       const canStream = await MusicStudioSvc.canRecord(
         studioId,
         socket.user.id,
       );
-      if (!canStream) return;
+      if (!canStream) {
+        console.log("[MusicStudio] audio_chunk dropped: user cannot record", {
+          userId: socket.user.id,
+          studioId,
+        });
+        return;
+      }
 
       // 4. Mode gate — RELAYSINGING: only the current singer can stream
       const studioStatePromise = MusicStudioCacheSvc.getStudioType(studioId);
@@ -66,9 +85,18 @@ export const registerMediaHandlers = (
           MusicStudioCacheSvc.getCurrentRoleIndex(studioId),
         ]);
 
+        console.log("[MusicStudio] RELAYSINGING check:", {
+          currentSinger,
+          currentRoleIndex,
+          myId: socket.user.id,
+        });
+
         // Role 0 = "All-Sing" / Chorus → everyone streams
         if (currentRoleIndex !== 0) {
           if (currentSinger && currentSinger !== socket.user.id) {
+            console.log(
+              "[MusicStudio] audio_chunk dropped: not the current singer in Relay mode",
+            );
             return; // Not the current singer — drop chunk
           }
         }

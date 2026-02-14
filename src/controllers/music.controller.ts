@@ -116,7 +116,8 @@ export default class MusicCtrl {
   }
 
   static async createMusicWithFiles(req: Request, res: Response) {
-    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+    // With upload.any(), req.files is an array
+    const files = req.files as Express.Multer.File[];
 
     try {
       // 1. Handle FormData string-to-type parsing
@@ -136,13 +137,31 @@ export default class MusicCtrl {
         req.body.vocalRolesCount = Number(req.body.vocalRolesCount);
       }
 
+      // Default release_date if missing
+      if (!req.body.release_date) {
+        req.body.release_date = new Date().toISOString();
+      }
+
+      // Handle empty UUID strings from frontend
+      if (req.body.musicAlbumId === "") req.body.musicAlbumId = null;
+      if (req.body.musicArtistId === "") req.body.musicArtistId = null;
+
       // 2. Parse meta_data file if present
-      if (files && files["meta_data"]) {
+      const metaFile = files?.find(
+        (f) => f.fieldname === "meta_data" || f.fieldname === "metaData",
+      );
+
+      if (metaFile) {
         try {
-          const metaBuffer = files["meta_data"][0].buffer;
-          req.body.meta_data = JSON.parse(metaBuffer.toString("utf-8"));
+          req.body.meta_data = JSON.parse(metaFile.buffer.toString("utf-8"));
         } catch (e) {
           console.warn("[MusicCtrl] Failed to parse meta_data file", e);
+        }
+      } else if (typeof req.body.metaData === "string") {
+        try {
+          req.body.meta_data = JSON.parse(req.body.metaData);
+        } catch (e) {
+          /* ignore */
         }
       } else if (typeof req.body.meta_data === "string") {
         try {
@@ -154,35 +173,21 @@ export default class MusicCtrl {
 
       const schema = Joi.object({
         title: Joi.string().required(),
-        duration: Joi.number(),
-        bpm: Joi.number().integer(),
+        duration: Joi.number().allow(null, ""),
+        bpm: Joi.number().integer().allow(null, ""),
         hasWordTiming: Joi.boolean(),
         release_date: Joi.date().iso().required(),
-        musicAlbumId: Joi.string().uuid().allow(null),
-        musicArtistId: Joi.string().uuid(),
+        musicAlbumId: Joi.string().uuid().allow(null, ""),
+        musicArtistId: Joi.string().uuid().allow(null, ""),
         isKaraoke: Joi.boolean(),
-        vocalRolesCount: Joi.number().integer().min(1),
+        vocalRolesCount: Joi.number().integer().min(1).allow(null, ""),
         meta_data: Joi.object().optional(),
       });
 
       const { error, value } = schema.validate(req.body);
       if (error) return res.status(400).json({ message: error.message });
 
-      if (!files || !files["fileData"]) {
-        return res
-          .status(400)
-          .json({ message: "fileData (audio file) is required" });
-      }
-
-      // 3. Upload Audio File
-      const audioFile = files["fileData"][0];
-      const fileRecord = await FileSvc.uploadFile(
-        audioFile.buffer,
-        audioFile.originalname,
-        audioFile.mimetype,
-      );
-
-      // Check for duplication
+      // 3. Early Check for duplication (BEFORE costly S3 upload)
       const existing = await MusicSvc.getMusicByTitle(value.title);
       if (existing) {
         return res.status(400).json({
@@ -191,7 +196,24 @@ export default class MusicCtrl {
         });
       }
 
-      // 4. Create Music using the new file ID
+      // 4. Locate the audio file (support 'fileData' or 'file' field)
+      const audioFile = files?.find(
+        (f) => f.fieldname === "fileData" || f.fieldname === "file",
+      );
+      if (!audioFile) {
+        return res.status(400).json({
+          message: "Audio file is required (field: fileData or file)",
+        });
+      }
+
+      // 5. Upload Audio File
+      const fileRecord = await FileSvc.uploadFile(
+        audioFile.buffer,
+        audioFile.originalname,
+        audioFile.mimetype,
+      );
+
+      // 6. Create Music using the new file ID
       const music = await MusicSvc.createMusic({
         ...value,
         musicFileId: fileRecord.id,
@@ -203,6 +225,7 @@ export default class MusicCtrl {
         data: music,
       });
     } catch (error: any) {
+      console.error("[MusicCtrl] Error in createMusicWithFiles:", error);
       return res.status(500).json({ message: error.message || error });
     }
   }

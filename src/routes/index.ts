@@ -26,6 +26,8 @@ import playlistRoute from "./playlist.route";
 import musicRecordRoute from "./music-record.route";
 import musicStudioRoute from "./music-studio.route";
 
+import systemRoute from "./system.route";
+
 const router = express.Router();
 
 router.get("/v1", (_, res) => {
@@ -61,5 +63,6 @@ router.use("/v1/music", musicRoute);
 router.use("/v1/playlists", playlistRoute);
 router.use("/v1/music-records", musicRecordRoute);
 router.use("/v1/music-studios", musicStudioRoute);
+router.use("/v1/system", systemRoute);
 
 export default router;

@@ -349,14 +349,8 @@ export default class MusicStudioCtrl {
         musicId: musicId,
       });
 
-      // Notify studio members via socket
-      io.to(studioId).emit("recording_saved", {
-        studioId: studioId,
-        musicRecordId: result.data.id,
-        musicRecord: result.data,
-        savedBy: (req as any).user.id,
-      });
-
+      // Worker broadcasts recording_saved via socket when merge completes
+      logger.info(`[MusicStudioCtrl] saveRecording result`, { result });
       return res.json(result);
     } catch (err: any) {
       return res.status(400).json({ message: err.message || err });

@@ -3,6 +3,8 @@ import {
   PutObjectCommand,
   DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
+import { Upload } from "@aws-sdk/lib-storage";
+import { PassThrough } from "stream";
 import {
   S3_CDN_URL,
   AWS_REGION,
@@ -102,22 +104,7 @@ export default class S3Util {
    * @param fileUrl - Full S3 URL
    */
   static async deleteFile(fileUrl: string): Promise<void> {
-    // Correctly parse the key from any S3 or Cloudfront URL
-    // 1. Try splitting by .com/ (Standard S3)
-    // 2. Try splitting by .net/ (Cloudfront)
-    // 3. Fallback to extracting everything after the first slash if protocol is present
-    let key: string | undefined;
-    if (fileUrl.includes(".com/")) {
-      key = fileUrl.split(".com/")[1];
-    } else if (fileUrl.includes(".net/")) {
-      key = fileUrl.split(".net/")[1];
-    } else {
-      // Try to find the first single slash after http(s)://
-      const matches = fileUrl.match(/^https?:\/\/[^\/]+\/(.+)$/);
-      if (matches) {
-        key = matches[1];
-      }
-    }
+    const key = this.getKeyFromUrl(fileUrl);
 
     if (!key) {
       logger.warn(`[S3] Could not parse key from URL: ${fileUrl}`);
@@ -131,6 +118,58 @@ export default class S3Util {
 
     await s3Client.send(command);
     logger.info(`[S3] Deleted: ${key}`);
+  }
+
+  /**
+   * Get file from S3
+   * @param fileUrl - Full S3 URL
+   * @returns Buffer
+   */
+  static async getFile(fileUrl: string): Promise<Buffer> {
+    const key = this.getKeyFromUrl(fileUrl);
+    if (!key) {
+      throw new Error(`Could not parse S3 key from URL: ${fileUrl}`);
+    }
+
+    const { GetObjectCommand } = await import("@aws-sdk/client-s3");
+    const command = new GetObjectCommand({
+      Bucket: AWS_S3_BUCKET_NAME,
+      Key: key,
+    });
+
+    const response = await s3Client.send(command);
+    if (!response.Body) {
+      throw new Error(`Empty response body for S3 key: ${key}`);
+    }
+
+    const streamToBuffer = async (stream: any): Promise<Buffer> => {
+      const chunks: any[] = [];
+      for await (const chunk of stream) {
+        chunks.push(chunk);
+      }
+      return Buffer.concat(chunks);
+    };
+
+    return streamToBuffer(response.Body);
+  }
+
+  /**
+   * Extracts the S3 Key from a URL
+   */
+  private static getKeyFromUrl(fileUrl: string): string | undefined {
+    let key: string | undefined;
+    if (fileUrl.includes(".com/")) {
+      key = fileUrl.split(".com/")[1];
+    } else if (fileUrl.includes(".net/")) {
+      key = fileUrl.split(".net/")[1];
+    } else {
+      // Try to find the first single slash after http(s)://
+      const matches = fileUrl.match(/^https?:\/\/[^\/]+\/(.+)$/);
+      if (matches) {
+        key = matches[1];
+      }
+    }
+    return key;
   }
 
   /**
@@ -166,5 +205,49 @@ export default class S3Util {
       }
       throw err;
     }
+  }
+
+  /**
+   * Returns a writable stream that pipes directly to S3 via multipart upload.
+   * Use this to stream FFmpeg output directly to S3 without temp files.
+   * @param key - S3 key for the file
+   * @param mimeType - Content type
+   * @returns {{ stream: PassThrough, done: Promise<string> }}
+   *          stream: pipe data into this.
+   *          done: resolves with the CDN URL when upload completes.
+   */
+  static uploadStream(
+    key: string,
+    mimeType: string,
+  ): { stream: PassThrough; done: Promise<string> } {
+    const stream = new PassThrough();
+
+    const upload = new Upload({
+      client: s3Client,
+      params: {
+        Bucket: AWS_S3_BUCKET_NAME,
+        Key: key,
+        Body: stream,
+        ContentType: mimeType,
+      },
+      queueSize: 4, // concurrent part uploads
+      partSize: 5 * 1024 * 1024, // 5MB parts
+    });
+
+    const done = upload.done().then(() => {
+      let baseUrl = S3_CDN_URL;
+      if (
+        baseUrl &&
+        !baseUrl.startsWith("http://") &&
+        !baseUrl.startsWith("https://")
+      ) {
+        baseUrl = `https://${baseUrl}`;
+      }
+      const url = this.sanitizeUrl(`${baseUrl}/${key}`);
+      logger.info(`[S3] Stream upload complete: ${key}`);
+      return url;
+    });
+
+    return { stream, done };
   }
 }
