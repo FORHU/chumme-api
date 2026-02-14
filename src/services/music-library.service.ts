@@ -1,4 +1,5 @@
 import MusicLibraryRepo from "../repositories/music-library.repository";
+import S3PresignedUtil from "../utils/s3-presigned.util";
 import S3Util from "../utils/s3.util";
 import FileSvc from "./file.service";
 
@@ -67,5 +68,21 @@ export default class MusicLibrarySvc {
 
     await MusicLibraryRepo.delete(id);
     return { message: "Music library record deleted successfully" };
+  }
+
+  /**
+   * Get an upload pre-signed URL for MusicLibrary
+   */
+  static async getUploadUrl(key: string, contentType: string) {
+    const response = await S3PresignedUtil.getUploadUrl(key, contentType);
+    return { message: "Music Library Upload Registered", data: response };
+  }
+
+  /**
+   * Get a download pre-signed URL for MusicLibrary
+   */
+  static async getDownloadUrl(key: string) {
+    const response = await S3PresignedUtil.getDownloadUrl(key);
+    return { message: "Music Library Download Registered", data: response };
   }
 }
