@@ -3,7 +3,6 @@ import {
   PutObjectCommand,
   DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
-import { Upload } from "@aws-sdk/lib-storage";
 import { PassThrough } from "stream";
 import {
   S3_CDN_URL,
@@ -205,49 +204,5 @@ export default class S3Util {
       }
       throw err;
     }
-  }
-
-  /**
-   * Returns a writable stream that pipes directly to S3 via multipart upload.
-   * Use this to stream FFmpeg output directly to S3 without temp files.
-   * @param key - S3 key for the file
-   * @param mimeType - Content type
-   * @returns {{ stream: PassThrough, done: Promise<string> }}
-   *          stream: pipe data into this.
-   *          done: resolves with the CDN URL when upload completes.
-   */
-  static uploadStream(
-    key: string,
-    mimeType: string,
-  ): { stream: PassThrough; done: Promise<string> } {
-    const stream = new PassThrough();
-
-    const upload = new Upload({
-      client: s3Client,
-      params: {
-        Bucket: AWS_S3_BUCKET_NAME,
-        Key: key,
-        Body: stream,
-        ContentType: mimeType,
-      },
-      queueSize: 4, // concurrent part uploads
-      partSize: 5 * 1024 * 1024, // 5MB parts
-    });
-
-    const done = upload.done().then(() => {
-      let baseUrl = S3_CDN_URL;
-      if (
-        baseUrl &&
-        !baseUrl.startsWith("http://") &&
-        !baseUrl.startsWith("https://")
-      ) {
-        baseUrl = `https://${baseUrl}`;
-      }
-      const url = this.sanitizeUrl(`${baseUrl}/${key}`);
-      logger.info(`[S3] Stream upload complete: ${key}`);
-      return url;
-    });
-
-    return { stream, done };
   }
 }

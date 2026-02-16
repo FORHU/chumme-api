@@ -18,7 +18,6 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.922.0",
-    "@aws-sdk/lib-storage": "^3.990.0",
     "@aws-sdk/s3-request-presigner": "^3.978.0",
     "@prisma/client": "^6.19.2",
     "@socket.io/redis-adapter": "^8.3.0",
