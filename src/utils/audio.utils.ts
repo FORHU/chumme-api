@@ -244,7 +244,11 @@ export const overlayAudioFiles = async (
 
         filterChain.push({
           filter: "amix",
-          options: { inputs: mixInputs.length, duration: "longest" },
+          options: {
+            inputs: mixInputs.length,
+            duration: "longest",
+            normalize: 0,
+          },
           inputs: mixInputs,
         });
 
@@ -484,37 +488,43 @@ function getVocalFilterChain(effect: VoiceEffect = "STUDIO"): any[] {
 
   const lastOutput = "v_clean";
 
-  // 2. Effect-specific processing
+  // 2. Normalize levels BEFORE effects (Auto-Leveling)
+  // This ensures quiet mics are boosted and loud mics are tamed
+  chain.push({
+    filter: "dynaudnorm",
+    options: { f: 50, g: 31, p: 0.95, m: 10.0, r: 0.9, s: 0 },
+    inputs: "v_clean",
+    outputs: "v_norm",
+  });
+
+  const effectInput = "v_norm";
+
+  // 3. Effect-specific processing
   switch (effect) {
     case "CLEAN":
       // Minimal processing: just light compression
       chain.push({
         filter: "acompressor",
         options: { threshold: 0.1, ratio: 2, attack: 20, release: 100 },
-        inputs: lastOutput,
+        inputs: effectInput,
         outputs: "v_processed",
       });
       break;
 
     case "STUDIO":
-      // Standard polished sound: Compression + Volume + Slight Echo
+      // Standard polished sound: Compression + Slight Echo
+      // (Volume boost removed in favor of dynaudnorm)
       chain.push(
         {
           filter: "acompressor",
           options: { threshold: 0.25, ratio: 4, attack: 50, release: 100 },
-          inputs: lastOutput,
+          inputs: effectInput,
           outputs: "v_comp",
-        },
-        {
-          filter: "volume",
-          options: { volume: 3.0 },
-          inputs: "v_comp",
-          outputs: "v_vol",
         },
         {
           filter: "aecho",
           options: { in_gain: 0.8, out_gain: 0.88, delays: 60, decays: 0.4 },
-          inputs: "v_vol",
+          inputs: "v_comp",
           outputs: "v_processed",
         },
       );
@@ -526,7 +536,7 @@ function getVocalFilterChain(effect: VoiceEffect = "STUDIO"): any[] {
         {
           filter: "acompressor",
           options: { threshold: 0.25, ratio: 4, attack: 50, release: 100 },
-          inputs: lastOutput,
+          inputs: effectInput,
           outputs: "v_comp",
         },
         {
@@ -544,7 +554,7 @@ function getVocalFilterChain(effect: VoiceEffect = "STUDIO"): any[] {
         {
           filter: "acompressor",
           options: { threshold: 0.25, ratio: 4 },
-          inputs: lastOutput,
+          inputs: effectInput,
           outputs: "v_comp",
         },
         {
@@ -562,7 +572,7 @@ function getVocalFilterChain(effect: VoiceEffect = "STUDIO"): any[] {
         {
           filter: "highpass",
           options: { f: 500 },
-          inputs: lastOutput,
+          inputs: effectInput,
           outputs: "v_hp",
         },
         {
@@ -586,7 +596,7 @@ function getVocalFilterChain(effect: VoiceEffect = "STUDIO"): any[] {
         {
           filter: "asetrate",
           options: 44100 * 1.5, // 1.5x pitch
-          inputs: lastOutput,
+          inputs: effectInput,
           outputs: "v_pitched",
         },
         {
@@ -648,7 +658,7 @@ export const mixVocalsWithBacking = async (
         // Process Backing Track (Input 0) -> Lower volume slightly
         {
           filter: "volume",
-          options: { volume: 0.8 },
+          options: { volume: 0.5 },
           inputs: "0:a",
           outputs: "b_processed",
         },
@@ -664,7 +674,7 @@ export const mixVocalsWithBacking = async (
         // Final Mastering (Loudness Normalization)
         {
           filter: "loudnorm",
-          options: { I: -14, TP: -1, LRA: 11 },
+          options: { I: -11, TP: -1, LRA: 11 },
           inputs: "mixed",
           outputs: "mastered",
         },

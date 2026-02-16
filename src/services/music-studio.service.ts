@@ -397,18 +397,16 @@ export default class MusicStudioSvc {
         `[MusicStudio] Found ${tempRecords.length} temp records for studio=${data.studioId}`,
       );
 
-      // 2. Fetch active members to filter out disconnected users
-      const activeMembers = await MusicStudioCacheSvc.getMembers(data.studioId);
-      const activeUserIds = new Set(activeMembers.map((m) => m.userId));
+      // 2. Use all temp records (don't filter by active members to include dropouts)
+      const filteredRecords = tempRecords;
 
-      const filteredRecords = tempRecords.filter((r) => {
-        const userId = (r.metaData as any)?.userId;
-        return userId && activeUserIds.has(userId);
-      });
-
-      if (!filteredRecords.length) {
-        throw new Error("No audio chunks found from active studio members");
-      }
+      const activeUserIds = new Set(
+        filteredRecords.map((r) => (r.metaData as any)?.userId),
+      );
+      console.log(
+        "+++++++++++this is the list of singers+++++++++++++++",
+        Array.from(activeUserIds),
+      );
 
       // 3. Collect S3 URLs
       const audioUrls = filteredRecords
@@ -501,18 +499,17 @@ export default class MusicStudioSvc {
         throw new Error("No audio chunks found for this studio session");
       }
 
-      // 2. Fetch active members to filter out disconnected users
       const activeMembers = await MusicStudioCacheSvc.getMembers(data.studioId);
-      const activeUserIds = new Set(activeMembers.map((m) => m.userId));
+      // 2. Use all temp records (don't filter by active members to include dropouts)
+      const filteredRecords = tempRecords;
 
-      const filteredRecords = tempRecords.filter((r) => {
-        const userId = (r.metaData as any)?.userId;
-        return userId && activeUserIds.has(userId);
-      });
-
-      if (!filteredRecords.length) {
-        throw new Error("No audio chunks found from active studio members");
-      }
+      const activeUserIds = new Set(
+        filteredRecords.map((r) => (r.metaData as any)?.userId),
+      );
+      console.log(
+        "+++++++++++this is the list of singers+++++++++++++++",
+        Array.from(activeUserIds),
+      );
 
       // 3. Collect S3 URLs and offsets
       const audioUrls = filteredRecords
