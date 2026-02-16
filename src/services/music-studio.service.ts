@@ -7,16 +7,19 @@ import MusicStudioRepo from "../repositories/music-studio.repository";
 import MusicRecordRepo from "../repositories/music-record.repository";
 import TempMusicRecordRepo from "../repositories/temp-music-record.repository";
 import MusicRepo from "../repositories/music.repository";
-import FileRepo from "../repositories/file.repository";
+import MusicLibraryRepo from "../repositories/music-library.repository";
 import MusicStudioCacheSvc from "./music-studio-cache.service";
 import logger from "../utils/logger";
 import S3Util from "../utils/s3.util";
 import {
   overlayAudioFiles,
+  batchOverlayAudioFiles,
   concatenateAudioFiles,
   mixVocalsWithBacking,
   removeVocals,
 } from "../utils/audio.utils";
+import { publishMergeJob } from "../listeners/audio-merge.listener";
+import type { AudioMergeJob } from "../listeners/audio-merge.listener";
 import { S3_CDN_URL } from "../config";
 
 interface CreateStudioInput {
@@ -104,7 +107,7 @@ export default class MusicStudioSvc {
 
   /**
    * Stop recording in a studio
-   * After stopping, automatically triggers preview generation in the background.
+   * Preview must be triggered manually via the preview-recording endpoint.
    */
   static async stopRecording(studioId: string, userId: string) {
     const isOwner = await this.isOwner(studioId, userId);
@@ -120,21 +123,6 @@ export default class MusicStudioSvc {
       userId,
       timestamp,
     });
-
-    // Auto-generate preview in the background (fire & forget)
-    // Auto-generate preview after a 3-second grace period
-    // This allows "in-flight" audio chunks to be saved before merging begins.
-    const musicId = await MusicStudioCacheSvc.getActiveSong(studioId);
-    if (musicId) {
-      setTimeout(() => {
-        this.previewRecording({ studioId, musicId, userId }).catch((err) => {
-          logger.warn(
-            `[MusicStudio] Auto-preview failed after stop: ${err.message}`,
-            { studioId, musicId },
-          );
-        });
-      }, 3000); // 3-second delay
-    }
 
     return {
       message: "Recording stopped",
@@ -374,8 +362,14 @@ export default class MusicStudioSvc {
         data.studioId,
       );
       if (!tempRecords.length) {
+        logger.info(
+          `[MusicStudio] No temp records for preview: studio=${data.studioId}, music=${data.musicId}`,
+        );
         throw new Error("No audio chunks found for this studio session");
       }
+      logger.info(
+        `[MusicStudio] Found ${tempRecords.length} temp records for studio=${data.studioId}`,
+      );
 
       // 2. Fetch active members to filter out disconnected users
       const activeMembers = await MusicStudioCacheSvc.getMembers(data.studioId);
@@ -401,52 +395,50 @@ export default class MusicStudioSvc {
         throw new Error("No audio files found in temp chunks");
       }
 
-      // 3. Merge vocals based on studio type
-      let vocalsBuffer: Buffer;
-      if (studio.studioType === StudioType.RELAYSINGING) {
-        // Pass the offset of the first chunk to ensure alignment with backing track
-        const initialOffset = tempRecords[0]?.startTimeOffset || 0;
-        vocalsBuffer = await concatenateAudioFiles(audioUrls, initialOffset);
-      } else {
-        vocalsBuffer = await overlayAudioFiles(audioUrls, offsets);
+      // 4. Publish merge job to RabbitMQ (returns immediately)
+      const jobId = `preview_${data.studioId}_${Date.now()}`;
+      if (audioUrls.length === 0) {
+        throw new Error(
+          "No recording chunks found to preview. Please record something first.",
+        );
       }
 
-      // 4. Mix vocals with backing track
-      const mergedBuffer = await mixVocalsWithBacking(
-        vocalsBuffer,
-        backingTrackUrl,
-      );
-
-      // 5. Upload preview file to S3 (Predictable key for overwriting)
-      const previewKey = `previews/preview_${data.studioId}_${data.musicId}.mp3`;
-      const previewUrl = await S3Util.uploadFileWithKey(
-        mergedBuffer,
-        previewKey,
-        "audio/mpeg",
-      );
-
-      logger.info(`[MusicStudio] Preview generated: ${previewUrl}`, {
+      const job: AudioMergeJob = {
+        jobId,
         studioId: data.studioId,
         musicId: data.musicId,
-      });
+        studioType: studio.studioType as "CROWDSINGING" | "RELAYSINGING",
+        audioUrls,
+        offsets,
+        backingTrackUrl,
+        jobType: "preview",
+      };
 
-      // Broadcast to all users in the studio so they can listen
-      const io = (global as any).io;
-      if (io) {
-        io.to(data.studioId).emit("preview_ready", {
-          studioId: data.studioId,
-          previewUrl,
-          chunkCount: tempRecords.length,
-        });
+      await publishMergeJob(job);
+
+      const ioExists = !!(global as any).io;
+      if (!ioExists) {
+        logger.warn(
+          `[MusicStudioSvc] WARN: global.io is NOT defined. Socket events will NOT be sent!`,
+        );
       }
 
-      return {
-        message: "Preview generated successfully",
+      logger.info(`[MusicStudio] Preview job published: ${jobId}`, {
+        studioId: data.studioId,
+        musicId: data.musicId,
+        chunkCount: audioUrls.length,
+      });
+
+      const response = {
+        message: "Preview is being generated. You will be notified when ready.",
         data: {
-          previewUrl,
-          chunkCount: tempRecords.length,
+          jobId,
+          status: "processing" as const,
+          chunkCount: audioUrls.length,
         },
       };
+      logger.info(`[MusicStudioSvc] previewRecording returning`, { response });
+      return response;
     } catch (err: any) {
       logger.error(`[MusicStudio] Failed to generate preview`, {
         error: err.message,
@@ -483,14 +475,17 @@ export default class MusicStudioSvc {
     const backingTrackUrl = music.musicFile.fileUrl;
 
     try {
-      // 1. Fetch temp records for this music + studio combo
       const tempRecords = await TempMusicRecordRepo.findByMusicIdAndStudioId(
         data.musicId,
         data.studioId,
       );
       if (!tempRecords.length) {
+        logger.info(
+          `[MusicStudio] No temp records for studio=${data.studioId}, music=${data.musicId}`,
+        );
         throw new Error("No audio chunks found for this studio session");
       }
+      logger.info(`[MusicStudio] Found ${tempRecords.length} temp records`);
 
       // 2. Fetch active members to filter out disconnected users
       const activeMembers = await MusicStudioCacheSvc.getMembers(data.studioId);
@@ -502,8 +497,14 @@ export default class MusicStudioSvc {
       });
 
       if (!filteredRecords.length) {
+        logger.info(
+          `[MusicStudio] No chunks from active members in studio=${data.studioId}. Active IDs: ${Array.from(activeUserIds)}`,
+        );
         throw new Error("No audio chunks found from active studio members");
       }
+      logger.info(
+        `[MusicStudio] Filtered to ${filteredRecords.length} records from active users`,
+      );
 
       // 3. Collect S3 URLs and offsets
       const audioUrls = filteredRecords
@@ -516,44 +517,7 @@ export default class MusicStudioSvc {
         throw new Error("No audio files found in temp chunks");
       }
 
-      // 3. Merge vocals based on studio type
-      let vocalsBuffer: Buffer;
-      if (studio.studioType === StudioType.RELAYSINGING) {
-        // Sequential: User 1 part -> User 2 part -> ...
-        // Pass the offset of the first chunk to ensure alignment with backing track
-        const initialOffset = tempRecords[0]?.startTimeOffset || 0;
-        vocalsBuffer = await concatenateAudioFiles(audioUrls, initialOffset);
-      } else {
-        // Overlay/Mixing: All voices simultaneously (CrowdSinging)
-        // Pass offsets to align tracks
-        vocalsBuffer = await overlayAudioFiles(audioUrls, offsets);
-      }
-
-      // 4. Mix vocals with backing track
-      const mergedBuffer = await mixVocalsWithBacking(
-        vocalsBuffer,
-        backingTrackUrl,
-      );
-
-      // 5. Upload mixed file to S3
-      const mergedFilename = `recording_${data.studioId}_${data.musicId}.mp3`;
-      const mergedUrl = await S3Util.uploadFile(
-        mergedBuffer,
-        mergedFilename,
-        "audio/mpeg",
-      );
-
-      // 6. Create File record in DB
-      const fileRecord = await FileRepo.createFile({
-        filename: mergedFilename,
-        fileUrl: mergedUrl,
-        metaData: {
-          mimetype: "audio/mpeg",
-          size: mergedBuffer.length,
-        },
-      });
-
-      // 7. Get singer IDs (Anyone who sang AND is online OR is currently an active online non-listener)
+      // 4. Get singer IDs
       const singerIds = [
         ...new Set([
           ...filteredRecords
@@ -569,67 +533,42 @@ export default class MusicStudioSvc {
         ]),
       ] as string[];
 
-      // 8. Create MusicRecord
-      const musicRecord = await MusicRecordRepo.create({
+      // 5. Publish save job to RabbitMQ (returns immediately)
+      const jobId = `save_${data.studioId}_${Date.now()}`;
+      const job: AudioMergeJob = {
+        jobId,
         studioId: data.studioId,
         musicId: data.musicId,
-        fileId: fileRecord.id,
+        studioType: studio.studioType as "CROWDSINGING" | "RELAYSINGING",
+        audioUrls,
+        offsets,
+        backingTrackUrl,
+        jobType: "save",
         singerIds,
+        performanceMapping: data.performanceMapping,
         metaData: data.metaData,
-      });
+      };
 
-      // 9. If performance mapping provided, create music parts
-      if (data.performanceMapping && data.performanceMapping.length > 0) {
-        await prisma.musicPart.createMany({
-          data: data.performanceMapping.map((p, index) => ({
-            recordId: musicRecord.id,
-            startLine: p.startLine,
-            endLine: p.endLine,
-            singerId: p.singerId,
-            vocalRoleIndex: p.vocalRoleIndex || 1,
-            order: index,
-          })),
-        });
-      }
+      await publishMergeJob(job);
 
-      // 10. Cleanup: delete temp records from DB
-      await TempMusicRecordRepo.deleteByMusicIdAndStudioId(
-        data.musicId,
-        data.studioId,
-      );
-
-      // 11. Cleanup: delete temp S3 files
-      for (const url of audioUrls) {
-        try {
-          await S3Util.deleteFile(url);
-        } catch (e) {
-          logger.warn(`[MusicStudio] Failed to delete temp S3 file: ${url}`);
-        }
-      }
-
-      // 12. Cleanup: delete preview file if it exists
-      try {
-        const previewKey = `previews/preview_${data.studioId}_${data.musicId}.mp3`;
-        const previewUrl = `${S3_CDN_URL}/${previewKey}`;
-        await S3Util.deleteFile(previewUrl);
-      } catch (e) {
-        // Silently fail if preview doesn't exist
-      }
-
-      logger.info(`[MusicStudio] Recording saved: ${musicRecord.id}`, {
+      logger.info(`[MusicStudio] Save job published: ${jobId}`, {
         studioId: data.studioId,
         musicId: data.musicId,
         singerIds,
-        chunksMerged: tempRecords.length,
+        chunkCount: audioUrls.length,
       });
 
-      return {
-        message: "Recording saved successfully",
+      const response = {
+        message:
+          "Recording is being saved. You will be notified when complete.",
         data: {
-          ...musicRecord,
-          file: fileRecord,
+          jobId,
+          status: "processing" as const,
+          chunkCount: audioUrls.length,
         },
       };
+      logger.info(`[MusicStudioSvc] saveRecording returning`, { response });
+      return response;
     } catch (err: any) {
       logger.error(`[MusicStudio] Failed to save recording`, {
         error: err.message,

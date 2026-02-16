@@ -10,7 +10,15 @@ router.use(authenticate);
 router.get("/list", MusicCtrl.getMusics);
 router.get("/:id", MusicCtrl.getMusicById);
 
-router.post("/create", MusicCtrl.createMusic);
+// Main creation endpoint (handles both JSON and Multipart)
+router.post(
+  "/create",
+  upload.any(), // Flexible handling of fields
+  MusicCtrl.createMusicWithFiles,
+);
+
+// Alias for backward compatibility
+router.post("/create-with-files", upload.any(), MusicCtrl.createMusicWithFiles);
 
 router.patch("/update/:id", MusicCtrl.updateMusic);
 router.delete("/delete/:id", MusicCtrl.deleteMusic);

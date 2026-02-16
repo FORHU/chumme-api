@@ -1,5 +1,5 @@
 import MusicRecordRepo from "../repositories/music-record.repository";
-import FileRepo from "../repositories/file.repository";
+import MusicLibraryRepo from "../repositories/music-library.repository";
 
 interface CreateMusicRecordInput {
   studioId: string;
@@ -21,9 +21,9 @@ export default class MusicRecordSvc {
   static async create(data: CreateMusicRecordInput) {
     let finalFileId = data.fileId;
 
-    // If file details are provided directly, create the File record first
+    // If file details are provided directly, create the MusicLibrary record first
     if (!finalFileId && data.file) {
-      const newFile = await FileRepo.createFile({
+      const newFile = await MusicLibraryRepo.create({
         filename: data.file.filename,
         fileUrl: data.file.fileUrl,
         metaData: data.file.metaData,

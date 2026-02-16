@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import Joi from "joi";
 import MusicStudioSvc from "../services/music-studio.service";
 import MusicRepo from "../repositories/music.repository";
+import logger from "../utils/logger";
 import { io } from "../app";
 
 export default class MusicStudioCtrl {
@@ -286,7 +287,10 @@ export default class MusicStudioCtrl {
   static async previewRecording(req: Request, res: Response) {
     const { studioId } = req.params;
     const { musicId } = req.body;
-
+    logger.info(`[MusicStudioCtrl] previewRecording called`, {
+      studioId,
+      musicId,
+    });
     if (!studioId || !musicId) {
       return res.status(400).json({ message: "Missing studioId or musicId" });
     }
@@ -345,14 +349,8 @@ export default class MusicStudioCtrl {
         musicId: musicId,
       });
 
-      // Notify studio members via socket
-      io.to(studioId).emit("recording_saved", {
-        studioId: studioId,
-        musicRecordId: result.data.id,
-        musicRecord: result.data,
-        savedBy: (req as any).user.id,
-      });
-
+      // Worker broadcasts recording_saved via socket when merge completes
+      logger.info(`[MusicStudioCtrl] saveRecording result`, { result });
       return res.json(result);
     } catch (err: any) {
       return res.status(400).json({ message: err.message || err });

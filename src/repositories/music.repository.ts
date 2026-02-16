@@ -3,10 +3,40 @@ import { Prisma } from "@prisma/client";
 
 export default class MusicRepo {
   static async create(data: any) {
-    const { playlistId, order, metaData, parts, ...musicData } = data;
+    const {
+      playlistId,
+      order,
+      metaData,
+      meta_data,
+      parts,
+      musicAlbumId,
+      musicArtistId,
+      musicFileId,
+      ...musicData
+    } = data;
+
+    // Use either camelCase or snake_case input
+    const finalMetaData = metaData || meta_data;
+
+    // 1. Update File Metadata if needed (Prisma doesn't allow update on create relation)
+    if (musicFileId && finalMetaData) {
+      await prisma.musicLibrary.update({
+        where: { id: musicFileId },
+        data: { metaData: finalMetaData },
+      });
+    }
+
     return prisma.music.create({
       data: {
         ...musicData,
+        // Connect relations if IDs are present
+        musicAlbum: musicAlbumId
+          ? { connect: { id: musicAlbumId } }
+          : undefined,
+        musicArtist: musicArtistId
+          ? { connect: { id: musicArtistId } }
+          : undefined,
+        musicFile: musicFileId ? { connect: { id: musicFileId } } : undefined,
         parts: parts ? { create: parts } : undefined,
         playlists: playlistId
           ? {

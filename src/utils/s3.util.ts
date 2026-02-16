@@ -3,6 +3,7 @@ import {
   PutObjectCommand,
   DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
+import { PassThrough } from "stream";
 import {
   S3_CDN_URL,
   AWS_REGION,
@@ -39,6 +40,7 @@ export default class S3Util {
     const extension = filename.split(".").pop();
     const key = `uploads/${timestamp}-${randomStr}.${extension}`;
 
+    logger.info(`[S3] Uploading file: ${key} (${file.length} bytes)`);
     return this.uploadFileWithKey(file, key, mimeType);
   }
 
@@ -58,6 +60,7 @@ export default class S3Util {
     });
 
     await s3Client.send(command);
+    logger.info(`[S3] Uploaded successfully: ${key} (${file.length} bytes)`);
 
     let baseUrl = S3_CDN_URL;
     if (
@@ -68,7 +71,31 @@ export default class S3Util {
       baseUrl = `https://${baseUrl}`;
     }
 
-    return `${baseUrl}/${key}`;
+    return this.sanitizeUrl(`${baseUrl}/${key}`);
+  }
+
+  /**
+   * Clean up URLs from potential environment mistakes (e.g. cloudfront.netr typo)
+   */
+  private static sanitizeUrl(url: string | undefined): string {
+    if (!url) return "";
+
+    // Fix the cloudfront.netr typo and remove trailing dots
+    let cleanUrl = url
+      .replace(/cloudfront\.netr/i, "cloudfront.net")
+      .replace(/\.+$/, "");
+
+    // Ensure it starts with https:// if it has a domain
+    if (
+      cleanUrl &&
+      !cleanUrl.startsWith("http://") &&
+      !cleanUrl.startsWith("https://") &&
+      !cleanUrl.startsWith("/")
+    ) {
+      cleanUrl = `https://${cleanUrl}`;
+    }
+
+    return cleanUrl;
   }
 
   /**
@@ -76,22 +103,7 @@ export default class S3Util {
    * @param fileUrl - Full S3 URL
    */
   static async deleteFile(fileUrl: string): Promise<void> {
-    // Correctly parse the key from any S3 or Cloudfront URL
-    // 1. Try splitting by .com/ (Standard S3)
-    // 2. Try splitting by .net/ (Cloudfront)
-    // 3. Fallback to extracting everything after the first slash if protocol is present
-    let key: string | undefined;
-    if (fileUrl.includes(".com/")) {
-      key = fileUrl.split(".com/")[1];
-    } else if (fileUrl.includes(".net/")) {
-      key = fileUrl.split(".net/")[1];
-    } else {
-      // Try to find the first single slash after http(s)://
-      const matches = fileUrl.match(/^https?:\/\/[^\/]+\/(.+)$/);
-      if (matches) {
-        key = matches[1];
-      }
-    }
+    const key = this.getKeyFromUrl(fileUrl);
 
     if (!key) {
       logger.warn(`[S3] Could not parse key from URL: ${fileUrl}`);
@@ -105,6 +117,58 @@ export default class S3Util {
 
     await s3Client.send(command);
     logger.info(`[S3] Deleted: ${key}`);
+  }
+
+  /**
+   * Get file from S3
+   * @param fileUrl - Full S3 URL
+   * @returns Buffer
+   */
+  static async getFile(fileUrl: string): Promise<Buffer> {
+    const key = this.getKeyFromUrl(fileUrl);
+    if (!key) {
+      throw new Error(`Could not parse S3 key from URL: ${fileUrl}`);
+    }
+
+    const { GetObjectCommand } = await import("@aws-sdk/client-s3");
+    const command = new GetObjectCommand({
+      Bucket: AWS_S3_BUCKET_NAME,
+      Key: key,
+    });
+
+    const response = await s3Client.send(command);
+    if (!response.Body) {
+      throw new Error(`Empty response body for S3 key: ${key}`);
+    }
+
+    const streamToBuffer = async (stream: any): Promise<Buffer> => {
+      const chunks: any[] = [];
+      for await (const chunk of stream) {
+        chunks.push(chunk);
+      }
+      return Buffer.concat(chunks);
+    };
+
+    return streamToBuffer(response.Body);
+  }
+
+  /**
+   * Extracts the S3 Key from a URL
+   */
+  private static getKeyFromUrl(fileUrl: string): string | undefined {
+    let key: string | undefined;
+    if (fileUrl.includes(".com/")) {
+      key = fileUrl.split(".com/")[1];
+    } else if (fileUrl.includes(".net/")) {
+      key = fileUrl.split(".net/")[1];
+    } else {
+      // Try to find the first single slash after http(s)://
+      const matches = fileUrl.match(/^https?:\/\/[^\/]+\/(.+)$/);
+      if (matches) {
+        key = matches[1];
+      }
+    }
+    return key;
   }
 
   /**

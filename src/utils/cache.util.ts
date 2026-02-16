@@ -3,60 +3,75 @@ import logger from "./logger";
 import RedisUtil from "./redis.util";
 
 export default class CacheUtil {
+  static async get<T = any>(key: string): Promise<T | null> {
+    try {
+      const redis = RedisUtil.useConnection();
+      const data = await redis.get(key);
 
-    static async get<T = any>(key: string): Promise<T | null> {
-        try {
-            const redis = RedisUtil.useConnection()
-            const data = await redis.get(key)
+      if (!data) {
+        return null;
+      }
 
-            if (!data) {
-                return null;
-            }
-
-            return JSON.parse(data) as T;
-        } catch (error) {
-            logger.error(`[CacheUtil:get] Failed to get key ${key}:`, error)
-            return null;
-        }
+      return JSON.parse(data) as T;
+    } catch (error) {
+      logger.error(`[CacheUtil:get] Failed to get key ${key}:`, error);
+      return null;
     }
+  }
 
-    static async set(key: string, value: any, ttlSeconds?: number): Promise<void> {
-        try {
-            const redis = RedisUtil.useConnection();
-            const serialized = JSON.stringify(value);
-            if (!ttlSeconds) {
-                ttlSeconds = REDIS_TTL_SECONDS
-            }
-            if (ttlSeconds && ttlSeconds > 0) {
-                await redis.setEx(key, ttlSeconds, serialized)
-            } else {
-                await redis.set(key, serialized)
-            }
-        } catch (error) {
-            logger.error(`[CacheUtil:set] Failed to set key ${key}:`, error)
-        }
+  static async set(
+    key: string,
+    value: any,
+    ttlSeconds?: number,
+  ): Promise<void> {
+    try {
+      const redis = RedisUtil.useConnection();
+      const serialized = JSON.stringify(value);
+      if (!ttlSeconds) {
+        ttlSeconds = REDIS_TTL_SECONDS;
+      }
+      if (ttlSeconds && ttlSeconds > 0) {
+        await redis.setEx(key, ttlSeconds, serialized);
+      } else {
+        await redis.set(key, serialized);
+      }
+    } catch (error) {
+      logger.error(`[CacheUtil:set] Failed to set key ${key}:`, error);
     }
+  }
 
-    static async del(key: string): Promise<void> {
-        try {
-            const redis = RedisUtil.useConnection()
-            await redis.del(key)
-        } catch (error) {
-            logger.error(`[CacheUtil:del] Failed to delete key ${key}:`, error)
-        }
-
+  static async del(key: string): Promise<void> {
+    try {
+      const redis = RedisUtil.useConnection();
+      await redis.del(key);
+    } catch (error) {
+      logger.error(`[CacheUtil:del] Failed to delete key ${key}:`, error);
     }
+  }
 
-    static async delByPattern(pattern: string): Promise<void> {
-        try {
-            const redis = RedisUtil.useConnection();
-            const keys = await redis.keys(pattern);
-            if (keys.length) {
-                await redis.del(keys);
-            }
-        } catch (error) {
-            logger.error(`[CacheUtil:delByPattern] Failed to delete pattern ${pattern}:`, error);
-        }
+  static async delByPattern(pattern: string): Promise<void> {
+    try {
+      const redis = RedisUtil.useConnection();
+      const keys = await redis.keys(pattern);
+      if (keys.length) {
+        await redis.del(keys);
+      }
+    } catch (error) {
+      logger.error(
+        `[CacheUtil:delByPattern] Failed to delete pattern ${pattern}:`,
+        error,
+      );
     }
+  }
 
+  static async flushAll(): Promise<void> {
+    try {
+      const redis = RedisUtil.useConnection();
+      await redis.flushAll();
+      logger.info("[CacheUtil] Redis cache flushed successfully");
+    } catch (error) {
+      logger.error("[CacheUtil:flushAll] Failed to flush cache:", error);
+      throw error;
+    }
+  }
 }

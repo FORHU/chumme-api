@@ -77,7 +77,6 @@ export const registerSessionHandlers = (
           message: "studioId is required",
         });
       }
-
       const result = await MusicStudioSvc.joinStudio(
         studioId,
         socket.user.id,

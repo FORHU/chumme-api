@@ -52,6 +52,8 @@ export const io = new Server(server, {
   },
 });
 
+(global as any).io = io;
+
 import events from "./events";
 import { videoPostListener, instagramPostListener } from "./listeners";
 
@@ -69,6 +71,15 @@ connectToPrisma()
     io.adapter(createAdapter(pubClient, subClient));
     console.log("[Socket] Redis adapter initialized");
 
+    // Connect shared RabbitMQ service (for publishing jobs)
+    try {
+      const { rabbitMQService } = await import("./utils/rabbitmq");
+      await rabbitMQService.connect();
+      console.log("Shared RabbitMQ service connected");
+    } catch (error) {
+      console.error("Failed to connect shared RabbitMQ service:", error);
+    }
+
     // Initialize RabbitMQ crawler listeners
     try {
       await instagramPostListener.connect();
@@ -83,6 +94,19 @@ connectToPrisma()
         error,
       );
       // Don't crash the server if RabbitMQ fails
+    }
+
+    // Initialize Audio Merge Worker (background FFmpeg processing)
+    try {
+      const { AudioMergeWorker } = await import(
+        "./listeners/audio-merge.listener"
+      );
+      const audioMergeWorker = new AudioMergeWorker();
+      await audioMergeWorker.start();
+      console.log("Audio Merge RabbitMQ worker initialized successfully");
+    } catch (error) {
+      console.error("Failed to initialize Audio Merge worker:", error);
+      // Don't crash the server if worker fails
     }
   })
   .catch((err: any) => {
