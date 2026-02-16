@@ -12,7 +12,7 @@ export default class MusicStudioCtrl {
   static async createStudio(req: Request, res: Response) {
     const schema = Joi.object({
       name: Joi.string().required(),
-      keyName: Joi.string(), // Optional - if not set, studio is public
+      keyName: Joi.string().allow(null, ""), // Optional - if not set, studio is public
       note: Joi.string(),
       studioType: Joi.string()
         .valid("RELAYSINGING", "CROWDSINGING", "COMPETITION")
@@ -237,10 +237,13 @@ export default class MusicStudioCtrl {
    */
   static async startRecording(req: Request, res: Response) {
     const { studioId } = req.params;
+    const { clientTimestamp } = req.body; // Expecting timestamp from client
+
     try {
       const result = await MusicStudioSvc.startRecording(
         studioId,
         (req as any).user.id,
+        clientTimestamp,
       );
 
       // Notify studio members via socket
@@ -248,6 +251,7 @@ export default class MusicStudioCtrl {
         studioId: studioId,
         startedBy: (req as any).user.id,
         timestamp: result.timestamp,
+        source: clientTimestamp ? "client" : "server",
       });
 
       return res.json(result);
@@ -261,10 +265,13 @@ export default class MusicStudioCtrl {
    */
   static async stopRecording(req: Request, res: Response) {
     const { studioId } = req.params;
+    const { clientTimestamp } = req.body; // Expecting timestamp from client
+
     try {
       const result = await MusicStudioSvc.stopRecording(
         studioId,
         (req as any).user.id,
+        clientTimestamp,
       );
 
       // Notify studio members via socket
@@ -272,6 +279,8 @@ export default class MusicStudioCtrl {
         studioId: studioId,
         stoppedBy: (req as any).user.id,
         timestamp: result.timestamp,
+        duration: result.duration,
+        source: clientTimestamp ? "client" : "server",
       });
 
       return res.json(result);
@@ -286,10 +295,11 @@ export default class MusicStudioCtrl {
    */
   static async previewRecording(req: Request, res: Response) {
     const { studioId } = req.params;
-    const { musicId } = req.body;
+    const { musicId, voiceEffect } = req.body;
     logger.info(`[MusicStudioCtrl] previewRecording called`, {
       studioId,
       musicId,
+      voiceEffect,
     });
     if (!studioId || !musicId) {
       return res.status(400).json({ message: "Missing studioId or musicId" });
@@ -300,8 +310,9 @@ export default class MusicStudioCtrl {
         studioId,
         musicId,
         userId: (req as any).user.id,
+        voiceEffect,
       });
-
+      console.log("-------RESULT----------", result);
       return res.json(result);
     } catch (err: any) {
       return res.status(400).json({ message: err.message || err });
@@ -337,6 +348,7 @@ export default class MusicStudioCtrl {
           }),
         )
         .optional(),
+      voiceEffect: Joi.string().optional(),
     });
 
     const { error, value } = schema.validate(req.body);

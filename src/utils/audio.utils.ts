@@ -389,7 +389,7 @@ export const concatenateAudioFiles = async (
 export const batchOverlayAudioFiles = async (
   inputFiles: string[],
   startTimeOffsets?: number[],
-  batchSize = 10,
+  batchSize = 100,
   batchConcurrency = 3,
 ): Promise<Buffer> => {
   if (inputFiles.length <= batchSize) {
@@ -459,6 +459,153 @@ export const batchOverlayAudioFiles = async (
 // Mix vocals with backing track + loudness normalization
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Voice Effects
+// ---------------------------------------------------------------------------
+
+export type VoiceEffect =
+  | "CLEAN"
+  | "STUDIO"
+  | "KTV"
+  | "CONCERT"
+  | "RADIO"
+  | "CHIPMUNK";
+
+function getVocalFilterChain(effect: VoiceEffect = "STUDIO"): any[] {
+  const chain: any[] = [];
+
+  // 1. Basic cleanup for all presets (Highpass)
+  chain.push({
+    filter: "highpass",
+    options: { f: 80 },
+    inputs: "1:a",
+    outputs: "v_clean",
+  });
+
+  const lastOutput = "v_clean";
+
+  // 2. Effect-specific processing
+  switch (effect) {
+    case "CLEAN":
+      // Minimal processing: just light compression
+      chain.push({
+        filter: "acompressor",
+        options: { threshold: 0.1, ratio: 2, attack: 20, release: 100 },
+        inputs: lastOutput,
+        outputs: "v_processed",
+      });
+      break;
+
+    case "STUDIO":
+      // Standard polished sound: Compression + Volume + Slight Echo
+      chain.push(
+        {
+          filter: "acompressor",
+          options: { threshold: 0.25, ratio: 4, attack: 50, release: 100 },
+          inputs: lastOutput,
+          outputs: "v_comp",
+        },
+        {
+          filter: "volume",
+          options: { volume: 3.0 },
+          inputs: "v_comp",
+          outputs: "v_vol",
+        },
+        {
+          filter: "aecho",
+          options: { in_gain: 0.8, out_gain: 0.88, delays: 60, decays: 0.4 },
+          inputs: "v_vol",
+          outputs: "v_processed",
+        },
+      );
+      break;
+
+    case "KTV":
+      // Karaoke: Heavier Reverb/Echo
+      chain.push(
+        {
+          filter: "acompressor",
+          options: { threshold: 0.25, ratio: 4, attack: 50, release: 100 },
+          inputs: lastOutput,
+          outputs: "v_comp",
+        },
+        {
+          filter: "aecho",
+          options: { in_gain: 0.6, out_gain: 0.3, delays: 250, decays: 0.4 },
+          inputs: "v_comp",
+          outputs: "v_processed",
+        },
+      );
+      break;
+
+    case "CONCERT":
+      // Large Hall Reverb
+      chain.push(
+        {
+          filter: "acompressor",
+          options: { threshold: 0.25, ratio: 4 },
+          inputs: lastOutput,
+          outputs: "v_comp",
+        },
+        {
+          filter: "aecho",
+          options: { in_gain: 0.6, out_gain: 0.4, delays: 500, decays: 0.5 },
+          inputs: "v_comp",
+          outputs: "v_processed",
+        },
+      );
+      break;
+
+    case "RADIO":
+      // AM Radio: Bandpass + Distortion (using acrusher or distortion if available, here simple EQ+Comp)
+      chain.push(
+        {
+          filter: "highpass",
+          options: { f: 500 },
+          inputs: lastOutput,
+          outputs: "v_hp",
+        },
+        {
+          filter: "lowpass",
+          options: { f: 3500 },
+          inputs: "v_hp",
+          outputs: "v_lp",
+        },
+        {
+          filter: "acompressor", // Heavy compression
+          options: { threshold: 0.05, ratio: 20, attack: 5, release: 50 },
+          inputs: "v_lp",
+          outputs: "v_processed",
+        },
+      );
+      break;
+
+    case "CHIPMUNK":
+      // Pitch shift up
+      chain.push(
+        {
+          filter: "asetrate",
+          options: 44100 * 1.5, // 1.5x pitch
+          inputs: lastOutput,
+          outputs: "v_pitched",
+        },
+        {
+          filter: "atempo",
+          options: 1 / 1.5, // Fix speed to match original duration
+          inputs: "v_pitched",
+          outputs: "v_processed",
+        },
+      );
+      break;
+
+    default:
+      // Fallback to Studio
+      return getVocalFilterChain("STUDIO");
+  }
+
+  return chain;
+}
+
 /**
  * Mixes a vocal buffer with a backing track.
  * Applies EBU R128 loudness normalization.
@@ -466,11 +613,15 @@ export const batchOverlayAudioFiles = async (
  *
  * @param vocalsBuffer Buffer containing the vocal track (WAV preferred).
  * @param backingTrackUrl URL or path to the backing track audio.
+ * @param maxDuration Optional max duration in seconds to trim the final output.
+ * @param voiceEffect Effect preset to apply to vocals.
  * @returns Final MP3 buffer, loudness-normalized.
  */
 export const mixVocalsWithBacking = async (
   vocalsBuffer: Buffer,
   backingTrackUrl: string,
+  maxDuration?: number,
+  voiceEffect: VoiceEffect = "STUDIO",
 ): Promise<Buffer> => {
   const tempVocalsPath = makeTempPath("vocals", ".wav");
   const outputPath = makeTempPath("mixed", ".mp3");
@@ -488,27 +639,52 @@ export const mixVocalsWithBacking = async (
       command.input(localBackingPath!);
       command.input(tempVocalsPath);
 
-      /**
-       * Pipeline:
-       * 1. amix: combine backing + vocals
-       * 2. loudnorm: EBU R128 normalization (Spotify standard -14 LUFS)
-       */
-      command.complexFilter([
+      // Get effect chain
+      const vocalChain = getVocalFilterChain(voiceEffect);
+
+      const filterChain: any[] = [
+        ...vocalChain,
+
+        // Process Backing Track (Input 0) -> Lower volume slightly
+        {
+          filter: "volume",
+          options: { volume: 0.8 },
+          inputs: "0:a",
+          outputs: "b_processed",
+        },
+
+        // Mix
         {
           filter: "amix",
           options: { inputs: 2, duration: "shortest" },
-          inputs: ["0:a", "1:a"],
+          inputs: ["b_processed", "v_processed"],
           outputs: "mixed",
         },
+
+        // Final Mastering (Loudness Normalization)
         {
           filter: "loudnorm",
           options: { I: -14, TP: -1, LRA: 11 },
           inputs: "mixed",
+          outputs: "mastered",
         },
-      ]);
+      ];
+
+      // Trim to duration if specified
+      if (maxDuration && maxDuration > 0) {
+        filterChain.push({
+          filter: "atrim",
+          options: { duration: maxDuration },
+          inputs: "mastered",
+        });
+      }
+
+      command.complexFilter(filterChain);
 
       command
-        .on("start", (cmd) => logger.info(`[FFmpeg] Mix+Loudnorm: ${cmd}`))
+        .on("start", (cmd) =>
+          logger.info(`[FFmpeg] Mix+Loudnorm (${voiceEffect}): ${cmd}`),
+        )
         .on("error", (err) => {
           logger.error("[FFmpeg] Mix error:", err);
           reject(err);

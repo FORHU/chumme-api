@@ -26,28 +26,24 @@ export const registerMediaHandlers = (
    */
   socket.on(
     "audio_chunk",
-    async (data: {
-      studioId: string;
-      chunk: Record<string, any>;
-      userId: string;
-      musicId: string;
-      order?: number;
-      timestamp?: number; // Client capture time   "timestamp": 1707663450000,
-    }) => {
-      const { studioId, chunk, userId, musicId, order, timestamp } = data;
+    async (
+      data: {
+        studioId: string;
+        chunk: Record<string, any>;
+        userId: string;
+        musicId: string;
+        order?: number;
+        timestamp?: number;
+      },
+      callback?: (response: any) => void,
+    ) => {
+      const { studioId, chunk, userId, musicId, timestamp, order } = data;
 
-      // 1. Validate required fields
-      if (!studioId || !chunk || !userId || !musicId) {
-        console.log("[MusicStudio] audio_chunk dropped: missing fields", {
-          studioId,
-          hasChunk: !!chunk,
-          userId,
-          musicId,
-        });
+      // 1. Validation
+      if (!studioId || !chunk?.fileId) {
+        if (callback) callback({ error: "Invalid payload" });
         return;
       }
-
-      // 2. Verify file exists in MusicLibrary
       const file = await MusicLibrarySvc.getMusicFileById(chunk.fileId);
       if (!file) {
         console.log("[MusicStudio] audio_chunk dropped: file not found", {
@@ -133,8 +129,16 @@ export const registerMediaHandlers = (
           metaData: chunk.metaData,
           recordDuration: chunk.duration,
         });
-      } catch (err) {
+
+        // Acknowledge receipt if callback provided
+        if (typeof callback === "function") {
+          callback({ success: true });
+        }
+      } catch (err: any) {
         console.error("[MusicStudio] Failed to save temp chunk:", err);
+        if (typeof callback === "function") {
+          callback({ error: err.message || "Failed to save chunk" });
+        }
       }
     },
   );

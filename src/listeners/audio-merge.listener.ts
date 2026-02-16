@@ -1,10 +1,12 @@
 import amqp from "amqplib";
 import { RABBITMQ_URL } from "../config";
+import { rabbitMQService } from "../utils/rabbitmq";
 import logger from "../utils/logger";
 import {
   batchOverlayAudioFiles,
   concatenateAudioFiles,
   mixVocalsWithBacking,
+  VoiceEffect,
 } from "../utils/audio.utils";
 import S3Util from "../utils/s3.util";
 import MusicLibraryRepo from "../repositories/music-library.repository";
@@ -37,6 +39,10 @@ export interface AudioMergeJob {
   }[];
   /** For save jobs: additional metadata */
   metaData?: any;
+  /** Max duration in seconds to trim the final audio */
+  maxDuration?: number;
+  /** Voice effect preset */
+  voiceEffect?: VoiceEffect;
 }
 
 const QUEUE_NAME = "audio-merge-queue";
@@ -121,6 +127,8 @@ export class AudioMergeWorker {
     const mergedBuffer = await mixVocalsWithBacking(
       vocalsBuffer,
       job.backingTrackUrl,
+      job.maxDuration,
+      job.voiceEffect,
     );
 
     if (!mergedBuffer || mergedBuffer.length === 0) {
@@ -147,6 +155,8 @@ export class AudioMergeWorker {
         previewKey,
         "audio/mpeg",
       );
+
+      console.log("im here");
 
       // Broadcast preview_ready to studio
       if (io) {
@@ -255,7 +265,6 @@ export class AudioMergeWorker {
  * Called by MusicStudioSvc to offload merging to the background worker.
  */
 export async function publishMergeJob(job: AudioMergeJob): Promise<void> {
-  const { rabbitMQService } = await import("../utils/rabbitmq");
   await rabbitMQService.publishMessage(ROUTING_KEY, job);
   logger.info(
     `[AudioMergeWorker] Job published: ${job.jobId} (${job.jobType})`,

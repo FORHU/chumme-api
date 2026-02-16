@@ -42,6 +42,7 @@ interface SaveRecordingInput {
     singerId: string;
     vocalRoleIndex?: number;
   }[];
+  voiceEffect?: any; // VoiceEffect
 }
 
 export default class MusicStudioSvc {
@@ -81,7 +82,11 @@ export default class MusicStudioSvc {
   /**
    * Start recording in a studio
    */
-  static async startRecording(studioId: string, userId: string) {
+  static async startRecording(
+    studioId: string,
+    userId: string,
+    clientTimestamp?: number,
+  ) {
     const isOwner = await this.isOwner(studioId, userId);
     if (!isOwner) {
       throw new Error("Only the owner can start recording");
@@ -89,7 +94,15 @@ export default class MusicStudioSvc {
 
     await MusicStudioCacheSvc.setStudioState(studioId, "RECORDING");
 
-    const startTime = Date.now(); // Master start time in Unix milliseconds (UTC)
+    // Clear any previous temp records for this studio to avoid merging old takes
+    try {
+      await TempMusicRecordRepo.deleteByStudioId(studioId);
+    } catch (e) {
+      logger.warn(`[MusicStudio] Failed to clear temp records: ${e}`);
+    }
+
+    // Use client timestamp if provided (for precise sync), otherwise server time
+    const startTime = clientTimestamp || Date.now();
     await MusicStudioCacheSvc.setRecordingStartTime(studioId, startTime);
 
     const timestamp = new Date(startTime).toISOString();
@@ -97,6 +110,7 @@ export default class MusicStudioSvc {
       studioId,
       userId,
       startTime,
+      source: clientTimestamp ? "client" : "server",
     });
 
     return {
@@ -109,7 +123,11 @@ export default class MusicStudioSvc {
    * Stop recording in a studio
    * Preview must be triggered manually via the preview-recording endpoint.
    */
-  static async stopRecording(studioId: string, userId: string) {
+  static async stopRecording(
+    studioId: string,
+    userId: string,
+    clientTimestamp?: number,
+  ) {
     const isOwner = await this.isOwner(studioId, userId);
     if (!isOwner) {
       throw new Error("Only the owner can stop recording");
@@ -117,16 +135,26 @@ export default class MusicStudioSvc {
 
     await MusicStudioCacheSvc.setStudioState(studioId, "IDLE");
 
-    const timestamp = new Date().toISOString();
+    const stopTime = clientTimestamp || Date.now();
+    await MusicStudioCacheSvc.setRecordingEndTime(studioId, stopTime);
+
+    // Calculate approximate duration for logging
+    const startTime = await MusicStudioCacheSvc.getRecordingStartTime(studioId);
+    const duration = startTime ? stopTime - startTime : 0;
+
+    const timestamp = new Date(stopTime).toISOString();
     logger.info(`[MusicStudio] Recording stopped`, {
       studioId,
       userId,
       timestamp,
+      durationMs: duration,
+      source: clientTimestamp ? "client" : "server",
     });
 
     return {
       message: "Recording stopped",
       timestamp,
+      duration,
     };
   }
 
@@ -337,6 +365,7 @@ export default class MusicStudioSvc {
     studioId: string;
     musicId: string;
     userId: string;
+    voiceEffect?: any; // VoiceEffect
   }) {
     const isAuthorized = await this.canRecord(data.studioId, data.userId);
     if (!isAuthorized) {
@@ -362,9 +391,6 @@ export default class MusicStudioSvc {
         data.studioId,
       );
       if (!tempRecords.length) {
-        logger.info(
-          `[MusicStudio] No temp records for preview: studio=${data.studioId}, music=${data.musicId}`,
-        );
         throw new Error("No audio chunks found for this studio session");
       }
       logger.info(
@@ -392,16 +418,25 @@ export default class MusicStudioSvc {
       const offsets = filteredRecords.map((r) => r.startTimeOffset || 0);
 
       if (!audioUrls.length) {
-        throw new Error("No audio files found in temp chunks");
-      }
-
-      // 4. Publish merge job to RabbitMQ (returns immediately)
-      const jobId = `preview_${data.studioId}_${Date.now()}`;
-      if (audioUrls.length === 0) {
         throw new Error(
           "No recording chunks found to preview. Please record something first.",
         );
       }
+
+      // Calculate session duration for trimming
+      const [startTime, endTime] = await Promise.all([
+        MusicStudioCacheSvc.getRecordingStartTime(data.studioId),
+        MusicStudioCacheSvc.getRecordingEndTime(data.studioId),
+      ]);
+
+      // If endTime is not set (e.g. preview while recording), use current time
+      const effectiveEndTime = endTime || Date.now();
+      const sessionDuration = startTime
+        ? (effectiveEndTime - startTime) / 1000
+        : undefined;
+
+      // 4. Publish merge job to RabbitMQ (returns immediately)
+      const jobId = `preview_${data.studioId}_${Date.now()}`;
 
       const job: AudioMergeJob = {
         jobId,
@@ -412,16 +447,11 @@ export default class MusicStudioSvc {
         offsets,
         backingTrackUrl,
         jobType: "preview",
+        maxDuration: sessionDuration,
+        voiceEffect: data.voiceEffect,
       };
 
       await publishMergeJob(job);
-
-      const ioExists = !!(global as any).io;
-      if (!ioExists) {
-        logger.warn(
-          `[MusicStudioSvc] WARN: global.io is NOT defined. Socket events will NOT be sent!`,
-        );
-      }
 
       logger.info(`[MusicStudio] Preview job published: ${jobId}`, {
         studioId: data.studioId,
@@ -429,7 +459,7 @@ export default class MusicStudioSvc {
         chunkCount: audioUrls.length,
       });
 
-      const response = {
+      return {
         message: "Preview is being generated. You will be notified when ready.",
         data: {
           jobId,
@@ -437,8 +467,6 @@ export default class MusicStudioSvc {
           chunkCount: audioUrls.length,
         },
       };
-      logger.info(`[MusicStudioSvc] previewRecording returning`, { response });
-      return response;
     } catch (err: any) {
       logger.error(`[MusicStudio] Failed to generate preview`, {
         error: err.message,
@@ -450,16 +478,6 @@ export default class MusicStudioSvc {
 
   /**
    * Save a recording: merge temp chunks, upload to S3, create MusicRecord
-   *
-   * Flow:
-   * 1. Fetch TempMusicRecords by studioId
-   * 2. Merge audio files with overlayAudioFiles (FFmpeg)
-   * 3. Upload merged buffer to S3 (normal upload, not presigned)
-   * 4. Create File record in DB
-   * 5. Create MusicRecord with singer credits
-   * 6. Delete TempMusicRecords by studioId
-   * 7. Delete temp S3 files by URL
-   * 8. Return the created MusicRecord + File
    */
   static async saveRecording(data: SaveRecordingInput) {
     const studio = await MusicStudioRepo.findById(data.studioId);
@@ -480,12 +498,8 @@ export default class MusicStudioSvc {
         data.studioId,
       );
       if (!tempRecords.length) {
-        logger.info(
-          `[MusicStudio] No temp records for studio=${data.studioId}, music=${data.musicId}`,
-        );
         throw new Error("No audio chunks found for this studio session");
       }
-      logger.info(`[MusicStudio] Found ${tempRecords.length} temp records`);
 
       // 2. Fetch active members to filter out disconnected users
       const activeMembers = await MusicStudioCacheSvc.getMembers(data.studioId);
@@ -497,14 +511,8 @@ export default class MusicStudioSvc {
       });
 
       if (!filteredRecords.length) {
-        logger.info(
-          `[MusicStudio] No chunks from active members in studio=${data.studioId}. Active IDs: ${Array.from(activeUserIds)}`,
-        );
         throw new Error("No audio chunks found from active studio members");
       }
-      logger.info(
-        `[MusicStudio] Filtered to ${filteredRecords.length} records from active users`,
-      );
 
       // 3. Collect S3 URLs and offsets
       const audioUrls = filteredRecords
@@ -533,6 +541,18 @@ export default class MusicStudioSvc {
         ]),
       ] as string[];
 
+      // Calculate session duration for trimming
+      const [startTime, endTime] = await Promise.all([
+        MusicStudioCacheSvc.getRecordingStartTime(data.studioId),
+        MusicStudioCacheSvc.getRecordingEndTime(data.studioId),
+      ]);
+
+      // If endTime is not set, use current time (though for save it usually should be set)
+      const effectiveEndTime = endTime || Date.now();
+      const sessionDuration = startTime
+        ? (effectiveEndTime - startTime) / 1000
+        : undefined;
+
       // 5. Publish save job to RabbitMQ (returns immediately)
       const jobId = `save_${data.studioId}_${Date.now()}`;
       const job: AudioMergeJob = {
@@ -547,6 +567,8 @@ export default class MusicStudioSvc {
         singerIds,
         performanceMapping: data.performanceMapping,
         metaData: data.metaData,
+        maxDuration: sessionDuration,
+        voiceEffect: data.voiceEffect,
       };
 
       await publishMergeJob(job);
@@ -558,7 +580,7 @@ export default class MusicStudioSvc {
         chunkCount: audioUrls.length,
       });
 
-      const response = {
+      return {
         message:
           "Recording is being saved. You will be notified when complete.",
         data: {
@@ -567,8 +589,6 @@ export default class MusicStudioSvc {
           chunkCount: audioUrls.length,
         },
       };
-      logger.info(`[MusicStudioSvc] saveRecording returning`, { response });
-      return response;
     } catch (err: any) {
       logger.error(`[MusicStudio] Failed to save recording`, {
         error: err.message,

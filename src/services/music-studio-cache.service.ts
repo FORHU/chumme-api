@@ -400,6 +400,23 @@ export default class MusicStudioCacheSvc {
   }
 
   /**
+   * Set the recording end time
+   */
+  static async setRecordingEndTime(studioId: string, timestamp: number) {
+    const key = `${this.STUDIO_PREFIX}${studioId}:recordingEndTime`;
+    await this.client.set(key, timestamp.toString(), { EX: this.TTL });
+  }
+
+  /**
+   * Get the recording end time
+   */
+  static async getRecordingEndTime(studioId: string) {
+    const key = `${this.STUDIO_PREFIX}${studioId}:recordingEndTime`;
+    const time = await this.client.get(key);
+    return time ? parseInt(time) : null;
+  }
+
+  /**
    * Clear all session data (on studio close)
    */
   static async clearStudioSession(studioId: string) {
