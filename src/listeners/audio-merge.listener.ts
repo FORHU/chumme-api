@@ -1,4 +1,6 @@
 import amqp from "amqplib";
+import fs from "fs";
+import path from "path";
 import { RABBITMQ_URL } from "../config";
 import { rabbitMQService } from "../utils/rabbitmq";
 import logger from "../utils/logger";
@@ -123,21 +125,25 @@ export class AudioMergeWorker {
       `[AudioMergeWorker] Vocals merged: ${vocalsBuffer.length} bytes in ${Date.now() - startTime}ms`,
     );
 
-    // 2. Mix vocals with backing track (produces final MP3 with loudness norm)
-    const mergedBuffer = await mixVocalsWithBacking(
+    // 2. Mix vocals with backing track (produces final MP3 path with loudness norm and metadata)
+    const finalAudioPath = await mixVocalsWithBacking(
       vocalsBuffer,
       job.backingTrackUrl,
-      job.maxDuration,
-      job.voiceEffect,
+      {
+        maxDuration: job.maxDuration,
+        voiceEffect: job.voiceEffect,
+        title: job.metaData?.title || `Mix_${job.musicId}`,
+        artist: job.singerIds?.join(", ") || "Chumme Artist",
+      },
     );
 
-    if (!mergedBuffer || mergedBuffer.length === 0) {
-      throw new Error("Mixed audio buffer is empty (0 bytes)");
+    if (!finalAudioPath || !fs.existsSync(finalAudioPath)) {
+      throw new Error("Final audio file was not generated");
     }
 
     const mergeTime = Date.now() - startTime;
     logger.info(
-      `[AudioMergeWorker] Final mix complete: ${mergedBuffer.length} bytes in ${mergeTime}ms`,
+      `[AudioMergeWorker] Final mix complete at ${finalAudioPath} in ${mergeTime}ms`,
     );
 
     // 3. Upload to S3 and handle based on job type
@@ -148,104 +154,123 @@ export class AudioMergeWorker {
       );
     }
 
-    if (job.jobType === "preview") {
-      const previewKey = `previews/preview_${job.studioId}_${job.musicId}.mp3`;
-      const previewUrl = await S3Util.uploadFileWithKey(
-        mergedBuffer,
-        previewKey,
-        "audio/mpeg",
-      );
-
-      console.log("im here");
-
-      // Broadcast preview_ready to studio
-      if (io) {
-        io.to(job.studioId).emit("preview_ready", {
-          studioId: job.studioId,
-          previewUrl,
-          chunkCount: job.audioUrls.length,
-          mergeTimeMs: mergeTime,
-        });
-      }
-
-      logger.info(
-        `[AudioMergeWorker] Preview delivered: ${previewUrl} (${mergeTime}ms)`,
-      );
-    } else if (job.jobType === "save") {
-      const mergedFilename = `recording_${job.studioId}_${job.musicId}.mp3`;
-      const mergedUrl = await S3Util.uploadFile(
-        mergedBuffer,
-        mergedFilename,
-        "audio/mpeg",
-      );
-
-      // Create MusicLibrary + MusicRecord in DB
-      const fileRecord = await MusicLibraryRepo.create({
-        filename: mergedFilename,
-        fileUrl: mergedUrl,
-        metaData: {
-          mimetype: "audio/mpeg",
-          size: mergedBuffer.length,
-        },
-      });
-
-      const musicRecord = await MusicRecordRepo.create({
-        studioId: job.studioId,
-        musicId: job.musicId,
-        fileId: fileRecord.id,
-        singerIds: job.singerIds || [],
-        metaData: job.metaData,
-      });
-
-      // Create music parts if performance mapping provided
-      if (job.performanceMapping && job.performanceMapping.length > 0) {
-        await prisma.musicPart.createMany({
-          data: job.performanceMapping.map((p, index) => ({
-            recordId: musicRecord.id,
-            startLine: p.startLine,
-            endLine: p.endLine,
-            singerId: p.singerId,
-            vocalRoleIndex: p.vocalRoleIndex || 1,
-            order: index,
-          })),
-        });
-      }
-
-      // Cleanup temp records + S3 chunks
-      await TempMusicRecordRepo.deleteByMusicIdAndStudioId(
-        job.musicId,
-        job.studioId,
-      );
-
-      for (const url of job.audioUrls) {
-        try {
-          await S3Util.deleteFile(url);
-        } catch (e) {
-          logger.warn(`[AudioMergeWorker] Failed to delete chunk: ${url}`);
-        }
-      }
-
-      // Delete preview if exists
-      try {
+    try {
+      if (job.jobType === "preview") {
         const previewKey = `previews/preview_${job.studioId}_${job.musicId}.mp3`;
-        const previewUrl = `${S3_CDN_URL}/${previewKey}`;
-        await S3Util.deleteFile(previewUrl);
-      } catch (_) {}
 
-      // Broadcast recording_saved to studio
-      if (io) {
-        io.to(job.studioId).emit("recording_saved", {
+        // Use stream for S3 upload
+        const audioStream = fs.createReadStream(finalAudioPath);
+        const previewUrl = await S3Util.uploadFileWithKey(
+          audioStream as any,
+          previewKey,
+          "audio/mpeg",
+        );
+
+        // Broadcast preview_ready to studio
+        if (io) {
+          io.to(job.studioId).emit("preview_ready", {
+            studioId: job.studioId,
+            previewUrl,
+            chunkCount: job.audioUrls.length,
+            mergeTimeMs: mergeTime,
+          });
+        }
+
+        logger.info(
+          `[AudioMergeWorker] Preview delivered: ${previewUrl} (${mergeTime}ms)`,
+        );
+      } else if (job.jobType === "save") {
+        const mergedFilename = `recording_${job.studioId}_${job.musicId}.mp3`;
+
+        // Use stream for S3 upload to prevent OOM
+        const audioStream = fs.createReadStream(finalAudioPath);
+        const mergedUrl = await S3Util.uploadFile(
+          audioStream as any,
+          mergedFilename,
+          "audio/mpeg",
+        );
+
+        // Create MusicLibrary + MusicRecord in DB
+        const fileRecord = await MusicLibraryRepo.create({
+          filename: mergedFilename,
+          fileUrl: mergedUrl,
+          metaData: {
+            mimetype: "audio/mpeg",
+            size: fs.statSync(finalAudioPath).size,
+          },
+        });
+
+        const musicRecord = await MusicRecordRepo.create({
           studioId: job.studioId,
           musicId: job.musicId,
-          recordId: musicRecord.id,
-          fileUrl: mergedUrl,
-          mergeTimeMs: mergeTime,
+          fileId: fileRecord.id,
+          singerIds: job.singerIds || [],
+          metaData: job.metaData,
         });
-      }
 
-      logger.info(
-        `[AudioMergeWorker] Recording saved: ${musicRecord.id} (${mergeTime}ms)`,
-      );
+        // Create music parts if performance mapping provided
+        if (job.performanceMapping && job.performanceMapping.length > 0) {
+          await prisma.musicPart.createMany({
+            data: job.performanceMapping.map((p, index) => ({
+              recordId: musicRecord.id,
+              startLine: p.startLine,
+              endLine: p.endLine,
+              singerId: p.singerId,
+              vocalRoleIndex: p.vocalRoleIndex || 1,
+              order: index,
+            })),
+          });
+        }
+
+        // Cleanup temp records + S3 chunks
+        const lookupMusicId = job.metaData?.lookupMusicId || job.musicId;
+
+        await TempMusicRecordRepo.deleteByMusicIdAndStudioId(
+          lookupMusicId,
+          job.studioId,
+        );
+
+        for (const url of job.audioUrls) {
+          try {
+            await S3Util.deleteFile(url);
+          } catch (e) {
+            logger.warn(`[AudioMergeWorker] Failed to delete chunk: ${url}`);
+          }
+        }
+
+        // Delete preview if exists
+        try {
+          const previewKey = `previews/preview_${job.studioId}_${job.musicId}.mp3`;
+          const previewUrl = `${S3_CDN_URL}/${previewKey}`;
+          await S3Util.deleteFile(previewUrl);
+        } catch (_) {}
+
+        // Broadcast recording_saved to studio
+        if (io) {
+          io.to(job.studioId).emit("recording_saved", {
+            studioId: job.studioId,
+            musicId: job.musicId,
+            recordId: musicRecord.id,
+            fileUrl: mergedUrl,
+            mergeTimeMs: mergeTime,
+          });
+        }
+
+        logger.info(
+          `[AudioMergeWorker] Recording saved: ${musicRecord.id} (${mergeTime}ms)`,
+        );
+      }
+    } finally {
+      // Final cleanup of the mixed file
+      if (fs.existsSync(finalAudioPath)) {
+        try {
+          fs.unlinkSync(finalAudioPath);
+        } catch (e) {
+          logger.warn(
+            `[AudioMergeWorker] Failed to cleanup final mix: ${finalAudioPath}`,
+          );
+        }
+      }
     }
   }
 

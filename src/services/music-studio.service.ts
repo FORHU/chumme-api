@@ -86,6 +86,7 @@ export default class MusicStudioSvc {
     studioId: string,
     userId: string,
     clientTimestamp?: number,
+    musicId?: string,
   ) {
     const isOwner = await this.isOwner(studioId, userId);
     if (!isOwner) {
@@ -94,11 +95,23 @@ export default class MusicStudioSvc {
 
     await MusicStudioCacheSvc.setStudioState(studioId, "RECORDING");
 
-    // Clear any previous temp records for this studio to avoid merging old takes
-    try {
-      await TempMusicRecordRepo.deleteByStudioId(studioId);
-    } catch (e) {
-      logger.warn(`[MusicStudio] Failed to clear temp records: ${e}`);
+    // Clear any previous temp records for this studio AND this song to avoid merging old takes
+    // We only clear for the specific musicId so we don't wipe other songs' draft data
+    if (musicId) {
+      try {
+        await TempMusicRecordRepo.deleteByMusicIdAndStudioId(musicId, studioId);
+      } catch (e) {
+        logger.warn(
+          `[MusicStudio] Failed to clear temp records for music ${musicId}: ${e}`,
+        );
+      }
+    } else {
+      // Fallback: clear all if musicId not provided (legacy behavior)
+      try {
+        await TempMusicRecordRepo.deleteByStudioId(studioId);
+      } catch (e) {
+        logger.warn(`[MusicStudio] Failed to clear temp records: ${e}`);
+      }
     }
 
     // Use client timestamp if provided (for precise sync), otherwise server time
@@ -357,6 +370,71 @@ export default class MusicStudioSvc {
   }
 
   /**
+   * Helper to retrieve backing track URL and original music ID from Music or MusicRecord
+   */
+  private static async getBackingTrackInfo(musicId: string): Promise<{
+    url: string;
+    originalId: string;
+  }> {
+    const cleanId = (musicId || "").trim();
+    if (!cleanId) {
+      throw new Error("Music ID is empty or invalid");
+    }
+
+    logger.info(`[MusicStudio] Looking up backing track for ID: "${cleanId}"`);
+
+    // 1. Try Music table (Primary source for tracks)
+    const music = await MusicRepo.findById(cleanId);
+    if (music?.musicFile?.fileUrl) {
+      logger.info(
+        `[MusicStudio] Found backing track in Music table for ID: ${cleanId}`,
+      );
+      return { url: music.musicFile.fileUrl, originalId: music.id };
+    }
+
+    // 2. Try MusicRecord table (Fallback source for singer's recordings)
+    const record = await MusicRecordRepo.findById(cleanId);
+    if (record?.file?.fileUrl) {
+      logger.info(
+        `[MusicStudio] Found backing track in MusicRecord table for ID: ${cleanId}. Original Music ID: ${record.musicId}`,
+      );
+      return { url: record.file.fileUrl, originalId: record.musicId };
+    }
+
+    // 3. Try MusicLibrary table directly (If ID is the file ID itself)
+    const musicLibrary = await prisma.musicLibrary.findUnique({
+      where: { id: cleanId },
+    });
+    if (musicLibrary?.fileUrl) {
+      logger.info(
+        `[MusicStudio] Found backing track in MusicLibrary table (DIRECT FILE ID) for ID: ${cleanId}`,
+      );
+      // If found in MusicLibrary directly, we treat the ID as both the source and original ID
+      return { url: musicLibrary.fileUrl, originalId: cleanId };
+    }
+
+    // 4. Fallback/Error - Not found in any
+    const details = {
+      isMusicFound: !!music,
+      isMusicFileFound: !!music?.musicFile,
+      hasMusicFileUrl: !!music?.musicFile?.fileUrl,
+      isRecordFound: !!record,
+      isRecordFileFound: !!record?.file,
+      hasRecordFileUrl: !!record?.file?.fileUrl,
+      isLibraryFound: !!musicLibrary,
+      hasLibraryFileUrl: !!musicLibrary?.fileUrl,
+    };
+    logger.error(`[MusicStudio] Backing track not found. Details:`, {
+      musicId: cleanId,
+      details,
+    });
+
+    throw new Error(
+      `Backing track not found (ID: ${cleanId}). Tables checked: Music, MusicRecord, MusicLibrary.`,
+    );
+  }
+
+  /**
    * Preview a recording: merge temp chunks and return a temporary S3 URL
    * Does NOT create a MusicRecord or delete temp data.
    * Only owner or producers can trigger this.
@@ -366,6 +444,7 @@ export default class MusicStudioSvc {
     musicId: string;
     userId: string;
     voiceEffect?: any; // VoiceEffect
+    metaData?: any;
   }) {
     const isAuthorized = await this.canRecord(data.studioId, data.userId);
     if (!isAuthorized) {
@@ -377,15 +456,12 @@ export default class MusicStudioSvc {
       throw new Error("Studio not found");
     }
 
-    const music = await MusicRepo.findById(data.musicId);
-    if (!music || !music.musicFile?.fileUrl) {
-      throw new Error("Backing track not found for this music");
-    }
-
-    const backingTrackUrl = music.musicFile.fileUrl;
+    const { url: backingTrackUrl, originalId: originalMusicId } =
+      await this.getBackingTrackInfo(data.musicId);
 
     try {
       // 1. Fetch temp records for this music + studio combo
+      // We use data.musicId (input ID) to find chunks, as chunks are saved with what the client sends
       const tempRecords = await TempMusicRecordRepo.findByMusicIdAndStudioId(
         data.musicId,
         data.studioId,
@@ -397,18 +473,9 @@ export default class MusicStudioSvc {
         `[MusicStudio] Found ${tempRecords.length} temp records for studio=${data.studioId}`,
       );
 
-      // 2. Fetch active members to filter out disconnected users
-      const activeMembers = await MusicStudioCacheSvc.getMembers(data.studioId);
-      const activeUserIds = new Set(activeMembers.map((m) => m.userId));
-
-      const filteredRecords = tempRecords.filter((r) => {
-        const userId = (r.metaData as any)?.userId;
-        return userId && activeUserIds.has(userId);
-      });
-
-      if (!filteredRecords.length) {
-        throw new Error("No audio chunks found from active studio members");
-      }
+      // 2. Use all temp records (don't filter by active members to include dropouts)
+      // 2. Use all temp records (don't filter by active members to include dropouts)
+      const filteredRecords = tempRecords;
 
       // 3. Collect S3 URLs
       const audioUrls = filteredRecords
@@ -441,14 +508,18 @@ export default class MusicStudioSvc {
       const job: AudioMergeJob = {
         jobId,
         studioId: data.studioId,
-        musicId: data.musicId,
-        studioType: studio.studioType as "CROWDSINGING" | "RELAYSINGING",
+        musicId: originalMusicId, // Worker should save record under ORIGINAL Music ID
         audioUrls,
         offsets,
         backingTrackUrl,
         jobType: "preview",
         maxDuration: sessionDuration,
         voiceEffect: data.voiceEffect,
+        metaData: {
+          ...data.metaData,
+          lookupMusicId: data.musicId, // Pass input ID for chunk cleanup in worker
+        },
+        studioType: studio.studioType as "CROWDSINGING" | "RELAYSINGING",
       };
 
       await publishMergeJob(job);
@@ -485,12 +556,8 @@ export default class MusicStudioSvc {
       throw new Error("Studio not found");
     }
 
-    const music = await MusicRepo.findById(data.musicId);
-    if (!music || !music.musicFile?.fileUrl) {
-      throw new Error("Backing track not found for this music");
-    }
-
-    const backingTrackUrl = music.musicFile.fileUrl;
+    const { url: backingTrackUrl, originalId: originalMusicId } =
+      await this.getBackingTrackInfo(data.musicId);
 
     try {
       const tempRecords = await TempMusicRecordRepo.findByMusicIdAndStudioId(
@@ -501,18 +568,10 @@ export default class MusicStudioSvc {
         throw new Error("No audio chunks found for this studio session");
       }
 
-      // 2. Fetch active members to filter out disconnected users
       const activeMembers = await MusicStudioCacheSvc.getMembers(data.studioId);
-      const activeUserIds = new Set(activeMembers.map((m) => m.userId));
-
-      const filteredRecords = tempRecords.filter((r) => {
-        const userId = (r.metaData as any)?.userId;
-        return userId && activeUserIds.has(userId);
-      });
-
-      if (!filteredRecords.length) {
-        throw new Error("No audio chunks found from active studio members");
-      }
+      // 2. Use all temp records (don't filter by active members to include dropouts)
+      // 2. Use all temp records (don't filter by active members to include dropouts)
+      const filteredRecords = tempRecords;
 
       // 3. Collect S3 URLs and offsets
       const audioUrls = filteredRecords
@@ -558,17 +617,20 @@ export default class MusicStudioSvc {
       const job: AudioMergeJob = {
         jobId,
         studioId: data.studioId,
-        musicId: data.musicId,
-        studioType: studio.studioType as "CROWDSINGING" | "RELAYSINGING",
+        musicId: originalMusicId, // Worker should save record under ORIGINAL Music ID
         audioUrls,
         offsets,
         backingTrackUrl,
         jobType: "save",
         singerIds,
         performanceMapping: data.performanceMapping,
-        metaData: data.metaData,
+        metaData: {
+          ...data.metaData,
+          lookupMusicId: data.musicId, // Pass input ID for chunk cleanup in worker
+        },
         maxDuration: sessionDuration,
         voiceEffect: data.voiceEffect,
+        studioType: studio.studioType as "CROWDSINGING" | "RELAYSINGING",
       };
 
       await publishMergeJob(job);

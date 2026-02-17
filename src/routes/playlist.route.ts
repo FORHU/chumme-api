@@ -4,10 +4,10 @@ import { authenticate } from "../middleware/auth.middleware";
 
 const router = express.Router();
 
-router.use(authenticate);
-
 router.get("/list", PlaylistCtrl.getAllPlaylists);
 router.get("/:id", PlaylistCtrl.getPlaylistById);
+
+router.use(authenticate);
 
 router.post("/create", PlaylistCtrl.createPlaylist);
 router.patch("/update/:id", PlaylistCtrl.updatePlaylist);

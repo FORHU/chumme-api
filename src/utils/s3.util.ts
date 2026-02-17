@@ -2,8 +2,10 @@ import {
   S3Client,
   PutObjectCommand,
   DeleteObjectCommand,
+  GetObjectCommand,
+  HeadObjectCommand,
 } from "@aws-sdk/client-s3";
-import { PassThrough } from "stream";
+import { Readable } from "stream";
 import {
   S3_CDN_URL,
   AWS_REGION,
@@ -25,13 +27,13 @@ const s3Client = new S3Client({
 export default class S3Util {
   /**
    * Upload file to S3
-   * @param file - File buffer
+   * @param file - File buffer, stream, or string
    * @param filename - Original filename
    * @param mimeType - File MIME type
    * @returns S3 URL
    */
   static async uploadFile(
-    file: Buffer,
+    file: Buffer | Readable | string,
     filename: string,
     mimeType: string,
   ): Promise<string> {
@@ -40,7 +42,7 @@ export default class S3Util {
     const extension = filename.split(".").pop();
     const key = `uploads/${timestamp}-${randomStr}.${extension}`;
 
-    logger.info(`[S3] Uploading file: ${key} (${file.length} bytes)`);
+    logger.info(`[S3] Uploading file: ${key}`);
     return this.uploadFileWithKey(file, key, mimeType);
   }
 
@@ -48,7 +50,7 @@ export default class S3Util {
    * Upload file to S3 with a specific key (useful for overwriting)
    */
   static async uploadFileWithKey(
-    file: Buffer,
+    file: Buffer | Readable | string,
     key: string,
     mimeType: string,
   ): Promise<string> {
@@ -60,7 +62,7 @@ export default class S3Util {
     });
 
     await s3Client.send(command);
-    logger.info(`[S3] Uploaded successfully: ${key} (${file.length} bytes)`);
+    logger.info(`[S3] Uploaded successfully: ${key}`);
 
     let baseUrl = S3_CDN_URL;
     if (
@@ -130,7 +132,6 @@ export default class S3Util {
       throw new Error(`Could not parse S3 key from URL: ${fileUrl}`);
     }
 
-    const { GetObjectCommand } = await import("@aws-sdk/client-s3");
     const command = new GetObjectCommand({
       Bucket: AWS_S3_BUCKET_NAME,
       Key: key,
@@ -191,7 +192,6 @@ export default class S3Util {
    */
   static async fileExists(key: string): Promise<boolean> {
     try {
-      const { HeadObjectCommand } = await import("@aws-sdk/client-s3");
       const command = new HeadObjectCommand({
         Bucket: AWS_S3_BUCKET_NAME,
         Key: key,

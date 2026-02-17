@@ -5,10 +5,10 @@ import { upload } from "../middleware/upload.middleware";
 
 const router = express.Router();
 
-router.use(authenticate);
-
 router.get("/list", MusicCtrl.getMusics);
 router.get("/:id", MusicCtrl.getMusicById);
+
+router.use(authenticate);
 
 // Main creation endpoint (handles both JSON and Multipart)
 router.post(

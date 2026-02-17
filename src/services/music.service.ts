@@ -1,5 +1,6 @@
 import MusicRepo from "../repositories/music.repository";
 import CacheUtil from "../utils/cache.util";
+import logger from "../utils/logger";
 
 interface CreateMusicInput {
   title: string;
@@ -125,16 +126,19 @@ export default class MusicSvc {
     if (data.musicArtistId) {
       await CacheUtil.del(`musics:artist:${data.musicArtistId}`);
     }
-    await CacheUtil.del("musics:all");
-
+    await CacheUtil.delByPattern("musics:*");
     return music;
   }
 
   static async getMusicById(id: string) {
     const cachedKey = `music:${id}`;
     const cached = await CacheUtil.get(cachedKey);
-    if (cached) return cached;
+    if (cached) {
+      logger.info(`[MusicSvc] Cache HIT for getMusicById: ${id}`);
+      return cached;
+    }
 
+    logger.info(`[MusicSvc] Cache MISS for getMusicById: ${id}`);
     const music = await MusicRepo.findById(id);
     if (!music) throw new Error("Music not found");
 
@@ -152,8 +156,12 @@ export default class MusicSvc {
   }) {
     const cachedKey = `musics:${JSON.stringify(params)}`;
     const cached = await CacheUtil.get(cachedKey);
-    if (cached) return cached;
+    if (cached) {
+      logger.info(`[MusicSvc] Cache HIT for getMusics: ${cachedKey}`);
+      return cached;
+    }
 
+    logger.info(`[MusicSvc] Cache MISS for getMusics: ${cachedKey}`);
     const result = await MusicRepo.findAll(params);
     await CacheUtil.set(cachedKey, result);
     return result;
@@ -167,17 +175,14 @@ export default class MusicSvc {
   static async updateMusic(id: string, data: any) {
     const music = await MusicRepo.update(id, data);
     await CacheUtil.del(`music:${id}`);
-    await CacheUtil.del("musics:all");
-    if (music.musicArtistId) {
-      await CacheUtil.del(`musics:artist:${music.musicArtistId}`);
-    }
+    await CacheUtil.delByPattern("musics:*");
     return music;
   }
 
   static async deleteMusic(id: string) {
     const music = await MusicRepo.delete(id);
     await CacheUtil.del(`music:${id}`);
-    await CacheUtil.del("musics:all");
+    await CacheUtil.delByPattern("musics:*");
     return music;
   }
 }
