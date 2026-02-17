@@ -108,6 +108,18 @@ connectToPrisma()
       console.error("Failed to initialize Audio Merge worker:", error);
       // Don't crash the server if worker fails
     }
+
+    // Initialize Media Processing Worker (Video/HLS)
+    try {
+      const { MediaProcessingWorker } = await import(
+        "./listeners/media-processing.listener"
+      );
+      const mediaWorker = new MediaProcessingWorker();
+      await mediaWorker.start();
+      console.log("Media Processing RabbitMQ worker initialized successfully");
+    } catch (error) {
+      console.error("Failed to initialize Media Processing worker:", error);
+    }
   })
   .catch((err: any) => {
     console.log(err);

@@ -618,21 +618,30 @@ function getVocalFilterChain(effect: VoiceEffect = "STUDIO"): any[] {
 
 /**
  * Mixes a vocal buffer with a backing track.
- * Applies EBU R128 loudness normalization.
- * This is the ONLY function that produces the final MP3 output.
+ * Applies EBU R128 loudness normalization and injects ID3 metadata.
+ * Returns the path to the final MP3 file instead of a Buffer to enable streaming.
  *
  * @param vocalsBuffer Buffer containing the vocal track (WAV preferred).
  * @param backingTrackUrl URL or path to the backing track audio.
- * @param maxDuration Optional max duration in seconds to trim the final output.
- * @param voiceEffect Effect preset to apply to vocals.
- * @returns Final MP3 buffer, loudness-normalized.
+ * @param options Metadata options (title, artist, maxDuration, effect).
+ * @returns Path to the final MP3 file.
  */
 export const mixVocalsWithBacking = async (
   vocalsBuffer: Buffer,
   backingTrackUrl: string,
-  maxDuration?: number,
-  voiceEffect: VoiceEffect = "STUDIO",
-): Promise<Buffer> => {
+  options: {
+    maxDuration?: number;
+    voiceEffect?: VoiceEffect;
+    title?: string;
+    artist?: string;
+  } = {},
+): Promise<string> => {
+  const {
+    maxDuration,
+    voiceEffect = "STUDIO",
+    title = "My Cover",
+    artist = "Chumme User",
+  } = options;
   const tempVocalsPath = makeTempPath("vocals", ".wav");
   const outputPath = makeTempPath("mixed", ".mp3");
 
@@ -680,16 +689,26 @@ export const mixVocalsWithBacking = async (
         },
       ];
 
+      let finalOutput = "mastered";
+
       // Trim to duration if specified
       if (maxDuration && maxDuration > 0) {
+        finalOutput = "trimmed";
         filterChain.push({
           filter: "atrim",
           options: { duration: maxDuration },
           inputs: "mastered",
+          outputs: finalOutput,
         });
       }
 
       command.complexFilter(filterChain);
+      command.map(finalOutput);
+
+      // 5. Inject Metadata
+      command.outputOptions("-metadata", `title="${title}"`);
+      command.outputOptions("-metadata", `artist="${artist}"`);
+      command.outputOptions("-metadata", 'comment="Powered by Chumme AI"');
 
       command
         .on("start", (cmd) =>
@@ -704,12 +723,16 @@ export const mixVocalsWithBacking = async (
         .save(outputPath);
     });
 
-    return readAndCleanup(outputPath);
-  } finally {
+    // DO NOT Read and Cleanup yet. Return the path so worker can stream it.
     cleanupTempFiles([tempVocalsPath]);
     if (localBackingPath && !isLocalPath(backingTrackUrl)) {
       cleanupTempFiles([localBackingPath]);
     }
+    return outputPath;
+  } catch (err) {
+    // Cleanup if something failed
+    if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
+    throw err;
   }
 };
 

@@ -2,6 +2,8 @@ import { Request, Response } from "express";
 import Joi from "joi";
 import MusicSvc from "../services/music.service";
 import MusicLibrarySvc from "../services/music-library.service";
+import MediaQueueSvc from "../services/media-queue.service";
+import logger from "../utils/logger";
 
 export default class MusicCtrl {
   static async createMusic(req: Request, res: Response) {
@@ -47,10 +49,12 @@ export default class MusicCtrl {
 
   static async getMusicById(req: Request, res: Response) {
     const { id } = req.params;
+    logger.info(`[MusicCtrl] getMusicById called for ID: ${id}`);
     try {
       const music = await MusicSvc.getMusicById(id);
       return res.json(music);
     } catch (error: any) {
+      logger.error(`[MusicCtrl] Error in getMusicById: ${error.message}`);
       return res.status(404).json({ message: error.message || error });
     }
   }
@@ -58,6 +62,14 @@ export default class MusicCtrl {
   static async getMusics(req: Request, res: Response) {
     const { page, limit, albumId, artistId, playlistId, isKaraoke } =
       req.query as any;
+    logger.info(`[MusicCtrl] getMusics called`, {
+      page,
+      limit,
+      albumId,
+      artistId,
+      playlistId,
+      isKaraoke,
+    });
     try {
       const result = await MusicSvc.getMusics({
         page: page ? Number(page) : undefined,
@@ -72,8 +84,12 @@ export default class MusicCtrl {
               ? false
               : undefined,
       });
+      logger.info(
+        `[MusicCtrl] getMusics returning ${result.data?.length || 0} items`,
+      );
       return res.json(result);
     } catch (error: any) {
+      logger.error(`[MusicCtrl] Error in getMusics: ${error.message}`);
       return res.status(500).json({ message: error.message || error });
     }
   }
@@ -220,8 +236,22 @@ export default class MusicCtrl {
         metaData: value.meta_data,
       });
 
+      // 7. Trigger Media Optimization in Background
+      try {
+        await MediaQueueSvc.publishJob({
+          jobType: "optimize_audio",
+          inputUrl: fileRecord.fileUrl,
+          outputKeyPrefix: `music/${music.id}`,
+          mediaId: music.id,
+        });
+        logger.info(`[MusicCtrl] Queued optimization for music ${music.id}`);
+      } catch (e) {
+        logger.warn(`[MusicCtrl] Failed to queue optimization: ${e}`);
+      }
+
       return res.status(201).json({
-        message: "Music created successfully with files",
+        message:
+          "Music created successfully with files and queued for optimization",
         data: music,
       });
     } catch (error: any) {

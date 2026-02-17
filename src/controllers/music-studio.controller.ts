@@ -237,13 +237,14 @@ export default class MusicStudioCtrl {
    */
   static async startRecording(req: Request, res: Response) {
     const { studioId } = req.params;
-    const { clientTimestamp } = req.body; // Expecting timestamp from client
+    const { clientTimestamp, musicId } = req.body; // Expecting timestamp and musicId from client
 
     try {
       const result = await MusicStudioSvc.startRecording(
         studioId,
         (req as any).user.id,
         clientTimestamp,
+        musicId,
       );
 
       // Notify studio members via socket
@@ -252,6 +253,7 @@ export default class MusicStudioCtrl {
         startedBy: (req as any).user.id,
         timestamp: result.timestamp,
         source: clientTimestamp ? "client" : "server",
+        musicId,
       });
 
       return res.json(result);
