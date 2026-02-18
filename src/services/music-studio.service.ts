@@ -43,6 +43,7 @@ interface SaveRecordingInput {
     vocalRoleIndex?: number;
   }[];
   voiceEffect?: any; // VoiceEffect
+  duration?: number;
 }
 
 export default class MusicStudioSvc {
@@ -456,6 +457,7 @@ export default class MusicStudioSvc {
     userId: string;
     voiceEffect?: any; // VoiceEffect
     metaData?: any;
+    duration?: number;
   }) {
     const isAuthorized = await this.canRecord(data.studioId, data.userId);
     if (!isAuthorized) {
@@ -509,9 +511,12 @@ export default class MusicStudioSvc {
 
       // If endTime is not set (e.g. preview while recording), use current time
       const effectiveEndTime = endTime || Date.now();
-      const sessionDuration = startTime
+      const calculatedDuration = startTime
         ? (effectiveEndTime - startTime) / 1000
         : undefined;
+
+      // Use duration from frontend as fallback if calculatedDuration is missing
+      const sessionDuration = calculatedDuration || data.duration;
 
       // 4. Publish merge job to RabbitMQ (returns immediately)
       const jobId = `preview_${data.studioId}_${Date.now()}`;
@@ -619,9 +624,12 @@ export default class MusicStudioSvc {
 
       // If endTime is not set, use current time (though for save it usually should be set)
       const effectiveEndTime = endTime || Date.now();
-      const sessionDuration = startTime
+      const calculatedDuration = startTime
         ? (effectiveEndTime - startTime) / 1000
         : undefined;
+
+      // Use duration from frontend as fallback if calculatedDuration is missing
+      const sessionDuration = calculatedDuration || data.duration;
 
       // 5. Publish save job to RabbitMQ (returns immediately)
       const jobId = `save_${data.studioId}_${Date.now()}`;
@@ -640,6 +648,7 @@ export default class MusicStudioSvc {
           lookupMusicId: data.musicId, // Pass input ID for chunk cleanup in worker
         },
         maxDuration: sessionDuration,
+        recordDuration: sessionDuration,
         voiceEffect: data.voiceEffect,
         studioType: studio.studioType as "CROWDSINGING" | "RELAYSINGING",
       };
