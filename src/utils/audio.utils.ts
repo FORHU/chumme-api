@@ -113,6 +113,7 @@ export const overlayAudioFiles = async (
           resolve();
         })
         .format(outputFormat)
+        .audioBitrate("320k")
         .save(outputPath);
     });
 
@@ -355,13 +356,13 @@ function getVocalFilterChain(effect: VoiceEffect = "STUDIO"): any[] {
       chain.push(
         {
           filter: "acompressor",
-          options: { threshold: 0.25, ratio: 4, attack: 50, release: 100 },
+          options: { threshold: 0.3, ratio: 3, attack: 50, release: 100 },
           inputs: effectInput,
           outputs: "v_comp",
         },
         {
           filter: "aecho",
-          options: { in_gain: 0.8, out_gain: 0.88, delays: 60, decays: 0.4 },
+          options: { in_gain: 0.6, out_gain: 0.3, delays: 250, decays: 0.3 },
           inputs: "v_comp",
           outputs: "v_processed",
         },
@@ -505,7 +506,7 @@ export const mixVocalsWithBacking = async (
         // Process Backing Track (Input 0) -> Lower volume slightly
         {
           filter: "volume",
-          options: { volume: 0.5 },
+          options: { volume: 0.8 },
           inputs: "0:a",
           outputs: "b_processed",
         },
@@ -521,7 +522,7 @@ export const mixVocalsWithBacking = async (
         // Final Mastering (Loudness Normalization)
         {
           filter: "loudnorm",
-          options: { I: -11, TP: -1, LRA: 11 },
+          options: { I: -14, TP: -1, LRA: 11 },
           inputs: "mixed",
           outputs: "mastered",
         },
@@ -558,6 +559,7 @@ export const mixVocalsWithBacking = async (
         })
         .on("end", () => resolve())
         .format("mp3")
+        .audioBitrate("320k")
         .save(outputPath);
     });
 
