@@ -45,6 +45,8 @@ export interface AudioMergeJob {
   maxDuration?: number;
   /** Voice effect preset */
   voiceEffect?: VoiceEffect;
+  /** Final merged recording duration */
+  recordDuration?: number;
 }
 
 const QUEUE_NAME = "audio-merge-queue";
@@ -231,6 +233,7 @@ export class AudioMergeWorker {
           fileId: fileRecord.id,
           singerIds: job.singerIds || [],
           metaData: job.metaData,
+          recordDuration: job.recordDuration || job.maxDuration,
         });
 
         // Create music parts if performance mapping provided

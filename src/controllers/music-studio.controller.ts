@@ -297,11 +297,12 @@ export default class MusicStudioCtrl {
    */
   static async previewRecording(req: Request, res: Response) {
     const { studioId } = req.params;
-    const { musicId, voiceEffect } = req.body;
+    const { musicId, voiceEffect, duration } = req.body;
     logger.info(`[MusicStudioCtrl] previewRecording called`, {
       studioId,
       musicId,
       voiceEffect,
+      duration,
     });
     if (!studioId || !musicId) {
       return res.status(400).json({ message: "Missing studioId or musicId" });
@@ -313,6 +314,7 @@ export default class MusicStudioCtrl {
         musicId,
         userId: (req as any).user.id,
         voiceEffect,
+        duration,
       });
       console.log("-------RESULT----------", result);
       return res.json(result);
@@ -339,6 +341,7 @@ export default class MusicStudioCtrl {
 
     const schema = Joi.object({
       musicId: Joi.string().required(),
+      duration: Joi.number().optional(),
       metaData: Joi.any(),
       performanceMapping: Joi.array()
         .items(
@@ -361,6 +364,7 @@ export default class MusicStudioCtrl {
         ...value,
         studioId: studioId,
         musicId: musicId,
+        duration: value.duration,
       });
 
       // Worker broadcasts recording_saved via socket when merge completes

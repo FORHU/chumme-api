@@ -6,6 +6,7 @@ interface CreateMusicRecordData {
   fileId: string;
   singerIds?: string[]; // Optional array of user IDs who participated
   metaData?: any;
+  recordDuration?: number;
 }
 
 export default class MusicRecordRepo {
@@ -20,6 +21,7 @@ export default class MusicRecordRepo {
         musicId: data.musicId,
         fileId: data.fileId,
         metaData: (data as any).metaData,
+        recordDuration: data.recordDuration,
         singers: data.singerIds
           ? { connect: data.singerIds.map((id) => ({ id })) }
           : undefined,
