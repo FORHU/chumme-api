@@ -88,6 +88,7 @@ model MusicLibrary {
   updatedAt        DateTime          @updatedAt
   deletedAt        DateTime?
   metaData         Json?
+  fileType         MusicFileType     @default(MUSIC)
   musicFiles       Music[]           @relation("MusicLibraryFile")
   musicRecords     MusicRecord[]     @relation("MusicRecordLibraryFile")
   tempMusicRecords TempMusicRecord[] @relation("TempMusicLibraryFile")
@@ -708,4 +709,14 @@ enum RelayMode {
   MANUAL
   INTERVAL
   PHRASING
+}
+
+enum MusicFileType {
+  MUSIC
+  KARAOKE
+  PREVIEW
+  RECORDING
+  VOCAL
+  INSTRUMENTAL
+  OTHER
 }

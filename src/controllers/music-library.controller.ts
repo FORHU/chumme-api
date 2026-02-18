@@ -13,6 +13,8 @@ export default class MusicLibraryCtrl {
         req.file.buffer,
         req.file.originalname,
         req.file.mimetype,
+        undefined,
+        req.body.fileType,
       );
 
       return res.status(201).json({
@@ -51,6 +53,17 @@ export default class MusicLibraryCtrl {
       const schema = Joi.object({
         filename: Joi.string().optional(),
         fileUrl: Joi.string().uri().optional(),
+        fileType: Joi.string()
+          .valid(
+            "MUSIC",
+            "KARAOKE",
+            "PREVIEW",
+            "RECORDING",
+            "VOCAL",
+            "INSTRUMENTAL",
+            "OTHER",
+          )
+          .optional(),
       })
         .or("filename", "fileUrl")
         .messages({
@@ -63,6 +76,7 @@ export default class MusicLibraryCtrl {
       const file = await MusicLibrarySvc.saveMusicFile({
         filename: value.filename,
         fileUrl: value.fileUrl,
+        fileType: value.fileType,
       });
       return res
         .status(201)

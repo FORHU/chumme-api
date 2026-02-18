@@ -346,6 +346,17 @@ export default class MusicStudioSvc {
       "audio/mpeg",
     );
 
+    // 4. Create MusicLibrary record so it's tracked and categorized
+    await MusicLibraryRepo.create({
+      filename: path.basename(instrumentalKey),
+      fileUrl: instrumentalUrl,
+      fileType: "INSTRUMENTAL",
+      metaData: {
+        isGeneratedInstrumental: true,
+        originalMusicId: musicId,
+      },
+    });
+
     return instrumentalUrl;
   }
 

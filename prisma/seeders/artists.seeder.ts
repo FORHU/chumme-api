@@ -23,7 +23,7 @@ export async function seedArtists(prisma: PrismaClient) {
         "https://d1lq91nbxprxl1.cloudfront.net/uploads/SeventeenLogo.png",
       nationality: "South Korea",
       genre: "KPOP",
-      instagramUsername: "twicetagram", // Note: CSV had this for Seventeen, check if intentional
+      instagramUsername: "twicetagram",
       tiktokUsername: "twice_tiktok_official",
     },
     {
@@ -33,6 +33,7 @@ export async function seedArtists(prisma: PrismaClient) {
       imageUrl: "https://d1lq91nbxprxl1.cloudfront.net/uploads/BTSLogo.png",
       nationality: "South Korea",
       genre: "KPOP",
+      instagramUsername: null,
       tiktokUsername: "bts_official_bighit",
     },
     {
@@ -43,6 +44,8 @@ export async function seedArtists(prisma: PrismaClient) {
         "https://d1lq91nbxprxl1.cloudfront.net/uploads/NewJeansLogo.png",
       nationality: "South Korea",
       genre: "KPOP",
+      instagramUsername: null,
+      tiktokUsername: null,
     },
     {
       id: "c422a883-c853-4cc5-a74d-0d2df6d861de",
@@ -52,14 +55,52 @@ export async function seedArtists(prisma: PrismaClient) {
         "https://scontent-iad3-1.cdninstagram.com/v/t51.2885-19/551286007_18508082245067893_2795381767532650530_n.jpg?stp=dst-jpg_e0_s150x150_tt6&efg=eyJ2ZW5jb2RlX3RhZyI6InByb2ZpbGVfcGljLmRqYW5nby4zMjAuYzIifQ&_nc_ht=scontent-iad3-1.cdninstagram.com&_nc_cat=1&_nc_oc=Q6cZ2QGj29SC7FP08Lqk8KsZb7OLUQD9tKiTavRa7jkQd7-Q71wNcVEYuF-IMFRvrcWdh3E&_nc_ohc=GJ50iavuDewQ7kNvwFYtlNY&_nc_gid=_3-xSXyN60wkwO3vHK0oUw&edm=AOQ1c0wBAAAA&ccb=7-5&oh=00_AfnIEWzFcVDA6m2j1Y-ka2dkamkpvhbAbemyYx_ohXnkkw&oe=694DC5BD&_nc_sid=8b3546",
       nationality: "South Korea",
       genre: "Instagram Creator",
+      instagramUsername: null,
+      tiktokUsername: null,
+    },
+    {
+      id: "9cab6457-e586-4312-9351-93fb04262409",
+      name: "Others....",
+      bio: "Freelance Artist",
+      imageUrl: "",
+      nationality: "foreign",
+      genre: "All track Records",
+      instagramUsername: "",
+      tiktokUsername: "",
+    },
+    {
+      id: "97c60f60-0d0f-408c-b5a3-fe684b1b7232",
+      name: "Enhypen  ",
+      bio: "ENHYPEN (엔하이픈) is a 7-member South Korean boy group under BE:LIFT Lab, a subsidiary label under HYBE",
+      imageUrl: "",
+      nationality: "korean",
+      genre: "pop",
+      instagramUsername: "",
+      tiktokUsername: "",
+    },
+    {
+      id: "f8818235-b033-4882-a22d-3c6e677c0fa1",
+      name: "Exo",
+      bio: "South Korean-Chinese boy band based in Seoul formed by SM Entertainment in 2011 and debuted in 2012. The group consists of nine members",
+      imageUrl: "",
+      nationality: "korean",
+      genre: "pop",
+      instagramUsername: "",
+      tiktokUsername: "",
     },
   ];
 
   for (const artist of artistsData) {
     await prisma.artist.upsert({
       where: { id: artist.id },
-      update: artist,
-      create: artist,
+      update: {
+        ...artist,
+        isDeleted: false,
+      },
+      create: {
+        ...artist,
+        isDeleted: false,
+      },
     });
   }
 
