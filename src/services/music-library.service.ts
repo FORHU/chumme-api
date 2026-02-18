@@ -7,7 +7,11 @@ export default class MusicLibrarySvc {
   /**
    * Save a music library record (track or recording)
    */
-  static async saveMusicFile(data: { filename?: string; fileUrl?: string }) {
+  static async saveMusicFile(data: {
+    filename?: string;
+    fileUrl?: string;
+    fileType?: any;
+  }) {
     if (!data.fileUrl && !data.filename) {
       throw new Error(
         "Either fileUrl or filename is required to save a music library record.",
@@ -17,6 +21,7 @@ export default class MusicLibrarySvc {
     const musicFile = await MusicLibraryRepo.create({
       filename: data.filename ?? null,
       fileUrl: FileSvc.sanitizeUrl(data.fileUrl),
+      fileType: data.fileType,
     });
 
     return musicFile;
@@ -30,6 +35,7 @@ export default class MusicLibrarySvc {
     filename: string,
     mimeType: string,
     metaData?: any,
+    fileType?: any,
   ) {
     const fileUrl = await S3Util.uploadFile(fileBuffer, filename, mimeType);
 
@@ -37,6 +43,7 @@ export default class MusicLibrarySvc {
       filename: filename,
       fileUrl: FileSvc.sanitizeUrl(fileUrl),
       metaData: metaData,
+      fileType: fileType,
     });
 
     return musicFile;

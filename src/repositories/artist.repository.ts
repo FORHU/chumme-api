@@ -74,6 +74,67 @@ export const removeUserArtist = async (userId: string, artistId: string) => {
   });
 };
 
+export const findById = async (id: string) => {
+  return prisma.artist.findFirst({
+    where: {
+      id,
+      isDeleted: false,
+    },
+    select: {
+      id: true,
+      name: true,
+      bio: true,
+      imageUrl: true,
+      roomSubCategories: {
+        select: {
+          id: true,
+          name: true,
+          key_name: true,
+        },
+      },
+    },
+  });
+};
+
+export const create = async (data: {
+  name: string;
+  bio?: string | null;
+  imageUrl?: string | null;
+  nationality?: string | null;
+  genre?: string | null;
+  instagramUsername?: string | null;
+  tiktokUsername?: string | null;
+}) => {
+  return prisma.artist.create({
+    data,
+  });
+};
+
+export const update = async (
+  id: string,
+  data: {
+    name?: string;
+    bio?: string | null;
+    imageUrl?: string | null;
+    nationality?: string | null;
+    genre?: string | null;
+    instagramUsername?: string | null;
+    tiktokUsername?: string | null;
+  },
+) => {
+  return prisma.artist.update({
+    where: { id },
+    data,
+  });
+};
+
+export const deleteArtist = async (id: string) => {
+  return prisma.artist.update({
+    where: { id },
+    data: { isDeleted: true },
+  });
+};
+
 export const upsertArtist = async (data: {
   name: string;
   bio?: string | null;

@@ -27,6 +27,7 @@ export default class MusicRecordSvc {
         filename: data.file.filename,
         fileUrl: data.file.fileUrl,
         metaData: data.file.metaData,
+        fileType: "RECORDING",
       });
       finalFileId = newFile.id;
     }

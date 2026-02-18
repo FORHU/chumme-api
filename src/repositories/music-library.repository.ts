@@ -9,6 +9,7 @@ export default class MusicLibraryRepo {
       filename?: string | null;
       fileUrl?: string | null;
       metaData?: any;
+      fileType?: any;
     },
     tx?: any,
   ) {
@@ -18,6 +19,7 @@ export default class MusicLibraryRepo {
         filename: data.filename ?? null,
         fileUrl: data.fileUrl ?? null,
         metaData: data.metaData ?? null,
+        fileType: data.fileType ?? undefined,
       },
     });
   }
@@ -40,6 +42,7 @@ export default class MusicLibraryRepo {
       filename?: string | null;
       fileUrl?: string | null;
       metaData?: any;
+      fileType?: any;
     },
   ) {
     return prisma.musicLibrary.update({
@@ -48,6 +51,7 @@ export default class MusicLibraryRepo {
         filename: data.filename ?? undefined,
         fileUrl: data.fileUrl ?? undefined,
         metaData: data.metaData ?? undefined,
+        fileType: data.fileType ?? undefined,
       },
     });
   }

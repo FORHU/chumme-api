@@ -25,15 +25,6 @@ export default class MusicCtrl {
     if (error) return res.status(400).json({ message: error.message });
 
     try {
-      // Check if music already exists by title
-      const existing = await MusicSvc.getMusicByTitle(value.title);
-      if (existing) {
-        return res.status(400).json({
-          message: "Music with this title already exists",
-          data: existing,
-        });
-      }
-
       const music = await MusicSvc.createMusic({
         ...value,
         metaData: value.meta_data,
@@ -198,19 +189,21 @@ export default class MusicCtrl {
         isKaraoke: Joi.boolean(),
         vocalRolesCount: Joi.number().integer().min(1).allow(null, ""),
         meta_data: Joi.object().optional(),
+        fileType: Joi.string()
+          .valid(
+            "MUSIC",
+            "KARAOKE",
+            "PREVIEW",
+            "RECORDING",
+            "VOCAL",
+            "INSTRUMENTAL",
+            "OTHER",
+          )
+          .optional(),
       });
 
       const { error, value } = schema.validate(req.body);
       if (error) return res.status(400).json({ message: error.message });
-
-      // 3. Early Check for duplication (BEFORE costly S3 upload)
-      const existing = await MusicSvc.getMusicByTitle(value.title);
-      if (existing) {
-        return res.status(400).json({
-          message: "Music with this title already exists",
-          data: existing,
-        });
-      }
 
       // 4. Locate the audio file (support 'fileData' or 'file' field)
       const audioFile = files?.find(
@@ -227,6 +220,8 @@ export default class MusicCtrl {
         audioFile.buffer,
         audioFile.originalname,
         audioFile.mimetype,
+        undefined,
+        value.fileType || (value.isKaraoke ? "KARAOKE" : "MUSIC"),
       );
 
       // 6. Create Music using the new file ID

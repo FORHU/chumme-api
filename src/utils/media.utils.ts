@@ -8,20 +8,26 @@ import axios from "axios";
 import logger from "./logger";
 import { Readable, PassThrough, Writable } from "stream";
 
-// Set the ffmpeg and ffprobe paths
+// Set the ffmpeg and ffprobe paths globally
 if (ffmpegPath) ffmpeg.setFfmpegPath(ffmpegPath);
 if (ffprobePath.path) ffmpeg.setFfprobePath(ffprobePath.path);
 
+export { ffmpeg };
+
 // ---------------------------------------------------------------------------
-// Helpers
+// Shared Infrastructure (Connected to AudioUtils)
 // ---------------------------------------------------------------------------
 
-/** Ensure a URL is a valid https URL. */
-function ensureCleanUrl(url: string): string {
+/**
+ * Ensure a URL is a valid https URL, free of common typos and trailing dots.
+ */
+export function ensureCleanUrl(url: string): string {
   if (!url) return url;
   let clean = url.trim();
+
   clean = clean.replace(/cloudfront\.netr\//i, "cloudfront.net/");
   clean = clean.replace(/\.+$/, "");
+
   if (
     !clean.startsWith("http://") &&
     !clean.startsWith("https://") &&
@@ -30,19 +36,12 @@ function ensureCleanUrl(url: string): string {
   ) {
     clean = `https://${clean}`;
   }
+
   return clean;
 }
 
-/** Generate a unique temp file path. */
-function makeTempPath(prefix: string, ext = ".mp4"): string {
-  return path.join(
-    os.tmpdir(),
-    `${prefix}_${Date.now()}_${Math.random().toString(36).substring(2, 8)}${ext}`,
-  );
-}
-
-/** Check if input is local path */
-function isLocalPath(p: string): boolean {
+/** Check if a string is a local file path rather than a URL. */
+export function isLocalPath(p: string): boolean {
   return (
     p.startsWith("/") ||
     /^[a-zA-Z]:[/\\]/.test(p) ||
@@ -50,39 +49,145 @@ function isLocalPath(p: string): boolean {
   );
 }
 
+/** Sleep helper for backoff. */
+export const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Generate a unique temp file path. */
+export function makeTempPath(prefix: string, ext = ".wav"): string {
+  return path.join(
+    os.tmpdir(),
+    `${prefix}_${Date.now()}_${Math.random().toString(36).substring(2, 8)}${ext}`,
+  );
+}
+
+/** Read a temp file into a Buffer and delete it. */
+export function readAndCleanup(filePath: string): Buffer {
+  const buffer = fs.readFileSync(filePath);
+  try {
+    fs.unlinkSync(filePath);
+  } catch (_) {}
+  return buffer;
+}
+
+/**
+ * Delete temp files. Skips paths that are not in os.tmpdir() (original local files).
+ */
+export function cleanupTempFiles(paths: string[]): void {
+  const tmpDir = os.tmpdir();
+  for (const p of paths) {
+    try {
+      if (p.startsWith(tmpDir)) fs.unlinkSync(p);
+    } catch (_) {}
+  }
+}
+
+/**
+ * Download a single URL to a temp file with retry + exponential backoff.
+ */
+export async function downloadSingle(
+  url: string,
+  retries = 3,
+): Promise<string> {
+  const cleanUrl = ensureCleanUrl(url);
+
+  if (isLocalPath(cleanUrl) && fs.existsSync(cleanUrl)) return cleanUrl;
+
+  const urlObj = new URL(cleanUrl);
+  const ext = path.extname(urlObj.pathname) || ".m4a";
+  const tempPath = makeTempPath("chunk", ext);
+
+  const isS3Url =
+    cleanUrl.includes("amazonaws.com") || cleanUrl.includes("cloudfront.net");
+
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      let data: Buffer;
+
+      if (isS3Url) {
+        const S3Util = (await import("./s3.util")).default;
+        data = await S3Util.getFile(cleanUrl);
+      } else {
+        const response = await axios.get(cleanUrl, {
+          responseType: "arraybuffer",
+          timeout: 30_000,
+        });
+        data = Buffer.from(response.data);
+      }
+
+      fs.writeFileSync(tempPath, data as any);
+      return tempPath;
+    } catch (err: any) {
+      logger.warn(
+        `[MediaUtils] Download attempt ${attempt}/${retries} failed for ${cleanUrl}: ${err.message}`,
+      );
+      if (attempt === retries) throw err;
+      await sleep(1000 * attempt);
+    }
+  }
+
+  throw new Error(`Failed to download after ${retries} attempts: ${cleanUrl}`);
+}
+
+/**
+ * Downloads an array of URLs to local temp files with concurrency limiting.
+ */
+export async function downloadToTemp(
+  urls: string[],
+  concurrency = 5,
+  skipFailures = false,
+): Promise<(string | null)[]> {
+  const results: (string | null)[] = new Array(urls.length).fill(null);
+  let nextIndex = 0;
+
+  const worker = async () => {
+    while (nextIndex < urls.length) {
+      const i = nextIndex++;
+      try {
+        results[i] = await downloadSingle(urls[i]);
+      } catch (err: any) {
+        if (skipFailures) {
+          logger.warn(
+            `[MediaUtils] Skipping failed chunk ${i}: ${err.message}`,
+          );
+          results[i] = null;
+        } else {
+          throw err;
+        }
+      }
+    }
+  };
+
+  const workers = Array.from(
+    { length: Math.min(concurrency, urls.length) },
+    () => worker(),
+  );
+  await Promise.all(workers);
+
+  return results;
+}
+
 // ---------------------------------------------------------------------------
-// Streaming Media Processing
+// Specialized Media Processing (Required by MediaCtrl & Listeners)
 // ---------------------------------------------------------------------------
 
 export interface MediaMetadata {
-  duration: number; // in seconds
+  duration: number;
   format: string;
-  width?: number; // video only
-  height?: number; // video only
-  bitrate: number; // in bps
+  width?: number;
+  height?: number;
+  bitrate: number;
   hasAudio: boolean;
   hasVideo: boolean;
 }
 
-/**
- * Get technical metadata for a media file (Supports URL or Local Path).
- * Uses ffmpeg.ffprobe across network if possible (supported by some builds),
- * otherwise falls back to small partial download or full download.
- */
+/** Get technical metadata for a media file */
 export const getMediaMetadata = async (
   input: string,
 ): Promise<MediaMetadata> => {
   const cleanUrl = ensureCleanUrl(input);
-
-  // ffprobe can often read remote HTTP URLs directly
   return new Promise((resolve, reject) => {
     ffmpeg.ffprobe(cleanUrl, (err, metadata) => {
-      if (err) {
-        // Fallback: This might fail if remote server blocks range requests or probes
-        // In a full production env, you might download the first 50KB to check header
-        return reject(err);
-      }
-
+      if (err) return reject(err);
       const format = metadata.format;
       const videoStream = metadata.streams.find(
         (s) => s.codec_type === "video",
@@ -90,7 +195,6 @@ export const getMediaMetadata = async (
       const audioStream = metadata.streams.find(
         (s) => s.codec_type === "audio",
       );
-
       resolve({
         duration: format.duration || 0,
         format: format.format_name || "unknown",
@@ -104,33 +208,19 @@ export const getMediaMetadata = async (
   });
 };
 
-/**
- * Generate a thumbnail screenshot from a video.
- * Note: Screenshots are hard to "stream" because seeking requires random access.
- * We download a small chunk or the whole file to temp for reliability.
- */
+/** Generate a thumbnail screenshot from a video */
 export const generateThumbnail = async (
   input: string,
   timestamp?: number,
 ): Promise<Buffer> => {
-  // For thumbnail, we generally need the file locally to seek efficiently
-  // Optimization: In production, you'd use a signed S3 URL that supports Range requests
-  // so ffmpeg only downloads what it needs.
   const cleanUrl = ensureCleanUrl(input);
-
   const outputPath = makeTempPath("thumb", ".jpg");
   const folder = path.dirname(outputPath);
   const filename = path.basename(outputPath);
 
   return new Promise((resolve, reject) => {
-    let command = ffmpeg(cleanUrl);
-
-    // If input is remote, adding seek before input might be faster for some servers
-    if (timestamp) {
-      command.seekInput(timestamp);
-    }
-
-    command
+    ffmpeg(cleanUrl)
+      .seekInput(timestamp || 1)
       .screenshots({
         timestamps: [timestamp || 1],
         filename: filename,
@@ -146,76 +236,67 @@ export const generateThumbnail = async (
           reject(e);
         }
       })
-      .on("error", (err) => {
-        logger.error("[MediaUtils] Thumbnail generation failed:", err);
-        reject(err);
-      });
+      .on("error", (err) => reject(err));
   });
 };
 
-/**
- * Optimizes video for web streaming (H.264/AAC) using STREAMS.
- *
- * @param inputStream Readable stream of the source video.
- * @returns PassThrough stream of the output MP4.
- *
- * NOTE: MP4 requires the 'moov' atom at the beginning for fast start.
- * FFmpeg cannot write a seekable MP4 to a non-seekable output stream (like S3 upload) easily
- * because it needs to go back and write the header size after processing.
- *
- * Workaround for "Streaming + FastStart":
- * 1. Output to 'frag_keyframe' fragmented MP4 (good for low latency, bad for compatibility).
- * 2. OR: Write to local temp file, then stream upload (Safest for compatibility).
- *
- * We will implement Method 2 (Temp File) for MP4 reliability, BUT we stream the DOWNLOAD.
- */
+/** Optimizes video for web streaming */
 export const optimizeVideoToStream = async (
   inputUrl: string,
-  resolution: "1080p" | "720p" | "480p" = "720p",
+  resolution: "1080p" | "720p" | "480p" | "240p" | "144p" = "720p",
 ): Promise<string> => {
   const cleanUrl = ensureCleanUrl(inputUrl);
   const outputPath = makeTempPath("web_video", ".mp4");
 
   let width = 1280;
-  if (resolution === "1080p") width = 1920;
-  if (resolution === "480p") width = 854;
+  let bitrate = "2500k";
+
+  if (resolution === "1080p") {
+    width = 1920;
+    bitrate = "4500k";
+  } else if (resolution === "480p") {
+    width = 854;
+    bitrate = "1000k";
+  } else if (resolution === "240p") {
+    width = 426;
+    bitrate = "400k";
+  } else if (resolution === "144p") {
+    width = 256;
+    bitrate = "200k";
+  }
 
   return new Promise((resolve, reject) => {
-    logger.info(`[MediaUtils] Starting stream transcoding for ${cleanUrl}`);
-
     ffmpeg(cleanUrl)
-      // Video Settings
       .videoCodec("libx264")
-      .videoBitrate(resolution === "1080p" ? "4500k" : "2500k")
       .size(`${width}x?`)
+      .videoBitrate(bitrate)
       .outputOptions([
-        "-preset fast", // Faster encoding for worker
+        "-preset fast",
         "-crf 23",
-        "-movflags +faststart", // Relocate moov atom to start
+        "-movflags +faststart",
         "-pix_fmt yuv420p",
       ])
-      // Audio Settings (Netflix Quality)
       .audioCodec("aac")
       .audioBitrate("192k")
       .audioFrequency(48000)
       .audioChannels(2)
       .audioFilters(["loudnorm=I=-16:TP=-1.5:LRA=11"])
-      .on("start", (cmd) => logger.info(`[MediaUtils] FFmpeg Command: ${cmd}`))
+      .on("start", (cmd) =>
+        logger.info(`[MediaUtils] Transcoding to ${resolution}: ${cmd}`),
+      )
       .on("error", (err) => {
-        logger.error("[MediaUtils] Transcoding failed:", err);
+        logger.error(`[MediaUtils] Transcoding failed:`, err);
         reject(err);
       })
       .on("end", () => {
-        logger.info("[MediaUtils] Transcoding complete");
+        logger.info(`[MediaUtils] Transcoding complete: ${outputPath}`);
         resolve(outputPath);
       })
       .save(outputPath);
   });
 };
 
-/**
- * Optimizes audio for web (MP3/AAC) with loudness normalization.
- */
+/** Optimizes audio for web */
 export const optimizeAudioToStream = async (
   inputUrl: string,
   format: "mp3" | "aac" = "mp3",
@@ -225,29 +306,105 @@ export const optimizeAudioToStream = async (
   const outputPath = makeTempPath("web_audio", ext);
 
   return new Promise((resolve, reject) => {
-    logger.info(`[MediaUtils] Starting audio transcoding for ${cleanUrl}`);
-
     const command = ffmpeg(cleanUrl)
       .noVideo()
       .audioFilters(["loudnorm=I=-16:TP=-1.5:LRA=11"]);
-
-    if (format === "mp3") {
-      command.audioCodec("libmp3lame").audioBitrate("192k");
-    } else {
-      command.audioCodec("aac").audioBitrate("192k");
-    }
+    if (format === "mp3") command.audioCodec("libmp3lame").audioBitrate("192k");
+    else command.audioCodec("aac").audioBitrate("192k");
 
     command
-      .on("error", (err) => {
-        logger.error("[MediaUtils] Audio transcoding failed:", err);
-        reject(err);
-      })
-      .on("end", () => {
-        logger.info("[MediaUtils] Audio transcoding complete");
-        resolve(outputPath);
-      })
+      .on("error", (err) => reject(err))
+      .on("end", () => resolve(outputPath))
       .save(outputPath);
   });
+};
+
+/**
+ * Streaming variant of optimizeVideoToStream.
+ * Pipes FFmpeg output through a PassThrough stream using fragmented MP4
+ * (`frag_keyframe+empty_moov`) so playback can begin before processing ends.
+ * Ideal for piping directly to S3 upload or real-time delivery.
+ */
+export const streamOptimizedVideo = (
+  inputUrl: string,
+  resolution: "1080p" | "720p" | "480p" | "240p" | "144p" = "720p",
+): PassThrough => {
+  const cleanUrl = ensureCleanUrl(inputUrl);
+  const output = new PassThrough();
+
+  let width = 1280;
+  let bitrate = "2500k";
+
+  if (resolution === "1080p") {
+    width = 1920;
+    bitrate = "4500k";
+  } else if (resolution === "480p") {
+    width = 854;
+    bitrate = "1000k";
+  } else if (resolution === "240p") {
+    width = 426;
+    bitrate = "400k";
+  } else if (resolution === "144p") {
+    width = 256;
+    bitrate = "200k";
+  }
+
+  ffmpeg(cleanUrl)
+    .videoCodec("libx264")
+    .size(`${width}x?`)
+    .videoBitrate(bitrate)
+    .outputOptions([
+      "-preset fast",
+      "-crf 23",
+      "-movflags frag_keyframe+empty_moov",
+      "-pix_fmt yuv420p",
+    ])
+    .audioCodec("aac")
+    .audioBitrate("192k")
+    .audioFrequency(48000)
+    .audioChannels(2)
+    .audioFilters(["loudnorm=I=-16:TP=-1.5:LRA=11"])
+    .format("mp4")
+    .on("start", (cmd) =>
+      logger.info(`[MediaUtils] Stream transcode (${resolution}): ${cmd}`),
+    )
+    .on("error", (err) => {
+      logger.error(`[MediaUtils] Stream transcode failed:`, err);
+      output.destroy(err);
+    })
+    .pipe(output, { end: true });
+
+  return output;
+};
+
+/**
+ * Streaming variant of optimizeAudioToStream.
+ * Pipes FFmpeg output through a PassThrough stream for real-time delivery
+ * or direct S3 upload without writing to disk.
+ */
+export const streamOptimizedAudio = (
+  inputUrl: string,
+  format: "mp3" | "aac" = "mp3",
+): PassThrough => {
+  const cleanUrl = ensureCleanUrl(inputUrl);
+  const output = new PassThrough();
+
+  const command = ffmpeg(cleanUrl)
+    .noVideo()
+    .audioFilters(["loudnorm=I=-16:TP=-1.5:LRA=11"]);
+
+  if (format === "mp3") command.audioCodec("libmp3lame").audioBitrate("192k");
+  else command.audioCodec("aac").audioBitrate("192k");
+
+  command
+    .format(format === "mp3" ? "mp3" : "adts")
+    .on("error", (err) => {
+      logger.error(`[MediaUtils] Audio stream failed:`, err);
+      output.destroy(err);
+    })
+    .pipe(output, { end: true });
+
+  return output;
 };
 
 /**

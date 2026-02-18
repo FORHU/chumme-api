@@ -127,7 +127,7 @@ export default class MusicSvc {
       await CacheUtil.del(`musics:artist:${data.musicArtistId}`);
     }
     await CacheUtil.delByPattern("musics:*");
-    return music;
+    return this.enrichMusicData(music);
   }
 
   static async getMusicById(id: string) {
@@ -135,7 +135,7 @@ export default class MusicSvc {
     const cached = await CacheUtil.get(cachedKey);
     if (cached) {
       logger.info(`[MusicSvc] Cache HIT for getMusicById: ${id}`);
-      return cached;
+      return this.enrichMusicData(cached);
     }
 
     logger.info(`[MusicSvc] Cache MISS for getMusicById: ${id}`);
@@ -143,7 +143,7 @@ export default class MusicSvc {
     if (!music) throw new Error("Music not found");
 
     await CacheUtil.set(cachedKey, music);
-    return music;
+    return this.enrichMusicData(music);
   }
 
   static async getMusics(params: {
@@ -158,31 +158,119 @@ export default class MusicSvc {
     const cached = await CacheUtil.get(cachedKey);
     if (cached) {
       logger.info(`[MusicSvc] Cache HIT for getMusics: ${cachedKey}`);
+      if (cached && cached.data) {
+        cached.data = cached.data.map((m: any) => this.enrichMusicData(m));
+      }
       return cached;
     }
 
     logger.info(`[MusicSvc] Cache MISS for getMusics: ${cachedKey}`);
     const result = await MusicRepo.findAll(params);
+    result.data = result.data.map((m: any) => this.enrichMusicData(m));
     await CacheUtil.set(cachedKey, result);
     return result;
   }
 
   static async getMusicByTitle(title: string) {
     const music = await MusicRepo.findByTitle(title);
-    return music;
+    return this.enrichMusicData(music);
+  }
+
+  /**
+   * Check if a music record already exists based on title, artist, album, and type.
+   * This allows same-titled songs to exist for different scenarios.
+   */
+  static async checkDuplicate(params: {
+    title: string;
+    musicArtistId?: string | null;
+    musicAlbumId?: string | null;
+    isKaraoke: boolean;
+  }) {
+    const cleanTitle = this.stripAudioExtension(params.title);
+    return await MusicRepo.findDuplicate({
+      ...params,
+      title: cleanTitle,
+    });
   }
 
   static async updateMusic(id: string, data: any) {
     const music = await MusicRepo.update(id, data);
     await CacheUtil.del(`music:${id}`);
     await CacheUtil.delByPattern("musics:*");
-    return music;
+    return this.enrichMusicData(music);
   }
 
   static async deleteMusic(id: string) {
     const music = await MusicRepo.delete(id);
     await CacheUtil.del(`music:${id}`);
     await CacheUtil.delByPattern("musics:*");
+    return music;
+  }
+
+  /**
+   * Enriches music data for frontend consumption.
+   * - Flattens musicFile.metaData to root level (safely)
+   * - Extracts lyrics field
+   * - Populates parts from metaData segments if empty
+   * - Ensures backward compatibility for old metadata structures
+   */
+  private static enrichMusicData(music: any) {
+    if (!music) return music;
+
+    const fileMeta = music.musicFile?.metaData as any;
+    if (fileMeta) {
+      // 1. Backward Compatibility: Ensure .transcription exists if it's in .songInfo
+      if (fileMeta.songInfo?.transcription && !fileMeta.transcription) {
+        fileMeta.transcription = fileMeta.songInfo.transcription;
+      }
+
+      // 2. Safe Flattening: Don't overwrite core Music fields with metadata
+      const coreFields = [
+        "id",
+        "title",
+        "duration",
+        "bpm",
+        "release_date",
+        "isKaraoke",
+      ];
+      Object.keys(fileMeta).forEach((key) => {
+        if (!coreFields.includes(key)) {
+          music[key] = fileMeta[key];
+        }
+      });
+
+      // 3. Extract songInfo specifically if it exists
+      const songInfo = fileMeta.songInfo || fileMeta;
+      const transcription = fileMeta.transcription || songInfo?.transcription;
+
+      if (transcription) {
+        // 4. Ensure lyrics field is present
+        music.lyrics =
+          music.lyrics || transcription.content || transcription.text || "";
+
+        // 5. Fallback for Parts: If parts are empty, populate from segments
+        if (
+          (!music.parts || music.parts.length === 0) &&
+          (transcription.segments || transcription.words)
+        ) {
+          const rawSegments = transcription.segments || transcription.words;
+          music.parts = rawSegments.map((seg: any, idx: number) => ({
+            id: `v_${seg.id || idx}`,
+            name: `Segment ${(seg.id || idx) + 1}`,
+            startLine: seg.id || idx,
+            endLine: seg.id || idx,
+            text: seg.text || seg.word || "",
+            start: seg.start,
+            end: seg.end,
+            startTime: seg.start,
+            endTime: seg.end,
+            vocalRoleIndex: 1,
+            order: seg.id || idx,
+          }));
+        }
+      }
+    }
+
     return music;
   }
 }

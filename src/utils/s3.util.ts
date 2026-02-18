@@ -4,6 +4,7 @@ import {
   DeleteObjectCommand,
   GetObjectCommand,
   HeadObjectCommand,
+  ListObjectsV2Command,
 } from "@aws-sdk/client-s3";
 import { Readable } from "stream";
 import {
@@ -204,5 +205,39 @@ export default class S3Util {
       }
       throw err;
     }
+  }
+
+  /**
+   * Delete all files from S3 matching a given prefix.
+   * Useful for cleaning up timestamped files (e.g. old preview versions).
+   * @param prefix - S3 key prefix to match
+   */
+  static async deleteByPrefix(prefix: string): Promise<number> {
+    const listCommand = new ListObjectsV2Command({
+      Bucket: AWS_S3_BUCKET_NAME,
+      Prefix: prefix,
+    });
+
+    const response = await s3Client.send(listCommand);
+    const objects = response.Contents || [];
+
+    if (objects.length === 0) return 0;
+
+    let deleted = 0;
+    for (const obj of objects) {
+      if (obj.Key) {
+        try {
+          await this.deleteFileByKey(obj.Key);
+          deleted++;
+        } catch (e) {
+          logger.warn(`[S3] Failed to delete ${obj.Key}: ${e}`);
+        }
+      }
+    }
+
+    logger.info(
+      `[S3] Deleted ${deleted}/${objects.length} objects with prefix: ${prefix}`,
+    );
+    return deleted;
   }
 }

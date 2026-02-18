@@ -83,6 +83,27 @@ export default class MusicRepo {
     });
   }
 
+  static async findDuplicate(params: {
+    title: string;
+    musicArtistId?: string | null;
+    musicAlbumId?: string | null;
+    isKaraoke: boolean;
+  }) {
+    return prisma.music.findFirst({
+      where: {
+        title: params.title,
+        musicArtistId: params.musicArtistId || null,
+        musicAlbumId: params.musicAlbumId || null,
+        isKaraoke: params.isKaraoke,
+        deletedAt: null,
+      },
+      include: {
+        musicArtist: true,
+        musicFile: true,
+      },
+    });
+  }
+
   static async findAll(params: {
     page?: number;
     limit?: number;
@@ -122,8 +143,14 @@ export default class MusicRepo {
         skip: skip,
         include: {
           musicArtist: true,
-          featuredArtists: true,
+          featuredArtists: {
+            include: {
+              artist: true,
+            },
+          },
           musicFile: true,
+          parts: true,
+          musicAlbum: true,
         },
         orderBy: {
           createdAt: "desc",
