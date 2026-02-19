@@ -325,6 +325,9 @@ export const registerSessionHandlers = (
         });
       }
 
+      // Check if the leaving user is the owner — if so, close the studio
+      const isOwner = await MusicStudioSvc.isOwner(studioId, socket.user.id);
+
       await MusicStudioSvc.leaveStudio(studioId, socket.user.id);
       socket.leave(studioId);
 
@@ -341,9 +344,6 @@ export const registerSessionHandlers = (
         });
       }
 
-      const socketsInRoom = await io.in(studioId).fetchSockets();
-      const usersInRoom = socketsInRoom.map((s: any) => s.user);
-
       socket.emit("leave_studio_success", {
         studioId,
         message: "Left studio successfully",
@@ -356,11 +356,25 @@ export const registerSessionHandlers = (
         MusicStudioCacheSvc.removeSingerRequest(studioId, socket.user.id),
       ]);
 
-      // Room Cleanup: If this was the last person, clear the session ephemeral data
-      const remainingMembers = await MusicStudioCacheSvc.getMembers(studioId);
-      if (remainingMembers.length === 0) {
+      // Auto-close studio if the owner/producer left
+      if (isOwner) {
+        io.to(studioId).emit("studio_closed", {
+          studioId,
+          message: "Studio closed — the producer has left",
+        });
+        const socketsInRoom = await io.in(studioId).fetchSockets();
+        socketsInRoom.forEach((s) => s.leave(studioId));
         await MusicStudioCacheSvc.clearStudioSession(studioId);
-        console.log(`[MusicStudio] 🧹 Cleaned up empty studio: ${studioId}`);
+        console.log(
+          `[MusicStudio] 🔒 Studio auto-closed (owner left): ${studioId}`,
+        );
+      } else {
+        // Room Cleanup: If this was the last person, clear the session
+        const remainingMembers = await MusicStudioCacheSvc.getMembers(studioId);
+        if (remainingMembers.length === 0) {
+          await MusicStudioCacheSvc.clearStudioSession(studioId);
+          console.log(`[MusicStudio] 🧹 Cleaned up empty studio: ${studioId}`);
+        }
       }
 
       console.log(
@@ -452,14 +466,29 @@ export const registerSessionHandlers = (
                 });
               }
 
-              // Room Cleanup after disconnect grace period
-              const remainingMembers =
-                await MusicStudioCacheSvc.getMembers(studioId);
-              if (remainingMembers.length === 0) {
+              // Auto-close studio if the disconnected user was the owner
+              const isOwner = await MusicStudioSvc.isOwner(studioId, userId);
+              if (isOwner) {
+                io.to(studioId).emit("studio_closed", {
+                  studioId,
+                  message: "Studio closed — the producer has disconnected",
+                });
+                const socketsInRoom = await io.in(studioId).fetchSockets();
+                socketsInRoom.forEach((s) => s.leave(studioId));
                 await MusicStudioCacheSvc.clearStudioSession(studioId);
                 console.log(
-                  `[MusicStudio] 🧹 Cleaned up empty studio after disconnect: ${studioId}`,
+                  `[MusicStudio] 🔒 Studio auto-closed (owner disconnected): ${studioId}`,
                 );
+              } else {
+                // Room Cleanup after disconnect grace period
+                const remainingMembers =
+                  await MusicStudioCacheSvc.getMembers(studioId);
+                if (remainingMembers.length === 0) {
+                  await MusicStudioCacheSvc.clearStudioSession(studioId);
+                  console.log(
+                    `[MusicStudio] 🧹 Cleaned up empty studio after disconnect: ${studioId}`,
+                  );
+                }
               }
 
               console.log(
