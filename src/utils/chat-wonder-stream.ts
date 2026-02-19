@@ -11,12 +11,13 @@ export interface StreamCallbacks {
 export async function streamChat(
   userInput: string,
   sessionId: string,
-  callbacks: StreamCallbacks
+  persona: string | undefined,
+  callbacks: StreamCallbacks,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     const wsUrl = CHAT_WONDER_API_URL.replace("http://", "ws://").replace(
       "https://",
-      "wss://"
+      "wss://",
     );
     const wsEndpoint = `${wsUrl}/chat-stream`;
 
@@ -28,7 +29,7 @@ export async function streamChat(
       logger.info("[CHAT-WONDER-STREAM] WebSocket connected");
 
       const payload = {
-        user_input: `[chumme] ${userInput}`,
+        user_input: `[chumme${persona ? ` - ${persona}` : ""}] ${userInput}`,
         session_id: sessionId,
       };
 
@@ -67,7 +68,7 @@ export async function streamChat(
       // Skip if we already received a complete JSON response
       if (firstJsonComplete) {
         logger.debug(
-          `[CHAT-WONDER-STREAM] Skipping chunk after first complete JSON`
+          `[CHAT-WONDER-STREAM] Skipping chunk after first complete JSON`,
         );
         return;
       }
@@ -81,7 +82,7 @@ export async function streamChat(
           // Guard against malformed JSON (more closing than opening braces)
           if (braceDepth < 0) {
             logger.warn(
-              "[CHAT-WONDER-STREAM] Malformed JSON: negative brace depth"
+              "[CHAT-WONDER-STREAM] Malformed JSON: negative brace depth",
             );
             braceDepth = 0;
           }
@@ -94,7 +95,7 @@ export async function streamChat(
 
       // Send chunk to frontend
       logger.info(
-        `[CHAT-WONDER-STREAM] Received chunk (${message.length} chars): ${message.substring(0, 50)}...`
+        `[CHAT-WONDER-STREAM] Received chunk (${message.length} chars): ${message.substring(0, 50)}...`,
       );
       callbacks.onChunk(message);
     });
