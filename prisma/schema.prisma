@@ -68,16 +68,17 @@ model Session {
 }
 
 model File {
-  id         String      @id @default(uuid())
-  filename   String?
-  fileUrl    String?
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
-  deletedAt  DateTime?
-  metaData   Json?
-  mediaPosts MediaPost[]
-  users      User[]
-  videos     Video[]
+  id            String         @id @default(uuid())
+  filename      String?
+  fileUrl       String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  deletedAt     DateTime?
+  metaData      Json?
+  mediaPosts    MediaPost[]
+  users         User[]
+  videos        Video[]
+  artistPersona ArtistPersona? @relation("PersonaFile")
 }
 
 model MusicLibrary {
@@ -393,6 +394,22 @@ model Artist {
   userArtists       UserArtist[]
   videos            Video[]
   roomSubCategories RoomSubCategory[]
+  persona           ArtistPersona?
+}
+
+model ArtistPersona {
+  id             String  @id @default(uuid())
+  artistId       String? @unique
+  personaVoiceId String
+  personaFileId  String  @unique
+
+  artist      Artist?   @relation(fields: [artistId], references: [id])
+  personaFile File      @relation("PersonaFile", fields: [personaFileId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@index([artistId])
 }
 
 model UserArtist {
