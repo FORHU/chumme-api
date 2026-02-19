@@ -1,5 +1,7 @@
 import MusicRecordRepo from "../repositories/music-record.repository";
 import MusicLibraryRepo from "../repositories/music-library.repository";
+import S3Util from "../utils/s3.util";
+import logger from "../utils/logger";
 
 interface CreateMusicRecordInput {
   studioId: string;
@@ -93,12 +95,15 @@ export default class MusicRecordSvc {
 
   /**
    * Delete a music record (soft delete)
+   * Note: S3 files are intentionally kept for potential recovery
    */
   static async delete(id: string) {
     const existing = await MusicRecordRepo.findById(id);
     if (!existing) {
       throw new Error("Music record not found");
     }
+
+    // Soft-delete the MusicRecord (sets deletedAt)
     await MusicRecordRepo.delete(id);
     return { message: "Music record deleted successfully" };
   }

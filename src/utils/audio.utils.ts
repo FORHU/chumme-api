@@ -314,14 +314,17 @@ export type VoiceEffect =
   | "RADIO"
   | "CHIPMUNK";
 
-function getVocalFilterChain(effect: VoiceEffect = "STUDIO"): any[] {
+function getVocalFilterChain(
+  effect: VoiceEffect = "CLEAN",
+  inputLabel: string = "1:a",
+): any[] {
   const chain: any[] = [];
 
   // 1. Basic cleanup for all presets (Highpass)
   chain.push({
     filter: "highpass",
     options: { f: 80 },
-    inputs: "1:a",
+    inputs: inputLabel,
     outputs: "v_clean",
   });
 
@@ -331,7 +334,14 @@ function getVocalFilterChain(effect: VoiceEffect = "STUDIO"): any[] {
   // This ensures quiet mics are boosted and loud mics are tamed
   chain.push({
     filter: "dynaudnorm",
-    options: { f: 50, g: 31, p: 0.95, m: 10.0, r: 0.9, s: 0 },
+    options: {
+      f: 150, // Larger frame for smoother leveling (less pumping)
+      g: 31, // Wider Gaussian window (gentler response)
+      p: 0.95, // Peak target
+      m: 10, // Higher max gain limit (less aggressive boosting)
+      r: 0.9, // High compression ratio (smooth)
+      s: 0, // No coupling between channels
+    },
     inputs: "v_clean",
     outputs: "v_norm",
   });
@@ -477,7 +487,7 @@ export const mixVocalsWithBacking = async (
 ): Promise<string> => {
   const {
     maxDuration,
-    voiceEffect = "STUDIO",
+    voiceEffect = "CLEAN",
     title = "My Cover",
     artist = "Chumme User",
   } = options;
@@ -497,38 +507,37 @@ export const mixVocalsWithBacking = async (
       command.input(localBackingPath!);
       command.input(tempVocalsPath);
 
-      // Get effect chain
-      const vocalChain = getVocalFilterChain(voiceEffect);
+      // === ALL FILTERS COMMENTED OUT FOR TESTING ===
+      // const vocalChain = getVocalFilterChain(voiceEffect, "1:a");
 
       const filterChain: any[] = [
-        ...vocalChain,
-
-        // Process Backing Track (Input 0) -> Lower volume slightly
-        {
-          filter: "volume",
-          options: { volume: 0.8 },
-          inputs: "0:a",
-          outputs: "b_processed",
-        },
-
-        // Mix
+        // Simple direct mix: backing track (0:a) + raw vocals (1:a)
         {
           filter: "amix",
-          options: { inputs: 2, duration: "shortest" },
-          inputs: ["b_processed", "v_processed"],
+          options: {
+            inputs: 2,
+            duration: "shortest",
+            weights: "1 2",
+          },
+          inputs: ["0:a", "1:a"],
           outputs: "mixed",
-        },
-
-        // Final Mastering (Loudness Normalization)
-        {
-          filter: "loudnorm",
-          options: { I: -14, TP: -1, LRA: 11 },
-          inputs: "mixed",
-          outputs: "mastered",
         },
       ];
 
-      let finalOutput = "mastered";
+      /*
+      // --- ORIGINAL FILTER CHAIN (commented out for testing) ---
+      const vocalChain = getVocalFilterChain(voiceEffect, "1:a");
+      const filterChain: any[] = [
+        ...vocalChain,
+        { filter: "volume", options: { volume: 0.5 }, inputs: "0:a", outputs: "b_vol" },
+        { filter: "asplit", inputs: "v_processed", outputs: ["v_sc", "v_mix"] },
+        { filter: "sidechaincompress", options: { threshold: 0.1, ratio: 4, attack: 20, release: 400 }, inputs: ["b_vol", "v_sc"], outputs: "b_ducked" },
+        { filter: "amix", options: { inputs: 2, duration: "shortest", weights: "1 2" }, inputs: ["b_ducked", "v_mix"], outputs: "mixed" },
+        { filter: "loudnorm", options: { I: -14, TP: -1, LRA: 11 }, inputs: "mixed", outputs: "mastered" },
+      ];
+      */
+
+      let finalOutput = "mixed";
 
       // Trim to duration if specified
       if (maxDuration && maxDuration > 0) {
@@ -536,7 +545,7 @@ export const mixVocalsWithBacking = async (
         filterChain.push({
           filter: "atrim",
           options: { duration: maxDuration },
-          inputs: "mastered",
+          inputs: "mixed",
           outputs: finalOutput,
         });
       }

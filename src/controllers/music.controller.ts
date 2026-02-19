@@ -51,7 +51,7 @@ export default class MusicCtrl {
   }
 
   static async getMusics(req: Request, res: Response) {
-    const { page, limit, albumId, artistId, playlistId, isKaraoke } =
+    const { page, limit, albumId, artistId, playlistId, isKaraoke, search } =
       req.query as any;
     logger.info(`[MusicCtrl] getMusics called`, {
       page,
@@ -60,6 +60,7 @@ export default class MusicCtrl {
       artistId,
       playlistId,
       isKaraoke,
+      search,
     });
     try {
       const result = await MusicSvc.getMusics({
@@ -68,6 +69,7 @@ export default class MusicCtrl {
         albumId,
         artistId,
         playlistId,
+        search,
         isKaraoke:
           isKaraoke === "true"
             ? true

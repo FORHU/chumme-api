@@ -57,7 +57,17 @@ export default class MusicLibraryRepo {
   }
 
   /**
-   * Soft/Hard delete a music library record
+   * Soft delete a music library record (sets deletedAt)
+   */
+  static async softDelete(id: string) {
+    return prisma.musicLibrary.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
+  }
+
+  /**
+   * Hard delete a music library record
    */
   static async delete(id: string) {
     return prisma.musicLibrary.delete({
