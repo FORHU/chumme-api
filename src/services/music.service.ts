@@ -153,6 +153,7 @@ export default class MusicSvc {
     artistId?: string;
     playlistId?: string;
     isKaraoke?: boolean;
+    search?: string;
   }) {
     const cachedKey = `musics:${JSON.stringify(params)}`;
     const cached = await CacheUtil.get(cachedKey);

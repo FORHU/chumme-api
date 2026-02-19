@@ -1,4 +1,5 @@
 import express from "express";
+import artistPersonaRoute from "./artist-persona.routes";
 import authRoute from "./auth.route";
 import chatRoutes from "./chat.route";
 import userRoute from "./user.route";
@@ -60,6 +61,7 @@ router.use("/v1/messages", messagesRoute);
 router.use("/v1", healthRoute);
 
 router.use("/v1/chat-wonder", chatWonderRoute);
+router.use("/v1/artist-persona", artistPersonaRoute);
 router.use("/v1/music-albums", musicAlbumRoute);
 router.use("/v1/music", musicRoute);
 router.use("/v1/playlists", playlistRoute);

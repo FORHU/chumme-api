@@ -111,6 +111,7 @@ export default class MusicRepo {
     artistId?: string;
     playlistId?: string;
     isKaraoke?: boolean;
+    search?: string;
   }) {
     const {
       page = 1,
@@ -119,11 +120,23 @@ export default class MusicRepo {
       artistId,
       playlistId,
       isKaraoke,
+      search,
     } = params;
     const skip = (page - 1) * limit;
 
     const whereClause: Prisma.MusicWhereInput = {
       deletedAt: null,
+      //  search: WHERE (title LIKE %search% OR artist.name LIKE %search%)
+      ...(search && {
+        OR: [
+          { title: { contains: search, mode: "insensitive" as const } },
+          {
+            musicArtist: {
+              name: { contains: search, mode: "insensitive" as const },
+            },
+          },
+        ],
+      }),
       ...(albumId && { musicAlbumId: albumId }),
       ...(artistId && { musicArtistId: artistId }),
       ...(isKaraoke !== undefined && { isKaraoke }),
