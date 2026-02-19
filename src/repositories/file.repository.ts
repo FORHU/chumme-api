@@ -72,7 +72,7 @@ export default class FileRepo {
       await S3Util.deleteFile(file.fileUrl);
     }
 
-    await FileRepo.deleteFile(fileId);
+    await prisma.file.delete({ where: { id: fileId } });
 
     return { message: "File deleted successfully" };
   }

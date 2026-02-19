@@ -43,7 +43,7 @@ export default class ChatWonderCtrl {
   }
 
   static async streamChat(req: Request, res: Response, next: NextFunction) {
-    const { input, conversationId: inputConversationId } = req.body;
+    const { input, conversationId: inputConversationId, persona } = req.body;
     const { id: userId } = req.user;
 
     if (!userId) {
@@ -55,6 +55,7 @@ export default class ChatWonderCtrl {
     const schema = Joi.object({
       input: Joi.string().min(1).max(500).required(),
       conversationId: Joi.string().optional(),
+      persona: Joi.string().optional().allow(null, ""),
     });
 
     const { error } = schema.validate(req.body);
@@ -100,7 +101,7 @@ export default class ChatWonderCtrl {
       while (retryCount < maxRetries) {
         try {
           // Stream from chat-wonder-api
-          await streamChat(chummePrompt, currentSessionId, {
+          await streamChat(chummePrompt, currentSessionId, persona, {
             onChunk: (chunk: string) => {
               fullResponse += chunk;
               // Send chunk as SSE
