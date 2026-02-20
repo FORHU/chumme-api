@@ -128,10 +128,12 @@ export default class RoomRepo {
     userId: string,
     skip: number,
     limit: number,
+    subcategoryId?: string,
   ) {
     return prisma.room.findMany({
       where: {
-        isDeleted: false, // Add this condition
+        isDeleted: false,
+        ...(subcategoryId && { roomSubCategoryId: subcategoryId }),
         OR: [
           { isPrivate: false }, // Public rooms
           {
@@ -206,10 +208,14 @@ export default class RoomRepo {
   /**
    * Count rooms accessible to the user (only non-deleted rooms)
    */
-  static async countUserAccessibleRooms(userId: string) {
+  static async countUserAccessibleRooms(
+    userId: string,
+    subcategoryId?: string,
+  ) {
     return prisma.room.count({
       where: {
-        isDeleted: false, // Add this condition
+        isDeleted: false,
+        ...(subcategoryId && { roomSubCategoryId: subcategoryId }),
         OR: [
           { isPrivate: false }, // Public rooms
           {

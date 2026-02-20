@@ -28,19 +28,27 @@ export default class RoomCtrl {
 
     const { error, value } = schema.validate(req.body);
     if (error) {
+      console.error("[RoomCtrl] Validation Error:", error.message);
       return res.status(400).json({ message: error.message });
     }
+
+    console.log(
+      "[RoomCtrl] Creating room with value:",
+      JSON.stringify(value, null, 2),
+    );
 
     try {
       const room = await RoomSvc.createRoom({
         ...value,
         ownerId: userId,
       });
+      console.log("[RoomCtrl] Room created successfully:", room.id);
       return res.status(201).json({
         message: "Room created successfully",
         room,
       });
     } catch (error: any) {
+      console.error("[RoomCtrl] Creation Failed:", error.message || error);
       return res.status(500).json({ message: error.message || error });
     }
   }
@@ -53,9 +61,15 @@ export default class RoomCtrl {
     const userId = req.user.id;
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
+    const subcategoryId = req.query.subcategoryId as string;
 
     try {
-      const result = await RoomSvc.getAllRooms(userId, page, limit);
+      const result = await RoomSvc.getAllRooms(
+        userId,
+        page,
+        limit,
+        subcategoryId,
+      );
       return res.json(result);
     } catch (error: any) {
       return res.status(500).json({ message: error.message || error });

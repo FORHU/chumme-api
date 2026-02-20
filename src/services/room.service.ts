@@ -39,14 +39,18 @@ export default class RoomSvc {
     }
 
     // Create the room
+    console.log("[RoomSvc] Calling RoomRepo.createRoom...");
     const room = await RoomRepo.createRoom(data);
+    console.log("[RoomSvc] Room created in DB:", room.id);
 
     // Add owner as a member with 'owner' role
+    console.log("[RoomSvc] Adding owner as member:", data.ownerId);
     await RoomRepo.addRoomMember({
       roomId: room.id,
       userId: data.ownerId,
       role: "owner",
     });
+    console.log("[RoomSvc] Owner added as member.");
 
     return room;
   }
@@ -59,12 +63,13 @@ export default class RoomSvc {
     userId: string,
     page: number = 1,
     limit: number = 10,
+    subcategoryId?: string,
   ) {
     const skip = (page - 1) * limit;
 
     const [rooms, totalCount] = await Promise.all([
-      RoomRepo.getUserAccessibleRooms(userId, skip, limit),
-      RoomRepo.countUserAccessibleRooms(userId),
+      RoomRepo.getUserAccessibleRooms(userId, skip, limit, subcategoryId),
+      RoomRepo.countUserAccessibleRooms(userId, subcategoryId),
     ]);
 
     return {
