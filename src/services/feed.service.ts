@@ -19,8 +19,8 @@ export default class FeedSvc {
               user: {
                 id: item.post.user?.id,
               },
-              likesCount: item.post.likes?.length || 0,
-              commentsCount: item.post.comments?.length || 0,
+              likesCount: item.post._count?.likes || 0,
+              commentsCount: item.post._count?.comments || 0,
             },
           };
         } else if (item.type === "VIDEO" && item.video) {
@@ -76,7 +76,12 @@ export default class FeedSvc {
   /**
    * Get unified feed with pagination
    */
-  static async getFeed(page: number = 0, limit: number = 20) {
+  static async getFeed(
+    page: number = 0,
+    limit: number = 20,
+    refresh: boolean = false,
+    seed: string = "",
+  ) {
     // Validate pagination params
     if (page < 0) {
       throw new Error("Page must be non-negative");
@@ -86,18 +91,21 @@ export default class FeedSvc {
     }
 
     // Check cache
-    const cacheKey = `feed:page:${page}:limit:${limit}`;
-    const cached = await CacheUtil.get(cacheKey);
-    if (cached) {
-      return shuffleArray(cached);
+    const cacheKey = `feed:page:${page}:limit:${limit}:seed:${seed || "default"}`;
+
+    if (!refresh) {
+      const cached = await CacheUtil.get(cacheKey);
+      if (cached) {
+        return cached;
+      }
     }
 
     const feedItems = await FeedRepo.getFeed(page, limit);
-    const formattedFeed = this.formatFeedItems(feedItems);
+    const formattedFeed = shuffleArray(this.formatFeedItems(feedItems));
 
     await CacheUtil.set(cacheKey, formattedFeed);
 
-    return shuffleArray(formattedFeed);
+    return formattedFeed;
   }
 
   /**
@@ -109,8 +117,10 @@ export default class FeedSvc {
   static async getPersonalizedFeed(
     userId: string,
     page: number = 0,
-    limit: number = 20,
+    limit: number = 5,
     artistInUrlString: string,
+    refresh: boolean = false,
+    seed: string = "",
   ) {
     let artistStringToArray: Array<string> = [];
 
@@ -125,10 +135,13 @@ export default class FeedSvc {
       throw new Error("Limit must be between 1 and 50");
     }
 
-    const cacheKey = `feed:personalized:${userId}:page:${page}:limit:${limit}:artist:${artistInUrlString || "all"}`;
-    const cached = await CacheUtil.get(cacheKey);
-    if (cached) {
-      return shuffleArray(cached);
+    const cacheKey = `feed:personalized:${userId}:page:${page}:limit:${limit}:artist:${artistInUrlString || "all"}:seed:${seed || "default"}`;
+
+    if (!refresh) {
+      const cached = await CacheUtil.get(cacheKey);
+      if (cached) {
+        return cached;
+      }
     }
 
     const feedItems = await FeedRepo.getPersonalizedFeed(
@@ -138,9 +151,9 @@ export default class FeedSvc {
       artistStringToArray,
     );
 
-    const formattedFeed = this.formatFeedItems(feedItems);
+    const formattedFeed = shuffleArray(this.formatFeedItems(feedItems));
     await CacheUtil.set(cacheKey, formattedFeed);
 
-    return shuffleArray(formattedFeed);
+    return formattedFeed;
   }
 }

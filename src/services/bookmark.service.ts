@@ -8,7 +8,7 @@ export default class BookmarkSvc {
   static async fetchAllUserBookmarks(
     userId: string,
     page: number,
-    limit: number
+    limit: number,
   ) {
     if (page < 0) {
       throw new Error("Page must be non-negative");
@@ -42,8 +42,19 @@ export default class BookmarkSvc {
       await BookmarkRepo.deleteUserBookmark(existingBookmark.id);
       message = "Bookmark removed";
     } else {
-      await BookmarkRepo.createUserBookmark(userId, feedId);
-      message = "Bookmark added";
+      try {
+        await BookmarkRepo.createUserBookmark(userId, feedId);
+        message = "Bookmark added";
+      } catch (err: any) {
+        // Race condition: bookmark was created between check and insert (double-tap)
+        if (err?.code === "P2002") {
+          const existing = await BookmarkRepo.getBookmark(query);
+          if (existing) await BookmarkRepo.deleteUserBookmark(existing.id);
+          message = "Bookmark removed";
+        } else {
+          throw err;
+        }
+      }
     }
 
     // Delete all cached pages for this user

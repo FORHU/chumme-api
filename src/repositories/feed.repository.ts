@@ -53,11 +53,11 @@ export default class FeedRepo {
                 avatar: true,
               },
             },
-            likes: {
-              where: { isDeleted: false },
-            },
-            comments: {
-              where: { isDeleted: false },
+            _count: {
+              select: {
+                likes: { where: { isDeleted: false } },
+                comments: { where: { isDeleted: false } },
+              },
             },
           },
         },
@@ -196,8 +196,12 @@ export default class FeedRepo {
             user: {
               select: { id: true, username: true, name: true, avatar: true },
             },
-            likes: { where: { isDeleted: false } },
-            comments: { where: { isDeleted: false } },
+            _count: {
+              select: {
+                likes: { where: { isDeleted: false } },
+                comments: { where: { isDeleted: false } },
+              },
+            },
           },
         },
         video: {
