@@ -1,6 +1,10 @@
 import FeedRepo from "../repositories/feed.repository";
 import CacheUtil from "../utils/cache.util";
-import { stringBacktickToArray, shuffleArray } from "../utils/helpers";
+import {
+  seededShuffle,
+  shuffleArray,
+  stringBacktickToArray,
+} from "../utils/helpers";
 export default class FeedSvc {
   /**
    * Helper method to format feed items
@@ -91,21 +95,32 @@ export default class FeedSvc {
     }
 
     // Check cache
-    const cacheKey = `feed:page:${page}:limit:${limit}:seed:${seed || "default"}`;
+    const cacheKey = `feed:ids:limit:${limit}:seed:${seed || "default"}`;
+    let shuffledIds: string[];
 
-    if (!refresh) {
-      const cached = await CacheUtil.get(cacheKey);
-      if (cached) {
-        return cached;
-      }
+    const cachedIds = await CacheUtil.get(cacheKey);
+    if (cachedIds && !refresh) {
+      shuffledIds = cachedIds;
+    } else {
+      const allIds = await FeedRepo.getGlobalFeedIds();
+      shuffledIds = seededShuffle(allIds, seed);
+      await CacheUtil.set(cacheKey, shuffledIds);
     }
 
-    const feedItems = await FeedRepo.getFeed(page, limit);
-    const formattedFeed = shuffleArray(this.formatFeedItems(feedItems));
+    const start = page * limit;
+    const pageIds = shuffledIds.slice(start, start + limit);
 
-    await CacheUtil.set(cacheKey, formattedFeed);
+    if (pageIds.length === 0) return [];
 
-    return formattedFeed;
+    const feedItems = await FeedRepo.getFeedItemsByIds(pageIds);
+
+    // Restore the shuffled order (Prisma findMany with 'in' doesn't guarantee order)
+    const idMap = new Map(feedItems.map((item) => [item.id, item]));
+    const orderedItems = pageIds
+      .map((id) => idMap.get(id))
+      .filter((v): v is NonNullable<typeof v> => !!v);
+
+    return this.formatFeedItems(orderedItems);
   }
 
   /**
@@ -135,25 +150,34 @@ export default class FeedSvc {
       throw new Error("Limit must be between 1 and 50");
     }
 
-    const cacheKey = `feed:personalized:${userId}:page:${page}:limit:${limit}:artist:${artistInUrlString || "all"}:seed:${seed || "default"}`;
+    const cacheKey = `feed:personalized:ids:${userId}:limit:${limit}:artist:${artistInUrlString || "all"}:seed:${seed || "default"}`;
+    let shuffledIds: string[];
 
-    if (!refresh) {
-      const cached = await CacheUtil.get(cacheKey);
-      if (cached) {
-        return cached;
-      }
+    const cachedIds = await CacheUtil.get(cacheKey);
+    if (cachedIds && !refresh) {
+      shuffledIds = cachedIds;
+    } else {
+      const allIds = await FeedRepo.getPersonalizedFeedIds(
+        userId,
+        artistStringToArray,
+      );
+      shuffledIds = seededShuffle(allIds, seed);
+      await CacheUtil.set(cacheKey, shuffledIds, 1800); // 30 mins cache
     }
 
-    const feedItems = await FeedRepo.getPersonalizedFeed(
-      userId,
-      page,
-      limit,
-      artistStringToArray,
-    );
+    const start = page * limit;
+    const pageIds = shuffledIds.slice(start, start + limit);
 
-    const formattedFeed = shuffleArray(this.formatFeedItems(feedItems));
-    await CacheUtil.set(cacheKey, formattedFeed);
+    if (pageIds.length === 0) return [];
 
-    return formattedFeed;
+    const feedItems = await FeedRepo.getFeedItemsByIds(pageIds);
+
+    // Restore order
+    const idMap = new Map(feedItems.map((item) => [item.id, item]));
+    const orderedItems = pageIds
+      .map((id) => idMap.get(id))
+      .filter((v): v is NonNullable<typeof v> => !!v);
+
+    return this.formatFeedItems(orderedItems);
   }
 }

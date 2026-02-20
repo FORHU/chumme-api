@@ -97,6 +97,81 @@ export default class FeedRepo {
   }
 
   /**
+   * Get all available feed item IDs for a given filter (global or artist)
+   */
+  static async getGlobalFeedIds(artistId?: string) {
+    const where: any = { isDeleted: false };
+    if (artistId) {
+      where.OR = [{ video: { artistId } }, { MediaPost: { artistId } }];
+    }
+
+    const items = await prisma.feedItem.findMany({
+      where,
+      select: { id: true },
+    });
+
+    return items.map((i) => i.id);
+  }
+
+  /**
+   * Get full content for specific feed item IDs
+   */
+  static async getFeedItemsByIds(ids: string[]) {
+    return await prisma.feedItem.findMany({
+      where: { id: { in: ids } },
+      include: {
+        post: {
+          where: { isDeleted: false },
+          include: {
+            user: {
+              select: {
+                id: true,
+                username: true,
+                name: true,
+                avatar: true,
+              },
+            },
+            _count: {
+              select: {
+                likes: { where: { isDeleted: false } },
+                comments: { where: { isDeleted: false } },
+              },
+            },
+          },
+        },
+        video: {
+          where: { isDeleted: false },
+          include: {
+            artist: {
+              select: { id: true, name: true, imageUrl: true, genre: true },
+            },
+            file: true,
+            videoEmotions: {
+              include: {
+                emotion: { select: { id: true, name: true, icon: true } },
+              },
+            },
+          },
+        },
+        MediaPost: {
+          where: { isDeleted: false },
+          include: {
+            artist: {
+              select: { id: true, name: true, imageUrl: true, genre: true },
+            },
+            file: true,
+            mediaPostEmotions: {
+              include: {
+                emotion: { select: { id: true, name: true, icon: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  /**
    * Soft delete feed item when post is deleted
    */
   static async softDeleteByPostId(postId: string) {
@@ -235,5 +310,65 @@ export default class FeedRepo {
       skip: page * limit,
       take: limit,
     });
+  }
+
+  /**
+   * Get all available personalized feed item IDs
+   */
+  static async getPersonalizedFeedIds(
+    userId: string,
+    artistInArray: string[] = [],
+  ) {
+    const following = await prisma.follow.findMany({
+      where: { followerId: userId, isDeleted: false },
+      select: { followingId: true },
+    });
+
+    const followingIds = following.map((f) => f.followingId);
+    followingIds.push(userId);
+
+    const orConditions: Prisma.FeedItemWhereInput[] = [
+      {
+        type: "POST",
+        post: {
+          is: {
+            userId: { in: followingIds },
+            isDeleted: false,
+          },
+        },
+      },
+    ];
+
+    if (artistInArray.length > 0) {
+      orConditions.push({
+        type: "VIDEO",
+        video: { is: { artistId: { in: artistInArray }, isDeleted: false } },
+      });
+      orConditions.push({
+        type: "MEDIA_POST",
+        MediaPost: {
+          is: { artistId: { in: artistInArray }, isDeleted: false },
+        },
+      });
+    } else {
+      orConditions.push({
+        type: "VIDEO",
+        video: { is: { isDeleted: false } },
+      });
+      orConditions.push({
+        type: "MEDIA_POST",
+        MediaPost: { is: { isDeleted: false } },
+      });
+    }
+
+    const items = await prisma.feedItem.findMany({
+      where: {
+        isDeleted: false,
+        OR: orConditions,
+      },
+      select: { id: true },
+    });
+
+    return items.map((i) => i.id);
   }
 }
