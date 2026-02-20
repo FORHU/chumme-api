@@ -57,7 +57,7 @@ export const getHTMLContents = ({ template_name, email_data }: any): string => {
   const filePath = path.join(process.cwd(), `email-template/${template_name}`);
   let html = fs.readFileSync(filePath, "utf8");
   for (const key in email_data) {
-    const placeholder = `${key}`;
+    const placeholder = `{{${key}}}`;
     html = html.replace(new RegExp(placeholder, "g"), email_data[key]);
   }
   return html;
