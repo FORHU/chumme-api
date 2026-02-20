@@ -163,8 +163,9 @@ export default class RoomSvc {
     );
     if (isAlreadyMember) {
       return {
-        success: false,
+        success: true, // Auto-success if they are already in the room
         message: "User is already a member of this room",
+        room: await RoomRepo.findRoomById(roomId),
       };
     }
 
