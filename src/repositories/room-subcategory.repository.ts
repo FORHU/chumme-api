@@ -22,7 +22,7 @@ export default class RoomSubCategoryRepo {
     return prisma.roomSubCategory.create({
       data: {
         ...data,
-        key_name: generateKeyName(data.name),
+        key_name: `${generateKeyName(data.name)}_${Date.now().toString(36)}`,
       },
       include: {
         roomCategory: {
@@ -138,7 +138,7 @@ export default class RoomSubCategoryRepo {
       data: {
         ...data,
         ...(data.name && {
-          key_name: generateKeyName(data.name),
+          key_name: `${generateKeyName(data.name)}_${Date.now().toString(36)}`,
         }),
         updatedAt: new Date(),
       },
