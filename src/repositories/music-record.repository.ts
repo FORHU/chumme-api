@@ -236,7 +236,7 @@ export default class MusicRecordRepo {
 
     const [data, total] = await Promise.all([
       prisma.musicRecord.findMany({
-        where: { singers: { some: { id: userId } } },
+        where: { singers: { some: { id: userId } }, deletedAt: null },
         include: {
           file: true,
           music: {
@@ -255,7 +255,7 @@ export default class MusicRecordRepo {
         take: limit,
       }),
       prisma.musicRecord.count({
-        where: { singers: { some: { id: userId } } },
+        where: { singers: { some: { id: userId } }, deletedAt: null },
       }),
     ]);
 
