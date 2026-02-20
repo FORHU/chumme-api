@@ -29,7 +29,7 @@ export async function streamChat(
       logger.info("[CHAT-WONDER-STREAM] WebSocket connected");
 
       const payload = {
-        user_input: `[chumme${persona ? ` - ${persona}` : ""}] ${userInput}`,
+        user_input: `${persona ? `[chumme-(${persona})]` : "[chumme]"} ${userInput}`,
         session_id: sessionId,
       };
 
