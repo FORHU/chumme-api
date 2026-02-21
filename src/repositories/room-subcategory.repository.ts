@@ -10,7 +10,8 @@ export default class RoomSubCategoryRepo {
     roomCategoryId: string;
     ownerId: string;
     metaData: any;
-    position: any;
+    // position: any;
+    // size: string;
     color: string;
     isAd: boolean;
     membersCount: number;
@@ -22,6 +23,8 @@ export default class RoomSubCategoryRepo {
     return prisma.roomSubCategory.create({
       data: {
         ...data,
+        position: {}, // Rely on frontend physics
+        size: "medium", // Default placeholder
         key_name: `${generateKeyName(data.name)}_${Date.now().toString(36)}`,
       },
       include: {
@@ -120,7 +123,8 @@ export default class RoomSubCategoryRepo {
       roomCategoryId?: string;
       ownerId?: string;
       metaData?: any;
-      position?: any;
+      // position?: any;
+      // size?: string;
       color?: string;
       isAd?: boolean;
       membersCount?: number;

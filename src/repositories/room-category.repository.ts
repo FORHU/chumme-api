@@ -9,8 +9,8 @@ export default class RoomCategoryRepo {
     name: string;
     membersCount: number;
     color: string;
-    size: string;
-    position: any;
+    // size: string;
+    // position: any;
     isAd: boolean;
     metaData: any;
     imageUrl?: string;
@@ -19,6 +19,8 @@ export default class RoomCategoryRepo {
     return prisma.roomCategory.create({
       data: {
         ...data,
+        position: {}, // Rely on frontend physics
+        size: "medium", // Default placeholder
         key_name: generateKeyName(data.name),
       },
     });
@@ -120,8 +122,8 @@ export default class RoomCategoryRepo {
       name?: string;
       membersCount?: number;
       color?: string;
-      size?: string;
-      position?: any;
+      // size?: string;
+      // position?: any;
       isAd?: boolean;
       metaData?: any;
       imageUrl?: string;

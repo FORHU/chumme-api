@@ -13,7 +13,7 @@ export async function seedRoomCategories(prisma: PrismaClient) {
       name: "Global",
       membersCount: 5000000,
       color: "color3",
-      size: "xlarge",
+
       position: {
         x: 50,
         y: 50,
@@ -28,7 +28,7 @@ export async function seedRoomCategories(prisma: PrismaClient) {
       name: "United States",
       membersCount: 2000000,
       color: "color3",
-      size: "xlarge",
+
       position: {
         x: 20,
         y: 30,
@@ -43,7 +43,7 @@ export async function seedRoomCategories(prisma: PrismaClient) {
       name: "United Kingdom",
       membersCount: 850000,
       color: "color2",
-      size: "large",
+
       position: {
         x: 55,
         y: 25,
@@ -58,7 +58,7 @@ export async function seedRoomCategories(prisma: PrismaClient) {
       name: "Japan",
       membersCount: 1500000,
       color: "color1",
-      size: "xlarge",
+
       position: {
         x: 75,
         y: 50,
@@ -73,7 +73,7 @@ export async function seedRoomCategories(prisma: PrismaClient) {
       name: "South Korea",
       membersCount: 1800000,
       color: "color3",
-      size: "xlarge",
+
       position: {
         x: 40,
         y: 55,
@@ -88,7 +88,7 @@ export async function seedRoomCategories(prisma: PrismaClient) {
       name: "Canada",
       membersCount: 650000,
       color: "color2",
-      size: "large",
+
       position: {
         x: 15,
         y: 70,
@@ -103,7 +103,7 @@ export async function seedRoomCategories(prisma: PrismaClient) {
       name: "Australia",
       membersCount: 450000,
       color: "color4",
-      size: "medium",
+
       position: {
         x: 65,
         y: 75,
@@ -118,7 +118,7 @@ export async function seedRoomCategories(prisma: PrismaClient) {
       name: "Brazil",
       membersCount: 250000,
       color: "color1",
-      size: "large",
+
       position: {
         x: 30,
         y: 80,
@@ -133,7 +133,7 @@ export async function seedRoomCategories(prisma: PrismaClient) {
       name: "Indonesia",
       membersCount: 180000,
       color: "color2",
-      size: "large",
+
       position: {
         x: 80,
         y: 60,
@@ -148,7 +148,7 @@ export async function seedRoomCategories(prisma: PrismaClient) {
       name: "Thailand",
       membersCount: 85000,
       color: "color3",
-      size: "medium",
+
       position: {
         x: 70,
         y: 40,
@@ -163,7 +163,7 @@ export async function seedRoomCategories(prisma: PrismaClient) {
       name: "Philippines",
       membersCount: 65000,
       color: "color1",
-      size: "medium",
+
       position: {
         x: 85,
         y: 45,
@@ -178,7 +178,7 @@ export async function seedRoomCategories(prisma: PrismaClient) {
       name: "Malaysia",
       membersCount: 45000,
       color: "color2",
-      size: "medium",
+
       position: {
         x: 75,
         y: 55,
@@ -193,7 +193,7 @@ export async function seedRoomCategories(prisma: PrismaClient) {
       name: "Vietnam",
       membersCount: 32000,
       color: "color4",
-      size: "medium",
+
       position: {
         x: 65,
         y: 35,
@@ -208,7 +208,7 @@ export async function seedRoomCategories(prisma: PrismaClient) {
       name: "Mexico",
       membersCount: 28000,
       color: "color1",
-      size: "medium",
+
       position: {
         x: 25,
         y: 45,
@@ -223,7 +223,7 @@ export async function seedRoomCategories(prisma: PrismaClient) {
       name: "Taiwan",
       membersCount: 8500,
       color: "color2",
-      size: "medium",
+
       position: {
         x: 80,
         y: 30,
@@ -238,7 +238,7 @@ export async function seedRoomCategories(prisma: PrismaClient) {
       name: "Singapore",
       membersCount: 5200,
       color: "color3",
-      size: "medium",
+
       position: {
         x: 72,
         y: 65,
@@ -253,7 +253,7 @@ export async function seedRoomCategories(prisma: PrismaClient) {
       name: "Sponsored",
       membersCount: 0,
       color: "color1",
-      size: "medium",
+
       position: {
         x: 50,
         y: 50,
@@ -269,7 +269,7 @@ export async function seedRoomCategories(prisma: PrismaClient) {
       name: "Tickets",
       membersCount: 0,
       color: "#F6C886",
-      size: "medium",
+
       position: {
         x: 45,
         y: 55,
@@ -294,8 +294,8 @@ export async function seedRoomCategories(prisma: PrismaClient) {
         name: cat.name,
         membersCount: cat.membersCount,
         color: cat.color,
-        size: cat.size,
-        position: cat.position,
+        position: {}, // Rely on frontend physics
+        size: "medium", // Default placeholder
         isAd: cat.isAd,
         imageUrl: cat.imageUrl,
         metaData: cat.metaData,
