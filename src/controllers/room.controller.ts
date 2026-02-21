@@ -245,8 +245,8 @@ export default class RoomCtrl {
         return res.status(400).json({ message: "Unauthorized User!" });
       }
       const response = await RoomSvc.getRoomMessages(
+        req.user.id,
         req.params.roomId,
-        req?.user?.id,
         page,
         limit,
       );
