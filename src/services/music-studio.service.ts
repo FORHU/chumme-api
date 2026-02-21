@@ -683,14 +683,14 @@ export default class MusicStudioSvc {
   /**
    * Close/delete a studio (owner only)
    */
-  static async closeStudio(studioId: string, userId: string) {
+  static async closeStudio(studioId: string, userId: string, force = false) {
     const studio = await MusicStudioRepo.findById(studioId);
 
     if (!studio) {
       throw new Error("Studio not found");
     }
 
-    if (studio.ownerId !== userId) {
+    if (!force && studio.ownerId !== userId) {
       throw new Error("Only the owner can close the studio");
     }
 
@@ -730,7 +730,10 @@ export default class MusicStudioSvc {
     // 5. Delete temporary records from DB
     await TempMusicRecordRepo.deleteByStudioId(studioId);
 
-    // 6. Delete studio from DB
+    // 6. Deactivate all members in the DB
+    await MusicStudioRepo.deactivateAllMembers(studioId);
+
+    // 7. Delete studio from DB (soft delete)
     await MusicStudioRepo.delete(studioId);
 
     return { message: "Studio closed successfully" };

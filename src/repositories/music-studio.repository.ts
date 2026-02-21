@@ -250,6 +250,22 @@ export default class MusicStudioRepo {
   }
 
   /**
+   * Deactivate all members in a studio
+   */
+  static async deactivateAllMembers(studioId: string) {
+    return prisma.studioMember.updateMany({
+      where: {
+        studioId,
+        isActive: true,
+      },
+      data: {
+        isActive: false,
+        leftAt: new Date(),
+      },
+    });
+  }
+
+  /**
    * Check if user is actively in studio
    */
   static async isUserInStudio(studioId: string, userId: string) {

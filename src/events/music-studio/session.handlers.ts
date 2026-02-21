@@ -364,7 +364,10 @@ export const registerSessionHandlers = (
         });
         const socketsInRoom = await io.in(studioId).fetchSockets();
         socketsInRoom.forEach((s) => s.leave(studioId));
-        await MusicStudioCacheSvc.clearStudioSession(studioId);
+
+        // Use centralized closeStudio for full cleanup (Redis, S3, DB)
+        await MusicStudioSvc.closeStudio(studioId, socket.user.id, true);
+
         console.log(
           `[MusicStudio] 🔒 Studio auto-closed (owner left): ${studioId}`,
         );
@@ -475,7 +478,10 @@ export const registerSessionHandlers = (
                 });
                 const socketsInRoom = await io.in(studioId).fetchSockets();
                 socketsInRoom.forEach((s) => s.leave(studioId));
-                await MusicStudioCacheSvc.clearStudioSession(studioId);
+
+                // Use centralized closeStudio for full cleanup (Redis, S3, DB)
+                await MusicStudioSvc.closeStudio(studioId, userId, true);
+
                 console.log(
                   `[MusicStudio] 🔒 Studio auto-closed (owner disconnected): ${studioId}`,
                 );
