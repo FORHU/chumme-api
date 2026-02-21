@@ -79,6 +79,7 @@ model File {
   users         User[]
   videos        Video[]
   artistPersona ArtistPersona? @relation("PersonaFile")
+  voiceMessages Message[]      @relation("VoiceMessageFile")
 }
 
 model MusicLibrary {
@@ -109,10 +110,9 @@ model UserChat {
 }
 
 model RoomCategory {
-  id       String  @id @default(uuid())
-  name     String
-  key_name String  @unique
-  note     String?
+  id   String  @id @default(uuid())
+  name String
+  note String?
 
   color        String
   imageUrl     String?
@@ -130,11 +130,10 @@ model RoomCategory {
 }
 
 model RoomSubCategory {
-  id       String  @id @default(uuid())
-  name     String
-  note     String?
-  key_name String  @unique
-  ownerId  String
+  id      String  @id @default(uuid())
+  name    String
+  note    String?
+  ownerId String
 
   color        String
   imageUrl     String?
@@ -162,7 +161,6 @@ model Room {
   isPrivate Boolean @default(false)
 
   note              String?
-  key_name          String?
   roomSubCategoryId String?
   metaData          Json
   position          Json
@@ -192,15 +190,17 @@ model RoomMember {
 }
 
 model Message {
-  id        String   @id @default(uuid())
-  roomId    String
-  authorId  String
-  content   String
-  isSystem  Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  author    User     @relation(fields: [authorId], references: [id])
-  room      Room     @relation(fields: [roomId], references: [id])
+  id             String   @id @default(uuid())
+  roomId         String
+  authorId       String
+  voiceMessageId String?
+  voiceMessage   File?    @relation("VoiceMessageFile", fields: [voiceMessageId], references: [id])
+  content        String
+  isSystem       Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  author         User     @relation(fields: [authorId], references: [id])
+  room           Room     @relation(fields: [roomId], references: [id])
 }
 
 model Conversation {

@@ -92,7 +92,13 @@ export default (io: Server) => {
     });
 
     socket.on("send_message_to_room", async (data: any) => {
-      const { room_id, message, attachments = [], roomName } = data;
+      const {
+        room_id,
+        message,
+        attachments = [],
+        roomName,
+        voiceMessageId,
+      } = data;
       if (!room_id)
         return socket.emit("not_allowed", { message: "room_id missing" });
 
@@ -109,14 +115,19 @@ export default (io: Server) => {
         });
       }
 
-      await MessageSvc.createMessage(room_id, socket.user.id, message);
+      const newMessage = await MessageSvc.createMessage(
+        room_id,
+        socket.user.id,
+        message,
+        voiceMessageId,
+      );
+
+      // Map to frontend structure and sign S3 URL if voiceMessage exists
+      const mappedMessage = await RoomSvc.mapMessageWithSignedUrl(newMessage);
 
       io.to(room_id).emit("send_message_to_room", {
+        ...mappedMessage,
         room_id,
-        sender: socket.user,
-        content: message,
-        attachments: [],
-        createdAt: new Date().toISOString(),
       });
 
       console.log(

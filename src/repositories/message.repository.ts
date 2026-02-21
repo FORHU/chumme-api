@@ -1,16 +1,38 @@
 import { prisma } from "../utils/prisma";
 
 export default class MessageRepo {
-  static async createMessage(roomId: string, userId: string, message: string) {
+  static async createMessage(
+    roomId: string,
+    userId: string,
+    message: string,
+    voiceMessageId?: string,
+  ) {
     return prisma.message.create({
       data: {
         content: message,
-
-        room: {
-          connect: { id: roomId },
-        },
+        voiceMessageId: voiceMessageId || null,
+        roomId,
+        authorId: userId,
+      },
+      include: {
         author: {
-          connect: { id: userId },
+          select: {
+            id: true,
+            username: true,
+            name: true,
+            avatar: {
+              select: {
+                fileUrl: true,
+              },
+            },
+          },
+        },
+        voiceMessage: {
+          select: {
+            id: true,
+            fileUrl: true,
+            metaData: true,
+          },
         },
       },
     });
@@ -57,6 +79,13 @@ export default class MessageRepo {
 
         roomId: true,
         id: true,
+        voiceMessage: {
+          select: {
+            id: true,
+            fileUrl: true,
+            metaData: true,
+          },
+        },
       },
       orderBy: {
         createdAt: "desc",

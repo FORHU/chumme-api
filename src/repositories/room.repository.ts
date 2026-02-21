@@ -1,5 +1,4 @@
 import { prisma } from "../utils/prisma";
-import { generateKeyName } from "../utils/key-name.util";
 
 export default class RoomRepo {
   static async findRoomName(name: string) {
@@ -18,6 +17,8 @@ export default class RoomRepo {
       select: {
         id: true,
         name: true,
+        position: true,
+        metaData: true,
         _count: {
           select: { members: true },
         },
@@ -41,15 +42,13 @@ export default class RoomRepo {
     note: string;
     ownerId: string;
     roomSubCategoryId: string;
-    // position?: any;
+    position?: any;
     metaData: any;
-    key_name?: string;
   }) {
     return prisma.room.create({
       data: {
         ...data,
-        position: {}, // Rely on frontend physics
-        key_name: data.key_name ?? generateKeyName(data.name),
+        position: data.position || {}, // Accept from frontend or default
         isPrivate: false,
         isDeleted: false,
       },
@@ -242,7 +241,7 @@ export default class RoomRepo {
       isPrivate?: boolean;
       note?: string;
       roomSubCategoryId?: string;
-      // position?: any;
+      position?: any;
       metaData?: any;
     },
   ) {
@@ -253,9 +252,6 @@ export default class RoomRepo {
       },
       data: {
         ...data,
-        ...(data.name && {
-          key_name: generateKeyName(data.name),
-        }),
         updatedAt: new Date(),
       },
       include: {

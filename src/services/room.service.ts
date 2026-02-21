@@ -1,7 +1,10 @@
 import RoomRepo from "../repositories/room.repository";
 import RoomMemberRepo from "../repositories/room-member.repository";
 import RoomSubCategoryRepo from "../repositories/room-subcategory.repository";
+import MessageRepo from "../repositories/message.repository";
 import CacheUtil from "../utils/cache.util";
+import S3Util from "../utils/s3.util";
+import S3PresignedUtil from "../utils/s3-presigned.util";
 
 export default class RoomSvc {
   static async fetchRoomList() {
@@ -23,7 +26,6 @@ export default class RoomSvc {
     roomSubCategoryId: string;
     position: any;
     metaData: any;
-    key_name?: string;
   }) {
     const roomByName = await RoomRepo.findRoomName(data.name);
     if (roomByName) {
@@ -141,7 +143,7 @@ export default class RoomSvc {
     return RoomRepo.softDeleteRoom(roomId);
   }
 
-  static async joinRoom(roomId: string, userId: string, keyName?: string) {
+  static async joinRoom(roomId: string, userId: string) {
     const user = await RoomRepo.findUserById(userId);
     if (!user || user.isDeleted) {
       return { success: false, message: "User not found or has been deleted" };
@@ -150,11 +152,6 @@ export default class RoomSvc {
     const room = await RoomRepo.findRoomById(roomId);
     if (!room) {
       return { success: false, message: "Room not found" };
-    }
-
-    // Key Name Validation
-    if (room.key_name && room.key_name !== keyName) {
-      return { success: false, message: "Invalid Room Key Name" };
     }
 
     const isAlreadyMember = await RoomMemberRepo.isUserRoomMember(
@@ -204,6 +201,39 @@ export default class RoomSvc {
   static async findById(roomId: string) {
     return RoomRepo.findById(roomId);
   }
+  /**
+   * Helper to map a raw message to the structure expected by the frontend,
+   * including generating a signed S3 URL for voice messages.
+   */
+  static async mapMessageWithSignedUrl(msg: any) {
+    let voiceNote = undefined;
+
+    if (msg.voiceMessage) {
+      const key = (S3Util as any).getKeyFromUrl(msg.voiceMessage.fileUrl);
+      let signedUrl = msg.voiceMessage.fileUrl; // Fallback to raw
+
+      if (key) {
+        try {
+          signedUrl = await S3PresignedUtil.getDownloadUrl(key);
+        } catch (err) {
+          console.error(`[RoomSvc] Error signing URL for key ${key}:`, err);
+        }
+      }
+
+      voiceNote = {
+        duration: msg.voiceMessage.metaData?.duration || 0,
+        waveform: msg.voiceMessage.metaData?.waveform || [],
+        audioUrl: signedUrl,
+      };
+    }
+
+    return {
+      ...msg,
+      user: msg.author,
+      voiceNote,
+    };
+  }
+
   static async getRoomMessages(
     userId: string,
     roomId: string,
@@ -224,7 +254,13 @@ export default class RoomSvc {
       return cached;
     }
 
-    const response = await RoomRepo.getRoomMessages(roomId);
+    const messages = await MessageRepo.getRoomMessages(roomId, page + 1, limit);
+
+    // Map all messages and sign URLs in parallel
+    const response = await Promise.all(
+      messages.map((msg: any) => this.mapMessageWithSignedUrl(msg)),
+    );
+
     await CacheUtil.set(cacheKey, response);
     return response;
   }

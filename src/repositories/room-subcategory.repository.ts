@@ -1,5 +1,4 @@
 import { prisma } from "../utils/prisma";
-import { generateKeyName } from "../utils/key-name.util";
 
 export default class RoomSubCategoryRepo {
   /**
@@ -10,12 +9,11 @@ export default class RoomSubCategoryRepo {
     roomCategoryId: string;
     ownerId: string;
     metaData: any;
-    // position: any;
-    // size: string;
+    position: any;
+    size: string;
     color: string;
     isAd: boolean;
     membersCount: number;
-    size: string;
     imageUrl?: string;
     note?: string;
     artistId?: string;
@@ -23,9 +21,6 @@ export default class RoomSubCategoryRepo {
     return prisma.roomSubCategory.create({
       data: {
         ...data,
-        position: {}, // Rely on frontend physics
-        size: "medium", // Default placeholder
-        key_name: `${generateKeyName(data.name)}_${Date.now().toString(36)}`,
       },
       include: {
         roomCategory: {
@@ -123,12 +118,11 @@ export default class RoomSubCategoryRepo {
       roomCategoryId?: string;
       ownerId?: string;
       metaData?: any;
-      // position?: any;
-      // size?: string;
+      position?: any;
+      size?: string;
       color?: string;
       isAd?: boolean;
       membersCount?: number;
-      size?: string;
       imageUrl?: string;
       note?: string;
       artistId?: string;
@@ -141,9 +135,6 @@ export default class RoomSubCategoryRepo {
       },
       data: {
         ...data,
-        ...(data.name && {
-          key_name: `${generateKeyName(data.name)}_${Date.now().toString(36)}`,
-        }),
         updatedAt: new Date(),
       },
       include: {
@@ -190,19 +181,6 @@ export default class RoomSubCategoryRepo {
           equals: name,
           mode: "insensitive",
         },
-        roomCategoryId: categoryId,
-        deletedAt: null,
-      },
-    });
-  }
-
-  /**
-   * Find subcategory by key_name within a category
-   */
-  static async findSubCategoryByKeyName(key_name: string, categoryId: string) {
-    return prisma.roomSubCategory.findFirst({
-      where: {
-        key_name,
         roomCategoryId: categoryId,
         deletedAt: null,
       },

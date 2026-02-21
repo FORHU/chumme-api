@@ -38,20 +38,41 @@ export default class RoomSubCategorySvc {
       );
     }
 
-    // Also check for key_name collisions within this category
-    const { generateKeyName } = require("../utils/key-name.util");
-    const key_name = generateKeyName(data.name);
-    const existingByKey = await RoomSubCategoryRepo.findSubCategoryByKeyName(
-      key_name,
-      data.roomCategoryId,
-    );
-    if (existingByKey) {
-      throw new Error(
-        `Subcategory with similar name already exists in this category (collision: ${key_name})`,
+    const subCategory = await RoomSubCategoryRepo.createSubCategory(data);
+
+    // Auto-create a default room for this subcategory
+    try {
+      const roomPayload = {
+        name: "General",
+        note: `Welcome to the ${data.name} community circle!`,
+        ownerId: data.ownerId,
+        roomSubCategoryId: subCategory.id,
+        position: { x: 0, y: 0, radius: 0.8 },
+        metaData: data.metaData, // Reuse colors/styling from subcategory
+      };
+
+      const { prisma } = require("../utils/prisma");
+      await prisma.room.create({
+        data: {
+          ...roomPayload,
+          isPrivate: false,
+          isDeleted: false,
+          members: {
+            create: {
+              userId: data.ownerId,
+              role: "owner",
+            },
+          },
+        },
+      });
+    } catch (err) {
+      console.error(
+        `[RoomSubCategorySvc] Failed to auto-create room for ${subCategory.id}:`,
+        err,
       );
     }
 
-    return RoomSubCategoryRepo.createSubCategory(data);
+    return subCategory;
   }
 
   /**

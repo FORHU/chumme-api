@@ -24,17 +24,6 @@ export default class RoomCategorySvc {
       throw new Error(`Category with name "${data.name}" already exists`);
     }
 
-    // Also check for key_name collisions
-    const { generateKeyName } = require("../utils/key-name.util");
-    const key_name = generateKeyName(data.name);
-    const existingByKey =
-      await RoomCategoryRepo.findCategoryByKeyName(key_name);
-    if (existingByKey) {
-      throw new Error(
-        `Category with similar name already exists (collision: ${key_name})`,
-      );
-    }
-
     return RoomCategoryRepo.createCategory(data);
   }
 

@@ -1,5 +1,4 @@
 import { prisma } from "../utils/prisma";
-import { generateKeyName } from "../utils/key-name.util";
 
 export default class RoomCategoryRepo {
   /**
@@ -9,8 +8,8 @@ export default class RoomCategoryRepo {
     name: string;
     membersCount: number;
     color: string;
-    // size: string;
-    // position: any;
+    size: string;
+    position: any;
     isAd: boolean;
     metaData: any;
     imageUrl?: string;
@@ -19,9 +18,6 @@ export default class RoomCategoryRepo {
     return prisma.roomCategory.create({
       data: {
         ...data,
-        position: {}, // Rely on frontend physics
-        size: "medium", // Default placeholder
-        key_name: generateKeyName(data.name),
       },
     });
   }
@@ -38,8 +34,13 @@ export default class RoomCategoryRepo {
           select: {
             id: true,
             name: true,
-            key_name: true,
             note: true,
+            color: true,
+            position: true,
+            metaData: true,
+            size: true,
+            isAd: true,
+            membersCount: true,
             createdAt: true,
             updatedAt: true,
             artist: {
@@ -54,8 +55,9 @@ export default class RoomCategoryRepo {
               select: {
                 id: true,
                 name: true,
-                key_name: true,
                 note: true,
+                position: true,
+                metaData: true,
                 isPrivate: true,
                 createdAt: true,
                 updatedAt: true,
@@ -83,8 +85,13 @@ export default class RoomCategoryRepo {
           select: {
             id: true,
             name: true,
-            key_name: true,
             note: true,
+            color: true,
+            position: true,
+            metaData: true,
+            size: true,
+            isAd: true,
+            membersCount: true,
             createdAt: true,
             updatedAt: true,
             artist: {
@@ -99,8 +106,9 @@ export default class RoomCategoryRepo {
               select: {
                 id: true,
                 name: true,
-                key_name: true,
                 note: true,
+                position: true,
+                metaData: true,
                 isPrivate: true,
                 createdAt: true,
                 updatedAt: true,
@@ -122,8 +130,8 @@ export default class RoomCategoryRepo {
       name?: string;
       membersCount?: number;
       color?: string;
-      // size?: string;
-      // position?: any;
+      size?: string;
+      position?: any;
       isAd?: boolean;
       metaData?: any;
       imageUrl?: string;
@@ -137,9 +145,6 @@ export default class RoomCategoryRepo {
       },
       data: {
         ...data,
-        ...(data.name && {
-          key_name: generateKeyName(data.name),
-        }),
         updatedAt: new Date(),
       },
     });
@@ -171,18 +176,6 @@ export default class RoomCategoryRepo {
           equals: name,
           mode: "insensitive",
         },
-        deletedAt: null,
-      },
-    });
-  }
-
-  /**
-   * Find category by key_name
-   */
-  static async findCategoryByKeyName(key_name: string) {
-    return prisma.roomCategory.findFirst({
-      where: {
-        key_name,
         deletedAt: null,
       },
     });
