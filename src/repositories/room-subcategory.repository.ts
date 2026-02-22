@@ -45,10 +45,44 @@ export default class RoomSubCategoryRepo {
    * Optionally filter by category
    */
   static async getAllSubCategories(categoryId?: string) {
+    let targetCategoryId = categoryId;
+
+    // List of hardcoded identifiers from the frontend (chumme-app-v3/constants/circles.ts)
+    const specialMappings: Record<string, string> = {
+      "chumme-main": "Global",
+      global: "Global",
+      usa: "United States",
+      uk: "United Kingdom",
+      japan: "Japan",
+      south_korea: "South Korea",
+      canada: "Canada",
+      australia: "Australia",
+      brazil: "Brazil",
+      indonesia: "Indonesia",
+      thailand: "Thailand",
+      philippines: "Philippines",
+      malaysia: "Malaysia",
+      vietnam: "Vietnam",
+      mexico: "Mexico",
+      taiwan: "Taiwan",
+      singapore: "Singapore",
+    };
+
+    if (categoryId && specialMappings[categoryId]) {
+      const categoryName = specialMappings[categoryId];
+      const category = await prisma.roomCategory.findFirst({
+        where: {
+          name: { equals: categoryName, mode: "insensitive" },
+          deletedAt: null,
+        },
+      });
+      targetCategoryId = category?.id;
+    }
+
     return prisma.roomSubCategory.findMany({
       where: {
         deletedAt: null,
-        ...(categoryId && { roomCategoryId: categoryId }),
+        ...(targetCategoryId && { roomCategoryId: targetCategoryId }),
       },
       include: {
         roomCategory: {

@@ -283,22 +283,32 @@ export async function seedRoomCategories(prisma: PrismaClient) {
     },
   ];
 
-  // Clear existing categories to avoid duplicates and ensure clean state
-  await prisma.roomCategory.deleteMany({});
+  // No longer clearing all tables to allow "complementing" existing data
+  // Only clear what is strictly necessary or use upsert
 
   for (const cat of categoriesData) {
-    await prisma.roomCategory.create({
-      data: {
-        id: cat.id,
-        key_name: cat.key_name,
+    await prisma.roomCategory.upsert({
+      where: { id: cat.id },
+      update: {
         name: cat.name,
         membersCount: cat.membersCount,
         color: cat.color,
-        position: {}, // Rely on frontend physics
-        size: "medium", // Default placeholder
+        position: cat.position || {},
+        size: "medium",
         isAd: cat.isAd,
         imageUrl: cat.imageUrl,
-        metaData: cat.metaData,
+        metaData: cat.metaData || {},
+      },
+      create: {
+        id: cat.id,
+        name: cat.name,
+        membersCount: cat.membersCount,
+        color: cat.color,
+        position: cat.position || {},
+        size: "medium",
+        isAd: cat.isAd,
+        imageUrl: cat.imageUrl,
+        metaData: cat.metaData || {},
         note: "Migrated from frontend hardcoded values",
       },
     });
