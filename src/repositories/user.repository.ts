@@ -83,6 +83,9 @@ export default class UserRepo {
             },
           },
         },
+        _count: {
+          select: { userArtists: true },
+        },
       },
     });
   }
@@ -173,6 +176,9 @@ export default class UserRepo {
         lastLoginAt: true,
         createdAt: true,
         updatedAt: true,
+        _count: {
+          select: { userArtists: true },
+        },
       },
     });
   }

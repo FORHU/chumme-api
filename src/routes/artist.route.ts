@@ -6,6 +6,10 @@ const router = express.Router();
 
 // Public/Authenticated routes
 router.get("/", authenticate, artistController.getAllArtists);
+
+// Skip onboarding by selecting random artists
+router.post("/skip-onboarding", authenticate, artistController.skipOnboarding);
+
 router.get("/me", authenticate, artistController.getUserArtists);
 router.post("/me", authenticate, artistController.addUserArtists);
 router.delete("/me/:artistId", authenticate, artistController.removeUserArtist);

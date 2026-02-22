@@ -242,3 +242,30 @@ export const removeUserArtist = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const skipOnboarding = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user.id;
+
+    // 1. Assign 4 random artists
+    const updatedArtists = await artistService.assignRandomArtists(userId);
+
+    // 2. Mark onboarding as complete using the central Onboarding service
+    const OnboardingSvc = (await import("../services/onboarding.service"))
+      .default;
+    await OnboardingSvc.completeOnboarding(userId);
+
+    res.status(200).json({
+      success: true,
+      message: "Onboarding skipped and random artists added",
+      data: updatedArtists,
+    });
+  } catch (error) {
+    console.error("Error skipping onboarding for artists:", error);
+    res.status(500).json({
+      success: false,
+      message:
+        error instanceof Error ? error.message : "Failed to skip onboarding",
+    });
+  }
+};
