@@ -90,12 +90,8 @@ export default class RoomSvc {
    * User must be a member to view the room
    */
   static async getRoomById(roomId: string, userId: string) {
-    // Check if user is a member of the room
-    const isMember = await RoomMemberRepo.isUserRoomMember(roomId, userId);
-    if (!isMember) {
-      return null;
-    }
-
+    // We allow fetching room details for viewing even if not a member
+    // Membership logic can be handled at the action level (e.g. sending messages)
     return RoomRepo.findRoomById(roomId);
   }
 

@@ -1,54 +1,57 @@
 import { Server } from "socket.io";
-import MusicStudioCacheSvc from "../services/music-studio-cache.service";
 
 export class PresenceBatcher {
-  private joined = new Map<string, Set<string>>(); // studioId -> Set<userId>
-  private left = new Map<string, Set<string>>(); // studioId -> Set<userId>
+  private joined = new Map<string, Set<string>>(); // id -> Set<userId>
+  private left = new Map<string, Set<string>>(); // id -> Set<userId>
   private timeouts = new Map<string, NodeJS.Timeout>();
 
-  constructor(private io: Server) {}
+  constructor(
+    private io: Server,
+    private fetchMembers: (id: string) => Promise<any[]>,
+    private emitEvent: string = "presence_update",
+  ) {}
 
-  addJoin(studioId: string, userId: string) {
-    this.left.get(studioId)?.delete(userId);
-    if (!this.joined.has(studioId)) this.joined.set(studioId, new Set());
-    this.joined.get(studioId)!.add(userId);
-    this.schedule(studioId);
+  addJoin(id: string, userId: string) {
+    this.left.get(id)?.delete(userId);
+    if (!this.joined.has(id)) this.joined.set(id, new Set());
+    this.joined.get(id)!.add(userId);
+    this.schedule(id);
   }
 
-  addLeave(studioId: string, userId: string) {
-    this.joined.get(studioId)?.delete(userId);
-    if (!this.left.has(studioId)) this.left.set(studioId, new Set());
-    this.left.get(studioId)!.add(userId);
-    this.schedule(studioId);
+  addLeave(id: string, userId: string) {
+    this.joined.get(id)?.delete(userId);
+    if (!this.left.has(id)) this.left.set(id, new Set());
+    this.left.get(id)!.add(userId);
+    this.schedule(id);
   }
 
-  private schedule(studioId: string) {
-    if (this.timeouts.has(studioId)) return;
+  private schedule(id: string) {
+    if (this.timeouts.has(id)) return;
     this.timeouts.set(
-      studioId,
-      setTimeout(() => this.flush(studioId), 1000),
+      id,
+      setTimeout(() => this.flush(id), 1000),
     );
   }
 
-  private async flush(studioId: string) {
-    this.timeouts.delete(studioId);
-    const joinedIds = Array.from(this.joined.get(studioId) || []);
-    const leftIds = Array.from(this.left.get(studioId) || []);
+  private async flush(id: string) {
+    this.timeouts.delete(id);
+    const joinedIds = Array.from(this.joined.get(id) || []);
+    const leftIds = Array.from(this.left.get(id) || []);
 
-    this.joined.delete(studioId);
-    this.left.delete(studioId);
+    this.joined.delete(id);
+    this.left.delete(id);
 
     if (joinedIds.length > 0 || leftIds.length > 0) {
-      const allMembers = await MusicStudioCacheSvc.getMembers(studioId);
-      this.io.to(studioId).emit("studio_presence_update", {
-        studioId,
+      const allMembers = await this.fetchMembers(id);
+      this.io.to(id).emit(this.emitEvent, {
+        id,
         joined: joinedIds,
         left: leftIds,
         allUsers: allMembers,
       });
 
       console.log(
-        `[PresenceBatcher] Flushed presence for studio ${studioId}: +${joinedIds.length}, -${leftIds.length}`,
+        `[PresenceBatcher] Flushed presence for ${id}: +${joinedIds.length}, -${leftIds.length}`,
       );
     }
   }

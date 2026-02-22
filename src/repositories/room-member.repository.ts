@@ -23,13 +23,14 @@ export default class RoomMemberRepo {
       where: {
         userId,
         room: {
-          isDeleted: false, // Only active rooms
+          isDeleted: false,
         },
       },
       select: {
+        roomId: true,
         room: {
           select: {
-            name: true, // Only get room name
+            name: true,
           },
         },
       },
