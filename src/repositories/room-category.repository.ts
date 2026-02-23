@@ -2,6 +2,58 @@ import { prisma } from "../utils/prisma";
 
 export default class RoomCategoryRepo {
   /**
+   * Resolve category shortcut IDs (like 'usa', 'global') to their real UUIDs
+   */
+  static async resolveCategoryShortcut(id: string): Promise<string | null> {
+    const specialMappings: Record<string, string> = {
+      "chumme-main": "Chumme World",
+      global: "Global",
+      usa: "United States",
+      uk: "United Kingdom",
+      japan: "Japan",
+      south_korea: "South Korea",
+      canada: "Canada",
+      australia: "Australia",
+      brazil: "Brazil",
+      indonesia: "Indonesia",
+      thailand: "Thailand",
+      philippines: "Philippines",
+      malaysia: "Malaysia",
+      vietnam: "Vietnam",
+      mexico: "Mexico",
+      taiwan: "Taiwan",
+      singapore: "Singapore",
+      "global-connect-shortcut": "Global",
+      "chumme-lobby-shortcut": "Global",
+      "chumme-room-shortcut": "Global",
+    };
+
+    if (specialMappings[id]) {
+      const categoryName = specialMappings[id];
+      const category = await prisma.roomCategory.findFirst({
+        where: {
+          OR: [
+            { name: { equals: categoryName, mode: "insensitive" } },
+            { keyName: { equals: categoryName, mode: "insensitive" } },
+          ],
+          deletedAt: null,
+        },
+      });
+      return category?.id || null;
+    }
+
+    // Try finding by ID or KeyName directly if it's not a hardcoded shortcut
+    const category = await prisma.roomCategory.findFirst({
+      where: {
+        OR: [{ id: id }, { keyName: id }],
+        deletedAt: null,
+      },
+    });
+
+    return category?.id || id;
+  }
+
+  /**
    * Create a new room category
    */
   static async createCategory(data: {
@@ -75,9 +127,10 @@ export default class RoomCategoryRepo {
    * Get category by ID with subcategories
    */
   static async getCategoryById(id: string) {
+    const realId = (await this.resolveCategoryShortcut(id)) || id;
     return prisma.roomCategory.findUnique({
       where: {
-        id,
+        id: realId,
         deletedAt: null,
       },
       include: {
@@ -140,9 +193,10 @@ export default class RoomCategoryRepo {
       keyName?: string;
     },
   ) {
+    const realId = (await this.resolveCategoryShortcut(id)) || id;
     return prisma.roomCategory.update({
       where: {
-        id,
+        id: realId,
         deletedAt: null,
       },
       data: {
@@ -156,9 +210,10 @@ export default class RoomCategoryRepo {
    * Soft delete category
    */
   static async softDeleteCategory(id: string) {
+    const realId = (await this.resolveCategoryShortcut(id)) || id;
     return prisma.roomCategory.update({
       where: {
-        id,
+        id: realId,
         deletedAt: null,
       },
       data: {
@@ -200,11 +255,13 @@ export default class RoomCategoryRepo {
    * Get all rooms in a category (across all subcategories)
    */
   static async getRoomsInCategory(categoryId: string) {
+    const realId =
+      (await this.resolveCategoryShortcut(categoryId)) || categoryId;
     return prisma.room.findMany({
       where: {
         isDeleted: false,
         roomSubCategory: {
-          roomCategoryId: categoryId,
+          roomCategoryId: realId,
           deletedAt: null,
         },
       },
