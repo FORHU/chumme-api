@@ -46,89 +46,70 @@ export async function seedRooms(
     }));
 
   for (const category of categories) {
-    // Find subcategory by keyName (more reliable than ID reconstruction)
-    const lobbyKey = `lobby-${category.id}`;
-    const subCategory = await prisma.roomSubCategory.findUnique({
-      where: { keyName: lobbyKey },
+    const subCategories = await prisma.roomSubCategory.findMany({
+      where: { roomCategoryId: category.id, deletedAt: null },
     });
 
-    if (!subCategory) {
-      console.log(
-        `⚠️ Lobby subcategory not found for category ${category.name} (key: ${lobbyKey}). Skipping.`,
-      );
-      continue;
-    }
+    for (const subCategory of subCategories) {
+      const isLobby = subCategory.keyName.startsWith("lobby-");
+      const roomKey = isLobby
+        ? `main-chat-${category.id}`
+        : `room-${subCategory.id}`;
+      const roomId = randomUUID();
 
-    const lobbySubCategoryId = subCategory.id;
+      const existingRoom = await prisma.room.findFirst({
+        where: { keyName: roomKey } as any,
+      });
 
-    // 3. Create or Update a "Main Chat" room in this lobby
-    // This room will be promoted to the centerpiece by the frontend
-    const roomKey = `main-chat-${category.id}`;
-    const roomId = randomUUID();
+      if (existingRoom) {
+        await prisma.room.update({
+          where: { id: existingRoom.id },
+          data: {
+            name: isLobby ? "Main Chat" : `${subCategory.name} Chat`,
+            roomSubCategoryId: subCategory.id,
+            metaData: { isCenterpiece: isLobby },
+          },
+        });
+      } else {
+        await prisma.room.create({
+          data: {
+            id: roomId,
+            name: isLobby ? "Main Chat" : `${subCategory.name} Chat`,
+            note: isLobby
+              ? `The primary chat room for ${category.name}`
+              : `Discussion room for ${subCategory.name}`,
+            ownerId: ownerId,
+            roomSubCategoryId: subCategory.id,
+            isPrivate: false,
+            isDeleted: false,
+            keyName: roomKey,
+            metaData: { isCenterpiece: isLobby },
+            position: {
+              x: 50 + (Math.random() - 0.5) * 20,
+              y: 50 + (Math.random() - 0.5) * 20,
+            },
+          } as any,
+        });
+      }
 
-    const existingRoom = await prisma.room.findFirst({
-      where: { keyName: roomKey } as any,
-    });
+      const targetRoomId = existingRoom ? existingRoom.id : roomId;
 
-    if (existingRoom) {
-      await prisma.room.update({
-        where: { id: existingRoom.id },
-        data: {
-          name: "Main Chat",
-          note: `The primary chat room for ${category.name}`,
-          position: {
-            x:
-              50 +
-              Math.cos(Math.random() * Math.PI * 2) * (10 + Math.random() * 15),
-            y:
-              50 +
-              Math.sin(Math.random() * Math.PI * 2) * (10 + Math.random() * 15),
+      await prisma.roomMember.upsert({
+        where: {
+          room_id_user_id: {
+            roomId: targetRoomId,
+            userId: ownerId,
           },
         },
-      });
-    } else {
-      await prisma.room.create({
-        data: {
-          id: roomId,
-          name: "Main Chat",
-          note: `The primary chat room for ${category.name}`,
-          ownerId: ownerId,
-          roomSubCategoryId: lobbySubCategoryId,
-          isPrivate: false,
-          isDeleted: false,
-          keyName: roomKey, // Unique per country
-          metaData: { isCenterpiece: true },
-          position: {
-            x:
-              50 +
-              Math.cos(Math.random() * Math.PI * 2) * (10 + Math.random() * 15),
-            y:
-              50 +
-              Math.sin(Math.random() * Math.PI * 2) * (10 + Math.random() * 15),
-          },
-        } as any,
-      });
-    }
-
-    const targetRoomId = existingRoom ? existingRoom.id : roomId;
-
-    // 4. Ensure owner is a member of the room
-    await prisma.roomMember.upsert({
-      where: {
-        room_id_user_id: {
+        update: {},
+        create: {
           roomId: targetRoomId,
           userId: ownerId,
+          role: "owner",
         },
-      },
-      update: {},
-      create: {
-        roomId: targetRoomId,
-        userId: ownerId,
-        role: "owner",
-      },
-    });
-
-    console.log(`✅ Seeded Main Chat room for ${category.name}`);
+      });
+    }
+    console.log(`✅ Seeded rooms for category: ${category.name}`);
   }
 
   console.log(`✅ Room seeding complete.`);

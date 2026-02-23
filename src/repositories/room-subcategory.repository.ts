@@ -97,6 +97,11 @@ export default class RoomSubCategoryRepo {
             name: true,
           },
         },
+        rooms: {
+          where: {
+            isDeleted: false,
+          },
+        },
         _count: {
           select: {
             rooms: true,
@@ -123,6 +128,9 @@ export default class RoomSubCategoryRepo {
         deletedAt: null,
       },
       include: {
+        rooms: {
+          where: { isDeleted: false },
+        },
         _count: {
           select: { rooms: true },
         },

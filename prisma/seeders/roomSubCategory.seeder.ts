@@ -156,10 +156,71 @@ export async function seedRoomSubCategories(
       },
     });
 
-    // 2. Create up to 10 random topic subcategories
-    const uniqueTopics = Array.from(new Set(topics));
-    const shuffledTopics = shuffle(uniqueTopics).slice(0, 10);
+    // 2. Create specific Artist subcategories for testing (Enhypen & Exo)
     const basePos = (category as any).position ?? { x: 50, y: 50 };
+    const artistSubCats = [
+      { name: "Enhypen", artistId: "97c60f60-0d0f-408c-b5a3-fe684b1b7232" },
+      { name: "Exo", artistId: "f8818235-b033-4882-a22d-3c6e677c0fa1" },
+    ];
+
+    for (const artist of artistSubCats) {
+      const slug = artist.name.toLowerCase().trim().replace(/\s+/g, "-");
+      const keyName = `artist-${category.id}-${slug}`;
+
+      await prisma.roomSubCategory.upsert({
+        where: { keyName },
+        update: {
+          name: artist.name,
+          artistId: artist.artistId,
+          roomCategoryId: category.id,
+          color: randomHexColor(),
+          position: {
+            x: Math.round(
+              Math.max(
+                0,
+                Math.min(100, (basePos.x || 50) + (Math.random() * 30 - 15)),
+              ),
+            ),
+            y: Math.round(
+              Math.max(
+                0,
+                Math.min(100, (basePos.y || 50) + (Math.random() * 30 - 15)),
+              ),
+            ),
+          },
+        },
+        create: {
+          id: randomUUID(),
+          name: artist.name,
+          artistId: artist.artistId,
+          roomCategoryId: category.id,
+          color: randomHexColor(),
+          position: {
+            x: Math.round(
+              Math.max(
+                0,
+                Math.min(100, (basePos.x || 50) + (Math.random() * 30 - 15)),
+              ),
+            ),
+            y: Math.round(
+              Math.max(
+                0,
+                Math.min(100, (basePos.y || 50) + (Math.random() * 30 - 15)),
+              ),
+            ),
+          },
+          isAd: false,
+          membersCount: Math.floor(Math.random() * 20000) + 1000,
+          size: "medium",
+          keyName,
+          metaData: {},
+        } as any,
+      });
+    }
+
+    // 3. Create up to 8 random topic subcategories
+    const uniqueTopics = Array.from(new Set(topics));
+    const shuffledTopics = shuffle(uniqueTopics).slice(0, 8);
 
     for (const topic of shuffledTopics) {
       const slug = topic
