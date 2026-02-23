@@ -25,7 +25,7 @@ export async function seedRoomCategories(prisma: PrismaClient) {
     },
     {
       id: "96b3c9bf-1077-46aa-b37d-f16f28486936",
-      key_name: "usa",
+      keyName: "usa",
       name: "United States",
       membersCount: 2000000,
       color: randomHexColor(),
@@ -35,7 +35,7 @@ export async function seedRoomCategories(prisma: PrismaClient) {
     },
     {
       id: "f7ac5ac8-5a1d-4b4f-b5c0-45eb3102bc3d",
-      key_name: "south_korea",
+      keyName: "south_korea",
       name: "South Korea",
       membersCount: 1800000,
       color: randomHexColor(),
@@ -63,7 +63,7 @@ export async function seedRoomCategories(prisma: PrismaClient) {
     },
     {
       id: "1e888904-a298-4091-bdbf-6a3206bc8ee6",
-      key_name: "canada",
+      keyName: "canada",
       name: "Canada",
       membersCount: 650000,
       color: randomHexColor(),
@@ -73,7 +73,7 @@ export async function seedRoomCategories(prisma: PrismaClient) {
     },
     {
       id: "cbe1ffec-945b-4128-a580-4e58cd7f4b6b",
-      key_name: "australia",
+      keyName: "australia",
       name: "Australia",
       membersCount: 450000,
       color: randomHexColor(),
@@ -83,7 +83,7 @@ export async function seedRoomCategories(prisma: PrismaClient) {
     },
     {
       id: "4fa52b4d-287e-4be4-a9fb-af71fefcb6d1",
-      key_name: "brazil",
+      keyName: "brazil",
       name: "Brazil",
       membersCount: 250000,
       color: randomHexColor(),
@@ -93,7 +93,7 @@ export async function seedRoomCategories(prisma: PrismaClient) {
     },
     {
       id: "74043e34-6f34-4d01-beee-63a4b5348b70",
-      key_name: "indonesia",
+      keyName: "indonesia",
       name: "Indonesia",
       membersCount: 180000,
       color: randomHexColor(),
@@ -178,7 +178,7 @@ export async function seedRoomCategories(prisma: PrismaClient) {
     },
     {
       id: "04307c34-3f29-4de7-b7b5-957af6ab49a1",
-      key_name: "tickets",
+      keyName: "tickets",
       name: "Tickets",
       membersCount: 0,
       color: "#F6C886",
@@ -189,11 +189,16 @@ export async function seedRoomCategories(prisma: PrismaClient) {
     },
   ];
 
+  const results = [];
   for (const country of countriesData) {
-    await prisma.roomCategory.upsert({
+    const keyName =
+      (country as any).keyName ||
+      country.name.toLowerCase().replace(/\s+/g, "_");
+    const upserted = await prisma.roomCategory.upsert({
       where: { id: country.id },
       update: {
         name: country.name,
+        keyName: keyName,
         membersCount: country.membersCount,
         color: country.color ?? randomHexColor(),
         position: country.position,
@@ -203,6 +208,7 @@ export async function seedRoomCategories(prisma: PrismaClient) {
       create: {
         id: country.id,
         name: country.name,
+        keyName: keyName,
         membersCount: country.membersCount,
         color: country.color ?? randomHexColor(),
         position: country.position,
@@ -211,5 +217,7 @@ export async function seedRoomCategories(prisma: PrismaClient) {
         metaData: {},
       },
     });
+    results.push(upserted);
   }
+  return results;
 }

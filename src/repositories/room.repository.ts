@@ -254,7 +254,7 @@ export default class RoomRepo {
       data: {
         ...data,
         ...(data.name && {
-          key_name: generateKeyName(data.name),
+          keyName: generateKeyName(data.name),
         }),
         updatedAt: new Date(),
       },

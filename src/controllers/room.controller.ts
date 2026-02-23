@@ -23,7 +23,7 @@ export default class RoomCtrl {
       roomSubCategoryId: Joi.string().uuid().required(),
       position: Joi.object().required(),
       metaData: Joi.object().required(),
-      key_name: Joi.string().optional(),
+      keyName: Joi.string().optional(),
     });
 
     const { error, value } = schema.validate(req.body);
@@ -193,19 +193,19 @@ export default class RoomCtrl {
   static async joinRoom(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const { key_name } = req.body;
+      const { keyName } = req.body;
       const userId = req.user.id;
 
       const schema = Joi.object({
         id: Joi.string().uuid().required(),
-        key_name: Joi.string().optional(),
+        keyName: Joi.string().optional(),
       });
 
-      const { error } = schema.validate({ id, key_name });
+      const { error } = schema.validate({ id, keyName });
       if (error) {
         return res.status(400).json({ message: error.message });
       }
-      const result = await RoomSvc.joinRoom(id, userId, key_name);
+      const result = await RoomSvc.joinRoom(id, userId, keyName);
       if (!result.success) {
         return res.status(400).json({ message: result.message });
       }

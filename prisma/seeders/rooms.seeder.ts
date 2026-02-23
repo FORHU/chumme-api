@@ -1,9 +1,13 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, RoomCategory } from "@prisma/client";
+import { randomUUID } from "node:crypto";
 
 /**
  * Seeds Rooms for each country's Lobby subcategory
  */
-export async function seedRooms(prisma: PrismaClient) {
+export async function seedRooms(
+  prisma: PrismaClient,
+  categoriesInput?: RoomCategory[],
+) {
   console.log("🌱 Seeding Rooms for Country Lobbies...");
 
   // 1. Get or create admin user for ownership
@@ -35,76 +39,90 @@ export async function seedRooms(prisma: PrismaClient) {
   const ownerId = systemUser.id;
 
   // 2. Fetch all Room Categories (Countries) to reconstruct their Lobby IDs
-  const categories = await prisma.roomCategory.findMany({
-    where: { deletedAt: null },
-  });
+  const categories =
+    categoriesInput ||
+    (await prisma.roomCategory.findMany({
+      where: { deletedAt: null },
+    }));
 
   for (const category of categories) {
-    // Reconstruct the Lobby SubCategory ID as done in roomCategory.seeder.ts
-    const lobbySubCategoryId = `lobby-${category.id}`.slice(0, 70);
-
-    // Verify subcategory exists
+    // Find subcategory by keyName (more reliable than ID reconstruction)
+    const lobbyKey = `lobby-${category.id}`;
     const subCategory = await prisma.roomSubCategory.findUnique({
-      where: { id: lobbySubCategoryId },
+      where: { keyName: lobbyKey },
     });
 
     if (!subCategory) {
       console.log(
-        `⚠️ Lobby subcategory not found for category ${category.name}. Skipping.`,
+        `⚠️ Lobby subcategory not found for category ${category.name} (key: ${lobbyKey}). Skipping.`,
       );
       continue;
     }
 
+    const lobbySubCategoryId = subCategory.id;
+
     // 3. Create or Update a "Main Chat" room in this lobby
     // This room will be promoted to the centerpiece by the frontend
-    const roomId = `main-chat-${category.id}`.slice(0, 70);
+    const roomKey = `main-chat-${category.id}`;
+    const roomId = randomUUID();
 
-    await prisma.room.upsert({
-      where: { id: roomId },
-      update: {
-        name: "Main Chat",
-        note: `The primary chat room for ${category.name}`,
-        position: {
-          x:
-            50 +
-            Math.cos(Math.random() * Math.PI * 2) * (10 + Math.random() * 15),
-          y:
-            50 +
-            Math.sin(Math.random() * Math.PI * 2) * (10 + Math.random() * 15),
-        },
-      },
-      create: {
-        id: roomId,
-        name: "Main Chat",
-        note: `The primary chat room for ${category.name}`,
-        ownerId: ownerId,
-        roomSubCategoryId: lobbySubCategoryId,
-        isPrivate: false,
-        isDeleted: false,
-        keyName: `main-chat-${category.id}`, // Unique per country
-        metaData: { isCenterpiece: true },
-        position: {
-          x:
-            50 +
-            Math.cos(Math.random() * Math.PI * 2) * (10 + Math.random() * 15),
-          y:
-            50 +
-            Math.sin(Math.random() * Math.PI * 2) * (10 + Math.random() * 15),
-        },
-      },
+    const existingRoom = await prisma.room.findFirst({
+      where: { keyName: roomKey } as any,
     });
+
+    if (existingRoom) {
+      await prisma.room.update({
+        where: { id: existingRoom.id },
+        data: {
+          name: "Main Chat",
+          note: `The primary chat room for ${category.name}`,
+          position: {
+            x:
+              50 +
+              Math.cos(Math.random() * Math.PI * 2) * (10 + Math.random() * 15),
+            y:
+              50 +
+              Math.sin(Math.random() * Math.PI * 2) * (10 + Math.random() * 15),
+          },
+        },
+      });
+    } else {
+      await prisma.room.create({
+        data: {
+          id: roomId,
+          name: "Main Chat",
+          note: `The primary chat room for ${category.name}`,
+          ownerId: ownerId,
+          roomSubCategoryId: lobbySubCategoryId,
+          isPrivate: false,
+          isDeleted: false,
+          keyName: roomKey, // Unique per country
+          metaData: { isCenterpiece: true },
+          position: {
+            x:
+              50 +
+              Math.cos(Math.random() * Math.PI * 2) * (10 + Math.random() * 15),
+            y:
+              50 +
+              Math.sin(Math.random() * Math.PI * 2) * (10 + Math.random() * 15),
+          },
+        } as any,
+      });
+    }
+
+    const targetRoomId = existingRoom ? existingRoom.id : roomId;
 
     // 4. Ensure owner is a member of the room
     await prisma.roomMember.upsert({
       where: {
         room_id_user_id: {
-          roomId: roomId,
+          roomId: targetRoomId,
           userId: ownerId,
         },
       },
       update: {},
       create: {
-        roomId: roomId,
+        roomId: targetRoomId,
         userId: ownerId,
         role: "owner",
       },

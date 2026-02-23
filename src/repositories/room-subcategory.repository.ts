@@ -224,7 +224,7 @@ export default class RoomSubCategoryRepo {
   }
 
   /**
-   * Find subcategory by key_name within a category
+   * Find subcategory by keyName within a category
    */
   static async findSubCategoryByKeyName(keyName: string, categoryId: string) {
     return prisma.roomSubCategory.findFirst({

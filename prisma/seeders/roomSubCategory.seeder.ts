@@ -1,5 +1,5 @@
-import { PrismaClient } from "@prisma/client";
-import { randomUUID } from "crypto";
+import { PrismaClient, RoomCategory } from "@prisma/client";
+import { randomUUID } from "node:crypto";
 
 function randomHexColor(): string {
   return (
@@ -22,12 +22,17 @@ function shuffle<T>(arr: T[]) {
 /**
  * Seeds Lobbies and Topic subcategories for each RoomCategory
  */
-export async function seedRoomSubCategories(prisma: PrismaClient) {
+export async function seedRoomSubCategories(
+  prisma: PrismaClient,
+  categoriesInput?: RoomCategory[],
+) {
   console.log("🌱 Seeding Room SubCategories (Lobbies + Topics)...");
 
-  const categories = await prisma.roomCategory.findMany({
-    where: { deletedAt: null },
-  });
+  const categories =
+    categoriesInput ||
+    (await prisma.roomCategory.findMany({
+      where: { deletedAt: null },
+    }));
 
   const topics = [
     "Music",
@@ -122,6 +127,9 @@ export async function seedRoomSubCategories(prisma: PrismaClient) {
     const lobbyKey = `lobby-${category.id}`;
 
     // 1. Upsert Lobby
+    // Use a pure UUID for the ID, but match via keyName for stability
+    const lobbyId = randomUUID();
+
     await prisma.roomSubCategory.upsert({
       where: { keyName: lobbyKey },
       update: {
@@ -135,7 +143,7 @@ export async function seedRoomSubCategories(prisma: PrismaClient) {
         metaData: {},
       },
       create: {
-        id: randomUUID(),
+        id: lobbyId,
         name: `${category.name} Lobby`,
         roomCategoryId: category.id,
         color: (category as any).color ?? randomHexColor(),

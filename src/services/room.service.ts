@@ -23,7 +23,7 @@ export default class RoomSvc {
     roomSubCategoryId: string;
     position: any;
     metaData: any;
-    key_name?: string;
+    keyName?: string;
   }) {
     const roomByName = await RoomRepo.findRoomName(data.name);
     if (roomByName) {
