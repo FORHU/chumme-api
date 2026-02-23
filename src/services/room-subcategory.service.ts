@@ -38,16 +38,16 @@ export default class RoomSubCategorySvc {
       );
     }
 
-    // Also check for key_name collisions within this category
+    // Also check for keyName collisions within this category
     const { generateKeyName } = require("../utils/key-name.util");
-    const key_name = generateKeyName(data.name);
+    const keyName = generateKeyName(data.name);
     const existingByKey = await RoomSubCategoryRepo.findSubCategoryByKeyName(
-      key_name,
+      keyName,
       data.roomCategoryId,
     );
     if (existingByKey) {
       throw new Error(
-        `Subcategory with similar name already exists in this category (collision: ${key_name})`,
+        `Subcategory with similar name already exists in this category (collision: ${keyName})`,
       );
     }
 

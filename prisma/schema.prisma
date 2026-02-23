@@ -130,11 +130,11 @@ model RoomCategory {
 }
 
 model RoomSubCategory {
-  id       String  @id @default(uuid())
-  name     String
-  note     String?
-  key_name String  @unique
-  ownerId  String
+  id      String  @id @default(uuid())
+  name    String
+  note    String?
+  keyName String  @unique
+  ownerId String?
 
   color        String
   imageUrl     String?
@@ -148,26 +148,12 @@ model RoomSubCategory {
   artist   Artist? @relation(fields: [artistId], references: [id])
 
   roomCategoryId String
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  deletedAt      DateTime?
-<<<<<<< Updated upstream
-=======
-  imageUrl       String?
-  metaData       Json
-  ownerId        String?
-  
-  position       Json
-  color          String
-  isAd           Boolean
-  membersCount   Int
-  size           String
-  keyName        String?      @unique
-  artistId       String?
-  rooms          Room[]
-  artist         Artist?      @relation(fields: [artistId], references: [id])
   roomCategory   RoomCategory @relation(fields: [roomCategoryId], references: [id])
->>>>>>> Stashed changes
+  rooms          Room[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 }
 
 model Room {

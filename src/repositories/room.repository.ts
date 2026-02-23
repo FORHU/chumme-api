@@ -43,13 +43,13 @@ export default class RoomRepo {
     roomSubCategoryId: string;
     // position?: any;
     metaData: any;
-    key_name?: string;
+    keyName?: string;
   }) {
     return prisma.room.create({
       data: {
         ...data,
         position: {}, // Rely on frontend physics
-        key_name: data.key_name ?? generateKeyName(data.name),
+        keyName: data.keyName ?? generateKeyName(data.name),
         isPrivate: false,
         isDeleted: false,
       },

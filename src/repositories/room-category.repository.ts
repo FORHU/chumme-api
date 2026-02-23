@@ -21,7 +21,7 @@ export default class RoomCategoryRepo {
         ...data,
         position: {}, // Rely on frontend physics
         size: "medium", // Default placeholder
-        key_name: generateKeyName(data.name),
+        keyName: generateKeyName(data.name),
       },
     });
   }
@@ -38,7 +38,7 @@ export default class RoomCategoryRepo {
           select: {
             id: true,
             name: true,
-            key_name: true,
+            keyName: true,
             note: true,
             createdAt: true,
             updatedAt: true,
@@ -54,7 +54,7 @@ export default class RoomCategoryRepo {
               select: {
                 id: true,
                 name: true,
-                key_name: true,
+                keyName: true,
                 note: true,
                 isPrivate: true,
                 createdAt: true,
@@ -87,7 +87,7 @@ export default class RoomCategoryRepo {
           select: {
             id: true,
             name: true,
-            key_name: true,
+            keyName: true,
             note: true,
             createdAt: true,
             updatedAt: true,
@@ -103,7 +103,7 @@ export default class RoomCategoryRepo {
               select: {
                 id: true,
                 name: true,
-                key_name: true,
+                keyName: true,
                 note: true,
                 isPrivate: true,
                 createdAt: true,
@@ -142,7 +142,7 @@ export default class RoomCategoryRepo {
       data: {
         ...data,
         ...(data.name && {
-          key_name: generateKeyName(data.name),
+          keyName: generateKeyName(data.name),
         }),
         updatedAt: new Date(),
       },
@@ -181,12 +181,12 @@ export default class RoomCategoryRepo {
   }
 
   /**
-   * Find category by key_name
+   * Find category by keyName
    */
-  static async findCategoryByKeyName(key_name: string) {
+  static async findCategoryByKeyName(keyName: string) {
     return prisma.roomCategory.findFirst({
       where: {
-        key_name,
+        keyName,
         deletedAt: null,
       },
     });

@@ -153,7 +153,7 @@ export default class RoomSvc {
     }
 
     // Key Name Validation
-    if (room.key_name && room.key_name !== keyName) {
+    if (room.keyName && room.keyName !== keyName) {
       return { success: false, message: "Invalid Room Key Name" };
     }
 

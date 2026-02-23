@@ -14,7 +14,7 @@ export const getAllArtists = async () => {
         select: {
           id: true,
           name: true,
-          key_name: true,
+          keyName: true,
         },
       },
     },
@@ -43,7 +43,7 @@ export const getUserArtists = async (userId: string) => {
             select: {
               id: true,
               name: true,
-              key_name: true,
+              keyName: true,
             },
           },
         },
@@ -89,7 +89,7 @@ export const findById = async (id: string) => {
         select: {
           id: true,
           name: true,
-          key_name: true,
+          keyName: true,
         },
       },
     },
