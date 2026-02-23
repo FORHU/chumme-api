@@ -18,6 +18,7 @@ export default class RoomSubCategorySvc {
     imageUrl?: string;
     note?: string;
     artistId?: string;
+    keyName?: string;
   }) {
     // Verify parent category exists
     const categoryExists = await RoomSubCategoryRepo.categoryExists(
@@ -80,6 +81,7 @@ export default class RoomSubCategorySvc {
       imageUrl?: string;
       note?: string;
       artistId?: string;
+      keyName?: string;
     },
   ) {
     // Check if subcategory exists

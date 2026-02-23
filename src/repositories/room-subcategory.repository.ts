@@ -17,6 +17,7 @@ export default class RoomSubCategoryRepo {
     imageUrl?: string;
     note?: string;
     artistId?: string;
+    keyName?: string;
   }) {
     return prisma.roomSubCategory.create({
       data: {
@@ -163,6 +164,7 @@ export default class RoomSubCategoryRepo {
       imageUrl?: string;
       note?: string;
       artistId?: string;
+      keyName?: string;
     },
   ) {
     return prisma.roomSubCategory.update({

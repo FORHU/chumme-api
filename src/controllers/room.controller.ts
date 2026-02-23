@@ -23,6 +23,7 @@ export default class RoomCtrl {
       roomSubCategoryId: Joi.string().uuid().required(),
       position: Joi.object().required(),
       metaData: Joi.object().required(),
+      keyName: Joi.string().optional(),
     });
 
     const { error, value } = schema.validate(req.body);
@@ -121,6 +122,7 @@ export default class RoomCtrl {
         roomSubCategoryId: Joi.string().uuid().optional(),
         position: Joi.object().optional(),
         metaData: Joi.object().optional(),
+        keyName: Joi.string().optional(),
       }).min(2); // roomId + at least one other field
 
       const { error, value } = schema.validate(req.body);

@@ -17,6 +17,7 @@ export default class RoomCategoryCtrl {
       metaData: Joi.object().required(),
       imageUrl: Joi.string().uri().optional(),
       note: Joi.string().max(500).optional(),
+      keyName: Joi.string().optional(),
     });
 
     const { error, value } = schema.validate(req.body);
@@ -85,6 +86,7 @@ export default class RoomCategoryCtrl {
       metaData: Joi.object().optional(),
       imageUrl: Joi.string().uri().optional(),
       note: Joi.string().max(500).optional(),
+      keyName: Joi.string().optional(),
     }).min(1);
 
     const { error, value } = schema.validate(req.body);

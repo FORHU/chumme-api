@@ -44,6 +44,7 @@ export default class RoomRepo {
     roomSubCategoryId: string;
     position?: any;
     metaData: any;
+    keyName?: string;
   }) {
     return prisma.room.create({
       data: {
@@ -243,6 +244,7 @@ export default class RoomRepo {
       roomSubCategoryId?: string;
       position?: any;
       metaData?: any;
+      keyName?: string;
     },
   ) {
     return prisma.room.update({

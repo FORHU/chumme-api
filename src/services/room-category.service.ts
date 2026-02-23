@@ -15,6 +15,7 @@ export default class RoomCategorySvc {
     metaData: any;
     imageUrl?: string;
     note?: string;
+    keyName?: string;
   }) {
     // Check if category with same name already exists (case-insensitive)
     const existingCategory = await RoomCategoryRepo.findCategoryByName(
@@ -61,6 +62,7 @@ export default class RoomCategorySvc {
       metaData?: any;
       imageUrl?: string;
       note?: string;
+      keyName?: string;
     },
   ) {
     // Check if category exists

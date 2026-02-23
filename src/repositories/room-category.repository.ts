@@ -14,6 +14,7 @@ export default class RoomCategoryRepo {
     metaData: any;
     imageUrl?: string;
     note?: string;
+    keyName?: string;
   }) {
     return prisma.roomCategory.create({
       data: {
@@ -136,6 +137,7 @@ export default class RoomCategoryRepo {
       metaData?: any;
       imageUrl?: string;
       note?: string;
+      keyName?: string;
     },
   ) {
     return prisma.roomCategory.update({

@@ -20,6 +20,7 @@ export default class RoomSubCategoryCtrl {
       imageUrl: Joi.string().uri().optional(),
       note: Joi.string().max(500).optional(),
       artistId: Joi.string().uuid().optional(),
+      keyName: Joi.string().optional(),
     });
 
     const { error, value } = schema.validate(req.body);
@@ -132,6 +133,7 @@ export default class RoomSubCategoryCtrl {
       imageUrl: Joi.string().uri().optional(),
       note: Joi.string().max(500).optional(),
       artistId: Joi.string().uuid().optional(),
+      keyName: Joi.string().optional(),
     }).min(1);
 
     const { error, value } = schema.validate(req.body);
