@@ -56,6 +56,28 @@ export default class RoomCategoryRepo {
   /**
    * Create a new room category
    */
+  static async createCategory(data: {
+    name: string;
+    membersCount: number;
+    color: string;
+    size: string;
+    position: any;
+    isAd: boolean;
+    metaData: any;
+    imageUrl?: string;
+    note?: string;
+    keyName?: string;
+  }) {
+    return prisma.roomCategory.create({
+      data: {
+        ...data,
+      },
+    });
+  }
+
+  /**
+   * Create a new room subcategory
+   */
   static async createSubCategory(data: {
     name: string;
     roomCategoryId: string;
