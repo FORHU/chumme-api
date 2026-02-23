@@ -66,6 +66,9 @@ export default class RoomSubCategoryRepo {
       mexico: "Mexico",
       taiwan: "Taiwan",
       singapore: "Singapore",
+      "global-connect-shortcut": "Global",
+      "chumme-lobby-shortcut": "Global",
+      "chumme-room-shortcut": "Global",
     };
 
     if (categoryId && specialMappings[categoryId]) {

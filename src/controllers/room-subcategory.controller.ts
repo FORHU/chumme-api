@@ -68,6 +68,9 @@ export default class RoomSubCategoryCtrl {
               "mexico",
               "taiwan",
               "singapore",
+              "global-connect-shortcut",
+              "chumme-lobby-shortcut",
+              "chumme-room-shortcut",
             ),
           )
           .required(),
