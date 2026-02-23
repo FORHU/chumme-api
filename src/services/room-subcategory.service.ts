@@ -39,39 +39,6 @@ export default class RoomSubCategorySvc {
     }
 
     const subCategory = await RoomSubCategoryRepo.createSubCategory(data);
-
-    // Auto-create a default room for this subcategory
-    try {
-      const roomPayload = {
-        name: "General",
-        note: `Welcome to the ${data.name} community circle!`,
-        ownerId: data.ownerId,
-        roomSubCategoryId: subCategory.id,
-        position: { x: 0, y: 0, radius: 0.8 },
-        metaData: data.metaData, // Reuse colors/styling from subcategory
-      };
-
-      const { prisma } = require("../utils/prisma");
-      await prisma.room.create({
-        data: {
-          ...roomPayload,
-          isPrivate: false,
-          isDeleted: false,
-          members: {
-            create: {
-              userId: data.ownerId,
-              role: "owner",
-            },
-          },
-        },
-      });
-    } catch (err) {
-      console.error(
-        `[RoomSubCategorySvc] Failed to auto-create room for ${subCategory.id}:`,
-        err,
-      );
-    }
-
     return subCategory;
   }
 

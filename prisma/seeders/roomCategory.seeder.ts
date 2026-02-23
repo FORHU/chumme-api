@@ -1,320 +1,137 @@
 import { PrismaClient } from "@prisma/client";
 
 /**
- * Seeds Room Categories (Regions/Countries) with fixed UUIDs
+ * Seeds Room Categories (Countries) with fixed UUIDs
  */
 export async function seedRoomCategories(prisma: PrismaClient) {
-  console.log("🌱 Seeding Room Categories...");
+  console.log("🌱 Seeding Countries as Room Categories...");
 
-  const categoriesData = [
-    {
-      id: "13eb5f99-cb5a-4cc6-9f72-8d4f46ffebb2",
-      key_name: "global",
-      name: "Global",
-      membersCount: 5000000,
-      color: "color3",
+  // 1. Get or create admin user for ownership
+  let systemUser = await prisma.user.findFirst({
+    where: { email: "admin@chumme.com" },
+  });
 
-      position: {
-        x: 50,
-        y: 50,
-      },
-      isAd: false,
-      imageUrl: null,
-      metaData: {},
-    },
+  if (!systemUser) {
+    systemUser = await prisma.user.findFirst({
+      orderBy: { createdAt: "asc" },
+    });
+  }
+
+  if (!systemUser) {
+    console.log(
+      "⚠️ No users found to assign as owner. Skipping category seeding.",
+    );
+    return;
+  }
+  const ownerId = systemUser.id;
+
+  // 2. Define Countries (Room Categories)
+  const countriesData = [
     {
       id: "96b3c9bf-1077-46aa-b37d-f16f28486936",
-      key_name: "usa",
       name: "United States",
       membersCount: 2000000,
       color: "color3",
-
-      position: {
-        x: 20,
-        y: 30,
-      },
+      position: { x: 20, y: 30 },
+      size: "medium",
       isAd: false,
-      imageUrl: null,
-      metaData: {},
     },
     {
       id: "77a9a080-bf60-4feb-9bbd-c0727c774ebd",
-      key_name: "uk",
       name: "United Kingdom",
       membersCount: 850000,
       color: "color2",
-
-      position: {
-        x: 55,
-        y: 25,
-      },
+      position: { x: 55, y: 25 },
+      size: "medium",
       isAd: false,
-      imageUrl: null,
-      metaData: {},
     },
     {
       id: "4ed0e800-c7a6-41d8-9c1a-7463c67e9126",
-      key_name: "japan",
       name: "Japan",
       membersCount: 1500000,
       color: "color1",
-
-      position: {
-        x: 75,
-        y: 50,
-      },
+      position: { x: 75, y: 50 },
+      size: "medium",
       isAd: false,
-      imageUrl: null,
-      metaData: {},
     },
     {
       id: "f7ac5ac8-5a1d-4b4f-b5c0-45eb3102bc3d",
-      key_name: "south_korea",
       name: "South Korea",
       membersCount: 1800000,
       color: "color3",
-
-      position: {
-        x: 40,
-        y: 55,
-      },
+      position: { x: 40, y: 55 },
+      size: "medium",
       isAd: false,
-      imageUrl: null,
-      metaData: {},
     },
     {
       id: "1e888904-a298-4091-bdbf-6a3206bc8ee6",
-      key_name: "canada",
       name: "Canada",
       membersCount: 650000,
       color: "color2",
-
-      position: {
-        x: 15,
-        y: 70,
-      },
+      position: { x: 15, y: 70 },
+      size: "medium",
       isAd: false,
-      imageUrl: null,
-      metaData: {},
     },
     {
       id: "cbe1ffec-945b-4128-a580-4e58cd7f4b6b",
-      key_name: "australia",
       name: "Australia",
       membersCount: 450000,
       color: "color4",
-
-      position: {
-        x: 65,
-        y: 75,
-      },
+      position: { x: 65, y: 75 },
+      size: "medium",
       isAd: false,
-      imageUrl: null,
-      metaData: {},
     },
     {
       id: "4fa52b4d-287e-4be4-a9fb-af71fefcb6d1",
-      key_name: "brazil",
       name: "Brazil",
       membersCount: 250000,
       color: "color1",
-
-      position: {
-        x: 30,
-        y: 80,
-      },
+      position: { x: 30, y: 80 },
+      size: "medium",
       isAd: false,
-      imageUrl: null,
-      metaData: {},
     },
     {
       id: "74043e34-6f34-4d01-beee-63a4b5348b70",
-      key_name: "indonesia",
       name: "Indonesia",
       membersCount: 180000,
       color: "color2",
-
-      position: {
-        x: 80,
-        y: 60,
-      },
+      position: { x: 80, y: 60 },
+      size: "medium",
       isAd: false,
-      imageUrl: null,
-      metaData: {},
     },
     {
-      id: "fc7dd489-d73e-4b38-a18a-3cca3d918ffc",
-      key_name: "thailand",
-      name: "Thailand",
-      membersCount: 85000,
-      color: "color3",
-
-      position: {
-        x: 70,
-        y: 40,
-      },
-      isAd: false,
-      imageUrl: null,
-      metaData: {},
-    },
-    {
-      id: "d8817033-eee3-4f0e-bf60-95ec45741040",
-      key_name: "philippines",
-      name: "Philippines",
-      membersCount: 65000,
+      id: "sponsor-coke-001",
+      name: "Coca-Cola World",
+      membersCount: 100000,
       color: "color1",
-
-      position: {
-        x: 85,
-        y: 45,
-      },
-      isAd: false,
-      imageUrl: null,
-      metaData: {},
-    },
-    {
-      id: "4c42b207-3202-48e6-831b-459adffa558d",
-      key_name: "malaysia",
-      name: "Malaysia",
-      membersCount: 45000,
-      color: "color2",
-
-      position: {
-        x: 75,
-        y: 55,
-      },
-      isAd: false,
-      imageUrl: null,
-      metaData: {},
-    },
-    {
-      id: "deee652f-ab71-472d-8ac7-75079cd1d405",
-      key_name: "vietnam",
-      name: "Vietnam",
-      membersCount: 32000,
-      color: "color4",
-
-      position: {
-        x: 65,
-        y: 35,
-      },
-      isAd: false,
-      imageUrl: null,
-      metaData: {},
-    },
-    {
-      id: "853c24b5-cd4d-48a8-bd7c-2312ac306d30",
-      key_name: "mexico",
-      name: "Mexico",
-      membersCount: 28000,
-      color: "color1",
-
-      position: {
-        x: 25,
-        y: 45,
-      },
-      isAd: false,
-      imageUrl: null,
-      metaData: {},
-    },
-    {
-      id: "3469fcd9-dbf5-4923-8682-0c3ea9b20b66",
-      key_name: "taiwan",
-      name: "Taiwan",
-      membersCount: 8500,
-      color: "color2",
-
-      position: {
-        x: 80,
-        y: 30,
-      },
-      isAd: false,
-      imageUrl: null,
-      metaData: {},
-    },
-    {
-      id: "54e9948b-c548-4f49-866c-f50696b4f0df",
-      key_name: "singapore",
-      name: "Singapore",
-      membersCount: 5200,
-      color: "color3",
-
-      position: {
-        x: 72,
-        y: 65,
-      },
-      isAd: false,
-      imageUrl: null,
-      metaData: {},
-    },
-    {
-      id: "edcc76fe-8d5f-4ce7-81ba-0d9f8a3b911a",
-      key_name: "ad_1",
-      name: "Sponsored",
-      membersCount: 0,
-      color: "color1",
-
-      position: {
-        x: 50,
-        y: 50,
-      },
+      position: { x: 85, y: 15 },
+      size: "medium",
       isAd: true,
-      imageUrl:
-        "https://images.unsplash.com/photo-1611162616305-c69b3fa7fbe0?w=400&h=400&fit=crop",
-      metaData: {},
-    },
-    {
-      id: "04307c34-3f29-4de7-b7b5-957af6ab49a1",
-      key_name: "tickets",
-      name: "Tickets",
-      membersCount: 0,
-      color: "#F6C886",
-
-      position: {
-        x: 45,
-        y: 55,
-      },
-      isAd: false,
-      imageUrl: null,
-      metaData: {
-        colors: ["#F6C886", "#FFD69A"],
-        colorId: "color4",
-      },
     },
   ];
 
-  // No longer clearing all tables to allow "complementing" existing data
-  // Only clear what is strictly necessary or use upsert
-
-  for (const cat of categoriesData) {
-    await prisma.roomCategory.upsert({
-      where: { id: cat.id },
+  for (const country of countriesData) {
+    const category = await prisma.roomCategory.upsert({
+      where: { id: country.id },
       update: {
-        name: cat.name,
-        membersCount: cat.membersCount,
-        color: cat.color,
-        position: cat.position || {},
-        size: "medium",
-        isAd: cat.isAd,
-        imageUrl: cat.imageUrl,
-        metaData: cat.metaData || {},
+        name: country.name,
+        membersCount: country.membersCount,
+        color: country.color,
+        position: country.position,
+        isAd: country.isAd ?? false,
       },
       create: {
-        id: cat.id,
-        name: cat.name,
-        membersCount: cat.membersCount,
-        color: cat.color,
-        position: cat.position || {},
-        size: "medium",
-        isAd: cat.isAd,
-        imageUrl: cat.imageUrl,
-        metaData: cat.metaData || {},
-        note: "Migrated from frontend hardcoded values",
+        id: country.id,
+        name: country.name,
+        membersCount: country.membersCount,
+        color: country.color,
+        position: country.position,
+        size: country.size as any,
+        isAd: country.isAd ?? false,
+        metaData: {},
       },
     });
   }
 
-  console.log(
-    `✅ Seeded ${categoriesData.length} Room Categories with fixed UUIDs.`,
-  );
+  console.log(`✅ Seeded ${countriesData.length} Countries.`);
 }
