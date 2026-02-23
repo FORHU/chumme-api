@@ -32,14 +32,25 @@ export default class RoomSubCategoryRepo {
       const categoryName = specialMappings[categoryId];
       const category = await prisma.roomCategory.findFirst({
         where: {
-          name: { equals: categoryName, mode: "insensitive" },
+          OR: [
+            { name: { equals: categoryName, mode: "insensitive" } },
+            { keyName: { equals: categoryName, mode: "insensitive" } },
+          ],
           deletedAt: null,
         },
       });
       return category?.id || null;
     }
 
-    return categoryId; // Assume it's already a UUID
+    // Try finding by ID or KeyName directly if it's not a hardcoded shortcut
+    const category = await prisma.roomCategory.findFirst({
+      where: {
+        OR: [{ id: categoryId }, { keyName: categoryId }],
+        deletedAt: null,
+      },
+    });
+
+    return category?.id || categoryId;
   }
 
   /**
