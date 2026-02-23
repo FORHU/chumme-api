@@ -175,7 +175,7 @@ export async function seedRoomCategories(prisma: PrismaClient) {
         size: "large",
         position: { x: 50, y: 50 },
         isAd: false,
-        keyName: "chumme-lobby",
+        keyName: `lobby-${country.id}`, // Unique per country
         metaData: { isCenterpiece: true },
       },
     });
