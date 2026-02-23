@@ -56,21 +56,42 @@ export default class RoomCategoryRepo {
   /**
    * Create a new room category
    */
-  static async createCategory(data: {
+  static async createSubCategory(data: {
     name: string;
-    membersCount: number;
-    color: string;
-    size: string;
-    position: any;
-    isAd: boolean;
+    roomCategoryId: string;
+    ownerId: string;
     metaData: any;
+    position: any;
+    size: string;
+    color: string;
+    isAd: boolean;
+    membersCount: number;
     imageUrl?: string;
     note?: string;
+    artistId?: string;
     keyName?: string;
   }) {
-    return prisma.roomCategory.create({
+    const realCategoryId = await RoomCategoryRepo.resolveCategoryShortcut(
+      data.roomCategoryId,
+    );
+
+    // 1. Destructure to separate the fields and handle potential undefineds
+    const { keyName, imageUrl, note, artistId, ...rest } = data;
+
+    return prisma.roomSubCategory.create({
       data: {
-        ...data,
+        ...rest,
+        // 2. Explicitly convert undefined to null for Prisma
+        keyName: keyName ?? "",
+        imageUrl: imageUrl ?? "",
+        note: note ?? "",
+        artistId: artistId ?? "",
+        // 3. Ensure the ID is correctly mapped
+        roomCategoryId: realCategoryId || data.roomCategoryId,
+      },
+      include: {
+        roomCategory: { select: { id: true, name: true } },
+        artist: { select: { id: true, name: true, imageUrl: true } },
       },
     });
   }
@@ -121,6 +142,10 @@ export default class RoomCategoryRepo {
       },
       orderBy: { createdAt: "desc" },
     });
+  }
+
+  static async getAllCategory() {
+    return prisma.roomCategory.findMany({});
   }
 
   /**

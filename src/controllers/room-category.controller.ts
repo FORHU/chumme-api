@@ -41,7 +41,9 @@ export default class RoomCategoryCtrl {
    */
   static async getAllCategories(req: Request, res: Response) {
     try {
-      const categories = await RoomCategorySvc.getAllCategories();
+      // const categories = await RoomCategorySvc.getAllCategories();
+      const categories = await RoomCategorySvc.getAllCategory();
+
       return res.json({ categories });
     } catch (error: any) {
       return res.status(500).json({ message: error.message || error });

@@ -31,36 +31,40 @@ export default class RoomSubCategoryRepo {
     imageUrl?: string;
     note?: string;
     artistId?: string;
-    keyName?: string;
+    keyName?: string | null;
   }) {
-    // Resolve shortcut if needed
     const realCategoryId = await RoomCategoryRepo.resolveCategoryShortcut(
       data.roomCategoryId,
     );
 
     return prisma.roomSubCategory.create({
       data: {
-        ...data,
+        // Explicitly map the fields
+        name: data.name,
+        ownerId: data.ownerId,
+        metaData: data.metaData,
+        position: data.position,
+        size: data.size,
+        color: data.color,
+        isAd: data.isAd,
+        membersCount: data.membersCount,
+        imageUrl: data.imageUrl,
+        note: data.note,
+        artistId: data.artistId,
+        keyName: data.keyName ?? "",
+        // Use the resolved ID
         roomCategoryId: realCategoryId || data.roomCategoryId,
       },
       include: {
         roomCategory: {
-          select: {
-            id: true,
-            name: true,
-          },
+          select: { id: true, name: true },
         },
         artist: {
-          select: {
-            id: true,
-            name: true,
-            imageUrl: true,
-          },
+          select: { id: true, name: true, imageUrl: true },
         },
       },
     });
   }
-
   /**
    * Get all non-deleted subcategories
    * Optionally filter by category
@@ -122,6 +126,11 @@ export default class RoomSubCategoryRepo {
             name: true,
           },
         },
+        rooms: {
+          where: {
+            isDeleted: false,
+          },
+        },
         _count: {
           select: {
             rooms: true,
@@ -134,6 +143,36 @@ export default class RoomSubCategoryRepo {
             imageUrl: true,
           },
         },
+      },
+    });
+  }
+
+  /**
+   * Get subcategories strictly by a parent room category ID
+   */
+  static async getRoomSubCategoryByRoomCategoryID(categoryId: string) {
+    return prisma.roomSubCategory.findMany({
+      where: {
+        roomCategoryId: categoryId,
+        deletedAt: null,
+      },
+      include: {
+        rooms: {
+          where: { isDeleted: false },
+        },
+        _count: {
+          select: { rooms: true },
+        },
+        artist: {
+          select: {
+            id: true,
+            name: true,
+            imageUrl: true,
+          },
+        },
+      },
+      orderBy: {
+        membersCount: "desc",
       },
     });
   }

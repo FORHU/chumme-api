@@ -137,7 +137,7 @@ model RoomSubCategory {
   deletedAt      DateTime?
   imageUrl       String?
   metaData       Json
-  ownerId        String
+  ownerId        String?
   position       Json
   color          String
   isAd           Boolean
@@ -154,7 +154,7 @@ model Room {
   id                String           @id @default(uuid())
   name              String?
   isPrivate         Boolean          @default(false)
-  ownerId           String
+  ownerId           String?
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
   isDeleted         Boolean          @default(false)
@@ -164,7 +164,7 @@ model Room {
   position          Json
   keyName           String?          @unique
   messages          Message[]
-  owner             User             @relation("RoomOwner", fields: [ownerId], references: [id])
+  owner             User?            @relation("RoomOwner", fields: [ownerId], references: [id])
   roomSubCategory   RoomSubCategory? @relation(fields: [roomSubCategoryId], references: [id])
   members           RoomMember[]
   userChats         UserChat[]

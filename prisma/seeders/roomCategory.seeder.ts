@@ -151,6 +151,7 @@ export async function seedRoomCategories(prisma: PrismaClient) {
         id: country.id,
         name: country.name,
         membersCount: country.membersCount,
+        keyName: "",
         color: country.color,
         position: country.position,
         size: country.size as any,

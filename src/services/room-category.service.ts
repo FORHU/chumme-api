@@ -35,6 +35,10 @@ export default class RoomCategorySvc {
     return RoomCategoryRepo.getAllCategories();
   }
 
+  static async getAllCategory() {
+    return RoomCategoryRepo.getAllCategory();
+  }
+
   /**
    * Get category by ID
    */
