@@ -5,22 +5,17 @@ export default class RoomRepo {
    * Resolve shortcut IDs for subcategories
    */
   static async resolveSubCategoryShortcut(id: string): Promise<string | null> {
-    const specialShortcuts = [
-      "chumme-lobby-shortcut",
-      "chumme-room-shortcut",
-      "chumme-main",
-      "global",
-    ];
-
-    if (specialShortcuts.includes(id)) {
+    if (
+      id === "chumme-lobby-shortcut" ||
+      id === "chumme-room-shortcut" ||
+      id === "chumme-main" ||
+      id === "global"
+    ) {
       // Find the "Global" or "Chumme World" category
       const targetName = id === "chumme-main" ? "Chumme World" : "Global";
       const cat = await prisma.roomCategory.findFirst({
         where: {
-          OR: [
-            { name: { equals: targetName, mode: "insensitive" } },
-            { keyName: { equals: targetName, mode: "insensitive" } },
-          ],
+          name: { equals: targetName, mode: "insensitive" },
           deletedAt: null,
         },
       });
@@ -29,25 +24,13 @@ export default class RoomRepo {
       const sc = await prisma.roomSubCategory.findFirst({
         where: {
           roomCategoryId: cat.id,
-          OR: [
-            { name: { contains: "Lobby", mode: "insensitive" } },
-            { keyName: { contains: "lobby", mode: "insensitive" } },
-          ],
+          name: { contains: "Lobby", mode: "insensitive" },
           deletedAt: null,
         },
       });
       return sc?.id || id;
     }
-
-    // Also check if id is a keyName for a subcategory
-    const subByField = await prisma.roomSubCategory.findFirst({
-      where: {
-        OR: [{ id: id }, { keyName: id }],
-        deletedAt: null,
-      },
-    });
-
-    return subByField?.id || id;
+    return id;
   }
 
   static async findRoomName(name: string) {

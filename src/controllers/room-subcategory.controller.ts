@@ -99,7 +99,7 @@ export default class RoomSubCategoryCtrl {
     const { id } = req.params;
 
     const schema = Joi.object({
-      id: Joi.string().required(),
+      id: Joi.string().uuid().required(),
     });
 
     const { error } = schema.validate({ id });
@@ -159,7 +159,7 @@ export default class RoomSubCategoryCtrl {
     const { id } = req.params;
 
     const schema = Joi.object({
-      id: Joi.string().required(),
+      id: Joi.string().uuid().required(),
     });
 
     const { error } = schema.validate({ id });

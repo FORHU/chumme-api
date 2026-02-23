@@ -86,7 +86,7 @@ export default class RoomCtrl {
       const userId = req.user.id;
 
       const schema = Joi.object({
-        id: Joi.string().required(),
+        id: Joi.string().uuid().required(),
       });
 
       const { error } = schema.validate({ id });
@@ -156,7 +156,7 @@ export default class RoomCtrl {
       const userId = req.user.id;
 
       const schema = Joi.object({
-        id: Joi.string().required(),
+        id: Joi.string().uuid().required(),
       });
 
       const { error } = schema.validate({ id });
@@ -186,7 +186,7 @@ export default class RoomCtrl {
       const userId = req.user.id;
 
       const schema = Joi.object({
-        id: Joi.string().required(),
+        id: Joi.string().uuid().required(),
       });
 
       const { error } = schema.validate({ id });
@@ -216,7 +216,7 @@ export default class RoomCtrl {
       const userId = req.user.id;
 
       const schema = Joi.object({
-        id: Joi.string().required(),
+        id: Joi.string().uuid().required(),
       });
 
       const { error } = schema.validate({ id });

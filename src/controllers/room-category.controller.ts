@@ -55,7 +55,7 @@ export default class RoomCategoryCtrl {
     const { id } = req.params;
 
     const schema = Joi.object({
-      id: Joi.string().required(),
+      id: Joi.string().uuid().required(),
     });
 
     const { error } = schema.validate({ id });
@@ -112,7 +112,7 @@ export default class RoomCategoryCtrl {
     const { id } = req.params;
 
     const schema = Joi.object({
-      id: Joi.string().required(),
+      id: Joi.string().uuid().required(),
     });
 
     const { error } = schema.validate({ id });
@@ -135,7 +135,7 @@ export default class RoomCategoryCtrl {
     const { id } = req.params;
 
     const schema = Joi.object({
-      id: Joi.string().required(),
+      id: Joi.string().uuid().required(),
     });
 
     const { error } = schema.validate({ id });
@@ -159,7 +159,7 @@ export default class RoomCategoryCtrl {
     const { roomIds } = req.body;
 
     const schema = Joi.object({
-      id: Joi.string().required(),
+      id: Joi.string().uuid().required(),
       roomIds: Joi.array().items(Joi.string().uuid()).min(1).required(),
     });
 
