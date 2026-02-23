@@ -5,6 +5,13 @@ import { seedArtists } from "./seeders/artists.seeder";
 import { seedAlbums } from "./seeders/albums.seeder";
 import { seedRoomCategories } from "./seeders/roomCategory.seeder";
 import { seedRoomSubCategories } from "./seeders/roomSubCategory.seeder";
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+=======
+>>>>>>> Stashed changes
+import { seedRooms } from "./seeders/rooms.seeder";
+>>>>>>> Stashed changes
 
 const prisma = new PrismaClient();
 
@@ -18,6 +25,14 @@ async function main() {
     await seedAlbums(prisma);
     await seedRoomCategories(prisma);
     await seedRoomSubCategories(prisma);
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+    // await seedRooms(prisma);
+>>>>>>> Stashed changes
+=======
+    // await seedRooms(prisma);
+>>>>>>> Stashed changes
 
     console.log("🎉 All seeder modules executed successfully!");
   } catch (error) {

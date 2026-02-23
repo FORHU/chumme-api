@@ -25,7 +25,7 @@ export default class RoomSubCategoryRepo {
         ...data,
         position: {}, // Rely on frontend physics
         size: "medium", // Default placeholder
-        key_name: `${generateKeyName(data.name)}_${Date.now().toString(36)}`,
+        keyName: `${generateKeyName(data.name)}_${Date.now().toString(36)}`,
       },
       include: {
         roomCategory: {
@@ -117,13 +117,9 @@ export default class RoomSubCategoryRepo {
    * Get subcategories strictly by a parent room category ID
    */
   static async getRoomSubCategoryByRoomCategoryID(categoryId: string) {
-    const targetCategoryId =
-      (await RoomCategoryRepo.resolveCategoryShortcut(categoryId)) ||
-      categoryId;
-
     return prisma.roomSubCategory.findMany({
       where: {
-        roomCategoryId: targetCategoryId,
+        roomCategoryId: categoryId,
         deletedAt: null,
       },
       include: {
@@ -173,7 +169,7 @@ export default class RoomSubCategoryRepo {
       data: {
         ...data,
         ...(data.name && {
-          key_name: `${generateKeyName(data.name)}_${Date.now().toString(36)}`,
+          keyName: `${generateKeyName(data.name)}_${Date.now().toString(36)}`,
         }),
         updatedAt: new Date(),
       },
@@ -230,10 +226,10 @@ export default class RoomSubCategoryRepo {
   /**
    * Find subcategory by key_name within a category
    */
-  static async findSubCategoryByKeyName(key_name: string, categoryId: string) {
+  static async findSubCategoryByKeyName(keyName: string, categoryId: string) {
     return prisma.roomSubCategory.findFirst({
       where: {
-        key_name,
+        keyName,
         roomCategoryId: categoryId,
         deletedAt: null,
       },

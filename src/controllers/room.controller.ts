@@ -63,6 +63,17 @@ export default class RoomCtrl {
     const limit = parseInt(req.query.limit as string) || 10;
     const subcategoryId = req.query.subcategoryId as string;
 
+    const schema = Joi.object({
+      page: Joi.number().integer().min(1).optional(),
+      limit: Joi.number().integer().min(1).optional(),
+      subcategoryId: Joi.string().uuid().optional(),
+    });
+
+    const { error } = schema.validate({ page, limit, subcategoryId });
+    if (error) {
+      return res.status(400).json({ message: error.message });
+    }
+
     try {
       const result = await RoomSvc.getAllRooms(
         userId,
