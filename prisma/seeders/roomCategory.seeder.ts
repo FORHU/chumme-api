@@ -108,6 +108,33 @@ export async function seedRoomCategories(prisma: PrismaClient) {
       size: "medium",
       isAd: true,
     },
+    {
+      id: "sponsor-nike-001",
+      name: "Nike World",
+      membersCount: 450000,
+      color: "color2",
+      position: { x: 10, y: 15 },
+      size: "medium",
+      isAd: true,
+    },
+    {
+      id: "sponsor-spotify-001",
+      name: "Spotify Hub",
+      membersCount: 900000,
+      color: "color4",
+      position: { x: 45, y: 10 },
+      size: "medium",
+      isAd: true,
+    },
+    {
+      id: "sponsor-galaxy-001",
+      name: "Galaxy Beats",
+      membersCount: 300000,
+      color: "color3",
+      position: { x: 90, y: 90 },
+      size: "medium",
+      isAd: true,
+    },
   ];
 
   for (const country of countriesData) {
@@ -131,7 +158,27 @@ export async function seedRoomCategories(prisma: PrismaClient) {
         metaData: {},
       },
     });
+
+    // 3. Ensure a 'Lobby' subcategory exists for each country for navigation
+    // This provides a backend anchor for the frontend-injected 'Chumme Lobby' hub.
+    const lobbyId = `lobby-${country.id}`.slice(0, 70); // Match frontend ID logic
+    await prisma.roomSubCategory.upsert({
+      where: { id: lobbyId },
+      update: { name: "Chumme Lobby" },
+      create: {
+        id: lobbyId,
+        name: "Chumme Lobby",
+        roomCategoryId: category.id,
+        ownerId: ownerId,
+        membersCount: 5000000,
+        color: "color1",
+        size: "large",
+        position: { x: 50, y: 50 },
+        isAd: false,
+        metaData: { isCenterpiece: true },
+      },
+    });
   }
 
-  console.log(`✅ Seeded ${countriesData.length} Countries.`);
+  console.log(`✅ Seeded ${countriesData.length} Categories.`);
 }

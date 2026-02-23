@@ -16,10 +16,10 @@ export default class UserChatSvc {
     if (userChat) {
       const existingMember = await RoomMemberRepo.findRoomMember(
         userId,
-        roomId
+        roomId,
       );
       if (!existingMember) {
-        await RoomMemberRepo.createRoomMember(userId, roomId, role);
+        await RoomMemberRepo.createRoomMember(roomId, userId, role);
       }
     }
     return userChat;
