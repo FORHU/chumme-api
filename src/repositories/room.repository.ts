@@ -1,6 +1,38 @@
 import { prisma } from "../utils/prisma";
 
 export default class RoomRepo {
+  /**
+   * Resolve shortcut IDs for subcategories
+   */
+  static async resolveSubCategoryShortcut(id: string): Promise<string | null> {
+    if (
+      id === "chumme-lobby-shortcut" ||
+      id === "chumme-room-shortcut" ||
+      id === "chumme-main" ||
+      id === "global"
+    ) {
+      // Find the "Global" or "Chumme World" category
+      const targetName = id === "chumme-main" ? "Chumme World" : "Global";
+      const cat = await prisma.roomCategory.findFirst({
+        where: {
+          name: { equals: targetName, mode: "insensitive" },
+          deletedAt: null,
+        },
+      });
+      if (!cat) return id;
+
+      const sc = await prisma.roomSubCategory.findFirst({
+        where: {
+          roomCategoryId: cat.id,
+          name: { contains: "Lobby", mode: "insensitive" },
+          deletedAt: null,
+        },
+      });
+      return sc?.id || id;
+    }
+    return id;
+  }
+
   static async findRoomName(name: string) {
     return prisma.room.findFirst({
       where: {
@@ -131,10 +163,14 @@ export default class RoomRepo {
     limit: number,
     subcategoryId?: string,
   ) {
+    const realSubCategoryId = subcategoryId
+      ? await this.resolveSubCategoryShortcut(subcategoryId)
+      : null;
+
     return prisma.room.findMany({
       where: {
         isDeleted: false,
-        ...(subcategoryId && { roomSubCategoryId: subcategoryId }),
+        ...(realSubCategoryId && { roomSubCategoryId: realSubCategoryId }),
         OR: [
           { isPrivate: false }, // Public rooms
           {
@@ -213,10 +249,14 @@ export default class RoomRepo {
     userId: string,
     subcategoryId?: string,
   ) {
+    const realSubCategoryId = subcategoryId
+      ? await this.resolveSubCategoryShortcut(subcategoryId)
+      : null;
+
     return prisma.room.count({
       where: {
         isDeleted: false,
-        ...(subcategoryId && { roomSubCategoryId: subcategoryId }),
+        ...(realSubCategoryId && { roomSubCategoryId: realSubCategoryId }),
         OR: [
           { isPrivate: false }, // Public rooms
           {

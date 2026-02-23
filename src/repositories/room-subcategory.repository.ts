@@ -2,6 +2,47 @@ import { prisma } from "../utils/prisma";
 
 export default class RoomSubCategoryRepo {
   /**
+   * Resolve shortcut IDs (like 'usa', 'global') to their real UUIDs
+   */
+  static async resolveShortcutToId(categoryId: string): Promise<string | null> {
+    const specialMappings: Record<string, string> = {
+      "chumme-main": "Chumme World",
+      global: "Global",
+      usa: "United States",
+      uk: "United Kingdom",
+      japan: "Japan",
+      south_korea: "South Korea",
+      canada: "Canada",
+      australia: "Australia",
+      brazil: "Brazil",
+      indonesia: "Indonesia",
+      thailand: "Thailand",
+      philippines: "Philippines",
+      malaysia: "Malaysia",
+      vietnam: "Vietnam",
+      mexico: "Mexico",
+      taiwan: "Taiwan",
+      singapore: "Singapore",
+      "global-connect-shortcut": "Global",
+      "chumme-lobby-shortcut": "Global",
+      "chumme-room-shortcut": "Global",
+    };
+
+    if (specialMappings[categoryId]) {
+      const categoryName = specialMappings[categoryId];
+      const category = await prisma.roomCategory.findFirst({
+        where: {
+          name: { equals: categoryName, mode: "insensitive" },
+          deletedAt: null,
+        },
+      });
+      return category?.id || null;
+    }
+
+    return categoryId; // Assume it's already a UUID
+  }
+
+  /**
    * Create a new room subcategory
    */
   static async createSubCategory(data: {
@@ -19,9 +60,13 @@ export default class RoomSubCategoryRepo {
     artistId?: string;
     keyName?: string;
   }) {
+    // Resolve shortcut if needed
+    const realCategoryId = await this.resolveShortcutToId(data.roomCategoryId);
+
     return prisma.roomSubCategory.create({
       data: {
         ...data,
+        roomCategoryId: realCategoryId || data.roomCategoryId,
       },
       include: {
         roomCategory: {
@@ -48,39 +93,9 @@ export default class RoomSubCategoryRepo {
   static async getAllSubCategories(categoryId?: string) {
     let targetCategoryId = categoryId;
 
-    // List of hardcoded identifiers from the frontend (chumme-app-v3/constants/circles.ts)
-    const specialMappings: Record<string, string> = {
-      "chumme-main": "Global",
-      global: "Global",
-      usa: "United States",
-      uk: "United Kingdom",
-      japan: "Japan",
-      south_korea: "South Korea",
-      canada: "Canada",
-      australia: "Australia",
-      brazil: "Brazil",
-      indonesia: "Indonesia",
-      thailand: "Thailand",
-      philippines: "Philippines",
-      malaysia: "Malaysia",
-      vietnam: "Vietnam",
-      mexico: "Mexico",
-      taiwan: "Taiwan",
-      singapore: "Singapore",
-      "global-connect-shortcut": "Global",
-      "chumme-lobby-shortcut": "Global",
-      "chumme-room-shortcut": "Global",
-    };
-
-    if (categoryId && specialMappings[categoryId]) {
-      const categoryName = specialMappings[categoryId];
-      const category = await prisma.roomCategory.findFirst({
-        where: {
-          name: { equals: categoryName, mode: "insensitive" },
-          deletedAt: null,
-        },
-      });
-      targetCategoryId = category?.id;
+    if (categoryId) {
+      targetCategoryId =
+        (await this.resolveShortcutToId(categoryId)) || categoryId;
     }
 
     return prisma.roomSubCategory.findMany({
@@ -243,9 +258,10 @@ export default class RoomSubCategoryRepo {
    * Verify category exists
    */
   static async categoryExists(categoryId: string) {
+    const realId = await this.resolveShortcutToId(categoryId);
     const category = await prisma.roomCategory.findUnique({
       where: {
-        id: categoryId,
+        id: realId || categoryId,
         deletedAt: null,
       },
     });
