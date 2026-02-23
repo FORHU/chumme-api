@@ -1,7 +1,55 @@
 import { prisma } from "../utils/prisma";
-import { generateKeyName } from "../utils/key-name.util";
 
 export default class RoomRepo {
+  /**
+   * Resolve shortcut IDs for subcategories
+   */
+  static async resolveSubCategoryShortcut(id: string): Promise<string | null> {
+    const specialShortcuts = [
+      "chumme-lobby-shortcut",
+      "chumme-room-shortcut",
+      "chumme-main",
+      "global",
+    ];
+
+    if (specialShortcuts.includes(id)) {
+      // Find the "Global" or "Chumme World" category
+      const targetName = id === "chumme-main" ? "Chumme World" : "Global";
+      const cat = await prisma.roomCategory.findFirst({
+        where: {
+          OR: [
+            { name: { equals: targetName, mode: "insensitive" } },
+            { keyName: { equals: targetName, mode: "insensitive" } },
+          ],
+          deletedAt: null,
+        },
+      });
+      if (!cat) return id;
+
+      const sc = await prisma.roomSubCategory.findFirst({
+        where: {
+          roomCategoryId: cat.id,
+          OR: [
+            { name: { contains: "Lobby", mode: "insensitive" } },
+            { keyName: { contains: "lobby", mode: "insensitive" } },
+          ],
+          deletedAt: null,
+        },
+      });
+      return sc?.id || id;
+    }
+
+    // Also check if id is a keyName for a subcategory
+    const subByField = await prisma.roomSubCategory.findFirst({
+      where: {
+        OR: [{ id: id }, { keyName: id }],
+        deletedAt: null,
+      },
+    });
+
+    return subByField?.id || id;
+  }
+
   static async findRoomName(name: string) {
     return prisma.room.findFirst({
       where: {
@@ -18,6 +66,8 @@ export default class RoomRepo {
       select: {
         id: true,
         name: true,
+        position: true,
+        metaData: true,
         _count: {
           select: { members: true },
         },
@@ -41,15 +91,14 @@ export default class RoomRepo {
     note: string;
     ownerId: string;
     roomSubCategoryId: string;
-    // position?: any;
+    position?: any;
     metaData: any;
     keyName?: string;
   }) {
     return prisma.room.create({
       data: {
         ...data,
-        position: {}, // Rely on frontend physics
-        keyName: data.keyName ?? generateKeyName(data.name),
+        position: data.position || {}, // Accept from frontend or default
         isPrivate: false,
         isDeleted: false,
       },
@@ -131,10 +180,14 @@ export default class RoomRepo {
     limit: number,
     subcategoryId?: string,
   ) {
+    const realSubCategoryId = subcategoryId
+      ? await this.resolveSubCategoryShortcut(subcategoryId)
+      : null;
+
     return prisma.room.findMany({
       where: {
         isDeleted: false,
-        ...(subcategoryId && { roomSubCategoryId: subcategoryId }),
+        ...(realSubCategoryId && { roomSubCategoryId: realSubCategoryId }),
         OR: [
           { isPrivate: false }, // Public rooms
           {
@@ -213,10 +266,14 @@ export default class RoomRepo {
     userId: string,
     subcategoryId?: string,
   ) {
+    const realSubCategoryId = subcategoryId
+      ? await this.resolveSubCategoryShortcut(subcategoryId)
+      : null;
+
     return prisma.room.count({
       where: {
         isDeleted: false,
-        ...(subcategoryId && { roomSubCategoryId: subcategoryId }),
+        ...(realSubCategoryId && { roomSubCategoryId: realSubCategoryId }),
         OR: [
           { isPrivate: false }, // Public rooms
           {
@@ -242,8 +299,9 @@ export default class RoomRepo {
       isPrivate?: boolean;
       note?: string;
       roomSubCategoryId?: string;
-      // position?: any;
+      position?: any;
       metaData?: any;
+      keyName?: string;
     },
   ) {
     return prisma.room.update({
@@ -253,9 +311,6 @@ export default class RoomRepo {
       },
       data: {
         ...data,
-        ...(data.name && {
-          keyName: generateKeyName(data.name),
-        }),
         updatedAt: new Date(),
       },
       include: {

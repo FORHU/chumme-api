@@ -17,6 +17,7 @@ export default class RoomCategoryCtrl {
       metaData: Joi.object().required(),
       imageUrl: Joi.string().uri().optional(),
       note: Joi.string().max(500).optional(),
+      keyName: Joi.string().optional(),
     });
 
     const { error, value } = schema.validate(req.body);
@@ -56,7 +57,7 @@ export default class RoomCategoryCtrl {
     const { id } = req.params;
 
     const schema = Joi.object({
-      id: Joi.string().uuid().required(),
+      id: Joi.string().required(),
     });
 
     const { error } = schema.validate({ id });
@@ -87,6 +88,7 @@ export default class RoomCategoryCtrl {
       metaData: Joi.object().optional(),
       imageUrl: Joi.string().uri().optional(),
       note: Joi.string().max(500).optional(),
+      keyName: Joi.string().optional(),
     }).min(1);
 
     const { error, value } = schema.validate(req.body);
@@ -112,7 +114,7 @@ export default class RoomCategoryCtrl {
     const { id } = req.params;
 
     const schema = Joi.object({
-      id: Joi.string().uuid().required(),
+      id: Joi.string().required(),
     });
 
     const { error } = schema.validate({ id });
@@ -135,7 +137,7 @@ export default class RoomCategoryCtrl {
     const { id } = req.params;
 
     const schema = Joi.object({
-      id: Joi.string().uuid().required(),
+      id: Joi.string().required(),
     });
 
     const { error } = schema.validate({ id });
@@ -159,7 +161,7 @@ export default class RoomCategoryCtrl {
     const { roomIds } = req.body;
 
     const schema = Joi.object({
-      id: Joi.string().uuid().required(),
+      id: Joi.string().required(),
       roomIds: Joi.array().items(Joi.string().uuid()).min(1).required(),
     });
 

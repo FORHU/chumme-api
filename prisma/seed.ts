@@ -4,7 +4,6 @@ import { seedEmotions } from "./seeders/emotions.seeder";
 import { seedArtists } from "./seeders/artists.seeder";
 import { seedAlbums } from "./seeders/albums.seeder";
 import { seedRoomCategories } from "./seeders/roomCategory.seeder";
-import { seedRoomSubCategories } from "./seeders/roomSubCategory.seeder";
 import { seedRooms } from "./seeders/rooms.seeder";
 
 const prisma = new PrismaClient();
@@ -17,13 +16,13 @@ async function main() {
     await seedEmotions(prisma);
     await seedArtists(prisma);
     await seedAlbums(prisma);
-    const categories = await seedRoomCategories(prisma);
-    await seedRoomSubCategories(prisma, categories);
-    await seedRooms(prisma, categories);
+    await seedRoomCategories(prisma);
+    await seedRooms(prisma);
 
     console.log("🎉 All seeder modules executed successfully!");
   } catch (error) {
     console.error("❌ Seeding failed:", error);
+    // @ts-ignore
     process.exit(1);
   } finally {
     await prisma.$disconnect();

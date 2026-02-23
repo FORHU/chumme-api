@@ -14,7 +14,6 @@ export const getAllArtists = async () => {
         select: {
           id: true,
           name: true,
-          keyName: true,
         },
       },
     },
@@ -22,6 +21,18 @@ export const getAllArtists = async () => {
       name: "asc",
     },
   });
+};
+
+export const getRandomArtists = async (limit: number) => {
+  // Prisma doesn't have a native elegant "ORDER BY RANDOM()" so we query raw.
+  const randomArtists = await prisma.$queryRaw`
+    SELECT id, name, bio, "imageUrl"
+    FROM "Artist"
+    WHERE "isDeleted" = false
+    ORDER BY RANDOM()
+    LIMIT ${limit};
+  `;
+  return randomArtists as any[];
 };
 
 export const getUserArtists = async (userId: string) => {
@@ -43,7 +54,6 @@ export const getUserArtists = async (userId: string) => {
             select: {
               id: true,
               name: true,
-              keyName: true,
             },
           },
         },
@@ -89,7 +99,6 @@ export const findById = async (id: string) => {
         select: {
           id: true,
           name: true,
-          keyName: true,
         },
       },
     },

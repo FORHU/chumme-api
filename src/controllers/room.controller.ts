@@ -97,7 +97,7 @@ export default class RoomCtrl {
       const userId = req.user.id;
 
       const schema = Joi.object({
-        id: Joi.string().uuid().required(),
+        id: Joi.string().required(),
       });
 
       const { error } = schema.validate({ id });
@@ -133,6 +133,7 @@ export default class RoomCtrl {
         roomSubCategoryId: Joi.string().uuid().optional(),
         position: Joi.object().optional(),
         metaData: Joi.object().optional(),
+        keyName: Joi.string().optional(),
       }).min(2); // roomId + at least one other field
 
       const { error, value } = schema.validate(req.body);
@@ -166,7 +167,7 @@ export default class RoomCtrl {
       const userId = req.user.id;
 
       const schema = Joi.object({
-        id: Joi.string().uuid().required(),
+        id: Joi.string().required(),
       });
 
       const { error } = schema.validate({ id });
@@ -193,19 +194,17 @@ export default class RoomCtrl {
   static async joinRoom(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const { keyName } = req.body;
       const userId = req.user.id;
 
       const schema = Joi.object({
-        id: Joi.string().uuid().required(),
-        keyName: Joi.string().optional(),
+        id: Joi.string().required(),
       });
 
-      const { error } = schema.validate({ id, keyName });
+      const { error } = schema.validate({ id });
       if (error) {
         return res.status(400).json({ message: error.message });
       }
-      const result = await RoomSvc.joinRoom(id, userId, keyName);
+      const result = await RoomSvc.joinRoom(id, userId);
       if (!result.success) {
         return res.status(400).json({ message: result.message });
       }
@@ -228,7 +227,7 @@ export default class RoomCtrl {
       const userId = req.user.id;
 
       const schema = Joi.object({
-        id: Joi.string().uuid().required(),
+        id: Joi.string().required(),
       });
 
       const { error } = schema.validate({ id });

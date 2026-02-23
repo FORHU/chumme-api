@@ -36,6 +36,7 @@ model User {
   followers              Follow[]                @relation("UserFollowers")
   likes                  Like[]
   messages               Message[]
+  musicParts             MusicPart[]
   ownedStudios           MusicStudio[]           @relation("StudioOwner")
   playlists              Playlist[]
   posts                  Post[]
@@ -48,7 +49,6 @@ model User {
   userChats              UserChat[]
   userEmotionPreferences UserEmotionPreference[]
   userInterests          UserInterest[]
-  musicParts             MusicPart[]
   musicRecords           MusicRecord[]           @relation("MusicRecordSingers")
 }
 
@@ -75,10 +75,11 @@ model File {
   updatedAt     DateTime       @updatedAt
   deletedAt     DateTime?
   metaData      Json?
+  artistPersona ArtistPersona? @relation("PersonaFile")
   mediaPosts    MediaPost[]
+  voiceMessages Message[]      @relation("VoiceMessageFile")
   users         User[]
   videos        Video[]
-  artistPersona ArtistPersona? @relation("PersonaFile")
 }
 
 model MusicLibrary {
@@ -109,74 +110,64 @@ model UserChat {
 }
 
 model RoomCategory {
-  id      String  @id @default(uuid())
-  name    String
-  keyName String  @unique
-  note    String?
-
-  color        String
-  imageUrl     String?
-  isAd         Boolean
-  membersCount Int
-  metaData     Json
-  position     Json
-  size         String
-
+  id                String            @id @default(uuid())
+  name              String
+  note              String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  deletedAt         DateTime?
+  color             String
+  imageUrl          String?
+  isAd              Boolean
+  metaData          Json
+  position          Json
+  size              String
+  keyName           String?           @unique
+  membersCount      Int
   roomSubCategories RoomSubCategory[]
-
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
 }
 
 model RoomSubCategory {
-  id      String  @id @default(uuid())
-  name    String
-  note    String?
-  keyName String  @unique
-  ownerId String?
-
-  color        String
-  imageUrl     String?
-  isAd         Boolean
-  membersCount Int
-  metaData     Json
-  position     Json
-  size         String
-
-  artistId String?
-  artist   Artist? @relation(fields: [artistId], references: [id])
-
+  id             String       @id @default(uuid())
+  name           String
+  note           String?
   roomCategoryId String
-  roomCategory   RoomCategory @relation(fields: [roomCategoryId], references: [id])
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  deletedAt      DateTime?
+  imageUrl       String?
+  metaData       Json
+  ownerId        String?
+  position       Json
+  color          String
+  isAd           Boolean
+  membersCount   Int
+  size           String
+  keyName        String?      @unique
+  artistId       String?
   rooms          Room[]
-
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+  artist         Artist?      @relation(fields: [artistId], references: [id])
+  roomCategory   RoomCategory @relation(fields: [roomCategoryId], references: [id])
 }
 
 model Room {
-  id        String  @id @default(uuid())
-  name      String?
-  isPrivate Boolean @default(false)
-
+  id                String           @id @default(uuid())
+  name              String?
+  isPrivate         Boolean          @default(false)
+  ownerId           String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  isDeleted         Boolean          @default(false)
   note              String?
-  keyName           String?
   roomSubCategoryId String?
   metaData          Json
   position          Json
+  keyName           String?          @unique
   messages          Message[]
-
-  ownerId         String
-  owner           User             @relation("RoomOwner", fields: [ownerId], references: [id])
-  roomSubCategory RoomSubCategory? @relation(fields: [roomSubCategoryId], references: [id])
-  members         RoomMember[]
-  userChats       UserChat[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  isDeleted Boolean  @default(false)
+  owner             User?            @relation("RoomOwner", fields: [ownerId], references: [id])
+  roomSubCategory   RoomSubCategory? @relation(fields: [roomSubCategoryId], references: [id])
+  members           RoomMember[]
+  userChats         UserChat[]
 }
 
 model RoomMember {
@@ -192,15 +183,17 @@ model RoomMember {
 }
 
 model Message {
-  id        String   @id @default(uuid())
-  roomId    String
-  authorId  String
-  content   String
-  isSystem  Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  author    User     @relation(fields: [authorId], references: [id])
-  room      Room     @relation(fields: [roomId], references: [id])
+  id             String   @id @default(uuid())
+  roomId         String
+  authorId       String
+  content        String
+  isSystem       Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  voiceMessageId String?
+  author         User     @relation(fields: [authorId], references: [id])
+  room           Room     @relation(fields: [roomId], references: [id])
+  voiceMessage   File?    @relation("VoiceMessageFile", fields: [voiceMessageId], references: [id])
 }
 
 model Conversation {
@@ -387,27 +380,26 @@ model Artist {
   isDeleted         Boolean           @default(false)
   instagramUsername String?
   tiktokUsername    String?
+  persona           ArtistPersona?
   featuredArtists   FeaturedArtist[]
   mediaPosts        MediaPost[]
   music             Music[]           @relation("MainArtist")
   musicAlbum        MusicAlbum[]      @relation("MainArtist")
+  roomSubCategories RoomSubCategory[]
   userArtists       UserArtist[]
   videos            Video[]
-  roomSubCategories RoomSubCategory[]
-  persona           ArtistPersona?
 }
 
 model ArtistPersona {
-  id             String  @id @default(uuid())
-  artistId       String? @unique
+  id             String    @id @default(uuid())
+  artistId       String?   @unique
   personaVoiceId String
-  personaFileId  String  @unique
-
-  artist      Artist?   @relation(fields: [artistId], references: [id])
-  personaFile File      @relation("PersonaFile", fields: [personaFileId], references: [id])
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  deletedAt   DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+  personaFileId  String    @unique
+  artist         Artist?   @relation(fields: [artistId], references: [id])
+  personaFile    File      @relation("PersonaFile", fields: [personaFileId], references: [id])
 
   @@index([artistId])
 }
@@ -606,9 +598,9 @@ model MusicPart {
   order          Int          @default(0)
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
+  singerId       String?
   music          Music?       @relation(fields: [musicId], references: [id])
   record         MusicRecord? @relation(fields: [recordId], references: [id])
-  singerId       String?
   singer         User?        @relation(fields: [singerId], references: [id])
 
   @@index([recordId])
@@ -654,7 +646,10 @@ model MusicRecord {
   id             String       @id @default(uuid())
   musicId        String
   fileId         String
+  createdAt      DateTime     @default(now())
+  deletedAt      DateTime?
   studioId       String
+  updatedAt      DateTime     @updatedAt
   metaData       Json?
   recordDuration Float?
   musicParts     MusicPart[]
@@ -662,9 +657,6 @@ model MusicRecord {
   music          Music        @relation(fields: [musicId], references: [id])
   studio         MusicStudio  @relation("StudioRecords", fields: [studioId], references: [id])
   singers        User[]       @relation("MusicRecordSingers")
-  createdAt      DateTime     @default(now())
-  deletedAt      DateTime?
-  updatedAt      DateTime     @updatedAt
 }
 
 model TempMusicRecord {
@@ -676,11 +668,11 @@ model TempMusicRecord {
   startTimeOffset Float?
   metaData        Json?
   recordDuration  Float?
-  studio          MusicStudio  @relation("StudioTempRecords", fields: [studioId], references: [id])
-  file            MusicLibrary @relation("TempMusicLibraryFile", fields: [fileId], references: [id])
   createdAt       DateTime     @default(now())
   deletedAt       DateTime?
   updatedAt       DateTime     @updatedAt
+  file            MusicLibrary @relation("TempMusicLibraryFile", fields: [fileId], references: [id])
+  studio          MusicStudio  @relation("StudioTempRecords", fields: [studioId], references: [id])
 
   @@index([studioId])
 }

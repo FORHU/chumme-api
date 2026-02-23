@@ -20,6 +20,7 @@ export default class RoomSubCategoryCtrl {
       imageUrl: Joi.string().uri().optional(),
       note: Joi.string().max(500).optional(),
       artistId: Joi.string().uuid().optional(),
+      keyName: Joi.string().optional(),
     });
 
     const { error, value } = schema.validate(req.body);
@@ -47,7 +48,33 @@ export default class RoomSubCategoryCtrl {
 
     if (categoryId) {
       const schema = Joi.object({
-        categoryId: Joi.string().uuid().required(),
+        categoryId: Joi.alternatives()
+          .try(
+            Joi.string().uuid(),
+            Joi.valid(
+              "chumme-main",
+              "global",
+              "usa",
+              "uk",
+              "japan",
+              "south_korea",
+              "canada",
+              "australia",
+              "brazil",
+              "indonesia",
+              "thailand",
+              "philippines",
+              "malaysia",
+              "vietnam",
+              "mexico",
+              "taiwan",
+              "singapore",
+              "global-connect-shortcut",
+              "chumme-lobby-shortcut",
+              "chumme-room-shortcut",
+            ),
+          )
+          .required(),
       });
 
       const { error } = schema.validate({ categoryId });
@@ -72,7 +99,7 @@ export default class RoomSubCategoryCtrl {
     const { id } = req.params;
 
     const schema = Joi.object({
-      id: Joi.string().uuid().required(),
+      id: Joi.string().required(),
     });
 
     const { error } = schema.validate({ id });
@@ -130,6 +157,7 @@ export default class RoomSubCategoryCtrl {
       imageUrl: Joi.string().uri().optional(),
       note: Joi.string().max(500).optional(),
       artistId: Joi.string().uuid().optional(),
+      keyName: Joi.string().optional(),
     }).min(1);
 
     const { error, value } = schema.validate(req.body);
@@ -155,7 +183,7 @@ export default class RoomSubCategoryCtrl {
     const { id } = req.params;
 
     const schema = Joi.object({
-      id: Joi.string().uuid().required(),
+      id: Joi.string().required(),
     });
 
     const { error } = schema.validate({ id });

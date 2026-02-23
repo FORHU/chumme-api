@@ -6,7 +6,10 @@ export default class UserCtrl {
   static async getCurrentUser(req: Request, res: Response) {
     try {
       const user = req.user; // From auth middleware
-      return res.json(user);
+      return res.json({
+        ...user,
+        artistCount: user._count?.userArtists ?? 0,
+      });
     } catch (error) {
       console.error("Error in getCurrentUser:", error);
       return res.status(500).json({ message: error });

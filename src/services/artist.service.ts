@@ -36,6 +36,7 @@ export const addUserArtists = async (userId: string, artistIds: string[]) => {
 
   // Clear user artists cache
   await CacheUtil.del(`user:${userId}:artists`);
+  await CacheUtil.del(`user:${userId}`);
 
   // Clear personalized feed cache since artist preferences changed
   await CacheUtil.delByPattern(`feed:personalized:${userId}:*`);
@@ -44,11 +45,26 @@ export const addUserArtists = async (userId: string, artistIds: string[]) => {
   return data;
 };
 
+export const assignRandomArtists = async (userId: string) => {
+  const randomArtists = await artistRepo.getRandomArtists(4);
+
+  if (randomArtists.length === 0) {
+    return [];
+  }
+
+  const artistIds = randomArtists.map((a) => a.id);
+  await addUserArtists(userId, artistIds);
+  await CacheUtil.del(`user:${userId}`);
+
+  return await getUserArtists(userId);
+};
+
 export const removeUserArtist = async (userId: string, artistId: string) => {
   const result = await artistRepo.removeUserArtist(userId, artistId);
 
   // Clear user artists cache
   await CacheUtil.del(`user:${userId}:artists`);
+  await CacheUtil.del(`user:${userId}`);
 
   // Clear personalized feed cache since artist preferences changed
   await CacheUtil.delByPattern(`feed:personalized:${userId}:*`);

@@ -203,6 +203,8 @@ export default class AuthSvc {
           name: user.name,
           role: user.role,
           avatar: user.avatar?.fileUrl,
+          onboardingCompleted: user.onboardingCompleted,
+          artistCount: user._count?.userArtists ?? 0,
         },
       };
     } catch (error) {
@@ -489,7 +491,8 @@ export default class AuthSvc {
         name: finalUser.name,
         role: finalUser.role,
         avatar: finalUser.avatar?.fileUrl,
-        onboardingStatus: finalUser.onboardingCompleted,
+        onboardingCompleted: finalUser.onboardingCompleted,
+        artistCount: finalUser._count?.userArtists ?? 0,
       },
     };
   }

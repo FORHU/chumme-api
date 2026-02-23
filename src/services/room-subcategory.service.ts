@@ -18,6 +18,7 @@ export default class RoomSubCategorySvc {
     imageUrl?: string;
     note?: string;
     artistId?: string;
+    keyName?: string;
   }) {
     // Verify parent category exists
     const categoryExists = await RoomSubCategoryRepo.categoryExists(
@@ -38,20 +39,8 @@ export default class RoomSubCategorySvc {
       );
     }
 
-    // Also check for keyName collisions within this category
-    const { generateKeyName } = require("../utils/key-name.util");
-    const keyName = generateKeyName(data.name);
-    const existingByKey = await RoomSubCategoryRepo.findSubCategoryByKeyName(
-      keyName,
-      data.roomCategoryId,
-    );
-    if (existingByKey) {
-      throw new Error(
-        `Subcategory with similar name already exists in this category (collision: ${keyName})`,
-      );
-    }
-
-    return RoomSubCategoryRepo.createSubCategory(data);
+    const subCategory = await RoomSubCategoryRepo.createSubCategory(data);
+    return subCategory;
   }
 
   /**
@@ -99,6 +88,7 @@ export default class RoomSubCategorySvc {
       imageUrl?: string;
       note?: string;
       artistId?: string;
+      keyName?: string;
     },
   ) {
     // Check if subcategory exists

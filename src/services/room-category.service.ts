@@ -15,6 +15,7 @@ export default class RoomCategorySvc {
     metaData: any;
     imageUrl?: string;
     note?: string;
+    keyName?: string;
   }) {
     // Check if category with same name already exists (case-insensitive)
     const existingCategory = await RoomCategoryRepo.findCategoryByName(
@@ -22,16 +23,6 @@ export default class RoomCategorySvc {
     );
     if (existingCategory) {
       throw new Error(`Category with name "${data.name}" already exists`);
-    }
-
-    // Also check for keyName collisions
-    const { generateKeyName } = require("../utils/key-name.util");
-    const keyName = generateKeyName(data.name);
-    const existingByKey = await RoomCategoryRepo.findCategoryByKeyName(keyName);
-    if (existingByKey) {
-      throw new Error(
-        `Category with similar name already exists (collision: ${keyName})`,
-      );
     }
 
     return RoomCategoryRepo.createCategory(data);
@@ -75,6 +66,7 @@ export default class RoomCategorySvc {
       metaData?: any;
       imageUrl?: string;
       note?: string;
+      keyName?: string;
     },
   ) {
     // Check if category exists
