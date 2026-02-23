@@ -89,6 +89,56 @@ export default class RoomSubCategoryCtrl {
   }
 
   /**
+   * Get subcategories strictly by a parent room category ID
+   */
+  static async getRoomSubCategoryByRoomCategoryID(req: Request, res: Response) {
+    const { categoryId } = req.params;
+
+    const schema = Joi.object({
+      categoryId: Joi.alternatives()
+        .try(
+          Joi.string().uuid(),
+          Joi.valid(
+            "chumme-main",
+            "global",
+            "usa",
+            "uk",
+            "japan",
+            "south_korea",
+            "canada",
+            "australia",
+            "brazil",
+            "indonesia",
+            "thailand",
+            "philippines",
+            "malaysia",
+            "vietnam",
+            "mexico",
+            "taiwan",
+            "singapore",
+            "global-connect-shortcut",
+            "chumme-lobby-shortcut",
+            "chumme-room-shortcut",
+          ),
+        )
+        .required(),
+    });
+
+    const { error } = schema.validate({ categoryId });
+    if (error) {
+      return res.status(400).json({ message: error.message });
+    }
+
+    try {
+      const subCategories =
+        await RoomSubCategorySvc.getRoomSubCategoryByRoomCategoryID(categoryId);
+      return res.json({ subCategories });
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message || error });
+    }
+  }
+
+  /**
    * Update room subcategory
    */
   static async updateSubCategory(req: Request, res: Response) {

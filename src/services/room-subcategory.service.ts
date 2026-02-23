@@ -74,6 +74,13 @@ export default class RoomSubCategorySvc {
   }
 
   /**
+   * Get subcategories strictly by a parent room category ID
+   */
+  static async getRoomSubCategoryByRoomCategoryID(categoryId: string) {
+    return RoomSubCategoryRepo.getRoomSubCategoryByRoomCategoryID(categoryId);
+  }
+
+  /**
    * Update subcategory
    * Validates name uniqueness and parent category if changed
    */

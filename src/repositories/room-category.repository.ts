@@ -68,6 +68,10 @@ export default class RoomCategoryRepo {
     });
   }
 
+  static async getAllCategory() {
+    return prisma.roomCategory.findMany({});
+  }
+
   /**
    * Get category by ID with subcategories
    */

@@ -114,6 +114,37 @@ export default class RoomSubCategoryRepo {
   }
 
   /**
+   * Get subcategories strictly by a parent room category ID
+   */
+  static async getRoomSubCategoryByRoomCategoryID(categoryId: string) {
+    const targetCategoryId =
+      (await RoomCategoryRepo.resolveCategoryShortcut(categoryId)) ||
+      categoryId;
+
+    return prisma.roomSubCategory.findMany({
+      where: {
+        roomCategoryId: targetCategoryId,
+        deletedAt: null,
+      },
+      include: {
+        _count: {
+          select: { rooms: true },
+        },
+        artist: {
+          select: {
+            id: true,
+            name: true,
+            imageUrl: true,
+          },
+        },
+      },
+      orderBy: {
+        membersCount: "desc",
+      },
+    });
+  }
+
+  /**
    * Update subcategory
    */
   static async updateSubCategory(
