@@ -1,6 +1,31 @@
 import { PrismaClient, RoomCategory } from "@prisma/client";
 import { randomUUID } from "node:crypto";
 
+/**
+ * Helper: Generate circular positions avoiding center
+ * @param center Center point {x, y}
+ * @param radius Distance from center
+ * @param count Number of positions to generate
+ * @returns Array of positions
+ */
+function generateCircularPositions(
+  center: { x: number; y: number },
+  radius: number,
+  count: number,
+) {
+  const positions: Array<{ x: number; y: number }> = [];
+  for (let i = 0; i < count; i++) {
+    const angle = (i / count) * Math.PI * 2;
+    const x = Math.round(center.x + Math.cos(angle) * radius);
+    const y = Math.round(center.y + Math.sin(angle) * radius);
+    positions.push({
+      x: Math.max(5, Math.min(95, x)),
+      y: Math.max(5, Math.min(95, y)),
+    });
+  }
+  return positions;
+}
+
 function randomHexColor(): string {
   return (
     "#" +
@@ -162,10 +187,15 @@ export async function seedRoomSubCategories(
       { name: "Enhypen", artistId: "97c60f60-0d0f-408c-b5a3-fe684b1b7232" },
       { name: "Exo", artistId: "f8818235-b033-4882-a22d-3c6e677c0fa1" },
     ];
+    
+    // Generate circular positions for artist subcategories around base position
+    const artistPositions = generateCircularPositions(basePos, 25, artistSubCats.length);
 
-    for (const artist of artistSubCats) {
+    for (let idx = 0; idx < artistSubCats.length; idx++) {
+      const artist = artistSubCats[idx];
       const slug = artist.name.toLowerCase().trim().replace(/\s+/g, "-");
       const keyName = `artist-${category.id}-${slug}`;
+      const position = artistPositions[idx];
 
       await prisma.roomSubCategory.upsert({
         where: { keyName },
@@ -174,20 +204,7 @@ export async function seedRoomSubCategories(
           artistId: artist.artistId,
           roomCategoryId: category.id,
           color: randomHexColor(),
-          position: {
-            x: Math.round(
-              Math.max(
-                0,
-                Math.min(100, (basePos.x || 50) + (Math.random() * 30 - 15)),
-              ),
-            ),
-            y: Math.round(
-              Math.max(
-                0,
-                Math.min(100, (basePos.y || 50) + (Math.random() * 30 - 15)),
-              ),
-            ),
-          },
+          position,
         },
         create: {
           id: randomUUID(),
@@ -195,20 +212,7 @@ export async function seedRoomSubCategories(
           artistId: artist.artistId,
           roomCategoryId: category.id,
           color: randomHexColor(),
-          position: {
-            x: Math.round(
-              Math.max(
-                0,
-                Math.min(100, (basePos.x || 50) + (Math.random() * 30 - 15)),
-              ),
-            ),
-            y: Math.round(
-              Math.max(
-                0,
-                Math.min(100, (basePos.y || 50) + (Math.random() * 30 - 15)),
-              ),
-            ),
-          },
+          position,
           isAd: false,
           membersCount: Math.floor(Math.random() * 20000) + 1000,
           size: "medium",
@@ -218,11 +222,15 @@ export async function seedRoomSubCategories(
       });
     }
 
-    // 3. Create up to 8 random topic subcategories
+    // 3. Create up to 8 random topic subcategories in a circular layout
     const uniqueTopics = Array.from(new Set(topics));
     const shuffledTopics = shuffle(uniqueTopics).slice(0, 8);
+    
+    // Generate circular positions for topics around base position (radius 30 to keep distance)
+    const topicPositions = generateCircularPositions(basePos, 30, shuffledTopics.length);
 
-    for (const topic of shuffledTopics) {
+    for (let idx = 0; idx < shuffledTopics.length; idx++) {
+      const topic = shuffledTopics[idx];
       const slug = topic
         .toLowerCase()
         .replace(/\s+/g, "-")
@@ -234,14 +242,7 @@ export async function seedRoomSubCategories(
       });
       if (existing) continue;
 
-      const offsetX = Math.max(
-        0,
-        Math.min(100, (basePos.x || 50) + (Math.random() * 20 - 10)),
-      );
-      const offsetY = Math.max(
-        0,
-        Math.min(100, (basePos.y || 50) + (Math.random() * 20 - 10)),
-      );
+      const position = topicPositions[idx];
 
       await prisma.roomSubCategory.create({
         data: {
@@ -249,7 +250,7 @@ export async function seedRoomSubCategories(
           name: topic,
           roomCategoryId: category.id,
           color: randomHexColor(),
-          position: { x: Math.round(offsetX), y: Math.round(offsetY) },
+          position,
           isAd: false,
           membersCount: Math.floor(Math.random() * 20000) + 50,
           size: "small",

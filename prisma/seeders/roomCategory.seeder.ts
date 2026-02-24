@@ -1,6 +1,31 @@
 import { PrismaClient } from "@prisma/client";
 
 /**
+ * Helper: Generate circular positions around a center point
+ * @param center Center point {x, y}
+ * @param radius Distance from center
+ * @param count Number of positions to generate
+ * @returns Array of positions
+ */
+function generateCircularPositions(
+  center: { x: number; y: number },
+  radius: number,
+  count: number,
+) {
+  const positions: Array<{ x: number; y: number }> = [];
+  for (let i = 0; i < count; i++) {
+    const angle = (i / count) * Math.PI * 2;
+    const x = Math.round(center.x + Math.cos(angle) * radius);
+    const y = Math.round(center.y + Math.sin(angle) * radius);
+    positions.push({
+      x: Math.max(5, Math.min(95, x)),
+      y: Math.max(5, Math.min(95, y)),
+    });
+  }
+  return positions;
+}
+
+/**
  * Seeds Room Categories (Countries) with fixed UUIDs
  */
 export async function seedRoomCategories(prisma: PrismaClient) {
