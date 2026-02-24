@@ -54,20 +54,20 @@ export default class AuthSvc {
     });
 
     // Send verification email with OTP
-    try {
-      sendTemplatedEmail({
-        subject: `Verify Your Email Address`,
-        email_data: {
-          email: user.email,
-          OTP_CODE: otp.toString(),
-        },
-        template_name: "verification-email.html",
-      });
-    } catch (error) {
-      console.error("Failed to send verification email:", error);
-      // Still log to console as backup
-      console.log(`Backup - OTP for ${user.email}: ${otp}`);
-    }
+    // try {
+    //   sendTemplatedEmail({
+    //     subject: `Verify Your Email Address`,
+    //     email_data: {
+    //       email: user.email,
+    //       OTP_CODE: otp.toString(),
+    //     },
+    //     template_name: "verification-email.html",
+    //   });
+    // } catch (error) {
+    //   console.error("Failed to send verification email:", error);
+    //   // Still log to console as backup
+    //   console.log(`Backup - OTP for ${user.email}: ${otp}`);
+    // }
 
     // Generate tokens and create session using the unified helper
     const authResponse = await this.generateAuthResponse(user, "chumme");
