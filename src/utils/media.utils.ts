@@ -76,9 +76,97 @@ export function cleanupTempFiles(paths: string[]): void {
   const tmpDir = os.tmpdir();
   for (const p of paths) {
     try {
-      if (p.startsWith(tmpDir)) fs.unlinkSync(p);
+      if (p && p.startsWith(tmpDir)) fs.unlinkSync(p);
     } catch (_) {}
   }
+}
+
+/**
+ * Purge ALL orphaned chumme-related temp files from os.tmpdir().
+ * Call this on worker startup to clear residue from previous crashes.
+ */
+export function cleanupAllTempFiles(): void {
+  const tmpDir = os.tmpdir();
+  try {
+    const files = fs.readdirSync(tmpDir);
+    const prefixes = [
+      "chunk_",
+      "overlay_",
+      "vocals_",
+      "submix_",
+      "mixed_",
+      "web_video_",
+      "web_audio_",
+      "thumb_",
+      "chumme-job-",
+    ];
+
+    let count = 0;
+    for (const file of files) {
+      if (prefixes.some((pre) => file.startsWith(pre))) {
+        const fullPath = path.join(tmpDir, file);
+        try {
+          const stat = fs.statSync(fullPath);
+          if (stat.isDirectory()) {
+            fs.rmSync(fullPath, { recursive: true, force: true });
+          } else {
+            fs.unlinkSync(fullPath);
+          }
+          count++;
+        } catch (_) {}
+      }
+    }
+    if (count > 0) {
+      logger.info(
+        `[MediaUtils] Startup cleanup: Removed ${count} orphaned files/dirs`,
+      );
+    }
+  } catch (err: any) {
+    logger.error(`[MediaUtils] Global cleanup failed: ${err.message}`);
+  }
+}
+
+/**
+ * Create an isolated temp directory for a specific job.
+ * All temp files for this job should go inside this directory.
+ */
+export function createJobTempDir(jobId: string): string {
+  const jobDir = path.join(os.tmpdir(), `chumme-job-${jobId}`);
+  if (!fs.existsSync(jobDir)) {
+    fs.mkdirSync(jobDir, { recursive: true });
+  }
+  return jobDir;
+}
+
+/**
+ * Recursively delete a job's temp directory and all its contents.
+ * Call in a `finally` block to guarantee cleanup.
+ */
+export function cleanupJobTempDir(jobId: string): void {
+  const jobDir = path.join(os.tmpdir(), `chumme-job-${jobId}`);
+  try {
+    if (fs.existsSync(jobDir)) {
+      fs.rmSync(jobDir, { recursive: true, force: true });
+    }
+  } catch (err: any) {
+    logger.warn(
+      `[MediaUtils] Failed to cleanup job dir ${jobDir}: ${err.message}`,
+    );
+  }
+}
+
+/**
+ * Generate a temp file path inside a job directory.
+ */
+export function makeJobTempPath(
+  jobDir: string,
+  prefix: string,
+  ext = ".wav",
+): string {
+  return path.join(
+    jobDir,
+    `${prefix}_${Date.now()}_${Math.random().toString(36).substring(2, 8)}${ext}`,
+  );
 }
 
 /**

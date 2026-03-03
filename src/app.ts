@@ -38,6 +38,11 @@ if (!isDev) app.use(limiter);
 app.use(helmet());
 app.disable("x-powered-by");
 
+// Health endpoint for Docker/load balancer
+app.get("/health", (_, res) => {
+  res.json({ status: "ok", uptime: process.uptime() });
+});
+
 // Use router for routing
 app.use("/api", router);
 app.use(errorHandler);
@@ -96,29 +101,34 @@ connectToPrisma()
       // Don't crash the server if RabbitMQ fails
     }
 
-    // Initialize Audio Merge Worker (background FFmpeg processing)
-    try {
-      const { AudioMergeWorker } = await import(
-        "./listeners/audio-merge.listener"
-      );
-      const audioMergeWorker = new AudioMergeWorker();
-      await audioMergeWorker.start();
-      console.log("Audio Merge RabbitMQ worker initialized successfully");
-    } catch (error) {
-      console.error("Failed to initialize Audio Merge worker:", error);
-      // Don't crash the server if worker fails
-    }
+    // Workers: In production, use `npm run start:worker` (separate process).
+    // For local dev convenience, set ENABLE_WORKERS=true to run in-process.
+    if (process.env.ENABLE_WORKERS === "true") {
+      try {
+        const { AudioMergeWorker } = await import(
+          "./listeners/audio-merge.listener"
+        );
+        const audioMergeWorker = new AudioMergeWorker();
+        await audioMergeWorker.start();
+        console.log("[Dev] Audio Merge worker initialized in-process");
+      } catch (error) {
+        console.error("Failed to initialize Audio Merge worker:", error);
+      }
 
-    // Initialize Media Processing Worker (Video/HLS)
-    try {
-      const { MediaProcessingWorker } = await import(
-        "./listeners/media-processing.listener"
+      try {
+        const { MediaProcessingWorker } = await import(
+          "./listeners/media-processing.listener"
+        );
+        const mediaWorker = new MediaProcessingWorker();
+        await mediaWorker.start();
+        console.log("[Dev] Media Processing worker initialized in-process");
+      } catch (error) {
+        console.error("Failed to initialize Media Processing worker:", error);
+      }
+    } else {
+      console.log(
+        "[API] Workers disabled. Use 'npm run start:worker' separately.",
       );
-      const mediaWorker = new MediaProcessingWorker();
-      await mediaWorker.start();
-      console.log("Media Processing RabbitMQ worker initialized successfully");
-    } catch (error) {
-      console.error("Failed to initialize Media Processing worker:", error);
     }
   })
   .catch((err: any) => {

@@ -1,42 +1,115 @@
-    services:
-      postgres:
-        image: postgres:15
-        container_name: local_postgres
-        environment:
-          POSTGRES_USER: admin
-          POSTGRES_PASSWORD: mypassword
-          POSTGRES_DB: chumme
-        ports:
-          - "5432:5432"
-        volumes:
-          - pgdata:/var/lib/postgresql/data
-        restart: unless-stopped
-
-      rabbitmq:
-        image: rabbitmq:3-management
-        container_name: local_rabbitmq
-        environment:
-          RABBITMQ_DEFAULT_USER: admin
-          RABBITMQ_DEFAULT_PASS: admin123
-          RABBITMQ_DEFAULT_VHOST: my_vhost
-        ports:
-          - "5672:5672"
-          - "15672:15672"
-        volumes:
-          - rabbitmqdata:/var/lib/rabbitmq
-        restart: unless-stopped
-
-      redis:
-        image: redis:7
-        container_name: local_redis
-        ports:
-          - "6379:6379"
-        command: ["redis-server", "--appendonly", "yes"]
-        volumes:
-          - redisdata:/data
-        restart: unless-stopped
-
+services:
+  # =====================
+  # Postgres
+  # =====================
+  postgres:
+    image: postgres:15
+    container_name: local_postgres
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=mypassword
+      - POSTGRES_DB=chumme
+    ports:
+      - "5432:5432"
     volumes:
-      pgdata:
-      rabbitmqdata:
-      redisdata:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  # =====================
+  # RabbitMQ
+  # =====================
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: local_rabbitmq
+    environment:
+      - RABBITMQ_DEFAULT_USER=admin
+      - RABBITMQ_DEFAULT_PASS=admin123
+      - RABBITMQ_DEFAULT_VHOST=my_vhost
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmqdata:/var/lib/rabbitmq
+    restart: unless-stopped
+
+  # =====================
+  # Redis
+  # =====================
+  redis:
+    image: redis:7
+    container_name: local_redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    restart: unless-stopped
+
+  # =====================
+  # API Server
+  # =====================
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.optimized
+    container_name: chumme_api
+    command: ["npm", "start"]
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://admin:mypassword@postgres:5432/chumme
+      - RABBITMQ_URL=amqp://admin:admin123@rabbitmq:5672/my_vhost
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+      - rabbitmq
+      - redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "healthcheck.js", "3000", "/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # =====================
+  # Audio / Media Worker
+  # =====================
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.optimized
+    container_name: chumme_worker
+    command: ["npm", "run", "start:worker"]
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://admin:mypassword@postgres:5432/chumme
+      - RABBITMQ_URL=amqp://admin:admin123@rabbitmq:5672/my_vhost
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PREFETCH_COUNT=1
+      - JOB_TIMEOUT_MS=300000
+      - WORKER_HEALTH_PORT=8080
+    tmpfs:
+      - /tmp:size=4G
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+    depends_on:
+      - postgres
+      - rabbitmq
+      - redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "healthcheck.js", "8080", "/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  pgdata:
+  rabbitmqdata:
+  redisdata:

@@ -2,8 +2,8 @@ FROM node:22-alpine
 
 WORKDIR /app
 
-# Install tzdata so the container supports timezones
-RUN apk add --no-cache tzdata
+# Install required packages: tzdata for timezones, ffmpeg for audio/media processing
+RUN apk add --no-cache tzdata ffmpeg
 
 # Set default timezone
 ENV TZ=Asia/Manila

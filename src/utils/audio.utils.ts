@@ -255,45 +255,46 @@ export const batchOverlayAudioFiles = async (
 
   // Process batches with concurrency limit
   const subMixPaths: string[] = [];
-  let batchNextIndex = 0;
-
-  const batchWorker = async () => {
-    while (batchNextIndex < batches.length) {
-      const bi = batchNextIndex++;
-      const batch = batches[bi];
-      logger.info(
-        `[AudioUtils] Processing sub-mix batch ${bi + 1}/${batches.length} (${batch.files.length} files)`,
-      );
-
-      // Sub-mixes output WAV (lossless intermediate)
-      const subMixBuffer = await overlayAudioFiles(
-        batch.files,
-        batch.offsets,
-        "wav",
-        true, // skip failures
-      );
-
-      // Write sub-mix to temp file
-      const subMixPath = makeTempPath(`submix_${bi}`, ".wav");
-      fs.writeFileSync(subMixPath, new Uint8Array(subMixBuffer));
-      subMixPaths[bi] = subMixPath;
-    }
-  };
-
-  const workers = Array.from(
-    { length: Math.min(batchConcurrency, batches.length) },
-    () => batchWorker(),
-  );
-  await Promise.all(workers);
-
-  logger.info(
-    `[AudioUtils] All ${subMixPaths.length} sub-mixes complete. Doing final merge...`,
-  );
-
-  // Final merge of sub-mixes (still WAV — MP3 encoding happens in mixVocalsWithBacking)
   try {
+    let batchNextIndex = 0;
+
+    const batchWorker = async () => {
+      while (batchNextIndex < batches.length) {
+        const bi = batchNextIndex++;
+        const batch = batches[bi];
+        logger.info(
+          `[AudioUtils] Processing sub-mix batch ${bi + 1}/${batches.length} (${batch.files.length} files)`,
+        );
+
+        // Sub-mixes output WAV (lossless intermediate)
+        const subMixBuffer = await overlayAudioFiles(
+          batch.files,
+          batch.offsets,
+          "wav",
+          true, // skip failures
+        );
+
+        // Write sub-mix to temp file
+        const subMixPath = makeTempPath(`submix_${bi}`, ".wav");
+        fs.writeFileSync(subMixPath, new Uint8Array(subMixBuffer));
+        subMixPaths[bi] = subMixPath;
+      }
+    };
+
+    const workers = Array.from(
+      { length: Math.min(batchConcurrency, batches.length) },
+      () => batchWorker(),
+    );
+    await Promise.all(workers);
+
+    logger.info(
+      `[AudioUtils] All ${subMixPaths.length} sub-mixes complete. Doing final merge...`,
+    );
+
+    // Final merge of sub-mixes (still WAV — MP3 encoding happens in mixVocalsWithBacking)
     return await overlayAudioFiles(subMixPaths, undefined, "wav");
   } finally {
+    // Production hygiene: Clear all sub-mix files
     cleanupTempFiles(subMixPaths);
   }
 };

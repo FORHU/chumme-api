@@ -21,41 +21,59 @@ export class RabbitMQService {
   }
 
   async connect(): Promise<void> {
+    if (this.connection) return;
+
     try {
       console.log("=== RabbitMQ Connection Attempt ===");
       console.log("RABBITMQ_URL:", RABBITMQ_URL);
-      console.log("Connecting to RabbitMQ...");
 
       this.connection = (await amqp.connect(RABBITMQ_URL)) as any;
-      console.log("RabbitMQ connection established");
-
-      this.channel = await (this.connection as any).createChannel();
-      console.log("RabbitMQ channel created");
-
-      // Declare the main exchange
-      await this.channel!.assertExchange("chumme_exchange", "topic", {
-        durable: true,
-      });
-
       this.isConnected = true;
-      console.log("Successfully connected to RabbitMQ");
+      console.log("RabbitMQ connection established");
 
       // Handle connection events
       (this.connection as any).on("error", (err: any) => {
         console.error("RabbitMQ connection error:", err);
         this.isConnected = false;
+        this.connection = null;
+        this.channel = null;
       });
 
       (this.connection as any).on("close", () => {
         console.log("RabbitMQ connection closed");
         this.isConnected = false;
+        this.connection = null;
+        this.channel = null;
         this.reconnect();
       });
     } catch (error) {
       console.error("Failed to connect to RabbitMQ:", error);
       this.isConnected = false;
+      this.connection = null;
       throw error;
     }
+  }
+
+  /**
+   * Create a new channel on the existing connection.
+   */
+  async createChannel(): Promise<amqp.Channel> {
+    await this.connect();
+    if (!this.connection) throw new Error("Could not establish connection");
+    return await (this.connection as any).createChannel();
+  }
+
+  /**
+   * Get the singleton shared channel (created lazily).
+   */
+  async getSharedChannel(): Promise<amqp.Channel> {
+    if (this.channel) return this.channel;
+    this.channel = await this.createChannel();
+    // Declare the main exchange on the shared channel
+    await this.channel.assertExchange("chumme_exchange", "topic", {
+      durable: true,
+    });
+    return this.channel;
   }
 
   private async reconnect(): Promise<void> {
@@ -85,13 +103,11 @@ export class RabbitMQService {
   }
 
   async publishMessage(routingKey: string, message: any): Promise<void> {
-    if (!this.isConnected || !this.channel) {
-      throw new Error("RabbitMQ not connected");
-    }
+    const channel = await this.getSharedChannel();
 
     try {
       const messageBuffer = Buffer.from(JSON.stringify(message));
-      const published = this.channel.publish(
+      const published = channel.publish(
         "chumme_exchange",
         routingKey,
         messageBuffer,
@@ -106,7 +122,7 @@ export class RabbitMQService {
         throw new Error("Failed to publish message");
       }
 
-      console.log(`Message published to ${routingKey}:`, message);
+      console.log(`Message published to ${routingKey}`);
     } catch (error) {
       console.error("Error publishing message:", error);
       throw error;
@@ -118,38 +134,33 @@ export class RabbitMQService {
     routingKeys: string[],
     handler: MessageHandler,
   ): Promise<void> {
-    if (!this.isConnected || !this.channel) {
-      throw new Error("RabbitMQ not connected");
-    }
+    const channel = await this.getSharedChannel();
 
     try {
       // Assert the queue
-      await this.channel.assertQueue(queueName, {
+      await channel.assertQueue(queueName, {
         durable: true,
       });
 
       // Bind the queue to the exchange with routing keys
       for (const routingKey of routingKeys) {
-        await this.channel.bindQueue(queueName, "chumme_exchange", routingKey);
+        await channel.bindQueue(queueName, "chumme_exchange", routingKey);
         console.log(`Queue ${queueName} bound to routing key: ${routingKey}`);
       }
 
       // Set up message consumer
-      await this.channel.consume(
+      await channel.consume(
         queueName,
         async (msg: amqp.ConsumeMessage | null) => {
           if (msg) {
             try {
               const messageContent = JSON.parse(msg.content.toString());
-              console.log(
-                `Received message from ${queueName}:`,
-                messageContent,
-              );
+              console.log(`Received message from ${queueName}`);
 
               await handler(messageContent, msg);
 
               // Acknowledge the message
-              this.channel?.ack(msg);
+              channel.ack(msg);
             } catch (error) {
               console.error(
                 `Error processing message from ${queueName}:`,
@@ -157,7 +168,7 @@ export class RabbitMQService {
               );
 
               // Reject the message and don't requeue it to avoid infinite loops
-              this.channel?.nack(msg, false, false);
+              channel.nack(msg, false, false);
             }
           }
         },
