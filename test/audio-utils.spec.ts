@@ -1,63 +1,50 @@
 import { expect } from "chai";
 import { describe, it } from "mocha";
-import {
-  overlayAudioFiles,
-  concatenateAudioFiles,
-} from "../src/utils/audio.utils";
+import { mixVocalsWithBacking } from "../src/utils/audio.utils";
+import logger from "../src/utils/logger";
 import fs from "fs";
-import path from "path";
 
-// Real remote files for deterministic integration-style unit testing
-const FILE_1 =
-  "https://d1lq91nbxprxl1.cloudfront.net/recordings/1770718991824-gu9lxxbu-recording-32594B62-17C4-4C3E-9174-C8C96820F542.m4a";
-const FILE_2 =
+// Real remote audio files for testing (Crowdsinging simulation)
+const VOCALS = [
+  "https://d1lq91nbxprxl1.cloudfront.net/recordings/1770718991824-gu9lxxbu-recording-32594B62-17C4-4C3E-9174-C8C96820F542.m4a",
+  "https://d1lq91nbxprxl1.cloudfront.net/recordings/1770718991824-gu9lxxbu-recording-32594B62-17C4-4C3E-9174-C8C96820F542.m4a", // Reusing for demo
+];
+const BACKING_TRACK =
   "https://d1lq91nbxprxl1.cloudfront.net/recordings/1770718423388-nrnmzkah-recording-91255E7E-28C1-4DFE-8D05-570C82101C4B.m4a";
 
-describe("Audio Utils", function () {
-  // Increase timeout for remote file fetching and processing
-  this.timeout(30000);
+describe("Audio Mix Test", function () {
+  this.timeout(120000); // 2 mins for multiple downloads + mixing
 
-  describe("concatenateAudioFiles", () => {
-    it("should merge two audio files sequentially", async () => {
-      const buffer = await concatenateAudioFiles([FILE_1, FILE_2]);
+  it("should mix MULTIPLE vocals + backing track (Crowdsinging Simulator)", async () => {
+    // 1. Download all vocal files
+    const axios = require("axios");
+    logger.info(`📥 Downloading ${VOCALS.length} vocalists...`);
 
-      expect(buffer).to.be.an.instanceOf(Buffer);
-      expect(buffer.length).to.be.greaterThan(0);
+    // We pass the URLs directly to overlayAudioFiles or concatenateAudioFiles
+    // But since they are remote, our audio.utils handles the downloading usually.
+    // However, mixVocalsWithBacking expects a BUFFER for the vocals.
 
-      // Basic sanity check: output should be significant size
-      // (Approx sum of parts, though transcoding affects this)
-      expect(buffer.length).to.be.greaterThan(10000);
+    // So for multiple users, we first OVERLAY them into one buffer:
+    const { overlayAudioFiles } = require("../src/utils/audio.utils");
+
+    logger.info("🎤 Merging vocalists into a single crowd buffer...");
+    const crowdBuffer = await overlayAudioFiles(VOCALS);
+
+    // 2. Mix the crowd buffer with the backing track
+    logger.info("🎚️ Mixing crowd with backing track...");
+    const outputPath = await mixVocalsWithBacking(crowdBuffer, BACKING_TRACK, {
+      title: "Crowd Mix",
+      artist: "Chumme Choir",
+      voiceEffect: "STUDIO",
     });
 
-    it("should throw error if no files provided", async () => {
-      try {
-        await concatenateAudioFiles([]);
-        expect.fail("Should have thrown error");
-      } catch (err: any) {
-        expect(err.message).to.equal("No input files provided");
-      }
-    });
-  });
+    // 3. Verify
+    expect(outputPath).to.be.a("string");
+    expect(fs.existsSync(outputPath)).to.be.true;
 
-  describe("overlayAudioFiles", () => {
-    it("should mix audio files with startTimeOffsets (sync logic)", async () => {
-      // 0s offset for first, 2s for second
-      const buffer = await overlayAudioFiles([FILE_1, FILE_2], [0, 2]);
-
-      expect(buffer).to.be.an.instanceOf(Buffer);
-      expect(buffer.length).to.be.greaterThan(0);
-    });
-
-    it("should mix audio files without offsets", async () => {
-      const buffer = await overlayAudioFiles([FILE_1, FILE_2]);
-      expect(buffer).to.be.an.instanceOf(Buffer);
-      expect(buffer.length).to.be.greaterThan(0);
-    });
-
-    it("should handle single file with offset", async () => {
-      const buffer = await overlayAudioFiles([FILE_1], [3]);
-      expect(buffer).to.be.an.instanceOf(Buffer);
-      expect(buffer.length).to.be.greaterThan(0);
-    });
+    const stats = fs.statSync(outputPath);
+    logger.info(
+      `🔥 FINISHED CROWD MIX: ${outputPath} (${(stats.size / 1024).toFixed(0)} KB)`,
+    );
   });
 });

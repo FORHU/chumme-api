@@ -30,14 +30,14 @@ export default class MessageSvc {
     }
 
     // Include userId in cache key
-    const cacheKey = `messages:user:${userId}:page:${page}:limit:${limit}`;
-    const cached = await CacheUtil.get(cacheKey);
-    if (cached) {
-      return cached;
-    }
+    // const cacheKey = `messages:user:${userId}:page:${page}:limit:${limit}`;
+    // const cached = await CacheUtil.get(cacheKey);
+    // if (cached) {
+    //   return cached;
+    // }
 
     const response = await MessageRepo.getRoomMessages(roomId, page, limit);
-    await CacheUtil.set(cacheKey, response);
+    // await CacheUtil.set(cacheKey, response);
     return response;
   }
 }

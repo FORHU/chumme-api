@@ -246,11 +246,11 @@ export default class RoomSvc {
     }
 
     // Include userId in cache key
-    const cacheKey = `roomMessages:user:${userId}:page:${page}:limit:${limit}`;
-    const cached = await CacheUtil.get(cacheKey);
-    if (cached) {
-      return cached;
-    }
+    // const cacheKey = `roomMessages:user:${userId}:page:${page}:limit:${limit}`;
+    // const cached = await CacheUtil.get(cacheKey);
+    // if (cached) {
+    //   return cached;
+    // }
 
     const messages = await MessageRepo.getRoomMessages(roomId, page + 1, limit);
 
@@ -259,7 +259,7 @@ export default class RoomSvc {
       messages.map((msg: any) => this.mapMessageWithSignedUrl(msg)),
     );
 
-    await CacheUtil.set(cacheKey, response);
-    return response;
+    // await CacheUtil.set(cacheKey, response);
+    return messages;
   }
 }
