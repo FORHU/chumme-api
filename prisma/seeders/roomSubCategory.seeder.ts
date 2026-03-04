@@ -26,15 +26,6 @@ function generateCircularPositions(
   return positions;
 }
 
-function randomHexColor(): string {
-  return (
-    "#" +
-    Math.floor(Math.random() * 0xffffff)
-      .toString(16)
-      .padStart(6, "0")
-  );
-}
-
 function shuffle<T>(arr: T[]) {
   const a = arr.slice();
   for (let i = a.length - 1; i > 0; i--) {
@@ -160,36 +151,61 @@ export async function seedRoomSubCategories(
       update: {
         name: `${category.name} Lobby`,
         roomCategoryId: category.id,
-        color: (category as any).color ?? randomHexColor(),
-        position: (category as any).position ?? { x: 50, y: 50 },
+        position: { x: 50, y: 50 },
         isAd: false,
-        membersCount: (category as any).membersCount ?? 0,
-        size: ((category as any).size as any) ?? "medium",
+        colorSet: {
+          primary: "#9d30ff",
+          secondary: "#c084fc",
+          border: "#9d30ff",
+        },
+        sizeSet: { radius: "large", maxRadius: 100 },
+        border: { width: 2, color: "#000", style: "solid" },
+        shadow: { x: 0, y: 2, blur: 6, color: "#aaa" },
+        opacity: 0.9,
+        capacity: 1000,
+        status: "active",
         metaData: {},
+        tags: [],
+        emojiIcon: "",
+        keyName: null,
       },
       create: {
         id: lobbyId,
         name: `${category.name} Lobby`,
         roomCategoryId: category.id,
-        color: (category as any).color ?? randomHexColor(),
-        position: (category as any).position ?? { x: 50, y: 50 },
+        position: { x: 50, y: 50 },
         isAd: false,
-        membersCount: (category as any).membersCount ?? 0,
-        size: ((category as any).size as any) ?? "medium",
-        keyName: lobbyKey,
+        colorSet: {
+          primary: "#9d30ff",
+          secondary: "#c084fc",
+          border: "#9d30ff",
+        },
+        sizeSet: { radius: "large", maxRadius: 100 },
+        border: { width: 2, color: "#000", style: "solid" },
+        shadow: { x: 0, y: 2, blur: 6, color: "#aaa" },
+        opacity: 0.9,
+        capacity: 1000,
+        status: "active",
+        keyName: null,
         metaData: {},
+        tags: [],
+        emojiIcon: "",
       },
     });
 
     // 2. Create specific Artist subcategories for testing (Enhypen & Exo)
-    const basePos = (category as any).position ?? { x: 50, y: 50 };
+    const basePos = { x: 50, y: 50 };
     const artistSubCats = [
       { name: "Enhypen", artistId: "97c60f60-0d0f-408c-b5a3-fe684b1b7232" },
       { name: "Exo", artistId: "f8818235-b033-4882-a22d-3c6e677c0fa1" },
     ];
-    
+
     // Generate circular positions for artist subcategories around base position
-    const artistPositions = generateCircularPositions(basePos, 25, artistSubCats.length);
+    const artistPositions = generateCircularPositions(
+      basePos,
+      25,
+      artistSubCats.length,
+    );
 
     for (let idx = 0; idx < artistSubCats.length; idx++) {
       const artist = artistSubCats[idx];
@@ -201,23 +217,45 @@ export async function seedRoomSubCategories(
         where: { keyName },
         update: {
           name: artist.name,
-          artistId: artist.artistId,
           roomCategoryId: category.id,
-          color: randomHexColor(),
           position,
+          colorSet: {
+            primary: "#2a45ff",
+            secondary: "#60a5fa",
+            border: "#2a45ff",
+          },
+          sizeSet: { radius: "medium", maxRadius: 80 },
+          border: { width: 2, color: "#000", style: "solid" },
+          shadow: { x: 0, y: 2, blur: 6, color: "#aaa" },
+          opacity: 0.9,
+          capacity: 5000,
+          status: "active",
+          keyName: null,
+          metaData: {},
+          tags: [],
+          emojiIcon: "",
         },
         create: {
           id: randomUUID(),
           name: artist.name,
-          artistId: artist.artistId,
           roomCategoryId: category.id,
-          color: randomHexColor(),
           position,
           isAd: false,
-          membersCount: Math.floor(Math.random() * 20000) + 1000,
-          size: "medium",
-          keyName,
+          colorSet: {
+            primary: "#2a45ff",
+            secondary: "#60a5fa",
+            border: "#2a45ff",
+          },
+          sizeSet: { radius: "medium", maxRadius: 80 },
+          border: { width: 2, color: "#000", style: "solid" },
+          shadow: { x: 0, y: 2, blur: 6, color: "#aaa" },
+          opacity: 0.9,
+          capacity: 5000,
+          status: "active",
+          keyName: null,
           metaData: {},
+          tags: [],
+          emojiIcon: "",
         } as any,
       });
     }
@@ -225,9 +263,13 @@ export async function seedRoomSubCategories(
     // 3. Create up to 8 random topic subcategories in a circular layout
     const uniqueTopics = Array.from(new Set(topics));
     const shuffledTopics = shuffle(uniqueTopics).slice(0, 8);
-    
+
     // Generate circular positions for topics around base position (radius 30 to keep distance)
-    const topicPositions = generateCircularPositions(basePos, 30, shuffledTopics.length);
+    const topicPositions = generateCircularPositions(
+      basePos,
+      30,
+      shuffledTopics.length,
+    );
 
     for (let idx = 0; idx < shuffledTopics.length; idx++) {
       const topic = shuffledTopics[idx];
@@ -249,13 +291,23 @@ export async function seedRoomSubCategories(
           id: randomUUID(),
           name: topic,
           roomCategoryId: category.id,
-          color: randomHexColor(),
           position,
           isAd: false,
-          membersCount: Math.floor(Math.random() * 20000) + 50,
-          size: "small",
-          keyName,
+          colorSet: {
+            primary: "#ff0095",
+            secondary: "#f472b6",
+            border: "#ff0095",
+          },
+          sizeSet: { radius: "small", maxRadius: 60 },
+          border: { width: 2, color: "#000", style: "solid" },
+          shadow: { x: 0, y: 2, blur: 6, color: "#aaa" },
+          opacity: 0.9,
+          capacity: 1000,
+          status: "active",
+          keyName: null,
           metaData: {},
+          tags: [],
+          emojiIcon: "",
         } as any,
       });
     }

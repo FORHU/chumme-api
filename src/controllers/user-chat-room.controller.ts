@@ -1,0 +1,102 @@
+import { Request, Response } from "express";
+import Joi from "joi";
+import UserChatRoomSvc from "../services/user-chat-room.service";
+
+export default class UserChatRoomCtrl {
+  /**
+   * Get user's joined rooms (paginated)
+   */
+  static async getUserChat(req: Request, res: Response) {
+    const userId = (req as any).user.id;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+
+    try {
+      const chats = await UserChatRoomSvc.getUserChat(userId, page, limit);
+      return res.json(chats);
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message || error });
+    }
+  }
+
+  /**
+   * Join a room subcategory
+   */
+  static async joinRoom(req: Request, res: Response) {
+    const userId = (req as any).user.id;
+    const { roomSubCategoryId } = req.params;
+
+    const schema = Joi.object({
+      roomSubCategoryId: Joi.string().uuid().required(),
+    });
+
+    const { error } = schema.validate({ roomSubCategoryId });
+    if (error) {
+      return res.status(400).json({ message: error.message });
+    }
+
+    try {
+      const membership = await UserChatRoomSvc.joinRoom(
+        userId,
+        roomSubCategoryId,
+      );
+      return res.status(201).json({
+        message: "Successfully joined room",
+        membership,
+      });
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message || error });
+    }
+  }
+
+  /**
+   * Leave a room subcategory
+   */
+  static async leaveRoom(req: Request, res: Response) {
+    const userId = (req as any).user.id;
+    const { roomSubCategoryId } = req.params;
+
+    const schema = Joi.object({
+      roomSubCategoryId: Joi.string().uuid().required(),
+    });
+
+    const { error } = schema.validate({ roomSubCategoryId });
+    if (error) {
+      return res.status(400).json({ message: error.message });
+    }
+
+    try {
+      await UserChatRoomSvc.leaveRoom(userId, roomSubCategoryId);
+      return res.json({ message: "Successfully left room" });
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message || error });
+    }
+  }
+
+  /**
+   * Get members of a room subcategory
+   */
+  static async getMembers(req: Request, res: Response) {
+    const { roomSubCategoryId } = req.params;
+    const userId = (req as any).user.id;
+
+    const schema = Joi.object({
+      roomSubCategoryId: Joi.string().uuid().required(),
+    });
+
+    const { error } = schema.validate({ roomSubCategoryId });
+    if (error) {
+      return res.status(400).json({ message: error.message });
+    }
+
+    try {
+      const members = await UserChatRoomSvc.getRoomMembers(
+        roomSubCategoryId,
+        userId,
+      );
+      return res.json({ members });
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message || error });
+    }
+  }
+}

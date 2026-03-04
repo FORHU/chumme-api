@@ -9,6 +9,8 @@
     "test": "NODE_ENV=development mocha --require ts-node/register 'test/**/*.spec.ts'",
     "build": "tsc",
     "start": "node ./dist/src/server.js",
+    "start:worker": "node ./dist/src/worker.js",
+    "dev:worker": "nodemon --watch src --ext ts --exec ts-node --files ./src/worker.ts",
     "db:setup": "npx prisma generate && npx prisma migrate dev",
     "test:audio": "mocha --require ts-node/register --timeout 60000 test/audio-utils.spec.ts",
     "test:integration": "mocha --require ts-node/register --timeout 60000 test/recording-flow.spec.ts"

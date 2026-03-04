@@ -51,17 +51,18 @@ export default class RoomRepo {
   }
 
   static async findRoomName(name: string) {
-    return prisma.room.findFirst({
+    return prisma.roomSubCategory.findFirst({
       where: {
         name,
-        isDeleted: false,
+        deletedAt: null,
       },
     });
   }
+
   static async fetchRoomList() {
-    return prisma.room.findMany({
+    return prisma.roomSubCategory.findMany({
       where: {
-        isDeleted: false,
+        deletedAt: null,
       },
       select: {
         id: true,
@@ -69,73 +70,57 @@ export default class RoomRepo {
         position: true,
         metaData: true,
         _count: {
-          select: { members: true },
+          select: { userChatRooms: true },
         },
       },
     });
   }
+
   static async findUserById(userId: string) {
     return prisma.user.findUnique({
       where: {
         id: userId,
-        isDeleted: false,
       },
     });
   }
 
   /**
-   * Create a new room
+   * Create a new room (actually a RoomSubCategory)
    */
   static async createRoom(data: {
     name: string;
     note: string;
     ownerId: string;
-    roomSubCategoryId: string;
+    roomCategoryId: string;
     position?: any;
     metaData: any;
     keyName?: string;
+    color: string;
+    size: string;
+    isAd: boolean;
   }) {
-    return prisma.room.create({
+    return prisma.roomSubCategory.create({
       data: {
         ...data,
-        position: data.position || {}, // Accept from frontend or default
-        isPrivate: false,
-        isDeleted: false,
+        position: data.position || {},
+        deletedAt: null,
       },
     });
   }
 
   /**
-   * Find room by ID (only non-deleted rooms)
+   * Find room by ID
    */
   static async findRoomById(roomId: string) {
-    return prisma.room.findUnique({
+    return prisma.roomSubCategory.findUnique({
       where: {
         id: roomId,
-        isDeleted: false,
+        deletedAt: null,
       },
       include: {
-        owner: {
-          select: {
-            id: true,
-            username: true,
-            name: true,
-            avatar: {
-              select: {
-                fileUrl: true,
-              },
-            },
-          },
-        },
-        roomSubCategory: {
+        roomCategory: {
           include: {
-            roomCategory: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-            artist: {
+            artists: {
               select: {
                 id: true,
                 name: true,
@@ -144,7 +129,7 @@ export default class RoomRepo {
             },
           },
         },
-        members: {
+        userChatRooms: {
           include: {
             user: {
               select: {
@@ -162,8 +147,8 @@ export default class RoomRepo {
         },
         _count: {
           select: {
-            members: true,
-            messages: true,
+            userChatRooms: true,
+            roomMessages: true,
           },
         },
       },
@@ -171,8 +156,7 @@ export default class RoomRepo {
   }
 
   /**
-   * Get rooms accessible to the user (public rooms + private rooms where user is member)
-   * Only non-deleted rooms
+   * Get rooms accessible to the user
    */
   static async getUserAccessibleRooms(
     userId: string,
@@ -184,50 +168,20 @@ export default class RoomRepo {
       ? await this.resolveSubCategoryShortcut(subcategoryId)
       : null;
 
-    return prisma.room.findMany({
+    return prisma.roomSubCategory.findMany({
       where: {
-        isDeleted: false,
-        ...(realSubCategoryId && { roomSubCategoryId: realSubCategoryId }),
-        OR: [
-          { isPrivate: false }, // Public rooms
-          {
-            isPrivate: true,
-            members: {
-              some: {
-                userId: userId,
-              },
-            },
-          }, // Private rooms where user is a member
-        ],
+        deletedAt: null,
+        ...(realSubCategoryId && { id: realSubCategoryId }),
       },
       skip,
       take: limit,
       orderBy: {
         createdAt: "desc",
       },
-
       include: {
-        owner: {
-          select: {
-            id: true,
-            username: true,
-            name: true,
-            avatar: {
-              select: {
-                fileUrl: true,
-              },
-            },
-          },
-        },
-        roomSubCategory: {
+        roomCategory: {
           include: {
-            roomCategory: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-            artist: {
+            artists: {
               select: {
                 id: true,
                 name: true,
@@ -236,7 +190,7 @@ export default class RoomRepo {
             },
           },
         },
-        members: {
+        userChatRooms: {
           select: {
             user: {
               select: {
@@ -245,14 +199,14 @@ export default class RoomRepo {
                 username: true,
               },
             },
-            role: true,
+            userChatRole: true,
             joinedAt: true,
           },
         },
         _count: {
           select: {
-            members: true,
-            messages: true,
+            userChatRooms: true,
+            roomMessages: true,
           },
         },
       },
@@ -260,7 +214,7 @@ export default class RoomRepo {
   }
 
   /**
-   * Count rooms accessible to the user (only non-deleted rooms)
+   * Count rooms accessible to the user
    */
   static async countUserAccessibleRooms(
     userId: string,
@@ -270,63 +224,39 @@ export default class RoomRepo {
       ? await this.resolveSubCategoryShortcut(subcategoryId)
       : null;
 
-    return prisma.room.count({
+    return prisma.roomSubCategory.count({
       where: {
-        isDeleted: false,
-        ...(realSubCategoryId && { roomSubCategoryId: realSubCategoryId }),
-        OR: [
-          { isPrivate: false }, // Public rooms
-          {
-            isPrivate: true,
-            members: {
-              some: {
-                userId: userId,
-              },
-            },
-          }, // Private rooms where user is a member
-        ],
+        deletedAt: null,
+        ...(realSubCategoryId && { id: realSubCategoryId }),
       },
     });
   }
 
   /**
-   * Update room details (only non-deleted rooms)
+   * Update room details
    */
   static async updateRoom(
     roomId: string,
     data: {
       name?: string;
-      isPrivate?: boolean;
       note?: string;
-      roomSubCategoryId?: string;
+      roomCategoryId?: string;
       position?: any;
       metaData?: any;
       keyName?: string;
     },
   ) {
-    return prisma.room.update({
+    return prisma.roomSubCategory.update({
       where: {
         id: roomId,
-        isDeleted: false, // Add this condition
+        deletedAt: null,
       },
       data: {
         ...data,
         updatedAt: new Date(),
       },
       include: {
-        owner: {
-          select: {
-            id: true,
-            username: true,
-            name: true,
-            avatar: {
-              select: {
-                fileUrl: true,
-              },
-            },
-          },
-        },
-        members: {
+        userChatRooms: {
           include: {
             user: {
               select: {
@@ -344,8 +274,8 @@ export default class RoomRepo {
         },
         _count: {
           select: {
-            members: true,
-            messages: true,
+            userChatRooms: true,
+            roomMessages: true,
           },
         },
       },
@@ -356,45 +286,31 @@ export default class RoomRepo {
    * Soft delete room
    */
   static async softDeleteRoom(roomId: string) {
-    return prisma.room.update({
+    return prisma.roomSubCategory.update({
       where: {
         id: roomId,
-        isDeleted: false, // Only delete non-deleted rooms
+        deletedAt: null,
       },
       data: {
-        isDeleted: true,
+        deletedAt: new Date(),
         updatedAt: new Date(),
       },
     });
   }
 
   /**
-   * Add a member to a room (only non-deleted rooms)
+   * Add a member to a room (Legacy redirect to UserChatRoom)
    */
   static async addRoomMember(data: {
-    roomId: string;
+    roomSubCategoryId: string;
     userId: string;
-    role: string;
+    role: any;
   }) {
-    return prisma.roomMember.create({
+    return prisma.userChatRoom.create({
       data: {
-        roomId: data.roomId,
+        roomSubCategoryId: data.roomSubCategoryId,
         userId: data.userId,
-        role: data.role,
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            username: true,
-            name: true,
-            avatar: {
-              select: {
-                fileUrl: true,
-              },
-            },
-          },
-        },
+        userChatRole: data.role,
       },
     });
   }
@@ -402,37 +318,42 @@ export default class RoomRepo {
   /**
    * Remove a member from a room
    */
-  static async removeRoomMember(roomId: string, userId: string) {
-    return prisma.roomMember.deleteMany({
+  static async removeRoomMember(roomSubCategoryId: string, userId: string) {
+    return prisma.userChatRoom.delete({
       where: {
-        roomId: roomId,
-        userId: userId,
+        userId_roomSubCategoryId: {
+          userId,
+          roomSubCategoryId,
+        },
       },
     });
   }
+
   /**
-   * Check if user is the owner of the room (only non-deleted rooms)
+   * Check if user is the owner of the room
    */
   static async isUserRoomOwner(roomId: string, userId: string) {
-    const room = await prisma.room.findFirst({
+    const room = await prisma.roomSubCategory.findFirst({
       where: {
         id: roomId,
         ownerId: userId,
-        isDeleted: false,
+        deletedAt: null,
       },
     });
     return !!room;
   }
+
   static async findById(roomId: string) {
     return this.findRoomById(roomId);
   }
+
   static async getRoomMessages(roomId: string) {
-    return prisma.room.findUnique({
+    return prisma.roomSubCategory.findUnique({
       where: {
         id: roomId,
       },
       select: {
-        messages: true,
+        roomMessages: true,
       },
     });
   }

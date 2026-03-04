@@ -1,6 +1,6 @@
 import { prisma } from "../utils/prisma";
 
-export default class TempMusicRecordRepo {
+export default class MusicTempRecordRepo {
   /**
    * Create a new temporary music record (chunk)
    */
@@ -13,7 +13,7 @@ export default class TempMusicRecordRepo {
     metaData?: any;
     recordDuration?: number;
   }) {
-    return prisma.tempMusicRecord.create({
+    return prisma.musicTempRecord.create({
       data: {
         fileId: data.fileId,
         studioId: data.studioId,
@@ -33,7 +33,7 @@ export default class TempMusicRecordRepo {
    * Find temporary records by Studio ID
    */
   static async findByStudioId(studioId: string) {
-    return prisma.tempMusicRecord.findMany({
+    return prisma.musicTempRecord.findMany({
       where: { studioId },
       include: {
         file: true,
@@ -46,7 +46,7 @@ export default class TempMusicRecordRepo {
    * Find temporary records by Music ID and Studio ID
    */
   static async findByMusicIdAndStudioId(musicId: string, studioId: string) {
-    return prisma.tempMusicRecord.findMany({
+    return prisma.musicTempRecord.findMany({
       where: { musicId, studioId },
       include: {
         file: true,
@@ -59,7 +59,7 @@ export default class TempMusicRecordRepo {
    * Delete all temporary records by Studio ID
    */
   static async deleteByStudioId(studioId: string) {
-    return prisma.tempMusicRecord.deleteMany({
+    return prisma.musicTempRecord.deleteMany({
       where: { studioId },
     });
   }
@@ -68,7 +68,7 @@ export default class TempMusicRecordRepo {
    * Delete all temporary records by Music ID and Studio ID
    */
   static async deleteByMusicIdAndStudioId(musicId: string, studioId: string) {
-    return prisma.tempMusicRecord.deleteMany({
+    return prisma.musicTempRecord.deleteMany({
       where: { musicId, studioId },
     });
   }

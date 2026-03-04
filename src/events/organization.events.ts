@@ -1,6 +1,6 @@
 import { Server, Socket } from "socket.io";
 import authenticateSocket from "../middleware/authenticate-sockets.middleware";
-import RoomMemberSvc from "../services/room-member.service";
+import UserChatRoomSvc from "../services/user-chat-room.service";
 import CircleCacheSvc from "../services/circle-cache.service";
 import { registerRoomHandlers } from "./circles/room.handlers";
 import { PresenceBatcher } from "../utils/presence-batcher";
@@ -36,10 +36,12 @@ export default (io: Server) => {
 
     socket.on("disconnect", async () => {
       try {
-        const userRooms = await RoomMemberSvc.getRoomsByUserId(socket.user.id);
+        const userRooms = await UserChatRoomSvc.getRoomsByUserId(
+          socket.user.id,
+        );
 
         for (const room of userRooms) {
-          const roomId = room.roomId;
+          const roomId = room.roomSubCategoryId;
           const userId = socket.user.id;
 
           // 1. Mark as disconnected in Redis

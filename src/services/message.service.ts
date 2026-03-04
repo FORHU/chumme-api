@@ -1,43 +1,92 @@
 import MessageRepo from "../repositories/message.repository";
+import UserChatRoomRepo from "../repositories/user-chat-room.repository";
 import CacheUtil from "../utils/cache.util";
 
 export default class MessageSvc {
-  static async createMessage(
-    roomId: string,
-    userId: string,
-    message: string,
-    voiceMessageId?: string,
-  ) {
-    await CacheUtil.delByPattern(`messages:user:${userId}:page:*`);
-    return MessageRepo.createMessage(roomId, userId, message, voiceMessageId);
+  /**
+   * Create a new message or reply
+   */
+  static async createMessage(data: {
+    roomSubCategoryId: string;
+    userId: string;
+    content: any;
+    voiceMessageId?: string;
+    parentMessageId?: string;
+  }) {
+    // 1. Verify user is a member of the room
+    const isMember = await UserChatRoomRepo.isMember(
+      data.userId,
+      data.roomSubCategoryId,
+    );
+    if (!isMember) {
+      throw new Error(
+        "Access denied: You must be a member of this room to send messages",
+      );
+    }
+
+    // 2. If it's a reply, verify parent message exists and belongs to the same room
+    if (data.parentMessageId) {
+      const parent = await MessageRepo.findMessageById(data.parentMessageId);
+      if (!parent) throw new Error("Parent message not found");
+      if (parent.roomSubCategoryId !== data.roomSubCategoryId) {
+        throw new Error("Parent message does not belong to this room");
+      }
+    }
+
+    // 3. Clear cache
+    await CacheUtil.delByPattern(`messages:room:${data.roomSubCategoryId}:*`);
+
+    // 4. Create message
+    return MessageRepo.createMessage({
+      roomSubCategoryId: data.roomSubCategoryId,
+      authorId: data.userId,
+      content: data.content,
+      voiceMessageId: data.voiceMessageId,
+      parentMessageId: data.parentMessageId,
+    });
   }
 
-  static async removeMessage(messageId: string) {
-    return MessageRepo.removeMessage(messageId);
-  }
-
+  /**
+   * Get messages for a room (top-level or threaded)
+   */
   static async getRoomMessages(
-    roomId: string,
+    roomSubCategoryId: string,
     userId: string,
-    page: number,
-    limit: number,
+    page: number = 1,
+    limit: number = 20,
+    parentMessageId?: string,
   ) {
-    if (page < 0) {
-      throw new Error("Page must be non-negative");
-    }
-    if (limit < 1 || limit > 50) {
-      throw new Error("Limit must be between 1 and 50");
+    // 1. Verify membership
+    const isMember = await UserChatRoomRepo.isMember(userId, roomSubCategoryId);
+    if (!isMember) {
+      throw new Error(
+        "Access denied: You must be a member of this room to view messages",
+      );
     }
 
-    // Include userId in cache key
-    // const cacheKey = `messages:user:${userId}:page:${page}:limit:${limit}`;
-    // const cached = await CacheUtil.get(cacheKey);
-    // if (cached) {
-    //   return cached;
-    // }
+    // 2. Fetch messages
+    return MessageRepo.getRoomMessages(
+      roomSubCategoryId,
+      page,
+      limit,
+      parentMessageId,
+    );
+  }
 
-    const response = await MessageRepo.getRoomMessages(roomId, page, limit);
-    // await CacheUtil.set(cacheKey, response);
-    return response;
+  /**
+   * Remove a message
+   */
+  static async removeMessage(messageId: string, userId: string) {
+    const message = await MessageRepo.findMessageById(messageId);
+    if (!message) throw new Error("Message not found");
+
+    // Only author or admins (implement admin check if needed) can delete
+    if (message.authorId !== userId) {
+      throw new Error(
+        "Permission denied: You can only delete your own messages",
+      );
+    }
+
+    return MessageRepo.removeMessage(messageId);
   }
 }

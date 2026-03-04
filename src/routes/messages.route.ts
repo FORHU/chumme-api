@@ -5,6 +5,8 @@ import MessageCtrl from "../controllers/message.controller";
 const router = express.Router();
 router.use(authenticate);
 
-router.get("/:roomId", MessageCtrl.getRoomMessages);
+router.post("/", MessageCtrl.sendMessage);
+router.get("/:roomSubCategoryId", MessageCtrl.getRoomMessages);
+router.delete("/:id", MessageCtrl.removeMessage);
 
 export default router;

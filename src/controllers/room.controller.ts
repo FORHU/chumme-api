@@ -16,14 +16,17 @@ export default class RoomCtrl {
    * Only non-deleted users can create rooms
    */
   static async createRoom(req: Request, res: Response) {
-    const userId = req.user.id;
+    const userId = (req as any).user.id;
     const schema = Joi.object({
       name: Joi.string().min(1).max(100).required(),
       note: Joi.string().required(),
-      roomSubCategoryId: Joi.string().uuid().required(),
+      roomCategoryId: Joi.string().uuid().required(),
       position: Joi.object().required(),
       metaData: Joi.object().required(),
       keyName: Joi.string().optional(),
+      color: Joi.string().optional().default("#00FF00"),
+      size: Joi.string().optional().default("medium"),
+      isAd: Joi.boolean().optional().default(false),
     });
 
     const { error, value } = schema.validate(req.body);
@@ -130,7 +133,7 @@ export default class RoomCtrl {
         name: Joi.string().min(1).max(100).optional(),
         isPrivate: Joi.boolean().optional(),
         note: Joi.string().min(1).max(500).optional(),
-        roomSubCategoryId: Joi.string().uuid().optional(),
+        roomCategoryId: Joi.string().uuid().optional(),
         position: Joi.object().optional(),
         metaData: Joi.object().optional(),
         keyName: Joi.string().optional(),

@@ -17,7 +17,7 @@ async function main() {
     await seedArtists(prisma);
     await seedAlbums(prisma);
     await seedRoomCategories(prisma);
-    await seedRooms(prisma);
+    // await seedRooms(prisma);
 
     console.log("🎉 All seeder modules executed successfully!");
   } catch (error) {

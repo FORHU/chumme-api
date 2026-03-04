@@ -4,7 +4,7 @@ import MusicStudioCacheSvc from "../../services/music-studio-cache.service";
 import { AuthenticatedSocket } from "./types";
 import { StudioType } from "@prisma/client";
 import MusicLibrarySvc from "../../services/music-library.service";
-import TempMusicRecordSvc from "../../services/temp-music-record.service";
+import MusicTempRecordSvc from "../../services/music-temp-record.service";
 
 export const registerMediaHandlers = (
   io: Server,
@@ -119,7 +119,7 @@ export const registerMediaHandlers = (
 
       // 7. Persist chunk for later FFmpeg merge (saveRecording flow)
       try {
-        await TempMusicRecordSvc.saveChunk({
+        await MusicTempRecordSvc.saveChunk({
           fileId: chunk.fileId,
           studioId,
           userId: socket.user.id,

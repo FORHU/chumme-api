@@ -19,7 +19,7 @@ app.set("trust proxy", 1);
 
 app.use(
   cors({
-    origin: "*",
+    origin: true,
     credentials: true,
   }),
 );
@@ -40,7 +40,10 @@ app.disable("x-powered-by");
 
 // Use router for routing
 app.use("/api", router);
-app.use(errorHandler);
+app.use((err: any, req: any, res: any, next: any) => {
+  console.error("[ErrorHandler]", err);
+  errorHandler(err, req, res, next);
+});
 
 const server = createServer(app);
 
@@ -96,29 +99,37 @@ connectToPrisma()
       // Don't crash the server if RabbitMQ fails
     }
 
-    // Initialize Audio Merge Worker (background FFmpeg processing)
-    try {
-      const { AudioMergeWorker } = await import(
-        "./listeners/audio-merge.listener"
-      );
-      const audioMergeWorker = new AudioMergeWorker();
-      await audioMergeWorker.start();
-      console.log("Audio Merge RabbitMQ worker initialized successfully");
-    } catch (error) {
-      console.error("Failed to initialize Audio Merge worker:", error);
-      // Don't crash the server if worker fails
-    }
+    // Initialize Workers (conditional)
+    const startWorkers = process.env.START_WORKERS !== "false";
 
-    // Initialize Media Processing Worker (Video/HLS)
-    try {
-      const { MediaProcessingWorker } = await import(
-        "./listeners/media-processing.listener"
-      );
-      const mediaWorker = new MediaProcessingWorker();
-      await mediaWorker.start();
-      console.log("Media Processing RabbitMQ worker initialized successfully");
-    } catch (error) {
-      console.error("Failed to initialize Media Processing worker:", error);
+    if (startWorkers) {
+      // Audio Merge Worker (background FFmpeg processing)
+      try {
+        const { AudioMergeWorker } = await import(
+          "./listeners/audio-merge.listener"
+        );
+        const audioMergeWorker = new AudioMergeWorker();
+        await audioMergeWorker.start();
+        console.log("Audio Merge RabbitMQ worker initialized successfully");
+      } catch (error) {
+        console.error("Failed to initialize Audio Merge worker:", error);
+      }
+
+      // Media Processing Worker (Video/HLS)
+      try {
+        const { MediaProcessingWorker } = await import(
+          "./listeners/media-processing.listener"
+        );
+        const mediaWorker = new MediaProcessingWorker();
+        await mediaWorker.start();
+        console.log(
+          "Media Processing RabbitMQ worker initialized successfully",
+        );
+      } catch (error) {
+        console.error("Failed to initialize Media Processing worker:", error);
+      }
+    } else {
+      console.log("Workers disabled by START_WORKERS=false");
     }
   })
   .catch((err: any) => {

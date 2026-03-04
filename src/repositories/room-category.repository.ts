@@ -58,19 +58,27 @@ export default class RoomCategoryRepo {
    */
   static async createCategory(data: {
     name: string;
-    membersCount: number;
-    color: string;
-    size: string;
-    position: any;
     isAd: boolean;
-    metaData: any;
-    imageUrl?: string;
+    position?: any;
+    colorSet?: any;
+    sizeSet?: any;
+    border?: any;
+    shadow?: any;
+    opacity?: number;
+    capacity?: number;
+    status?: string;
+    metaData?: any;
+    tags?: string[];
+    emojiIcon?: string;
     note?: string;
     keyName?: string;
   }) {
+    const { keyName, note, ...rest } = data;
     return prisma.roomCategory.create({
       data: {
-        ...data,
+        ...rest,
+        keyName: keyName || null,
+        note: note || null,
       },
     });
   }
@@ -82,13 +90,18 @@ export default class RoomCategoryRepo {
     name: string;
     roomCategoryId: string;
     ownerId: string;
-    metaData: any;
-    position: any;
-    size: string;
-    color: string;
     isAd: boolean;
-    membersCount: number;
-    imageUrl?: string;
+    position?: any;
+    colorSet?: any;
+    sizeSet?: any;
+    border?: any;
+    shadow?: any;
+    opacity?: number;
+    capacity?: number;
+    status?: string;
+    metaData?: any;
+    tags?: string[];
+    emojiIcon?: string;
     note?: string;
     artistId?: string;
     keyName?: string;
@@ -97,23 +110,21 @@ export default class RoomCategoryRepo {
       data.roomCategoryId,
     );
 
-    // 1. Destructure to separate the fields and handle potential undefineds
-    const { keyName, imageUrl, note, artistId, ...rest } = data;
+    const { keyName, note, ...rest } = data;
 
     return prisma.roomSubCategory.create({
       data: {
         ...rest,
-        // 2. Explicitly convert undefined to null for Prisma
-        keyName: keyName ?? "",
-        imageUrl: imageUrl ?? "",
-        note: note ?? "",
-        artistId: artistId ?? "",
-        // 3. Ensure the ID is correctly mapped
+        keyName: keyName || null,
+        note: note || null,
         roomCategoryId: realCategoryId || data.roomCategoryId,
       },
       include: {
-        roomCategory: { select: { id: true, name: true } },
-        artist: { select: { id: true, name: true, imageUrl: true } },
+        roomCategory: {
+          include: {
+            artists: { select: { id: true, name: true, imageUrl: true } },
+          },
+        },
       },
     });
   }
@@ -125,38 +136,33 @@ export default class RoomCategoryRepo {
     return prisma.roomCategory.findMany({
       where: { deletedAt: null },
       include: {
+        artists: {
+          select: { id: true, name: true, imageUrl: true },
+        },
         roomSubCategories: {
           where: { deletedAt: null },
           select: {
             id: true,
             name: true,
             note: true,
-            color: true,
             position: true,
+            colorSet: true,
+            sizeSet: true,
+            border: true,
+            shadow: true,
+            opacity: true,
+            capacity: true,
+            status: true,
             metaData: true,
-            size: true,
+            tags: true,
+            emojiIcon: true,
             isAd: true,
-            membersCount: true,
             createdAt: true,
             updatedAt: true,
-            artist: {
+            _count: {
               select: {
-                id: true,
-                name: true,
-                imageUrl: true,
-              },
-            },
-            rooms: {
-              where: { isDeleted: false },
-              select: {
-                id: true,
-                name: true,
-                note: true,
-                position: true,
-                metaData: true,
-                isPrivate: true,
-                createdAt: true,
-                updatedAt: true,
+                userChatRooms: true,
+                roomMessages: true,
               },
             },
           },
@@ -178,47 +184,41 @@ export default class RoomCategoryRepo {
     return prisma.roomCategory.findUnique({
       where: {
         id: realId,
-        deletedAt: null,
       },
       include: {
+        artists: {
+          select: { id: true, name: true, imageUrl: true },
+        },
         roomSubCategories: {
           where: { deletedAt: null },
           select: {
             id: true,
             name: true,
             note: true,
-            color: true,
             position: true,
+            colorSet: true,
+            sizeSet: true,
+            border: true,
+            shadow: true,
+            opacity: true,
+            capacity: true,
+            status: true,
             metaData: true,
-            size: true,
+            tags: true,
+            emojiIcon: true,
             isAd: true,
-            membersCount: true,
             createdAt: true,
             updatedAt: true,
-            artist: {
+            _count: {
               select: {
-                id: true,
-                name: true,
-                imageUrl: true,
-              },
-            },
-            rooms: {
-              where: { isDeleted: false },
-              select: {
-                id: true,
-                name: true,
-                note: true,
-                position: true,
-                metaData: true,
-                isPrivate: true,
-                createdAt: true,
-                updatedAt: true,
+                userChatRooms: true,
+                roomMessages: true,
               },
             },
           },
           orderBy: { createdAt: "desc" },
         },
-      },
+      } as any, // Temporary cast to bypass some Prisma type confusion if any
     });
   }
 
@@ -229,25 +229,32 @@ export default class RoomCategoryRepo {
     id: string,
     data: {
       name?: string;
-      membersCount?: number;
-      color?: string;
-      size?: string;
-      position?: any;
       isAd?: boolean;
+      position?: any;
+      colorSet?: any;
+      sizeSet?: any;
+      border?: any;
+      shadow?: any;
+      opacity?: number;
+      capacity?: number;
+      status?: string;
       metaData?: any;
-      imageUrl?: string;
+      tags?: string[];
+      emojiIcon?: string;
       note?: string;
       keyName?: string;
     },
   ) {
     const realId = (await this.resolveCategoryShortcut(id)) || id;
+    const { keyName, note, ...rest } = data;
     return prisma.roomCategory.update({
       where: {
         id: realId,
-        deletedAt: null,
       },
       data: {
-        ...data,
+        ...rest,
+        keyName: keyName === undefined ? undefined : keyName || null,
+        note: note === undefined ? undefined : note || null,
         updatedAt: new Date(),
       },
     });
@@ -261,7 +268,6 @@ export default class RoomCategoryRepo {
     return prisma.roomCategory.update({
       where: {
         id: realId,
-        deletedAt: null,
       },
       data: {
         deletedAt: new Date(),
@@ -299,18 +305,15 @@ export default class RoomCategoryRepo {
   }
 
   /**
-   * Get all rooms in a category (across all subcategories)
+   * Get all rooms (subcategories) in a category
    */
   static async getRoomsInCategory(categoryId: string) {
     const realId =
       (await this.resolveCategoryShortcut(categoryId)) || categoryId;
-    return prisma.room.findMany({
+    return prisma.roomSubCategory.findMany({
       where: {
-        isDeleted: false,
-        roomSubCategory: {
-          roomCategoryId: realId,
-          deletedAt: null,
-        },
+        roomCategoryId: realId,
+        deletedAt: null,
       },
       include: {
         owner: {
@@ -320,16 +323,25 @@ export default class RoomCategoryRepo {
             name: true,
           },
         },
-        roomSubCategory: {
+        roomCategory: {
           select: {
             id: true,
             name: true,
           },
+          include: {
+            artists: {
+              select: {
+                id: true,
+                name: true,
+                imageUrl: true,
+              },
+            },
+          },
         },
         _count: {
           select: {
-            members: true,
-            messages: true,
+            userChatRooms: true,
+            roomMessages: true,
           },
         },
       },
@@ -340,18 +352,18 @@ export default class RoomCategoryRepo {
   }
 
   /**
-   * Bulk delete (soft delete) rooms
+   * Bulk delete (soft delete) rooms (subcategories)
    */
   static async bulkDeleteRooms(roomIds: string[]) {
-    return prisma.room.updateMany({
+    return prisma.roomSubCategory.updateMany({
       where: {
         id: {
           in: roomIds,
         },
-        isDeleted: false,
+        deletedAt: null,
       },
       data: {
-        isDeleted: true,
+        deletedAt: new Date(),
         updatedAt: new Date(),
       },
     });
