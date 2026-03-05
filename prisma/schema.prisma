@@ -35,21 +35,21 @@ model User {
   following              Follow[]                @relation("UserFollows")
   followers              Follow[]                @relation("UserFollowers")
   likes                  Like[]
-  messages               Message[]
-  musicParts             MusicPart[]
+  roomsOwned             RoomSubCategory[]       @relation("RoomSubCategoryOwner")
+  messages               RoomMessage[]
+  musicParts             MusicSingerPart[]
   ownedStudios           MusicStudio[]           @relation("StudioOwner")
+  studioMemberships      MusicStudioMember[]     @relation("StudioMembership")
   playlists              Playlist[]
   posts                  Post[]
-  roomsOwned             Room[]                  @relation("RoomOwner")
-  roomMembers            RoomMember[]
   sessions               Session[]
-  studioMemberships      StudioMember[]          @relation("StudioMembership")
   avatar                 File?                   @relation(fields: [avatarId], references: [id])
   userArtists            UserArtist[]
-  userChats              UserChat[]
+  userChatRoom           RoomUserChat[]
   userEmotionPreferences UserEmotionPreference[]
   userInterests          UserInterest[]
   musicRecords           MusicRecord[]           @relation("MusicRecordSingers")
+  messageReactions       RoomMessageReaction[]
 }
 
 model Session {
@@ -77,124 +77,127 @@ model File {
   metaData      Json?
   artistPersona ArtistPersona? @relation("PersonaFile")
   mediaPosts    MediaPost[]
-  voiceMessages Message[]      @relation("VoiceMessageFile")
+  voiceMessages RoomMessage[]  @relation("VoiceMessageFile")
   users         User[]
   videos        Video[]
 }
 
-model MusicLibrary {
-  id               String            @id @default(uuid())
-  filename         String?
-  fileUrl          String?
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  deletedAt        DateTime?
-  metaData         Json?
-  fileType         MusicFileType     @default(MUSIC)
-  musicFiles       Music[]           @relation("MusicLibraryFile")
-  musicRecords     MusicRecord[]     @relation("MusicRecordLibraryFile")
-  tempMusicRecords TempMusicRecord[] @relation("TempMusicLibraryFile")
-}
+model RoomUserChat {
+  id                String       @id @default(uuid())
+  userId            String
+  roomSubCategoryId String
+  userChatRole      UserChatRole @default(MEMBER)
+  joinedAt          DateTime     @default(now())
+  muted             Boolean      @default(false)
+  lastSeenAt        DateTime?
 
-model UserChat {
-  id        String    @id @default(uuid())
-  roomId    String
-  userId    String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
-  roomChat  Room      @relation(fields: [roomId], references: [id])
-  user      User      @relation(fields: [userId], references: [id])
+  user            User            @relation(fields: [userId], references: [id])
+  roomSubCategory RoomSubCategory @relation(fields: [roomSubCategoryId], references: [id])
 
-  @@unique([roomId, userId], name: "room_id_user_id")
+  @@unique([userId, roomSubCategoryId])
+  @@index([roomSubCategoryId])
 }
 
 model RoomCategory {
-  id                String            @id @default(uuid())
-  name              String
-  note              String?
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
-  deletedAt         DateTime?
-  color             String
-  imageUrl          String?
-  isAd              Boolean
-  metaData          Json
-  position          Json
-  size              String
-  keyName           String?           @unique
-  membersCount      Int
+  id      String  @id @default(uuid())
+  name    String
+  note    String?
+  keyName String? @unique
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  isAd      Boolean
+  position  Json     @default("{}")
+  colorSet  Json     @default("{}")
+  sizeSet   Json     @default("{}")
+  border    Json     @default("{}")
+  shadow    Json     @default("{}")
+  opacity   Float    @default(1)
+  capacity  Int      @default(1)
+  status    String   @default("active")
+  metaData  Json     @default("{}")
+  tags      String[] @default([])
+  emojiIcon String   @default("")
+
+  artists           Artist[]
   roomSubCategories RoomSubCategory[]
 }
 
 model RoomSubCategory {
-  id             String       @id @default(uuid())
-  name           String
-  note           String?
-  roomCategoryId String
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  deletedAt      DateTime?
-  imageUrl       String?
-  metaData       Json
+  id      String  @id @default(uuid())
+  name    String
+  keyName String? @unique
+  note    String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  isAd      Boolean
+  position  Json     @default("{}")
+  colorSet  Json     @default("{}")
+  sizeSet   Json     @default("{}")
+  border    Json     @default("{}")
+  shadow    Json     @default("{}")
+  opacity   Float    @default(1)
+  capacity  Int      @default(1)
+  status    String   @default("active")
+  metaData  Json     @default("{}")
+  tags      String[] @default([])
+  emojiIcon String   @default("")
+
   ownerId        String?
-  position       Json
-  color          String
-  isAd           Boolean
-  membersCount   Int
-  size           String
-  keyName        String?      @unique
-  artistId       String?
-  rooms          Room[]
-  artist         Artist?      @relation(fields: [artistId], references: [id])
-  roomCategory   RoomCategory @relation(fields: [roomCategoryId], references: [id])
+  roomCategoryId String
+  owner          User?          @relation("RoomSubCategoryOwner", fields: [ownerId], references: [id])
+  roomCategory   RoomCategory   @relation(fields: [roomCategoryId], references: [id])
+  userChatRooms  RoomUserChat[]
+  roomMessages   RoomMessage[]
 }
 
-model Room {
-  id                String           @id @default(uuid())
-  name              String?
-  isPrivate         Boolean          @default(false)
-  ownerId           String?
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
-  isDeleted         Boolean          @default(false)
-  note              String?
-  roomSubCategoryId String?
-  metaData          Json
-  position          Json
-  keyName           String?          @unique
-  messages          Message[]
-  owner             User?            @relation("RoomOwner", fields: [ownerId], references: [id])
-  roomSubCategory   RoomSubCategory? @relation(fields: [roomSubCategoryId], references: [id])
-  members           RoomMember[]
-  userChats         UserChat[]
+model RoomMessage {
+  id       String  @id @default(uuid())
+  authorId String
+  isSystem Boolean @default(false)
+
+  content         Json?
+  voiceMessageId  String?
+  voiceMessage    File?                 @relation("VoiceMessageFile", fields: [voiceMessageId], references: [id])
+  reactions       RoomMessageReaction[] @relation("MessageReactions")
+  parentMessageId String?
+  parentMessage   RoomMessage?          @relation("ThreadedMessages", fields: [parentMessageId], references: [id])
+  replies         RoomMessage[]         @relation("ThreadedMessages")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  author            User            @relation(fields: [authorId], references: [id])
+  roomSubCategory   RoomSubCategory @relation(fields: [roomSubCategoryId], references: [id])
+  roomSubCategoryId String
+
+  @@index([roomSubCategoryId, createdAt])
+  @@index([authorId, createdAt])
 }
 
-model RoomMember {
-  id       String   @id @default(uuid())
-  roomId   String
-  userId   String
-  role     String   @default("member")
-  joinedAt DateTime @default(now())
-  room     Room     @relation(fields: [roomId], references: [id])
-  user     User     @relation(fields: [userId], references: [id])
+model RoomMessageReaction {
+  id        String @id @default(uuid())
+  messageId String
+  userId    String
+  emoji     String
 
-  @@unique([roomId, userId], name: "room_id_user_id")
+  createdAt DateTime @default(now())
+
+  message RoomMessage @relation(fields: [messageId], references: [id], name: "MessageReactions")
+  user    User        @relation(fields: [userId], references: [id])
+
+  @@unique([messageId, userId, emoji])
+  @@index([messageId])
 }
 
-model Message {
-  id             String   @id @default(uuid())
-  roomId         String
-  authorId       String
-  content        String
-  isSystem       Boolean  @default(false)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  voiceMessageId String?
-  author         User     @relation(fields: [authorId], references: [id])
-  room           Room     @relation(fields: [roomId], references: [id])
-  voiceMessage   File?    @relation("VoiceMessageFile", fields: [voiceMessageId], references: [id])
-}
+/**
+ * AI Chat
+ */
 
 model Conversation {
   id            String        @id @default(uuid())
@@ -369,23 +372,23 @@ model UserEmotionPreference {
 }
 
 model Artist {
-  id                String            @id @default(uuid())
-  name              String            @unique
+  id                String           @id @default(uuid())
+  name              String           @unique
   bio               String?
   imageUrl          String?
   nationality       String?
   genre             String?
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
-  isDeleted         Boolean           @default(false)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  isDeleted         Boolean          @default(false)
   instagramUsername String?
   tiktokUsername    String?
   persona           ArtistPersona?
   featuredArtists   FeaturedArtist[]
   mediaPosts        MediaPost[]
-  music             Music[]           @relation("MainArtist")
-  musicAlbum        MusicAlbum[]      @relation("MainArtist")
-  roomSubCategories RoomSubCategory[]
+  music             Music[]          @relation("MainArtist")
+  musicAlbum        MusicAlbum[]     @relation("MainArtist")
+  roomCategories    RoomCategory[]
   userArtists       UserArtist[]
   videos            Video[]
 }
@@ -560,25 +563,39 @@ model FeaturedArtist {
   @@unique([artistId, musicId])
 }
 
+model MusicLibrary {
+  id               String            @id @default(uuid())
+  filename         String?
+  fileUrl          String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  deletedAt        DateTime?
+  metaData         Json?
+  fileType         MusicFileType     @default(MUSIC)
+  musicFiles       Music[]           @relation("MusicLibraryFile")
+  musicRecords     MusicRecord[]     @relation("MusicRecordLibraryFile")
+  tempMusicRecords MusicTempRecord[] @relation("TempMusicLibraryFile")
+}
+
 model Music {
-  id              String           @id @default(uuid())
+  id              String            @id @default(uuid())
   musicArtistId   String?
   title           String
   duration        Float?
   bpm             Int?
-  hasWordTiming   Boolean          @default(false)
+  hasWordTiming   Boolean           @default(false)
   release_date    DateTime
   musicAlbumId    String?
-  createdAt       DateTime         @default(now())
+  createdAt       DateTime          @default(now())
   deletedAt       DateTime?
-  updatedAt       DateTime         @updatedAt
-  isKaraoke       Boolean          @default(false)
+  updatedAt       DateTime          @updatedAt
+  isKaraoke       Boolean           @default(false)
   musicFileId     String
   featuredArtists FeaturedArtist[]
-  musicAlbum      MusicAlbum?      @relation(fields: [musicAlbumId], references: [id])
-  musicArtist     Artist?          @relation("MainArtist", fields: [musicArtistId], references: [id])
-  musicFile       MusicLibrary     @relation("MusicLibraryFile", fields: [musicFileId], references: [id])
-  parts           MusicPart[]
+  musicAlbum      MusicAlbum?       @relation(fields: [musicAlbumId], references: [id])
+  musicArtist     Artist?           @relation("MainArtist", fields: [musicArtistId], references: [id])
+  musicFile       MusicLibrary      @relation("MusicLibraryFile", fields: [musicFileId], references: [id])
+  parts           MusicSingerPart[]
   playlists       MusicPlaylist[]
   records         MusicRecord[]
 
@@ -587,7 +604,7 @@ model Music {
   @@index([musicFileId])
 }
 
-model MusicPart {
+model MusicSingerPart {
   id             String       @id @default(uuid())
   musicId        String?
   recordId       String?
@@ -607,7 +624,7 @@ model MusicPart {
   @@index([musicId])
 }
 
-model StudioMember {
+model MusicStudioMember {
   id             String      @id @default(uuid())
   userId         String
   studioId       String
@@ -625,41 +642,41 @@ model StudioMember {
 }
 
 model MusicStudio {
-  id            String            @id @default(uuid())
+  id            String              @id @default(uuid())
   name          String
   note          String?
   keyName       String?
   ownerId       String
-  createdAt     DateTime          @default(now())
+  createdAt     DateTime            @default(now())
   deletedAt     DateTime?
-  updatedAt     DateTime          @updatedAt
+  updatedAt     DateTime            @updatedAt
   relayInterval Int?
-  relayMode     RelayMode         @default(AUTO)
-  studioType    StudioType        @default(RELAYSINGING)
-  records       MusicRecord[]     @relation("StudioRecords")
-  owner         User              @relation("StudioOwner", fields: [ownerId], references: [id])
-  members       StudioMember[]    @relation("StudioMembers")
-  tempRecords   TempMusicRecord[] @relation("StudioTempRecords")
+  relayMode     RelayMode           @default(AUTO)
+  studioType    StudioType          @default(RELAYSINGING)
+  records       MusicRecord[]       @relation("StudioRecords")
+  owner         User                @relation("StudioOwner", fields: [ownerId], references: [id])
+  members       MusicStudioMember[] @relation("StudioMembers")
+  tempRecords   MusicTempRecord[]   @relation("StudioTempRecords")
 }
 
 model MusicRecord {
-  id             String       @id @default(uuid())
+  id             String            @id @default(uuid())
   musicId        String
   fileId         String
-  createdAt      DateTime     @default(now())
+  createdAt      DateTime          @default(now())
   deletedAt      DateTime?
   studioId       String
-  updatedAt      DateTime     @updatedAt
+  updatedAt      DateTime          @updatedAt
   metaData       Json?
   recordDuration Float?
-  musicParts     MusicPart[]
-  file           MusicLibrary @relation("MusicRecordLibraryFile", fields: [fileId], references: [id])
-  music          Music        @relation(fields: [musicId], references: [id])
-  studio         MusicStudio  @relation("StudioRecords", fields: [studioId], references: [id])
-  singers        User[]       @relation("MusicRecordSingers")
+  musicParts     MusicSingerPart[]
+  file           MusicLibrary      @relation("MusicRecordLibraryFile", fields: [fileId], references: [id])
+  music          Music             @relation(fields: [musicId], references: [id])
+  studio         MusicStudio       @relation("StudioRecords", fields: [studioId], references: [id])
+  singers        User[]            @relation("MusicRecordSingers")
 }
 
-model TempMusicRecord {
+model MusicTempRecord {
   id              String       @id @default(uuid())
   musicId         String
   fileId          String
@@ -728,4 +745,10 @@ enum MusicFileType {
   VOCAL
   INSTRUMENTAL
   OTHER
+}
+
+enum UserChatRole {
+  OWNER
+  ADMIN
+  MEMBER
 }

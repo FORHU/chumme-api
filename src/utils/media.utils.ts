@@ -8,6 +8,8 @@ import axios from "axios";
 import logger from "./logger";
 import { Readable, PassThrough, Writable } from "stream";
 
+import S3Util from "./s3.util";
+
 // Set the ffmpeg and ffprobe paths globally
 if (ffmpegPath) ffmpeg.setFfmpegPath(ffmpegPath);
 if (ffprobePath.path) ffmpeg.setFfprobePath(ffprobePath.path);
@@ -192,7 +194,6 @@ export async function downloadSingle(
       let data: Buffer;
 
       if (isS3Url) {
-        const S3Util = (await import("./s3.util")).default;
         data = await S3Util.getFile(cleanUrl);
       } else {
         const response = await axios.get(cleanUrl, {

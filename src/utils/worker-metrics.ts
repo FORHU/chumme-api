@@ -21,7 +21,7 @@ interface JobMetric {
   timestamp: number;
 }
 
-class WorkerMetrics {
+export class WorkerMetrics {
   private jobsProcessed = 0;
   private jobsFailed = 0;
   private jobsTimedOut = 0;
@@ -36,7 +36,6 @@ class WorkerMetrics {
   recordJob(metric: Omit<JobMetric, "timestamp">) {
     const entry: JobMetric = { ...metric, timestamp: Date.now() };
     this.recentJobs.push(entry);
-
     if (metric.status === "success") {
       this.jobsProcessed++;
       this.totalDurationMs += metric.durationMs;
@@ -46,7 +45,6 @@ class WorkerMetrics {
     } else {
       this.jobsFailed++;
     }
-
     // Keep only last 100 entries in memory
     if (this.recentJobs.length > 100) {
       this.recentJobs = this.recentJobs.slice(-100);
@@ -59,7 +57,6 @@ class WorkerMetrics {
   getSnapshot() {
     const memUsage = process.memoryUsage();
     const loadAvg = os.loadavg();
-
     return {
       uptime: Math.round((Date.now() - this.startedAt) / 1000),
       jobs: {

@@ -16,6 +16,9 @@ import http from "http";
 import { connectToPrisma } from "./utils/prisma";
 import logger from "./utils/logger";
 import { workerMetrics } from "./utils/worker-metrics";
+import { rabbitMQService } from "./utils/rabbitmq";
+import { AudioMergeWorker } from "./listeners/audio-merge.listener";
+import { MediaProcessingWorker } from "./listeners/media-processing.listener";
 
 const WORKER_PORT = Number(process.env.WORKER_HEALTH_PORT || 8080);
 const cpuCount = os.cpus().length;
@@ -51,7 +54,7 @@ async function main() {
   // CPU safety: warn if running more workers than cores
   if (cpuCount <= 1) {
     logger.warn(
-      `[Worker] Only ${cpuCount} CPU core(s) available. Ensure worker replicas ≤ ${Math.max(cpuCount - 1, 1)}`,
+      `[Worker] Only ${cpuCount} CPU core(s) available. Ensure worker replicas <= ${Math.max(cpuCount - 1, 1)}`,
     );
   }
 
@@ -60,7 +63,6 @@ async function main() {
 
   // 2. Connect to RabbitMQ
   try {
-    const { rabbitMQService } = await import("./utils/rabbitmq");
     await rabbitMQService.connect();
     logger.info("[Worker] RabbitMQ connected");
   } catch (error) {
@@ -70,9 +72,6 @@ async function main() {
 
   // 3. Start Audio Merge Worker
   try {
-    const { AudioMergeWorker } = await import(
-      "./listeners/audio-merge.listener"
-    );
     const audioWorker = new AudioMergeWorker();
     await audioWorker.start();
     logger.info("[Worker] AudioMergeWorker started");
@@ -83,9 +82,6 @@ async function main() {
 
   // 4. Start Media Processing Worker
   try {
-    const { MediaProcessingWorker } = await import(
-      "./listeners/media-processing.listener"
-    );
     const mediaWorker = new MediaProcessingWorker();
     await mediaWorker.start();
     logger.info("[Worker] MediaProcessingWorker started");

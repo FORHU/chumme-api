@@ -19,7 +19,7 @@ app.set("trust proxy", 1);
 
 app.use(
   cors({
-    origin: "*",
+    origin: true,
     credentials: true,
   }),
 );
@@ -45,7 +45,10 @@ app.get("/health", (_, res) => {
 
 // Use router for routing
 app.use("/api", router);
-app.use(errorHandler);
+app.use((err: any, req: any, res: any, next: any) => {
+  console.error("[ErrorHandler]", err);
+  errorHandler(err, req, res, next);
+});
 
 const server = createServer(app);
 
@@ -103,7 +106,10 @@ connectToPrisma()
 
     // Workers: In production, use `npm run start:worker` (separate process).
     // For local dev convenience, set ENABLE_WORKERS=true to run in-process.
-    if (process.env.ENABLE_WORKERS === "true") {
+    if (
+      process.env.ENABLE_WORKERS === "true" ||
+      process.env.START_WORKERS !== "false"
+    ) {
       try {
         const { AudioMergeWorker } = await import(
           "./listeners/audio-merge.listener"
@@ -115,6 +121,7 @@ connectToPrisma()
         console.error("Failed to initialize Audio Merge worker:", error);
       }
 
+      // Media Processing Worker (Video/HLS)
       try {
         const { MediaProcessingWorker } = await import(
           "./listeners/media-processing.listener"

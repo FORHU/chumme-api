@@ -17,7 +17,7 @@ import {
 import S3Util from "../utils/s3.util";
 import MusicLibraryRepo from "../repositories/music-library.repository";
 import MusicRecordRepo from "../repositories/music-record.repository";
-import TempMusicRecordRepo from "../repositories/temp-music-record.repository";
+import MusicTempRecordRepo from "../repositories/music-temp-record.repository";
 import { prisma } from "../utils/prisma";
 
 // ---------------------------------------------------------------------------
@@ -260,7 +260,6 @@ export class AudioMergeWorker {
           `[AudioMergeWorker] global.io is undefined. Socket events will not emit.`,
         );
       }
-
       if (job.jobType === "preview") {
         await this.handlePreviewUpload(job, finalAudioPath, mergeTime, io);
       } else if (job.jobType === "save") {
@@ -288,11 +287,11 @@ export class AudioMergeWorker {
   ): Promise<void> {
     // Delete old preview(s) — idempotent
     const previewPrefix = `previews/preview_${job.studioId}_${job.musicId}`;
-    try {
-      await S3Util.deleteByPrefix(previewPrefix);
-    } catch (e) {
-      logger.warn(`[AudioMergeWorker] Failed to cleanup old previews: ${e}`);
-    }
+    // try {
+    //   await S3Util.deleteByPrefix(previewPrefix);
+    // } catch (e) {
+    //   logger.warn(`[AudioMergeWorker] Failed to cleanup old previews: ${e}`);
+    // }
 
     // Deterministic key (no timestamp for idempotency on retry)
     const previewKey = `previews/preview_${job.studioId}_${job.musicId}.mp3`;
@@ -370,7 +369,7 @@ export class AudioMergeWorker {
 
     // Create music parts if performance mapping provided
     if (job.performanceMapping && job.performanceMapping.length > 0) {
-      await prisma.musicPart.createMany({
+      await prisma.musicSingerPart.createMany({
         data: job.performanceMapping.map((p, index) => ({
           recordId: musicRecord.id,
           startLine: p.startLine,
@@ -384,24 +383,25 @@ export class AudioMergeWorker {
 
     // Cleanup temp records + S3 chunks
     const lookupMusicId = job.metaData?.lookupMusicId || job.musicId;
-    await TempMusicRecordRepo.deleteByMusicIdAndStudioId(
-      lookupMusicId,
-      job.studioId,
-    );
 
-    for (const url of job.audioUrls) {
-      try {
-        await S3Util.deleteFile(url);
-      } catch (e) {
-        logger.warn(`[AudioMergeWorker] Failed to delete chunk: ${url}`);
-      }
-    }
+    // await MusicTempRecordRepo.deleteByMusicIdAndStudioId(
+    //   lookupMusicId,
+    //   job.studioId,
+    // );
+
+    // for (const url of job.audioUrls) {
+    //   try {
+    //     await S3Util.deleteFile(url);
+    //   } catch (e) {
+    //     logger.warn(`[AudioMergeWorker] Failed to delete chunk: ${url}`);
+    //   }
+    // }
 
     // Delete preview(s) if any exist
-    try {
-      const previewPrefix = `previews/preview_${job.studioId}_${job.musicId}`;
-      await S3Util.deleteByPrefix(previewPrefix);
-    } catch (_) {}
+    // try {
+    //   const previewPrefix = `previews/preview_${job.studioId}_${job.musicId}`;
+    //   await S3Util.deleteByPrefix(previewPrefix);
+    // } catch (_) {}
 
     if (io) {
       io.to(job.studioId).emit("recording_saved", {
