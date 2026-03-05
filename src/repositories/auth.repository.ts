@@ -36,7 +36,7 @@ export default class AuthRepo {
         username: true,
         name: true,
         role: true,
-        isEmailVerified: false,
+        isEmailVerified: true,
         onboardingCompleted: true,
         createdAt: true,
         updatedAt: true,
