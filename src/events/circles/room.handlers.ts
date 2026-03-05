@@ -1,6 +1,6 @@
 import { Server } from "socket.io";
 import RoomSvc from "../../services/room.service";
-import UserChatSvc from "../../services/user-chat.service";
+import RoomUserChatSvc from "../../services/room-user-chat.service";
 import MessageSvc from "../../services/message.service";
 import CircleCacheSvc from "../../services/circle-cache.service";
 import { PresenceBatcher } from "../../utils/presence-batcher";
@@ -31,13 +31,13 @@ export const registerRoomHandlers = (
         });
       }
 
-      // Persistent Membership (UserChat)
-      const existing = await UserChatSvc.findUserInRoom(
+      // Persistent Membership (RoomUserChat)
+      const isMember = await RoomUserChatSvc.checkMembership(
         socket.user.id,
         room_id,
       );
-      if (existing?.length === 0) {
-        await UserChatSvc.createUserChat(socket.user.id, room_id, "member");
+      if (!isMember) {
+        await RoomUserChatSvc.joinRoom(socket.user.id, room_id, "MEMBER");
         console.log(
           `[Circles] Persistent membership created for ${socket.user.id} in ${room_id}`,
         );
@@ -73,33 +73,27 @@ export const registerRoomHandlers = (
    */
   socket.on("send_message_to_room", async (data: any) => {
     try {
-      const { room_id, message, roomName, voiceMessageId } = data;
+      const { room_id, message, roomName, voiceMessageId, parentMessageId } =
+        data;
       if (!room_id || !message || message.trim() === "") {
         return socket.emit("not_allowed", {
           message: "Missing required fields",
         });
       }
 
-      // Check membership (Persistent)
-      const isMember = await UserChatSvc.findUserInRoom(
-        socket.user.id,
-        room_id,
-      );
-      if (!isMember?.length) {
-        return socket.emit("not_allowed", {
-          message: "You are not a member of this room.",
-        });
-      }
-
-      const newMessage = await MessageSvc.createMessage(
-        room_id,
-        socket.user.id,
-        message,
+      // 1. Send message via service (it will check membership)
+      const newMessage = await MessageSvc.createMessage({
+        roomSubCategoryId: room_id,
+        userId: socket.user.id,
+        content: message,
         voiceMessageId,
-      );
+        parentMessageId,
+      });
 
+      // 2. Map message for frontend
       const mappedMessage = await RoomSvc.mapMessageWithSignedUrl(newMessage);
 
+      // 3. Broadcast
       io.to(room_id).emit("send_message_to_room", {
         ...mappedMessage,
         room_id,
@@ -108,8 +102,11 @@ export const registerRoomHandlers = (
       console.log(
         `[Circles] 💬 ${socket.user.name} in ${roomName}: ${message.substring(0, 30)}${message.length > 30 ? "..." : ""}`,
       );
-    } catch (err) {
+    } catch (err: any) {
       console.error("[Circles] Send message error:", err);
+      socket.emit("error", {
+        message: err.message || "Failed to send message",
+      });
     }
   });
 

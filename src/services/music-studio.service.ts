@@ -5,7 +5,7 @@ import fs from "fs";
 import { StudioRole, StudioType, RelayMode } from "@prisma/client";
 import MusicStudioRepo from "../repositories/music-studio.repository";
 import MusicRecordRepo from "../repositories/music-record.repository";
-import TempMusicRecordRepo from "../repositories/temp-music-record.repository";
+import MusicTempRecordRepo from "../repositories/music-temp-record.repository";
 import MusicRepo from "../repositories/music.repository";
 import MusicLibraryRepo from "../repositories/music-library.repository";
 import MusicStudioCacheSvc from "./music-studio-cache.service";
@@ -100,7 +100,7 @@ export default class MusicStudioSvc {
     // We only clear for the specific musicId so we don't wipe other songs' draft data
     if (musicId) {
       try {
-        await TempMusicRecordRepo.deleteByMusicIdAndStudioId(musicId, studioId);
+        await MusicTempRecordRepo.deleteByMusicIdAndStudioId(musicId, studioId);
       } catch (e) {
         logger.warn(
           `[MusicStudio] Failed to clear temp records for music ${musicId}: ${e}`,
@@ -109,7 +109,7 @@ export default class MusicStudioSvc {
     } else {
       // Fallback: clear all if musicId not provided (legacy behavior)
       try {
-        await TempMusicRecordRepo.deleteByStudioId(studioId);
+        await MusicTempRecordRepo.deleteByStudioId(studioId);
       } catch (e) {
         logger.warn(`[MusicStudio] Failed to clear temp records: ${e}`);
       }
@@ -475,7 +475,7 @@ export default class MusicStudioSvc {
     try {
       // 1. Fetch temp records for this music + studio combo
       // We use data.musicId (input ID) to find chunks, as chunks are saved with what the client sends
-      const tempRecords = await TempMusicRecordRepo.findByMusicIdAndStudioId(
+      const tempRecords = await MusicTempRecordRepo.findByMusicIdAndStudioId(
         data.musicId,
         data.studioId,
       );
@@ -492,10 +492,10 @@ export default class MusicStudioSvc {
 
       // 3. Collect S3 URLs
       const audioUrls = filteredRecords
-        .map((r) => r.file?.fileUrl)
+        .map((r: any) => r.file?.fileUrl)
         .filter(Boolean) as string[];
 
-      const offsets = filteredRecords.map((r) => r.startTimeOffset || 0);
+      const offsets = filteredRecords.map((r: any) => r.startTimeOffset || 0);
 
       if (!audioUrls.length) {
         throw new Error(
@@ -576,7 +576,7 @@ export default class MusicStudioSvc {
       await this.getBackingTrackInfo(data.musicId);
 
     try {
-      const tempRecords = await TempMusicRecordRepo.findByMusicIdAndStudioId(
+      const tempRecords = await MusicTempRecordRepo.findByMusicIdAndStudioId(
         data.musicId,
         data.studioId,
       );
@@ -591,10 +591,10 @@ export default class MusicStudioSvc {
 
       // 3. Collect S3 URLs and offsets
       const audioUrls = filteredRecords
-        .map((r) => r.file?.fileUrl)
+        .map((r: any) => r.file?.fileUrl)
         .filter(Boolean) as string[];
 
-      const offsets = filteredRecords.map((r) => r.startTimeOffset || 0);
+      const offsets = filteredRecords.map((r: any) => r.startTimeOffset || 0);
 
       if (!audioUrls.length) {
         throw new Error("No audio files found in temp chunks");
@@ -604,7 +604,7 @@ export default class MusicStudioSvc {
       const singerIds = [
         ...new Set([
           ...filteredRecords
-            .map((r) => (r.metaData as any)?.userId)
+            .map((r: any) => (r.metaData as any)?.userId)
             .filter(Boolean),
           ...activeMembers
             .filter(
@@ -700,8 +700,8 @@ export default class MusicStudioSvc {
     await MusicStudioCacheSvc.clearStudioSession(studioId);
 
     // 2. Fetch temporary records to clean up S3
-    const tempRecords = await TempMusicRecordRepo.findByStudioId(studioId);
-    const musicIds = new Set(tempRecords.map((r) => r.musicId));
+    const tempRecords = await MusicTempRecordRepo.findByStudioId(studioId);
+    const musicIds = new Set(tempRecords.map((r: any) => r.musicId));
 
     // 3. Delete raw chunks from S3
     for (const record of tempRecords) {
@@ -728,7 +728,7 @@ export default class MusicStudioSvc {
     }
 
     // 5. Delete temporary records from DB
-    await TempMusicRecordRepo.deleteByStudioId(studioId);
+    await MusicTempRecordRepo.deleteByStudioId(studioId);
 
     // 6. Deactivate all members in the DB
     await MusicStudioRepo.deactivateAllMembers(studioId);

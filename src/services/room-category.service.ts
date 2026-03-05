@@ -7,13 +7,18 @@ export default class RoomCategorySvc {
    */
   static async createCategory(data: {
     name: string;
-    membersCount: number;
-    color: string;
-    size: string;
-    position: any;
     isAd: boolean;
-    metaData: any;
-    imageUrl?: string;
+    position?: any;
+    colorSet?: any;
+    sizeSet?: any;
+    border?: any;
+    shadow?: any;
+    opacity?: number;
+    capacity?: number;
+    status?: string;
+    metaData?: any;
+    tags?: string[];
+    emojiIcon?: string;
     note?: string;
     keyName?: string;
   }) {
@@ -58,13 +63,18 @@ export default class RoomCategorySvc {
     id: string,
     data: {
       name?: string;
-      membersCount?: number;
-      color?: string;
-      size?: string;
-      position?: any;
       isAd?: boolean;
+      position?: any;
+      colorSet?: any;
+      sizeSet?: any;
+      border?: any;
+      shadow?: any;
+      opacity?: number;
+      capacity?: number;
+      status?: string;
       metaData?: any;
-      imageUrl?: string;
+      tags?: string[];
+      emojiIcon?: string;
       note?: string;
       keyName?: string;
     },

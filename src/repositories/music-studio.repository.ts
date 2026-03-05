@@ -201,7 +201,7 @@ export default class MusicStudioRepo {
     role: StudioRole = StudioRole.LISTENER,
   ) {
     // Check if membership already exists
-    const existing = await prisma.studioMember.findUnique({
+    const existing = await prisma.musicStudioMember.findUnique({
       where: {
         userId_studioId: { userId, studioId },
       },
@@ -209,7 +209,7 @@ export default class MusicStudioRepo {
 
     if (existing) {
       // Reactivate if inactive
-      return prisma.studioMember.update({
+      return prisma.musicStudioMember.update({
         where: { id: existing.id },
         data: {
           isActive: true,
@@ -221,7 +221,7 @@ export default class MusicStudioRepo {
     }
 
     // Create new membership
-    return prisma.studioMember.create({
+    return prisma.musicStudioMember.create({
       data: {
         userId,
         studioId,
@@ -238,7 +238,7 @@ export default class MusicStudioRepo {
    * Remove a user from a studio (soft remove - set isActive = false)
    */
   static async removeUser(studioId: string, userId: string) {
-    return prisma.studioMember.update({
+    return prisma.musicStudioMember.update({
       where: {
         userId_studioId: { userId, studioId },
       },
@@ -253,7 +253,7 @@ export default class MusicStudioRepo {
    * Deactivate all members in a studio
    */
   static async deactivateAllMembers(studioId: string) {
-    return prisma.studioMember.updateMany({
+    return prisma.musicStudioMember.updateMany({
       where: {
         studioId,
         isActive: true,
@@ -269,7 +269,7 @@ export default class MusicStudioRepo {
    * Check if user is actively in studio
    */
   static async isUserInStudio(studioId: string, userId: string) {
-    const member = await prisma.studioMember.findFirst({
+    const member = await prisma.musicStudioMember.findFirst({
       where: {
         studioId,
         userId,
@@ -283,7 +283,7 @@ export default class MusicStudioRepo {
    * Get a user's membership in a studio
    */
   static async getMembership(studioId: string, userId: string) {
-    return prisma.studioMember.findUnique({
+    return prisma.musicStudioMember.findUnique({
       where: {
         userId_studioId: { userId, studioId },
       },
@@ -299,7 +299,7 @@ export default class MusicStudioRepo {
     userId: string,
     vocalRoleIndex: number | null,
   ) {
-    return prisma.studioMember.update({
+    return prisma.musicStudioMember.update({
       where: {
         userId_studioId: { userId, studioId },
       },
@@ -316,7 +316,7 @@ export default class MusicStudioRepo {
     userId: string,
     role: StudioRole,
   ) {
-    return prisma.studioMember.update({
+    return prisma.musicStudioMember.update({
       where: {
         userId_studioId: { userId, studioId },
       },
@@ -333,7 +333,7 @@ export default class MusicStudioRepo {
    * Update all active members' roles in a studio (e.g., bulk upgrade to SINGER)
    */
   static async updateAllMembersRole(studioId: string, role: StudioRole) {
-    await prisma.studioMember.updateMany({
+    await prisma.musicStudioMember.updateMany({
       where: {
         studioId,
         isActive: true,
@@ -355,7 +355,7 @@ export default class MusicStudioRepo {
   static async update(id: string, data: Partial<CreateMusicStudioData>) {
     return prisma.musicStudio.update({
       where: { id },
-      data,
+      data: data as any,
       include: {
         owner: true,
         members: {
@@ -381,7 +381,7 @@ export default class MusicStudioRepo {
    * Get active members in a studio
    */
   static async getStudioUsers(studioId: string) {
-    const members = await prisma.studioMember.findMany({
+    const members = await prisma.musicStudioMember.findMany({
       where: {
         studioId,
         isActive: true,
@@ -411,7 +411,7 @@ export default class MusicStudioRepo {
    * Get all singers in a studio (for recording credits)
    */
   static async getStudioSingers(studioId: string) {
-    const members = await prisma.studioMember.findMany({
+    const members = await prisma.musicStudioMember.findMany({
       where: {
         studioId,
         isActive: true,

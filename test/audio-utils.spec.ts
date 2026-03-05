@@ -6,11 +6,13 @@ import fs from "fs";
 
 // Real remote audio files for testing (Crowdsinging simulation)
 const VOCALS = [
-  "https://d1lq91nbxprxl1.cloudfront.net/recordings/1770718991824-gu9lxxbu-recording-32594B62-17C4-4C3E-9174-C8C96820F542.m4a",
-  "https://d1lq91nbxprxl1.cloudfront.net/recordings/1770718991824-gu9lxxbu-recording-32594B62-17C4-4C3E-9174-C8C96820F542.m4a", // Reusing for demo
+  "https://d1lq91nbxprxl1.cloudfront.net/uploads/1772503334142-c7f9b7d15dc1c695.mp3",
+  "https://d1lq91nbxprxl1.cloudfront.net/uploads/1772438793646-53cdd8541c12f668.mp3",
+  "https://d1lq91nbxprxl1.cloudfront.net/uploads/1772438247934-c1bfe480b6be6f10.mp3",
+  "https://d1lq91nbxprxl1.cloudfront.net/uploads/1772173170538-0d574005d0be05c2.mp3",
 ];
 const BACKING_TRACK =
-  "https://d1lq91nbxprxl1.cloudfront.net/recordings/1770718423388-nrnmzkah-recording-91255E7E-28C1-4DFE-8D05-570C82101C4B.m4a";
+  "https://d1lq91nbxprxl1.cloudfront.net/uploads/1771475412374-410bd4cc27f3cbfe.mp3";
 
 describe("Audio Mix Test", function () {
   this.timeout(120000); // 2 mins for multiple downloads + mixing
