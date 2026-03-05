@@ -1,13 +1,4 @@
 import { PrismaClient, RoomCategory } from "@prisma/client";
-import { createHash } from "crypto";
-
-/**
- * Helper: Generate deterministic UUID from a string
- */
-function generateId(base: string): string {
-  const hash = createHash("md5").update(base).digest("hex");
-  return `${hash.slice(0, 8)}-${hash.slice(8, 12)}-${hash.slice(12, 16)}-${hash.slice(16, 20)}-${hash.slice(20, 32)}`;
-}
 
 /**
  * Helper: Generate circular positions
@@ -66,7 +57,7 @@ export async function seedRoomSubCategories(
   for (const category of categories) {
     // 1. Prepare 10 Items: 1 Lobby + 9 Topics
     const items = [
-      { name: "Chumme Lobby", type: "lobby", isCenterpiece: true },
+      { name: "Chumme Lobby", type: "lobby", isCenterpiece: false },
       ...topicsList
         .slice(0, 9)
         .map((t) => ({ name: t, type: "topic", isCenterpiece: false })),
@@ -78,21 +69,28 @@ export async function seedRoomSubCategories(
       items.length,
     );
 
+    // Get existing subcategories for this category to avoid duplicates
+    const existingSubCats = await prisma.roomSubCategory.findMany({
+      where: {
+        roomCategoryId: category.id,
+        deletedAt: null,
+      },
+      select: { name: true },
+    });
+    const existingNames = new Set(existingSubCats.map((s) => s.name));
+
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
+
+      // Skip if subcategory with same name already exists in this category
+      if (existingNames.has(item.name)) {
+        continue;
+      }
+
       const position = item.type === "lobby" ? { x: 50, y: 50 } : positions[i];
 
-      // Deterministic ID based on category and original name
-      // This ensures we always target the same record for the same name in this category
-      const deterministicId = generateId(
-        `${category.id}-${item.name}-${item.type}`,
-      );
-
-      await prisma.roomSubCategory.upsert({
-        where: { id: deterministicId },
-        update: {},
-        create: {
-          id: deterministicId,
+      await prisma.roomSubCategory.create({
+        data: {
           name: item.name,
           roomCategoryId: category.id,
           position,
