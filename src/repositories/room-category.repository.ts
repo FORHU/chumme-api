@@ -2,58 +2,6 @@ import { prisma } from "../utils/prisma";
 
 export default class RoomCategoryRepo {
   /**
-   * Resolve category shortcut IDs (like 'usa', 'global') to their real UUIDs
-   */
-  static async resolveCategoryShortcut(id: string): Promise<string | null> {
-    const specialMappings: Record<string, string> = {
-      "chumme-main": "Chumme World",
-      global: "Global",
-      usa: "United States",
-      uk: "United Kingdom",
-      japan: "Japan",
-      south_korea: "South Korea",
-      canada: "Canada",
-      australia: "Australia",
-      brazil: "Brazil",
-      indonesia: "Indonesia",
-      thailand: "Thailand",
-      philippines: "Philippines",
-      malaysia: "Malaysia",
-      vietnam: "Vietnam",
-      mexico: "Mexico",
-      taiwan: "Taiwan",
-      singapore: "Singapore",
-      "global-connect-shortcut": "Global",
-      "chumme-lobby-shortcut": "Global",
-      "chumme-room-shortcut": "Global",
-    };
-
-    if (specialMappings[id]) {
-      const categoryName = specialMappings[id];
-      const category = await prisma.roomCategory.findFirst({
-        where: {
-          OR: [
-            { name: { equals: categoryName, mode: "insensitive" } },
-            { keyName: { equals: categoryName, mode: "insensitive" } },
-          ],
-          deletedAt: null,
-        },
-      });
-      return category?.id || null;
-    }
-
-    // Try finding by ID or KeyName directly if it's not a hardcoded shortcut
-    const category = await prisma.roomCategory.findFirst({
-      where: {
-        OR: [{ id: id }, { keyName: id }],
-        deletedAt: null,
-      },
-    });
-
-    return category?.id || id;
-  }
-
-  /**
    * Create a new room category
    */
   static async createCategory(data: {
@@ -106,10 +54,6 @@ export default class RoomCategoryRepo {
     artistId?: string;
     keyName?: string;
   }) {
-    const realCategoryId = await RoomCategoryRepo.resolveCategoryShortcut(
-      data.roomCategoryId,
-    );
-
     const { keyName, note, ...rest } = data;
 
     return prisma.roomSubCategory.create({
@@ -117,7 +61,7 @@ export default class RoomCategoryRepo {
         ...rest,
         keyName: keyName || null,
         note: note || null,
-        roomCategoryId: realCategoryId || data.roomCategoryId,
+        roomCategoryId: data.roomCategoryId,
       },
       include: {
         roomCategory: {
@@ -173,17 +117,19 @@ export default class RoomCategoryRepo {
   }
 
   static async getAllCategory() {
-    return prisma.roomCategory.findMany({});
+    return prisma.roomCategory.findMany({
+      where: { deletedAt: null },
+    });
   }
 
   /**
    * Get category by ID with subcategories
    */
   static async getCategoryById(id: string) {
-    const realId = (await this.resolveCategoryShortcut(id)) || id;
-    return prisma.roomCategory.findUnique({
+    return prisma.roomCategory.findFirst({
       where: {
-        id: realId,
+        id: id,
+        deletedAt: null,
       },
       include: {
         artists: {
@@ -245,11 +191,10 @@ export default class RoomCategoryRepo {
       keyName?: string;
     },
   ) {
-    const realId = (await this.resolveCategoryShortcut(id)) || id;
     const { keyName, note, ...rest } = data;
     return prisma.roomCategory.update({
       where: {
-        id: realId,
+        id: id,
       },
       data: {
         ...rest,
@@ -264,10 +209,9 @@ export default class RoomCategoryRepo {
    * Soft delete category
    */
   static async softDeleteCategory(id: string) {
-    const realId = (await this.resolveCategoryShortcut(id)) || id;
     return prisma.roomCategory.update({
       where: {
-        id: realId,
+        id: id,
       },
       data: {
         deletedAt: new Date(),
@@ -308,11 +252,9 @@ export default class RoomCategoryRepo {
    * Get all rooms (subcategories) in a category
    */
   static async getRoomsInCategory(categoryId: string) {
-    const realId =
-      (await this.resolveCategoryShortcut(categoryId)) || categoryId;
     return prisma.roomSubCategory.findMany({
       where: {
-        roomCategoryId: realId,
+        roomCategoryId: categoryId,
         deletedAt: null,
       },
       include: {

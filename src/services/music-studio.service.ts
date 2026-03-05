@@ -165,6 +165,36 @@ export default class MusicStudioSvc {
       source: clientTimestamp ? "client" : "server",
     });
 
+    // HARVEST: Save session summary for testing
+    try {
+      const musicId = await MusicStudioCacheSvc.getActiveSong(studioId);
+      const chunks = await MusicTempRecordRepo.findByStudioId(studioId);
+      const harvestFile = path.join(process.cwd(), "session_harvest.json");
+
+      const sessionEntry = {
+        timestamp,
+        studioId,
+        musicId,
+        durationMs: duration,
+        chunks: chunks.map((c: any) => ({
+          userId: (c.metaData as any)?.userId,
+          cdn_url: c.file?.fileUrl,
+          offset: c.startTimeOffset,
+          duration: c.recordDuration,
+        })),
+      };
+
+      let history = [];
+      if (fs.existsSync(harvestFile)) {
+        history = JSON.parse(fs.readFileSync(harvestFile, "utf-8"));
+      }
+      history.push(sessionEntry);
+      fs.writeFileSync(harvestFile, JSON.stringify(history, null, 2));
+      logger.info(`[MusicStudio] Session harvested to ${harvestFile}`);
+    } catch (e) {
+      logger.warn(`[MusicStudio] Session harvesting failed: ${e}`);
+    }
+
     return {
       message: "Recording stopped",
       timestamp,
@@ -703,18 +733,16 @@ export default class MusicStudioSvc {
     const tempRecords = await MusicTempRecordRepo.findByStudioId(studioId);
     const musicIds = new Set(tempRecords.map((r: any) => r.musicId));
 
-    // 3. Delete raw chunks from S3
-    for (const record of tempRecords) {
-      if (record.file?.fileUrl) {
-        try {
-          await S3Util.deleteFile(record.file.fileUrl);
-        } catch (e) {
-          logger.warn(
-            `[MusicStudio] Failed to delete chunk on studio close: ${record.file.fileUrl}`,
-          );
-        }
-      }
-    }
+    // 3. Delete raw chunks from S3 (DISABLED to ensure records persist on CDN)
+    // for (const record of tempRecords) {
+    //   if (record.file?.fileUrl) {
+    //     try {
+    //       await S3Util.deleteFile(record.file.fileUrl);
+    //     } catch (e) {
+    //       logger.warn(`[MusicStudio] Failed to delete S3 chunk: ${e}`);
+    //     }
+    //   }
+    // }
 
     // 4. Delete preview files for each musicId from S3
     for (const musicId of musicIds) {

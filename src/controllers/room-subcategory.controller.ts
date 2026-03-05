@@ -53,33 +53,7 @@ export default class RoomSubCategoryCtrl {
 
     if (categoryId) {
       const schema = Joi.object({
-        categoryId: Joi.alternatives()
-          .try(
-            Joi.string().uuid(),
-            Joi.valid(
-              "chumme-main",
-              "global",
-              "usa",
-              "uk",
-              "japan",
-              "south_korea",
-              "canada",
-              "australia",
-              "brazil",
-              "indonesia",
-              "thailand",
-              "philippines",
-              "malaysia",
-              "vietnam",
-              "mexico",
-              "taiwan",
-              "singapore",
-              "global-connect-shortcut",
-              "chumme-lobby-shortcut",
-              "chumme-room-shortcut",
-            ),
-          )
-          .required(),
+        categoryId: Joi.string().uuid().required(),
       });
 
       const { error } = schema.validate({ categoryId });

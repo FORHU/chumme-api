@@ -4,7 +4,7 @@ import authRoute from "./auth.route";
 import chatRoutes from "./chat.route";
 import userRoute from "./user.route";
 import postRoute from "./post.route";
-import roomRoute from "./room.route";
+
 import roomCategoryRoute from "./room-category.route";
 import roomSubCategoryRoute from "./room-subcategory.route";
 import onboardingRoute from "./onboarding.route";
@@ -18,7 +18,7 @@ import feedRoute from "./feed.route";
 import bookmarkRoute from "./bookmark.route";
 import conversationRoute from "./conversation.route";
 import RoomUserChatRoute from "./room-user-chat.route";
-import messagesRoute from "./messages.route";
+import roomMessageRoute from "./room-message.route";
 import chatWonderRoute from "./chat-wonder.route";
 import musicAlbumRoute from "./music-album.route";
 import musicRoute from "./music.route";
@@ -43,7 +43,7 @@ router.use("/v1/chat", chatRoutes);
 router.use("/v1/users", userRoute);
 router.use("/v1/posts", postRoute);
 router.use("/v1/user-chat", RoomUserChatRoute);
-router.use("/v1/rooms", roomRoute);
+
 router.use("/v1/room-categories", roomCategoryRoute);
 router.use("/v1/room-subcategories", roomSubCategoryRoute);
 router.use("/v1/onboarding", onboardingRoute);
@@ -55,7 +55,7 @@ router.use("/v1/videos", videoRoute);
 router.use("/v1/feed", feedRoute);
 router.use("/v1/conversations", conversationRoute);
 router.use("/v1/bookmark", bookmarkRoute);
-router.use("/v1/messages", messagesRoute);
+router.use("/v1/room-messages", roomMessageRoute);
 router.use("/v1", healthRoute);
 
 router.use("/v1/chat-wonder", chatWonderRoute);

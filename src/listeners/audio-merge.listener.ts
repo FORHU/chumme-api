@@ -264,7 +264,7 @@ export class AudioMergeWorker {
             backing: job.backingTrackUrl,
             vocals: job.audioUrls,
             offsets: job.offsets || [],
-            result: mergedUrl,
+            cdn_url: mergedUrl,
           };
           let currentData = [];
           if (fs.existsSync(harvestFile)) {
@@ -287,19 +287,28 @@ export class AudioMergeWorker {
           job.studioId,
         );
 
-        for (const url of job.audioUrls) {
-          try {
-            await S3Util.deleteFile(url);
-          } catch (e) {
-            logger.warn(`[AudioMergeWorker] Failed to delete chunk: ${url}`);
-          }
-        }
-
-        // Delete preview(s) if any exist (handles timestamped keys)
         try {
+          // 4. Delete temporary chunks from S3
+          for (const url of job.audioUrls) {
+            try {
+              await S3Util.deleteFile(url);
+            } catch (e) {
+              logger.warn(
+                `[AudioMergeWorker] Failed to delete chunk ${url}: ${e}`,
+              );
+            }
+          }
+
+          // 5. Delete preview files for this studio+music session
           const previewPrefix = `previews/preview_${job.studioId}_${job.musicId}`;
-          await S3Util.deleteByPrefix(previewPrefix);
-        } catch (_) {}
+          try {
+            await S3Util.deleteByPrefix(previewPrefix);
+          } catch (e) {
+            // Preview might not exist, that's okay
+          }
+        } catch (e) {
+          logger.warn(`[AudioMergeWorker] Failed to cleanup S3 files: ${e}`);
+        }
 
         // Broadcast recording_saved to studio
         if (io) {

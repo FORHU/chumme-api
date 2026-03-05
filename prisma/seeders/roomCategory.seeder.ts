@@ -175,7 +175,7 @@ export async function seedRoomCategories(prisma: PrismaClient) {
   ];
 
   for (const country of countriesData) {
-    const category = await prisma.roomCategory.upsert({
+    await prisma.roomCategory.upsert({
       where: { id: country.id },
       update: {},
       create: {
@@ -194,37 +194,6 @@ export async function seedRoomCategories(prisma: PrismaClient) {
         tags: country.tags,
         emojiIcon: country.emojiIcon,
         metaData: {},
-      },
-    });
-
-    // 3. Ensure a 'Lobby' subcategory exists for each country for navigation
-    // This provides a backend anchor for the frontend-injected 'Chumme Lobby' hub.
-    const lobbyId = `lobby-${country.id}`.slice(0, 70); // Match frontend ID logic
-    await prisma.roomSubCategory.upsert({
-      where: { id: lobbyId },
-      update: {},
-      create: {
-        id: lobbyId,
-        name: "Chumme Lobby",
-        roomCategoryId: category.id,
-        ownerId: ownerId,
-        position: { x: 50, y: 50 },
-        isAd: false,
-        colorSet: {
-          primary: "#9d30ff",
-          secondary: "#c084fc",
-          border: "#9d30ff",
-        },
-        sizeSet: { radius: "large" },
-        border: { width: 2, color: "#000", style: "solid" },
-        shadow: { x: 0, y: 2, blur: 6, color: "#aaa" },
-        opacity: 0.9,
-        capacity: 1000,
-        status: "active",
-        keyName: null, // Unique per country
-        metaData: { isCenterpiece: true },
-        tags: [],
-        emojiIcon: "",
       },
     });
   }

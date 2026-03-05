@@ -1,8 +1,8 @@
-import MessageSvc from "../services/message.service";
+import RoomMessageSvc from "../services/room-message.service";
 import { Request, Response } from "express";
 import Joi from "joi";
 
-export default class MessageCtrl {
+export default class RoomMessageCtrl {
   /**
    * Send a message to a room
    */
@@ -22,7 +22,7 @@ export default class MessageCtrl {
     }
 
     try {
-      const message = await MessageSvc.createMessage({
+      const message = await RoomMessageSvc.createMessage({
         ...value,
         userId,
       });
@@ -63,7 +63,7 @@ export default class MessageCtrl {
     }
 
     try {
-      const response = await MessageSvc.getRoomMessages(
+      const response = await RoomMessageSvc.getRoomMessages(
         roomSubCategoryId,
         userId,
         page,
@@ -92,7 +92,7 @@ export default class MessageCtrl {
     const { id } = req.params;
 
     try {
-      await MessageSvc.removeMessage(id, userId);
+      await RoomMessageSvc.removeMessage(id, userId);
       return res.json({ message: "Message deleted" });
     } catch (error: any) {
       return res.status(400).json({ message: error.message || error });
