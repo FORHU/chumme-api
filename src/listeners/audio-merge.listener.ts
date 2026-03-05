@@ -159,14 +159,14 @@ export class AudioMergeWorker {
     try {
       if (job.jobType === "preview") {
         // Delete old preview(s) for this studio+music combo before uploading new one
-        // const previewPrefix = `previews/preview_${job.studioId}_${job.musicId}`;
-        // try {
-        //   await S3Util.deleteByPrefix(previewPrefix);
-        // } catch (e) {
-        //   logger.warn(
-        //     `[AudioMergeWorker] Failed to cleanup old previews: ${e}`,
-        //   );
-        // }
+        const previewPrefix = `previews/preview_${job.studioId}_${job.musicId}`;
+        try {
+          await S3Util.deleteByPrefix(previewPrefix);
+        } catch (e) {
+          logger.warn(
+            `[AudioMergeWorker] Failed to cleanup old previews: ${e}`,
+          );
+        }
 
         // Upload with unique key so CDN/client always gets fresh content
         const previewKey = `previews/preview_${job.studioId}_${job.musicId}_${Date.now()}.mp3`;
@@ -282,24 +282,24 @@ export class AudioMergeWorker {
         // Cleanup temp records + S3 chunks
         const lookupMusicId = job.metaData?.lookupMusicId || job.musicId;
 
-        // await MusicTempRecordRepo.deleteByMusicIdAndStudioId(
-        //   lookupMusicId,
-        //   job.studioId,
-        // );
+        await MusicTempRecordRepo.deleteByMusicIdAndStudioId(
+          lookupMusicId,
+          job.studioId,
+        );
 
-        // for (const url of job.audioUrls) {
-        //   try {
-        //     await S3Util.deleteFile(url);
-        //   } catch (e) {
-        //     logger.warn(`[AudioMergeWorker] Failed to delete chunk: ${url}`);
-        //   }
-        // }
+        for (const url of job.audioUrls) {
+          try {
+            await S3Util.deleteFile(url);
+          } catch (e) {
+            logger.warn(`[AudioMergeWorker] Failed to delete chunk: ${url}`);
+          }
+        }
 
         // Delete preview(s) if any exist (handles timestamped keys)
-        // try {
-        //   const previewPrefix = `previews/preview_${job.studioId}_${job.musicId}`;
-        //   await S3Util.deleteByPrefix(previewPrefix);
-        // } catch (_) {}
+        try {
+          const previewPrefix = `previews/preview_${job.studioId}_${job.musicId}`;
+          await S3Util.deleteByPrefix(previewPrefix);
+        } catch (_) {}
 
         // Broadcast recording_saved to studio
         if (io) {
