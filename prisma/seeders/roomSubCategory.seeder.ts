@@ -90,11 +90,7 @@ export async function seedRoomSubCategories(
 
       await prisma.roomSubCategory.upsert({
         where: { id: deterministicId },
-        update: {
-          name: item.name,
-          position,
-          metaData: { isCenterpiece: item.isCenterpiece },
-        },
+        update: {},
         create: {
           id: deterministicId,
           name: item.name,
