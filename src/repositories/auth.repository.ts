@@ -28,7 +28,7 @@ export default class AuthRepo {
         mobileNumber: data.mobileNumber,
         otpCode: data.otpCode,
         otpExpiry: data.otpExpiry,
-        isEmailVerified: true,
+        isEmailVerified: false,
       },
       select: {
         id: true,
