@@ -148,27 +148,7 @@ export async function seedRoomSubCategories(
 
     await prisma.roomSubCategory.upsert({
       where: { keyName: lobbyKey },
-      update: {
-        name: `${category.name} Lobby`,
-        roomCategoryId: category.id,
-        position: { x: 50, y: 50 },
-        isAd: false,
-        colorSet: {
-          primary: "#9d30ff",
-          secondary: "#c084fc",
-          border: "#9d30ff",
-        },
-        sizeSet: { radius: "large", maxRadius: 100 },
-        border: { width: 2, color: "#000", style: "solid" },
-        shadow: { x: 0, y: 2, blur: 6, color: "#aaa" },
-        opacity: 0.9,
-        capacity: 1000,
-        status: "active",
-        metaData: {},
-        tags: [],
-        emojiIcon: "",
-        keyName: null,
-      },
+      update: {},
       create: {
         id: lobbyId,
         name: `${category.name} Lobby`,
@@ -215,26 +195,7 @@ export async function seedRoomSubCategories(
 
       await prisma.roomSubCategory.upsert({
         where: { keyName },
-        update: {
-          name: artist.name,
-          roomCategoryId: category.id,
-          position,
-          colorSet: {
-            primary: "#2a45ff",
-            secondary: "#60a5fa",
-            border: "#2a45ff",
-          },
-          sizeSet: { radius: "medium", maxRadius: 80 },
-          border: { width: 2, color: "#000", style: "solid" },
-          shadow: { x: 0, y: 2, blur: 6, color: "#aaa" },
-          opacity: 0.9,
-          capacity: 5000,
-          status: "active",
-          keyName: null,
-          metaData: {},
-          tags: [],
-          emojiIcon: "",
-        },
+        update: {},
         create: {
           id: randomUUID(),
           name: artist.name,

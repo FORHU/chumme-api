@@ -177,21 +177,7 @@ export async function seedRoomCategories(prisma: PrismaClient) {
   for (const country of countriesData) {
     const category = await prisma.roomCategory.upsert({
       where: { id: country.id },
-      update: {
-        name: country.name,
-        position: country.position,
-        keyName: null,
-        isAd: country.isAd ?? false,
-        colorSet: country.colorSet,
-        sizeSet: country.sizeSet,
-        border: country.border,
-        shadow: country.shadow,
-        opacity: country.opacity,
-        capacity: country.capacity,
-        status: country.status,
-        tags: country.tags,
-        emojiIcon: country.emojiIcon,
-      },
+      update: {},
       create: {
         id: country.id,
         name: country.name,
@@ -216,18 +202,7 @@ export async function seedRoomCategories(prisma: PrismaClient) {
     const lobbyId = `lobby-${country.id}`.slice(0, 70); // Match frontend ID logic
     await prisma.roomSubCategory.upsert({
       where: { id: lobbyId },
-      update: {
-        name: "Chumme Lobby",
-        position: { x: 50, y: 50 },
-        border: { width: 2, color: "#000", style: "solid" },
-        shadow: { x: 0, y: 2, blur: 6, color: "#aaa" },
-        opacity: 0.9,
-        capacity: 1000,
-        status: "active",
-        metaData: { isCenterpiece: true },
-        tags: [],
-        emojiIcon: "",
-      },
+      update: {},
       create: {
         id: lobbyId,
         name: "Chumme Lobby",

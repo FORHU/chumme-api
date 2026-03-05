@@ -1,14 +1,14 @@
 import { prisma } from "../utils/prisma";
 import { UserChatRole } from "@prisma/client";
 
-export default class UserChatRoomRepo {
+export default class RoomUserChatRepo {
   /**
-   * Get paginated user chats (rooms user has joined)
+   * Get paginated Room User Chats (rooms user has joined)
    */
   static async getUserChat(userId: string, page = 1, limit = 10) {
     const skip = (page - 1) * limit;
 
-    const chats = await prisma.userChatRoom.findMany({
+    const chats = await prisma.roomUserChat.findMany({
       where: {
         userId,
         roomSubCategory: {
@@ -27,7 +27,7 @@ export default class UserChatRoomRepo {
       take: limit,
     });
 
-    const total = await prisma.userChatRoom.count({
+    const total = await prisma.roomUserChat.count({
       where: {
         userId,
         roomSubCategory: {
@@ -53,7 +53,7 @@ export default class UserChatRoomRepo {
     roomSubCategoryId: string,
     role: UserChatRole = "MEMBER",
   ) {
-    return prisma.userChatRoom.upsert({
+    return prisma.roomUserChat.upsert({
       where: {
         userId_roomSubCategoryId: {
           userId,
@@ -75,7 +75,7 @@ export default class UserChatRoomRepo {
    * Remove a user from a room
    */
   static async leaveRoom(userId: string, roomSubCategoryId: string) {
-    return prisma.userChatRoom.delete({
+    return prisma.roomUserChat.delete({
       where: {
         userId_roomSubCategoryId: {
           userId,
@@ -93,7 +93,7 @@ export default class UserChatRoomRepo {
     roomSubCategoryId: string,
     role: UserChatRole,
   ) {
-    return prisma.userChatRoom.update({
+    return prisma.roomUserChat.update({
       where: {
         userId_roomSubCategoryId: {
           userId,
@@ -110,7 +110,7 @@ export default class UserChatRoomRepo {
    * Get all members of a room
    */
   static async getRoomMembers(roomSubCategoryId: string) {
-    return prisma.userChatRoom.findMany({
+    return prisma.roomUserChat.findMany({
       where: {
         roomSubCategoryId,
         roomSubCategory: {
@@ -141,7 +141,7 @@ export default class UserChatRoomRepo {
    * Check if a user is a member of a room
    */
   static async isMember(userId: string, roomSubCategoryId: string) {
-    const membership = await prisma.userChatRoom.findFirst({
+    const membership = await prisma.roomUserChat.findFirst({
       where: {
         userId,
         roomSubCategoryId,
@@ -157,7 +157,7 @@ export default class UserChatRoomRepo {
    * Get a user's membership details for a specific room
    */
   static async getMembership(userId: string, roomSubCategoryId: string) {
-    return prisma.userChatRoom.findUnique({
+    return prisma.roomUserChat.findUnique({
       where: {
         userId_roomSubCategoryId: {
           userId,
@@ -168,13 +168,13 @@ export default class UserChatRoomRepo {
   }
 
   static async leaveAllRooms(userId: string) {
-    return prisma.userChatRoom.deleteMany({
+    return prisma.roomUserChat.deleteMany({
       where: { userId },
     });
   }
 
   static async getRoomsByUserId(userId: string) {
-    return prisma.userChatRoom.findMany({
+    return prisma.roomUserChat.findMany({
       where: {
         userId,
         roomSubCategory: {

@@ -1,6 +1,6 @@
 import { UserChatRole } from "@prisma/client";
 import RoomRepo from "../repositories/room.repository";
-import UserChatRoomRepo from "../repositories/user-chat-room.repository";
+import RoomUserChatRepo from "../repositories/room-user-chat.repository";
 import MessageRepo from "../repositories/message.repository";
 import S3Util from "../utils/s3.util";
 import S3PresignedUtil from "../utils/s3-presigned.util";
@@ -41,7 +41,7 @@ export default class RoomSvc {
     });
 
     // Add owner as a member with 'OWNER' role
-    await UserChatRoomRepo.joinRoom(data.ownerId, room.id, UserChatRole.OWNER);
+    await RoomUserChatRepo.joinRoom(data.ownerId, room.id, UserChatRole.OWNER);
 
     return room;
   }
@@ -125,7 +125,7 @@ export default class RoomSvc {
       return { success: false, message: "Room not found" };
     }
 
-    const isAlreadyMember = await UserChatRoomRepo.isMember(userId, roomId);
+    const isAlreadyMember = await RoomUserChatRepo.isMember(userId, roomId);
     if (isAlreadyMember) {
       return {
         success: true,
@@ -134,7 +134,7 @@ export default class RoomSvc {
       };
     }
 
-    await UserChatRoomRepo.joinRoom(userId, roomId, UserChatRole.MEMBER);
+    await RoomUserChatRepo.joinRoom(userId, roomId, UserChatRole.MEMBER);
 
     return {
       success: true,
@@ -148,7 +148,7 @@ export default class RoomSvc {
    */
   static async leaveRoom(roomId: string, userId: string) {
     // Check if user is a member
-    const isMember = await UserChatRoomRepo.isMember(userId, roomId);
+    const isMember = await RoomUserChatRepo.isMember(userId, roomId);
     if (!isMember) {
       return false;
     }
@@ -159,7 +159,7 @@ export default class RoomSvc {
       return false; // Owners cannot leave their own rooms
     }
 
-    await UserChatRoomRepo.leaveRoom(userId, roomId);
+    await RoomUserChatRepo.leaveRoom(userId, roomId);
     return true;
   }
 
@@ -210,7 +210,7 @@ export default class RoomSvc {
     }
 
     // Verify membership
-    const isMember = await UserChatRoomRepo.isMember(userId, roomId);
+    const isMember = await RoomUserChatRepo.isMember(userId, roomId);
     if (!isMember) {
       throw new Error(
         "Access denied: You must be a member of this room to view messages",

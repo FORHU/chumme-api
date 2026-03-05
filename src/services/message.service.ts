@@ -1,5 +1,5 @@
 import MessageRepo from "../repositories/message.repository";
-import UserChatRoomRepo from "../repositories/user-chat-room.repository";
+import RoomUserChatRepo from "../repositories/room-user-chat.repository";
 import CacheUtil from "../utils/cache.util";
 
 export default class MessageSvc {
@@ -14,7 +14,7 @@ export default class MessageSvc {
     parentMessageId?: string;
   }) {
     // 1. Verify user is a member of the room
-    const isMember = await UserChatRoomRepo.isMember(
+    const isMember = await RoomUserChatRepo.isMember(
       data.userId,
       data.roomSubCategoryId,
     );
@@ -57,7 +57,7 @@ export default class MessageSvc {
     parentMessageId?: string,
   ) {
     // 1. Verify membership
-    const isMember = await UserChatRoomRepo.isMember(userId, roomSubCategoryId);
+    const isMember = await RoomUserChatRepo.isMember(userId, roomSubCategoryId);
     if (!isMember) {
       throw new Error(
         "Access denied: You must be a member of this room to view messages",

@@ -1,13 +1,13 @@
-import UserChatRoomRepo from "../repositories/user-chat-room.repository";
+import RoomUserChatRepo from "../repositories/room-user-chat.repository";
 import RoomSubCategoryRepo from "../repositories/room-subcategory.repository";
 import { UserChatRole } from "@prisma/client";
 
-export default class UserChatRoomSvc {
+export default class RoomUserChatSvc {
   /**
-   * Get paginated user chats (rooms user has joined)
+   * Get paginated Room User Chats (rooms user has joined)
    */
   static async getUserChat(userId: string, page = 1, limit = 10) {
-    return await UserChatRoomRepo.getUserChat(userId, page, limit);
+    return await RoomUserChatRepo.getUserChat(userId, page, limit);
   }
 
   /**
@@ -29,14 +29,14 @@ export default class UserChatRoomSvc {
     if (upperRole === "OWNER") chatRole = UserChatRole.OWNER;
     if (upperRole === "ADMIN") chatRole = UserChatRole.ADMIN;
 
-    return UserChatRoomRepo.joinRoom(userId, roomSubCategoryId, chatRole);
+    return RoomUserChatRepo.joinRoom(userId, roomSubCategoryId, chatRole);
   }
 
   /**
    * Leave a room
    */
   static async leaveRoom(userId: string, roomSubCategoryId: string) {
-    return UserChatRoomRepo.leaveRoom(userId, roomSubCategoryId);
+    return RoomUserChatRepo.leaveRoom(userId, roomSubCategoryId);
   }
 
   /**
@@ -45,7 +45,7 @@ export default class UserChatRoomSvc {
    */
   static async getRoomMembers(roomSubCategoryId: string, userIdIdx: string) {
     // Check if user is a member of the room
-    const isMember = await UserChatRoomRepo.isMember(
+    const isMember = await RoomUserChatRepo.isMember(
       userIdIdx,
       roomSubCategoryId,
     );
@@ -55,7 +55,7 @@ export default class UserChatRoomSvc {
       );
     }
 
-    return UserChatRoomRepo.getRoomMembers(roomSubCategoryId);
+    return RoomUserChatRepo.getRoomMembers(roomSubCategoryId);
   }
 
   /**
@@ -66,27 +66,27 @@ export default class UserChatRoomSvc {
     roomSubCategoryId: string,
     role: UserChatRole,
   ) {
-    return UserChatRoomRepo.updateRole(userId, roomSubCategoryId, role);
+    return RoomUserChatRepo.updateRole(userId, roomSubCategoryId, role);
   }
 
   /**
    * Check if a user is in a room
    */
   static async checkMembership(userId: string, roomSubCategoryId: string) {
-    return UserChatRoomRepo.isMember(userId, roomSubCategoryId);
+    return RoomUserChatRepo.isMember(userId, roomSubCategoryId);
   }
 
   /**
    * Leave all rooms
    */
   static async leaveAllRooms(userId: string) {
-    return UserChatRoomRepo.leaveAllRooms(userId);
+    return RoomUserChatRepo.leaveAllRooms(userId);
   }
 
   /**
    * Get all rooms by user ID
    */
   static async getRoomsByUserId(userId: string) {
-    return UserChatRoomRepo.getRoomsByUserId(userId);
+    return RoomUserChatRepo.getRoomsByUserId(userId);
   }
 }

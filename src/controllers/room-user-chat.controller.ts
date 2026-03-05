@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
 import Joi from "joi";
-import UserChatRoomSvc from "../services/user-chat-room.service";
+import RoomUserChatSvc from "../services/room-user-chat.service";
 
-export default class UserChatRoomCtrl {
+export default class RoomUserChatCtrl {
   /**
    * Get user's joined rooms (paginated)
    */
@@ -12,7 +12,7 @@ export default class UserChatRoomCtrl {
     const limit = parseInt(req.query.limit as string) || 10;
 
     try {
-      const chats = await UserChatRoomSvc.getUserChat(userId, page, limit);
+      const chats = await RoomUserChatSvc.getUserChat(userId, page, limit);
       return res.json(chats);
     } catch (error: any) {
       return res.status(500).json({ message: error.message || error });
@@ -36,7 +36,7 @@ export default class UserChatRoomCtrl {
     }
 
     try {
-      const membership = await UserChatRoomSvc.joinRoom(
+      const membership = await RoomUserChatSvc.joinRoom(
         userId,
         roomSubCategoryId,
       );
@@ -66,7 +66,7 @@ export default class UserChatRoomCtrl {
     }
 
     try {
-      await UserChatRoomSvc.leaveRoom(userId, roomSubCategoryId);
+      await RoomUserChatSvc.leaveRoom(userId, roomSubCategoryId);
       return res.json({ message: "Successfully left room" });
     } catch (error: any) {
       return res.status(500).json({ message: error.message || error });
@@ -90,7 +90,7 @@ export default class UserChatRoomCtrl {
     }
 
     try {
-      const members = await UserChatRoomSvc.getRoomMembers(
+      const members = await RoomUserChatSvc.getRoomMembers(
         roomSubCategoryId,
         userId,
       );

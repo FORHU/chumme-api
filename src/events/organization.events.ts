@@ -1,6 +1,6 @@
 import { Server, Socket } from "socket.io";
 import authenticateSocket from "../middleware/authenticate-sockets.middleware";
-import UserChatRoomSvc from "../services/user-chat-room.service";
+import RoomUserChatSvc from "../services/room-user-chat.service";
 import CircleCacheSvc from "../services/circle-cache.service";
 import { registerRoomHandlers } from "./circles/room.handlers";
 import { PresenceBatcher } from "../utils/presence-batcher";
@@ -36,7 +36,7 @@ export default (io: Server) => {
 
     socket.on("disconnect", async () => {
       try {
-        const userRooms = await UserChatRoomSvc.getRoomsByUserId(
+        const userRooms = await RoomUserChatSvc.getRoomsByUserId(
           socket.user.id,
         );
 

@@ -1,6 +1,6 @@
 import { Server } from "socket.io";
 import RoomSvc from "../../services/room.service";
-import UserChatRoomSvc from "../../services/user-chat-room.service";
+import RoomUserChatSvc from "../../services/room-user-chat.service";
 import MessageSvc from "../../services/message.service";
 import CircleCacheSvc from "../../services/circle-cache.service";
 import { PresenceBatcher } from "../../utils/presence-batcher";
@@ -31,13 +31,13 @@ export const registerRoomHandlers = (
         });
       }
 
-      // Persistent Membership (UserChatRoom)
-      const isMember = await UserChatRoomSvc.checkMembership(
+      // Persistent Membership (RoomUserChat)
+      const isMember = await RoomUserChatSvc.checkMembership(
         socket.user.id,
         room_id,
       );
       if (!isMember) {
-        await UserChatRoomSvc.joinRoom(socket.user.id, room_id, "MEMBER");
+        await RoomUserChatSvc.joinRoom(socket.user.id, room_id, "MEMBER");
         console.log(
           `[Circles] Persistent membership created for ${socket.user.id} in ${room_id}`,
         );

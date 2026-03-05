@@ -306,7 +306,7 @@ export default class RoomRepo {
     userId: string;
     role: any;
   }) {
-    return prisma.userChatRoom.create({
+    return prisma.roomUserChat.create({
       data: {
         roomSubCategoryId: data.roomSubCategoryId,
         userId: data.userId,
@@ -319,7 +319,7 @@ export default class RoomRepo {
    * Remove a member from a room
    */
   static async removeRoomMember(roomSubCategoryId: string, userId: string) {
-    return prisma.userChatRoom.delete({
+    return prisma.roomUserChat.delete({
       where: {
         userId_roomSubCategoryId: {
           userId,

@@ -45,11 +45,11 @@ model User {
   sessions               Session[]
   avatar                 File?                   @relation(fields: [avatarId], references: [id])
   userArtists            UserArtist[]
-  userChatRoom           UserChatRoom[]
+  userChatRoom           RoomUserChat[]
   userEmotionPreferences UserEmotionPreference[]
   userInterests          UserInterest[]
   musicRecords           MusicRecord[]           @relation("MusicRecordSingers")
-  messageReactions       MessageReaction[]
+  messageReactions       RoomMessageReaction[]
 }
 
 model Session {
@@ -82,7 +82,7 @@ model File {
   videos        Video[]
 }
 
-model UserChatRoom {
+model RoomUserChat {
   id                String       @id @default(uuid())
   userId            String
   roomSubCategoryId String
@@ -152,7 +152,7 @@ model RoomSubCategory {
   roomCategoryId String
   owner          User?          @relation("RoomSubCategoryOwner", fields: [ownerId], references: [id])
   roomCategory   RoomCategory   @relation(fields: [roomCategoryId], references: [id])
-  userChatRooms  UserChatRoom[]
+  userChatRooms  RoomUserChat[]
   roomMessages   RoomMessage[]
 }
 
@@ -163,11 +163,11 @@ model RoomMessage {
 
   content         Json?
   voiceMessageId  String?
-  voiceMessage    File?             @relation("VoiceMessageFile", fields: [voiceMessageId], references: [id])
-  reactions       MessageReaction[] @relation("MessageReactions")
+  voiceMessage    File?                 @relation("VoiceMessageFile", fields: [voiceMessageId], references: [id])
+  reactions       RoomMessageReaction[] @relation("MessageReactions")
   parentMessageId String?
-  parentMessage   RoomMessage?      @relation("ThreadedMessages", fields: [parentMessageId], references: [id])
-  replies         RoomMessage[]     @relation("ThreadedMessages")
+  parentMessage   RoomMessage?          @relation("ThreadedMessages", fields: [parentMessageId], references: [id])
+  replies         RoomMessage[]         @relation("ThreadedMessages")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -180,7 +180,7 @@ model RoomMessage {
   @@index([authorId, createdAt])
 }
 
-model MessageReaction {
+model RoomMessageReaction {
   id        String @id @default(uuid())
   messageId String
   userId    String
