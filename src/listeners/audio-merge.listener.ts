@@ -381,6 +381,30 @@ export class AudioMergeWorker {
       });
     }
 
+    // Catch and save test data for the user
+    try {
+      const harvestFile = path.join(process.cwd(), "harvested_test_data.json");
+      const harvestEntry = {
+        timestamp: new Date().toISOString(),
+        jobId: job.jobId,
+        studioId: job.studioId,
+        musicId: job.musicId,
+        backing: job.backingTrackUrl,
+        vocals: job.audioUrls,
+        offsets: job.offsets || [],
+        cdn_url: mergedUrl,
+      };
+      let currentData = [];
+      if (fs.existsSync(harvestFile)) {
+        currentData = JSON.parse(fs.readFileSync(harvestFile, "utf-8"));
+      }
+      currentData.push(harvestEntry);
+      fs.writeFileSync(harvestFile, JSON.stringify(currentData, null, 2));
+      logger.info(`[AudioMergeWorker] Test data harvested to ${harvestFile}`);
+    } catch (e) {
+      logger.warn(`[AudioMergeWorker] Failed to harvest test data: ${e}`);
+    }
+
     // Cleanup temp records + S3 chunks
     const lookupMusicId = job.metaData?.lookupMusicId || job.musicId;
 

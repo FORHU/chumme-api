@@ -9,6 +9,8 @@ import { prisma } from "../utils/prisma";
 import amqp from "amqplib";
 
 const MEDIA_QUEUE = "media_processing_queue";
+const MEDIA_DLQ = "media_processing_dlq";
+const PREFETCH_COUNT = Number(process.env.PREFETCH_COUNT || 1);
 
 export class MediaProcessingWorker {
   private channel: amqp.Channel | null = null;
@@ -17,8 +19,14 @@ export class MediaProcessingWorker {
     try {
       this.channel = await rabbitMQService.createChannel();
 
+      // Only process N jobs at a time
+      await this.channel.prefetch(PREFETCH_COUNT);
+
+      await this.channel.assertQueue(MEDIA_DLQ, { durable: true });
       await this.channel.assertQueue(MEDIA_QUEUE, { durable: true });
-      logger.info("[MediaWorker] Listening for media jobs...");
+      logger.info(
+        `[MediaWorker] Listening for media jobs (prefetch=${PREFETCH_COUNT})...`,
+      );
 
       this.channel.consume(MEDIA_QUEUE, async (msg) => {
         if (!msg || !this.channel) return;
