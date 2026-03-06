@@ -1,4 +1,6 @@
 import RoomSubCategoryRepo from "../repositories/room-subcategory.repository";
+import S3Util from "../utils/s3.util";
+import S3PresignedUtil from "../utils/s3-presigned.util";
 
 export default class RoomSubCategorySvc {
   /**
@@ -156,5 +158,48 @@ export default class RoomSubCategorySvc {
     }
 
     return RoomSubCategoryRepo.softDeleteSubCategory(id);
+  }
+
+  /**
+   * Alias for getSubCategoryById for compatibility
+   */
+  static async findById(id: string) {
+    return this.getSubCategoryById(id);
+  }
+
+  /**
+   * Helper to map a raw message to the structure expected by the frontend
+   * (Migrated from legacy RoomSvc)
+   */
+  static async mapMessageWithSignedUrl(msg: any) {
+    let voiceNote = undefined;
+
+    if (msg.voiceMessage) {
+      const key = (S3Util as any).getKeyFromUrl(msg.voiceMessage.fileUrl);
+      let signedUrl = msg.voiceMessage.fileUrl; // Fallback to raw
+
+      if (key) {
+        try {
+          signedUrl = await S3PresignedUtil.getDownloadUrl(key);
+        } catch (err) {
+          console.error(
+            `[RoomSubCategorySvc] Error signing URL for key ${key}:`,
+            err,
+          );
+        }
+      }
+
+      voiceNote = {
+        duration: msg.voiceMessage.metaData?.duration || 0,
+        waveform: msg.voiceMessage.metaData?.waveform || [],
+        audioUrl: signedUrl,
+      };
+    }
+
+    return {
+      ...msg,
+      user: msg.author,
+      voiceNote,
+    };
   }
 }

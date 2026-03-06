@@ -1,8 +1,8 @@
-import MessageRepo from "../repositories/message.repository";
+import RoomMessageRepo from "../repositories/room-message.repository";
 import RoomUserChatRepo from "../repositories/room-user-chat.repository";
 import CacheUtil from "../utils/cache.util";
 
-export default class MessageSvc {
+export default class RoomMessageSvc {
   /**
    * Create a new message or reply
    */
@@ -26,7 +26,9 @@ export default class MessageSvc {
 
     // 2. If it's a reply, verify parent message exists and belongs to the same room
     if (data.parentMessageId) {
-      const parent = await MessageRepo.findMessageById(data.parentMessageId);
+      const parent = await RoomMessageRepo.findMessageById(
+        data.parentMessageId,
+      );
       if (!parent) throw new Error("Parent message not found");
       if (parent.roomSubCategoryId !== data.roomSubCategoryId) {
         throw new Error("Parent message does not belong to this room");
@@ -37,7 +39,7 @@ export default class MessageSvc {
     await CacheUtil.delByPattern(`messages:room:${data.roomSubCategoryId}:*`);
 
     // 4. Create message
-    return MessageRepo.createMessage({
+    return RoomMessageRepo.createMessage({
       roomSubCategoryId: data.roomSubCategoryId,
       authorId: data.userId,
       content: data.content,
@@ -65,7 +67,7 @@ export default class MessageSvc {
     }
 
     // 2. Fetch messages
-    return MessageRepo.getRoomMessages(
+    return RoomMessageRepo.getRoomMessages(
       roomSubCategoryId,
       page,
       limit,
@@ -77,7 +79,7 @@ export default class MessageSvc {
    * Remove a message
    */
   static async removeMessage(messageId: string, userId: string) {
-    const message = await MessageRepo.findMessageById(messageId);
+    const message = await RoomMessageRepo.findMessageById(messageId);
     if (!message) throw new Error("Message not found");
 
     // Only author or admins (implement admin check if needed) can delete
@@ -87,6 +89,6 @@ export default class MessageSvc {
       );
     }
 
-    return MessageRepo.removeMessage(messageId);
+    return RoomMessageRepo.removeMessage(messageId);
   }
 }

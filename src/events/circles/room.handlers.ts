@@ -1,7 +1,7 @@
 import { Server } from "socket.io";
-import RoomSvc from "../../services/room.service";
+import RoomSubCategorySvc from "../../services/room-subcategory.service";
 import RoomUserChatSvc from "../../services/room-user-chat.service";
-import MessageSvc from "../../services/message.service";
+import RoomMessageSvc from "../../services/room-message.service";
 import CircleCacheSvc from "../../services/circle-cache.service";
 import { PresenceBatcher } from "../../utils/presence-batcher";
 
@@ -23,7 +23,7 @@ export const registerRoomHandlers = (
         return socket.emit("join_room_failed", { message: "room_id missing" });
       }
 
-      const room = await RoomSvc.findById(room_id);
+      const room = await RoomSubCategorySvc.findById(room_id);
       if (!room) {
         return socket.emit("join_room_failed", {
           room_id,
@@ -82,7 +82,7 @@ export const registerRoomHandlers = (
       }
 
       // 1. Send message via service (it will check membership)
-      const newMessage = await MessageSvc.createMessage({
+      const newMessage = await RoomMessageSvc.createMessage({
         roomSubCategoryId: room_id,
         userId: socket.user.id,
         content: message,
@@ -91,7 +91,8 @@ export const registerRoomHandlers = (
       });
 
       // 2. Map message for frontend
-      const mappedMessage = await RoomSvc.mapMessageWithSignedUrl(newMessage);
+      const mappedMessage =
+        await RoomSubCategorySvc.mapMessageWithSignedUrl(newMessage);
 
       // 3. Broadcast
       io.to(room_id).emit("send_message_to_room", {

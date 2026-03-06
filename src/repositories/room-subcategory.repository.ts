@@ -3,19 +3,6 @@ import RoomCategoryRepo from "./room-category.repository";
 
 export default class RoomSubCategoryRepo {
   /**
-   * Resolve shortcut IDs (like 'usa', 'global') to their real UUIDs
-   */
-  static async resolveSubCategoryId(id: string): Promise<string | null> {
-    const subByField = await prisma.roomSubCategory.findFirst({
-      where: {
-        OR: [{ id: id }, { keyName: id }],
-        deletedAt: null,
-      },
-    });
-    return subByField?.id || id;
-  }
-
-  /**
    * Create a new room subcategory
    */
   static async createSubCategory(data: {
@@ -37,10 +24,6 @@ export default class RoomSubCategoryRepo {
     note?: string;
     keyName?: string | null;
   }) {
-    const realCategoryId = await RoomCategoryRepo.resolveCategoryShortcut(
-      data.roomCategoryId,
-    );
-
     const { keyName, note, ...rest } = data;
 
     return prisma.roomSubCategory.create({
@@ -48,7 +31,7 @@ export default class RoomSubCategoryRepo {
         ...rest,
         keyName: keyName || null,
         note: note || null,
-        roomCategoryId: realCategoryId || data.roomCategoryId,
+        roomCategoryId: data.roomCategoryId,
       },
       include: {
         roomCategory: {
@@ -64,13 +47,7 @@ export default class RoomSubCategoryRepo {
    * Get all non-deleted subcategories
    */
   static async getAllSubCategories(categoryId?: string) {
-    let targetCategoryId = categoryId;
-
-    if (categoryId) {
-      targetCategoryId =
-        (await RoomCategoryRepo.resolveCategoryShortcut(categoryId)) ||
-        categoryId;
-    }
+    const targetCategoryId = categoryId;
 
     return prisma.roomSubCategory.findMany({
       where: {
@@ -100,10 +77,9 @@ export default class RoomSubCategoryRepo {
    * Get subcategory by ID
    */
   static async getSubCategoryById(id: string) {
-    const subId = (await this.resolveSubCategoryId(id)) || id;
-    return prisma.roomSubCategory.findUnique({
+    return prisma.roomSubCategory.findFirst({
       where: {
-        id: subId,
+        id: id,
         deletedAt: null,
       },
       include: {
@@ -170,12 +146,10 @@ export default class RoomSubCategoryRepo {
       keyName?: string;
     },
   ) {
-    const realId = (await this.resolveSubCategoryId(id)) || id;
     const { keyName, note, ...rest } = data;
     return prisma.roomSubCategory.update({
       where: {
-        id: realId,
-        deletedAt: null,
+        id: id,
       },
       data: {
         ...rest,
@@ -197,11 +171,9 @@ export default class RoomSubCategoryRepo {
    * Soft delete subcategory
    */
   static async softDeleteSubCategory(id: string) {
-    const realId = (await this.resolveSubCategoryId(id)) || id;
     return prisma.roomSubCategory.update({
       where: {
-        id: realId,
-        deletedAt: null,
+        id: id,
       },
       data: {
         deletedAt: new Date(),
@@ -230,10 +202,9 @@ export default class RoomSubCategoryRepo {
    * Verify category exists
    */
   static async categoryExists(categoryId: string) {
-    const realId = await RoomCategoryRepo.resolveCategoryShortcut(categoryId);
     const category = await prisma.roomCategory.findUnique({
       where: {
-        id: realId || categoryId,
+        id: categoryId,
       },
     });
     return !!category;

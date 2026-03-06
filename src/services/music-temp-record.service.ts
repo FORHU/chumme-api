@@ -40,6 +40,7 @@ export default class MusicTempRecordSvc {
         musicId: data.musicId,
         userId: data.userId,
         fileUrl: record.file.fileUrl,
+        cdn_url: record.file.fileUrl,
         offset: data.startTimeOffset,
         duration: data.recordDuration,
       };

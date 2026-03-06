@@ -1,6 +1,6 @@
 import { prisma } from "../utils/prisma";
 
-export default class MessageRepo {
+export default class RoomMessageRepo {
   /**
    * Create a new message in a room
    */
