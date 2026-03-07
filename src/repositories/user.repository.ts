@@ -9,6 +9,23 @@ export default class UserRepo {
     });
   }
 
+  static async findUserForAuth(userId: string) {
+    return prisma.user.findUnique({
+      where: {
+        id: userId,
+        isDeleted: false,
+      },
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        role: true,
+        isActive: true,
+        isDeleted: true,
+      },
+    });
+  }
+
   static async findUserBookmark(userId: string) {
     return prisma.user.findUnique({
       where: { id: userId },
