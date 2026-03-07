@@ -11,14 +11,14 @@ export default class RoomUserChatRepo {
     const chats = await prisma.roomUserChat.findMany({
       where: {
         userId,
-        roomSubCategory: {
+        chummeSubCategory: {
           deletedAt: null,
         },
       },
       include: {
-        roomSubCategory: {
+        chummeSubCategory: {
           include: {
-            roomCategory: true,
+            chummeCategory: true,
           },
         },
       },
@@ -30,7 +30,7 @@ export default class RoomUserChatRepo {
     const total = await prisma.roomUserChat.count({
       where: {
         userId,
-        roomSubCategory: {
+        chummeSubCategory: {
           deletedAt: null,
         },
       },
@@ -50,14 +50,14 @@ export default class RoomUserChatRepo {
    */
   static async joinRoom(
     userId: string,
-    roomSubCategoryId: string,
+    chummeSubCategoryId: string,
     role: UserChatRole = "MEMBER",
   ) {
     return prisma.roomUserChat.upsert({
       where: {
-        userId_roomSubCategoryId: {
+        userId_chummeSubCategoryId: {
           userId,
-          roomSubCategoryId,
+          chummeSubCategoryId,
         },
       },
       update: {
@@ -65,7 +65,7 @@ export default class RoomUserChatRepo {
       },
       create: {
         userId,
-        roomSubCategoryId,
+        chummeSubCategoryId,
         userChatRole: role,
       },
     });
@@ -74,12 +74,12 @@ export default class RoomUserChatRepo {
   /**
    * Remove a user from a room
    */
-  static async leaveRoom(userId: string, roomSubCategoryId: string) {
+  static async leaveRoom(userId: string, chummeSubCategoryId: string) {
     return prisma.roomUserChat.delete({
       where: {
-        userId_roomSubCategoryId: {
+        userId_chummeSubCategoryId: {
           userId,
-          roomSubCategoryId,
+          chummeSubCategoryId,
         },
       },
     });
@@ -90,14 +90,14 @@ export default class RoomUserChatRepo {
    */
   static async updateRole(
     userId: string,
-    roomSubCategoryId: string,
+    chummeSubCategoryId: string,
     role: UserChatRole,
   ) {
     return prisma.roomUserChat.update({
       where: {
-        userId_roomSubCategoryId: {
+        userId_chummeSubCategoryId: {
           userId,
-          roomSubCategoryId,
+          chummeSubCategoryId,
         },
       },
       data: {
@@ -109,11 +109,11 @@ export default class RoomUserChatRepo {
   /**
    * Get all members of a room
    */
-  static async getRoomMembers(roomSubCategoryId: string) {
+  static async getRoomMembers(chummeSubCategoryId: string) {
     return prisma.roomUserChat.findMany({
       where: {
-        roomSubCategoryId,
-        roomSubCategory: {
+        chummeSubCategoryId,
+        chummeSubCategory: {
           deletedAt: null,
         },
       },
@@ -140,12 +140,12 @@ export default class RoomUserChatRepo {
   /**
    * Check if a user is a member of a room
    */
-  static async isMember(userId: string, roomSubCategoryId: string) {
+  static async isMember(userId: string, chummeSubCategoryId: string) {
     const membership = await prisma.roomUserChat.findFirst({
       where: {
         userId,
-        roomSubCategoryId,
-        roomSubCategory: {
+        chummeSubCategoryId,
+        chummeSubCategory: {
           deletedAt: null,
         },
       },
@@ -156,12 +156,12 @@ export default class RoomUserChatRepo {
   /**
    * Get a user's membership details for a specific room
    */
-  static async getMembership(userId: string, roomSubCategoryId: string) {
+  static async getMembership(userId: string, chummeSubCategoryId: string) {
     return prisma.roomUserChat.findUnique({
       where: {
-        userId_roomSubCategoryId: {
+        userId_chummeSubCategoryId: {
           userId,
-          roomSubCategoryId,
+          chummeSubCategoryId,
         },
       },
     });
@@ -177,13 +177,13 @@ export default class RoomUserChatRepo {
     return prisma.roomUserChat.findMany({
       where: {
         userId,
-        roomSubCategory: {
+        chummeSubCategory: {
           deletedAt: null,
         },
       },
       select: {
-        roomSubCategoryId: true,
-        roomSubCategory: {
+        chummeSubCategoryId: true,
+        chummeSubCategory: {
           select: {
             name: true,
           },

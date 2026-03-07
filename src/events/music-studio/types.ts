@@ -1,5 +1,9 @@
 import { Socket, Server } from "socket.io";
-import { StudioRole, StudioType, RelayMode } from "@prisma/client";
+import {
+  MusicStudioRole,
+  MusicStudioType,
+  MusicRelayMode,
+} from "@prisma/client";
 
 export interface AuthenticatedSocket extends Socket {
   user?: any;
@@ -7,16 +11,16 @@ export interface AuthenticatedSocket extends Socket {
 
 export interface CreateStudioPayload {
   name: string;
-  studioType: StudioType;
-  keyName?: string;
+  studioType: MusicStudioType;
+  keyPassword?: string;
   note?: string;
   maxMembers?: number;
 }
 
 export interface JoinStudioPayload {
   studioId: string;
-  keyName?: string;
-  role?: StudioRole;
+  keyPassword?: string;
+  role?: MusicStudioRole;
 }
 
 export interface StudioActionPayload {
@@ -26,7 +30,7 @@ export interface StudioActionPayload {
 export interface UpdateRolePayload {
   studioId: string;
   targetUserId: string;
-  role: StudioRole;
+  role: MusicStudioRole;
 }
 
 export interface RequestUploadUrlPayload {
@@ -54,7 +58,7 @@ export interface PassMicrophonePayload {
 
 export interface SetRelayModePayload {
   studioId: string;
-  mode: RelayMode;
+  mode: MusicRelayMode;
   interval?: number;
 }
 

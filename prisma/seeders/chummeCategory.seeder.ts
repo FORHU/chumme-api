@@ -1,35 +1,10 @@
 import { PrismaClient } from "@prisma/client";
 
 /**
- * Helper: Generate circular positions around a center point
- * @param center Center point {x, y}
- * @param radius Distance from center
- * @param count Number of positions to generate
- * @returns Array of positions
+ * Seeds Chumme Categories (Countries) with fixed UUIDs
  */
-function generateCircularPositions(
-  center: { x: number; y: number },
-  radius: number,
-  count: number,
-) {
-  const positions: Array<{ x: number; y: number }> = [];
-  for (let i = 0; i < count; i++) {
-    const angle = (i / count) * Math.PI * 2;
-    const x = Math.round(center.x + Math.cos(angle) * radius);
-    const y = Math.round(center.y + Math.sin(angle) * radius);
-    positions.push({
-      x: Math.max(5, Math.min(95, x)),
-      y: Math.max(5, Math.min(95, y)),
-    });
-  }
-  return positions;
-}
-
-/**
- * Seeds Room Categories (Countries) with fixed UUIDs
- */
-export async function seedRoomCategories(prisma: PrismaClient) {
-  console.log("🌱 Seeding Countries as Room Categories...");
+export async function seedChummeCategories(prisma: PrismaClient) {
+  console.log("🌱 Seeding Countries as Chumme Categories...");
 
   // 1. Get or create admin user for ownership
   let systemUser = await prisma.user.findFirst({
@@ -48,9 +23,8 @@ export async function seedRoomCategories(prisma: PrismaClient) {
     );
     return;
   }
-  const ownerId = systemUser.id;
 
-  // 2. Define Countries (Room Categories)
+  // 2. Define Countries (Chumme Categories)
   const countriesData = [
     {
       id: "96b3c9bf-1077-46aa-b37d-f16f28486936",
@@ -66,6 +40,8 @@ export async function seedRoomCategories(prisma: PrismaClient) {
       status: "active",
       tags: ["USA", "North America"],
       emojiIcon: "🇺🇸",
+      keyPassword: null,
+      traits: "FEEDS",
     },
     {
       id: "77a9a080-bf60-4feb-9bbd-c0727c774ebd",
@@ -81,6 +57,8 @@ export async function seedRoomCategories(prisma: PrismaClient) {
       status: "active",
       tags: ["UK", "Europe"],
       emojiIcon: "🇬🇧",
+      keyPassword: null,
+      traits: "NONE",
     },
     {
       id: "4ed0e800-c7a6-41d8-9c1a-7463c67e9126",
@@ -96,6 +74,8 @@ export async function seedRoomCategories(prisma: PrismaClient) {
       status: "active",
       tags: ["Japan", "Asia"],
       emojiIcon: "🇯🇵",
+      keyPassword: null,
+      traits: "COLLABORATION",
     },
     {
       id: "f7ac5ac8-5a1d-4b4f-b5c0-45eb3102bc3d",
@@ -107,10 +87,12 @@ export async function seedRoomCategories(prisma: PrismaClient) {
       border: { width: 2, color: "#000", style: "solid" },
       shadow: { x: 0, y: 2, blur: 6, color: "#aaa" },
       opacity: 0.9,
-      capacity: 1800000,
+      capacity: 180000,
       status: "active",
       tags: ["Korea", "Asia"],
       emojiIcon: "🇰🇷",
+      keyPassword: null,
+      traits: "NONE",
     },
     {
       id: "1e888904-a298-4091-bdbf-6a3206bc8ee6",
@@ -126,6 +108,8 @@ export async function seedRoomCategories(prisma: PrismaClient) {
       status: "active",
       tags: ["Canada", "North America"],
       emojiIcon: "🇨🇦",
+      keyPassword: null,
+      traits: "NONE",
     },
     {
       id: "cbe1ffec-945b-4128-a580-4e58cd7f4b6b",
@@ -141,6 +125,8 @@ export async function seedRoomCategories(prisma: PrismaClient) {
       status: "active",
       tags: ["Australia", "Oceania"],
       emojiIcon: "🇦🇺",
+      keyPassword: null,
+      traits: "NONE",
     },
     {
       id: "4fa52b4d-287e-4be4-a9fb-af71fefcb6d1",
@@ -156,6 +142,8 @@ export async function seedRoomCategories(prisma: PrismaClient) {
       status: "active",
       tags: ["Brazil", "South America"],
       emojiIcon: "🇧🇷",
+      keyPassword: null,
+      traits: "NONE",
     },
     {
       id: "74043e34-6f34-4d01-beee-63a4b5348b70",
@@ -171,32 +159,91 @@ export async function seedRoomCategories(prisma: PrismaClient) {
       status: "active",
       tags: ["Indonesia", "Asia"],
       emojiIcon: "🇮🇩",
+      keyPassword: null,
+      traits: "NONE",
     },
   ];
 
   for (const country of countriesData) {
-    await prisma.roomCategory.upsert({
-      where: { id: country.id },
-      update: {},
-      create: {
-        id: country.id,
-        name: country.name,
-        keyName: null,
-        position: country.position,
-        isAd: country.isAd ?? false,
-        colorSet: country.colorSet,
-        sizeSet: country.sizeSet,
-        border: country.border,
-        shadow: country.shadow,
-        opacity: country.opacity,
-        capacity: country.capacity,
-        status: country.status,
-        tags: country.tags,
-        emojiIcon: country.emojiIcon,
-        metaData: {},
-      },
+    const {
+      position,
+      colorSet,
+      sizeSet,
+      border,
+      shadow,
+      opacity,
+      capacity,
+      status,
+      tags,
+      emojiIcon,
+      ...categoryData
+    } = country;
+
+    // 1. Check if category exists
+    const existingCategory = await prisma.chummeCategory.findUnique({
+      where: { id: categoryData.id },
+      include: { chummeVisualDesign: true },
     });
+
+    if (existingCategory) {
+      // Update existing
+      await prisma.chummeCategory.update({
+        where: { id: categoryData.id },
+        data: {
+          name: categoryData.name,
+          isAd: categoryData.isAd,
+          keyPassword: categoryData.keyPassword || null,
+          traits: (categoryData.traits as any) || "NONE",
+        },
+      });
+
+      if (existingCategory.chummeVisualDesignId) {
+        await prisma.chummeVisualDesign.update({
+          where: { id: existingCategory.chummeVisualDesignId },
+          data: {
+            position,
+            colorSet,
+            sizeSet,
+            border,
+            shadow,
+            opacity,
+            capacity,
+            status,
+            tags,
+            emojiIcon,
+          },
+        });
+      }
+    } else {
+      // Create new
+      const design = await prisma.chummeVisualDesign.create({
+        data: {
+          name: `${categoryData.name} Design`,
+          position,
+          colorSet,
+          sizeSet,
+          border,
+          shadow,
+          opacity,
+          capacity,
+          status,
+          tags,
+          emojiIcon,
+        },
+      });
+
+      await prisma.chummeCategory.create({
+        data: {
+          id: categoryData.id,
+          name: categoryData.name,
+          isAd: categoryData.isAd ?? false,
+          keyPassword: categoryData.keyPassword || null,
+          traits: (categoryData.traits as any) || "NONE",
+          chummeVisualDesignId: design.id,
+        },
+      });
+    }
   }
 
-  console.log(`✅ Seeded ${countriesData.length} Categories.`);
+  console.log(`✅ Seeded ${countriesData.length} Chumme Categories.`);
 }

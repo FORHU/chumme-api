@@ -2,7 +2,7 @@ import { Server } from "socket.io";
 import MusicStudioSvc from "../../services/music-studio.service";
 import MusicStudioCacheSvc from "../../services/music-studio-cache.service";
 import { AuthenticatedSocket } from "./types";
-import { StudioType } from "@prisma/client";
+import { MusicStudioType } from "@prisma/client";
 import MusicLibrarySvc from "../../services/music-library.service";
 import MusicTempRecordSvc from "../../services/music-temp-record.service";
 
@@ -75,7 +75,7 @@ export const registerMediaHandlers = (
         startTimePromise,
       ]);
 
-      if (cachedType === StudioType.RELAYSINGING) {
+      if (cachedType === MusicStudioType.RELAYSINGING) {
         const [currentSinger, currentRoleIndex] = await Promise.all([
           MusicStudioCacheSvc.getCurrentSinger(studioId),
           MusicStudioCacheSvc.getCurrentRoleIndex(studioId),

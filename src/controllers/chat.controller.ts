@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import Joi from "joi";
 import ChatSvc from "../services/chat.service";
-import { ChatRole } from "@prisma/client";
+import { ChatMessageRole } from "@prisma/client";
 import { BadRequestError, InternalServerError } from "../utils/error.util";
 
 import logger from "../utils/logger";
@@ -13,7 +13,7 @@ export default class ChatCtrl {
 
     if (!userId) {
       return next(
-        new InternalServerError("Authenticated user not found in request")
+        new InternalServerError("Authenticated user not found in request"),
       );
     }
 
@@ -39,7 +39,7 @@ export default class ChatCtrl {
   static async getChatByChatId(
     req: Request,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
   ) {
     const { chatId } = req.params;
     const { role } = req.query;
@@ -47,14 +47,14 @@ export default class ChatCtrl {
 
     if (!currentUserId) {
       return next(
-        new InternalServerError("Authenticated user not found in request")
+        new InternalServerError("Authenticated user not found in request"),
       );
     }
 
     const schema = Joi.object({
       chatId: Joi.string().required(),
       role: Joi.string()
-        .valid(...Object.values(ChatRole))
+        .valid(...Object.values(ChatMessageRole))
         .optional(),
     });
 
@@ -67,7 +67,7 @@ export default class ChatCtrl {
       logger.info("[CHAT.SERVICES] - Fetching chat by id");
       const chatMessage = await ChatSvc.getChatMessageById(
         chatId,
-        currentUserId
+        currentUserId,
       );
       return res.json(chatMessage);
     } catch (error) {
@@ -78,13 +78,13 @@ export default class ChatCtrl {
   static async getChatListByUserId(
     req: Request,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
   ) {
     const { id: currentUserId } = req.user;
 
     if (!currentUserId) {
       return next(
-        new InternalServerError("Authenticated user not found in request")
+        new InternalServerError("Authenticated user not found in request"),
       );
     }
 
@@ -92,7 +92,7 @@ export default class ChatCtrl {
       page: Joi.number().integer().min(1).optional(),
       limit: Joi.number().integer().min(1).optional(),
       role: Joi.string()
-        .valid(...Object.values(ChatRole))
+        .valid(...Object.values(ChatMessageRole))
         .optional(),
       sortOrder: Joi.string().valid("asc", "desc").optional(),
     });
@@ -104,7 +104,7 @@ export default class ChatCtrl {
 
     const parsedPage = value.page || undefined;
     const parsedLimit = value.limit || undefined;
-    const parsedRole = (value.role as ChatRole | undefined) || undefined;
+    const parsedRole = (value.role as ChatMessageRole | undefined) || undefined;
     const sortOrder = value.sortOrder;
 
     try {
@@ -131,7 +131,7 @@ export default class ChatCtrl {
         page,
         limit,
         search_conversation,
-        search_message
+        search_message,
       );
       res.json({
         success: true,

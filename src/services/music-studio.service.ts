@@ -2,7 +2,11 @@ import { prisma } from "../utils/prisma";
 import path from "path";
 import os from "os";
 import fs from "fs";
-import { StudioRole, StudioType, RelayMode } from "@prisma/client";
+import {
+  MusicStudioRole,
+  MusicStudioType,
+  MusicRelayMode,
+} from "@prisma/client";
 import MusicStudioRepo from "../repositories/music-studio.repository";
 import MusicRecordRepo from "../repositories/music-record.repository";
 import MusicTempRecordRepo from "../repositories/music-temp-record.repository";
@@ -24,10 +28,10 @@ import { S3_CDN_URL } from "../config";
 
 interface CreateStudioInput {
   name: string;
-  keyName?: string; // Optional - if not set, studio is public
+  keyPassword?: string; // Optional - if not set, studio is public
   note?: string;
-  studioType: StudioType;
-  relayMode?: RelayMode;
+  studioType: MusicStudioType;
+  relayMode?: MusicRelayMode;
   relayInterval?: number;
   ownerId: string;
 }
@@ -50,14 +54,16 @@ export default class MusicStudioSvc {
   /**
    * Create a new music studio (karaoke room)
    * Owner is automatically added as PRODUCER
-   * If keyName is not provided, studio is public
+   * If keyPassword is not provided, studio is public
    */
   static async createStudio(data: CreateStudioInput) {
-    // Check if keyName already exists (only if provided)
-    if (data.keyName) {
-      const existing = await MusicStudioRepo.findByKeyName(data.keyName);
+    // Check if keyPassword already exists (only if provided)
+    if (data.keyPassword) {
+      const existing = await MusicStudioRepo.findByKeyPassword(
+        data.keyPassword,
+      );
       if (existing) {
-        throw new Error("A studio with this key name already exists");
+        throw new Error("A studio with this password already exists");
       }
     }
 
@@ -208,14 +214,14 @@ export default class MusicStudioSvc {
   static async getAllStudios(
     page?: number,
     limit?: number,
-    studioType?: StudioType,
-    isPrivate?: boolean,
+    studioType?: MusicStudioType,
+    publicOnly?: boolean,
   ) {
     const result = await MusicStudioRepo.findAll({
       page,
       limit,
       studioType,
-      isPrivate,
+      publicOnly,
     });
     return { message: "Studios fetched successfully", ...result };
   }
@@ -238,14 +244,14 @@ export default class MusicStudioSvc {
 
   /**
    * Join a studio
-   * keyName only required if studio has one set (private studio)
+   * keyPassword only required if studio has one set (private studio)
    * Default role is LISTENER
    */
   static async joinStudio(
     studioId: string,
     userId: string,
-    keyName?: string,
-    role: StudioRole = StudioRole.LISTENER,
+    keyPassword?: string,
+    role: MusicStudioRole = MusicStudioRole.LISTENER,
   ) {
     const studio = await MusicStudioRepo.findById(studioId);
 
@@ -257,8 +263,8 @@ export default class MusicStudioSvc {
       throw new Error("Studio has been closed");
     }
 
-    // Validate keyName only if studio has one (private studio)
-    if (studio.keyName && studio.keyName !== keyName) {
+    // Validate keyPassword only if studio has one (private studio)
+    if (studio.keyPassword && studio.keyPassword !== keyPassword) {
       throw new Error("Invalid studio key");
     }
 
@@ -305,7 +311,7 @@ export default class MusicStudioSvc {
     studioId: string,
     requesterId: string,
     targetUserId: string,
-    newRole: StudioRole,
+    newRole: MusicStudioRole,
   ) {
     const studio = await MusicStudioRepo.findById(studioId);
 
@@ -320,7 +326,7 @@ export default class MusicStudioSvc {
       requesterId,
     );
 
-    if (!isOwner && requesterMembership?.role !== StudioRole.PRODUCER) {
+    if (!isOwner && requesterMembership?.role !== MusicStudioRole.PRODUCER) {
       throw new Error("Only owner or producers can change roles");
     }
 
@@ -406,8 +412,8 @@ export default class MusicStudioSvc {
     const membership = await MusicStudioRepo.getMembership(studioId, userId);
     if (!membership || !membership.isActive) return false;
     return (
-      membership.role === StudioRole.SINGER ||
-      membership.role === StudioRole.PRODUCER
+      membership.role === MusicStudioRole.SINGER ||
+      membership.role === MusicStudioRole.PRODUCER
     );
   }
 

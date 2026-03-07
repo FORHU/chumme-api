@@ -1,3 +1,4 @@
+import { MusicStudioType, MusicRelayMode } from "@prisma/client";
 import RedisUtil from "../utils/redis.util";
 
 /**
@@ -262,7 +263,7 @@ export default class MusicStudioCacheSvc {
   /**
    * Set the studio type (RELAYSINGING, CROWDSINGING) in Redis
    */
-  static async setStudioType(studioId: string, type: string) {
+  static async setStudioType(studioId: string, type: MusicStudioType) {
     const key = `${this.STUDIO_PREFIX}${studioId}:type`;
     await this.client.set(key, type, { EX: this.TTL });
   }
@@ -278,7 +279,7 @@ export default class MusicStudioCacheSvc {
   /**
    * Set the studio relay mode (MANUAL, INTERVAL, PHRASING)
    */
-  static async setRelayMode(studioId: string, mode: string) {
+  static async setRelayMode(studioId: string, mode: MusicRelayMode) {
     const key = `${this.STUDIO_PREFIX}${studioId}:relayMode`;
     await this.client.set(key, mode, { EX: this.TTL });
   }

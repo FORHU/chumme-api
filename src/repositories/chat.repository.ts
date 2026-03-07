@@ -1,8 +1,8 @@
-import { ChatRole, Prisma } from "@prisma/client";
+import { ChatMessageRole, Prisma } from "@prisma/client";
 import { prisma } from "../utils/prisma";
 
 export type TGetChatMessagesByUserIdOptions = {
-  role?: ChatRole;
+  role?: ChatMessageRole;
   page?: number;
   limit?: number;
   sortOrder?: "asc" | "desc";
@@ -33,7 +33,7 @@ export default class ChatRepo {
 
   static async getChatListByUserId(
     userId: string,
-    options: TGetChatMessagesByUserIdOptions
+    options: TGetChatMessagesByUserIdOptions,
   ) {
     const {
       role,
@@ -91,7 +91,7 @@ export default class ChatRepo {
   static async getMessagesByConversationId(
     conversationId: string,
     userId: string,
-    options: TGetChatMessagesByUserIdOptions
+    options: TGetChatMessagesByUserIdOptions,
   ) {
     const {
       role,
@@ -159,7 +159,7 @@ export default class ChatRepo {
     page: number = 1,
     limit: number = 20,
     searchConversation?: string,
-    searchMessage?: string
+    searchMessage?: string,
   ) {
     const safePage = Math.max(page, 1);
     const safeLimit = Math.min(Math.max(limit, 1), 100);

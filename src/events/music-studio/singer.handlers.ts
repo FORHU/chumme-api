@@ -1,5 +1,5 @@
 import { Server } from "socket.io";
-import { StudioRole } from "@prisma/client";
+import { MusicStudioRole } from "@prisma/client";
 import MusicStudioSvc from "../../services/music-studio.service";
 import MusicStudioRepo from "../../repositories/music-studio.repository";
 import MusicStudioCacheSvc from "../../services/music-studio-cache.service";
@@ -34,7 +34,7 @@ export const registerSingerHandlers = (
         });
       }
 
-      if (membership.role !== StudioRole.LISTENER) {
+      if (membership.role !== MusicStudioRole.LISTENER) {
         return socket.emit("request_singer_failed", {
           message: "You are already a singer or producer",
         });
@@ -97,7 +97,7 @@ export const registerSingerHandlers = (
           studioId,
           socket.user.id,
           userId,
-          StudioRole.SINGER,
+          MusicStudioRole.SINGER,
         );
 
         await Promise.all([
@@ -105,7 +105,7 @@ export const registerSingerHandlers = (
           MusicStudioCacheSvc.addMember(studioId, userId, {
             userId: userId,
             name: result.data.user.name,
-            role: StudioRole.SINGER,
+            role: MusicStudioRole.SINGER,
             vocalRoleIndex: result.data.vocalRoleIndex,
           }),
         ]);
@@ -156,7 +156,7 @@ export const registerSingerHandlers = (
           socket.user.id,
         );
 
-        if (!isOwner && membership?.role !== StudioRole.PRODUCER) {
+        if (!isOwner && membership?.role !== MusicStudioRole.PRODUCER) {
           return socket.emit("reject_singer_failed", {
             message: "Only owner or producers can reject requests",
           });
@@ -194,7 +194,7 @@ export const registerSingerHandlers = (
         studioId,
         socket.user.id,
       );
-      if (!isOwner && membership?.role !== StudioRole.PRODUCER) {
+      if (!isOwner && membership?.role !== MusicStudioRole.PRODUCER) {
         return socket.emit("queue_action_failed", { message: "Unauthorized" });
       }
 
@@ -218,7 +218,7 @@ export const registerSingerHandlers = (
           studioId,
           socket.user.id,
         );
-        if (!isOwner && membership?.role !== StudioRole.PRODUCER) {
+        if (!isOwner && membership?.role !== MusicStudioRole.PRODUCER) {
           return socket.emit("queue_action_failed", {
             message: "Unauthorized",
           });
@@ -248,7 +248,7 @@ export const registerSingerHandlers = (
           studioId,
           socket.user.id,
         );
-        if (!isOwner && membership?.role !== StudioRole.PRODUCER) {
+        if (!isOwner && membership?.role !== MusicStudioRole.PRODUCER) {
           return socket.emit("queue_action_failed", {
             message: "Unauthorized",
           });

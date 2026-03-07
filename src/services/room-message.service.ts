@@ -7,7 +7,7 @@ export default class RoomMessageSvc {
    * Create a new message or reply
    */
   static async createMessage(data: {
-    roomSubCategoryId: string;
+    chummeSubCategoryId: string;
     userId: string;
     content: any;
     voiceMessageId?: string;
@@ -16,7 +16,7 @@ export default class RoomMessageSvc {
     // 1. Verify user is a member of the room
     const isMember = await RoomUserChatRepo.isMember(
       data.userId,
-      data.roomSubCategoryId,
+      data.chummeSubCategoryId,
     );
     if (!isMember) {
       throw new Error(
@@ -30,17 +30,17 @@ export default class RoomMessageSvc {
         data.parentMessageId,
       );
       if (!parent) throw new Error("Parent message not found");
-      if (parent.roomSubCategoryId !== data.roomSubCategoryId) {
+      if (parent.chummeSubCategoryId !== data.chummeSubCategoryId) {
         throw new Error("Parent message does not belong to this room");
       }
     }
 
     // 3. Clear cache
-    await CacheUtil.delByPattern(`messages:room:${data.roomSubCategoryId}:*`);
+    await CacheUtil.delByPattern(`messages:room:${data.chummeSubCategoryId}:*`);
 
     // 4. Create message
     return RoomMessageRepo.createMessage({
-      roomSubCategoryId: data.roomSubCategoryId,
+      chummeSubCategoryId: data.chummeSubCategoryId,
       authorId: data.userId,
       content: data.content,
       voiceMessageId: data.voiceMessageId,
@@ -52,14 +52,17 @@ export default class RoomMessageSvc {
    * Get messages for a room (top-level or threaded)
    */
   static async getRoomMessages(
-    roomSubCategoryId: string,
+    chummeSubCategoryId: string,
     userId: string,
     page: number = 1,
     limit: number = 20,
     parentMessageId?: string,
   ) {
     // 1. Verify membership
-    const isMember = await RoomUserChatRepo.isMember(userId, roomSubCategoryId);
+    const isMember = await RoomUserChatRepo.isMember(
+      userId,
+      chummeSubCategoryId,
+    );
     if (!isMember) {
       throw new Error(
         "Access denied: You must be a member of this room to view messages",
@@ -68,7 +71,7 @@ export default class RoomMessageSvc {
 
     // 2. Fetch messages
     return RoomMessageRepo.getRoomMessages(
-      roomSubCategoryId,
+      chummeSubCategoryId,
       page,
       limit,
       parentMessageId,

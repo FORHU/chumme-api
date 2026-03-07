@@ -5,8 +5,8 @@ import { authenticate } from "../middleware/auth.middleware";
 const router = express.Router();
 router.use(authenticate);
 
-router.post("/join/:roomSubCategoryId", RoomUserChatCtrl.joinRoom);
-router.delete("/leave/:roomSubCategoryId", RoomUserChatCtrl.leaveRoom);
-router.get("/members/:roomSubCategoryId", RoomUserChatCtrl.getMembers);
+router.post("/join/:chummeSubCategoryId", RoomUserChatCtrl.joinRoom);
+router.delete("/leave/:chummeSubCategoryId", RoomUserChatCtrl.leaveRoom);
+router.get("/members/:chummeSubCategoryId", RoomUserChatCtrl.getMembers);
 
 export default router;

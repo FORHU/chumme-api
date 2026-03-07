@@ -1,17 +1,18 @@
 import { Request, Response } from "express";
 import Joi from "joi";
-import RoomSubCategorySvc from "../services/room-subcategory.service";
+import ChummeSubCategorySvc from "../services/chumme-subcategory.service";
 
-export default class RoomSubCategoryCtrl {
+export default class ChummeSubCategoryCtrl {
   /**
-   * Create a new room subcategory
+   * Create a new chumme subcategory
    */
   static async createSubCategory(req: Request, res: Response) {
     const schema = Joi.object({
       name: Joi.string().min(1).max(100).required(),
-      roomCategoryId: Joi.string().uuid().required(),
-      ownerId: Joi.string().uuid().required(),
+      chummeCategoryId: Joi.string().uuid().required(),
+      ownerId: Joi.string().uuid().optional(),
       isAd: Joi.boolean().required(),
+      keyPassword: Joi.string().allow(null, "").optional(), // Null/Empty = public, otherwise private
       position: Joi.object().optional(),
       colorSet: Joi.object().optional(),
       sizeSet: Joi.object().optional(),
@@ -24,8 +25,6 @@ export default class RoomSubCategoryCtrl {
       tags: Joi.array().items(Joi.string()).optional(),
       emojiIcon: Joi.string().allow("").optional(),
       note: Joi.string().max(500).optional(),
-      artistId: Joi.string().uuid().optional(),
-      keyName: Joi.string().optional(),
     });
 
     const { error, value } = schema.validate(req.body);
@@ -34,9 +33,9 @@ export default class RoomSubCategoryCtrl {
     }
 
     try {
-      const subCategory = await RoomSubCategorySvc.createSubCategory(value);
+      const subCategory = await ChummeSubCategorySvc.createSubCategory(value);
       return res.status(201).json({
-        message: "Room subcategory created successfully",
+        message: "Chumme subcategory created successfully",
         subCategory,
       });
     } catch (error: any) {
@@ -45,11 +44,11 @@ export default class RoomSubCategoryCtrl {
   }
 
   /**
-   * Get all room subcategories
+   * Get all chumme subcategories
    * Optional query param: categoryId to filter by category
    */
   static async getAllSubCategories(req: Request, res: Response) {
-    const categoryId = req.query.categoryId as string | undefined;
+    const { categoryId, publicOnly } = req.query as any;
 
     if (categoryId) {
       const schema = Joi.object({
@@ -63,8 +62,10 @@ export default class RoomSubCategoryCtrl {
     }
 
     try {
-      const subCategories =
-        await RoomSubCategorySvc.getAllSubCategories(categoryId);
+      const subCategories = await ChummeSubCategorySvc.getAllSubCategories({
+        categoryId: categoryId as string,
+        publicOnly: publicOnly === "true",
+      });
       return res.json({ subCategories });
     } catch (error: any) {
       return res.status(500).json({ message: error.message || error });
@@ -72,7 +73,7 @@ export default class RoomSubCategoryCtrl {
   }
 
   /**
-   * Get room subcategory by ID
+   * Get chumme subcategory by ID
    */
   static async getSubCategoryById(req: Request, res: Response) {
     const { id } = req.params;
@@ -87,7 +88,7 @@ export default class RoomSubCategoryCtrl {
     }
 
     try {
-      const subCategory = await RoomSubCategorySvc.getSubCategoryById(id);
+      const subCategory = await ChummeSubCategorySvc.getSubCategoryById(id);
       return res.json({ subCategory });
     } catch (error: any) {
       return res.status(404).json({ message: error.message || error });
@@ -95,9 +96,12 @@ export default class RoomSubCategoryCtrl {
   }
 
   /**
-   * Get subcategories strictly by a parent room category ID
+   * Get subcategories strictly by a parent chumme category ID
    */
-  static async getRoomSubCategoryByRoomCategoryID(req: Request, res: Response) {
+  static async getChummeSubCategoryByChummeCategoryID(
+    req: Request,
+    res: Response,
+  ) {
     const { categoryId } = req.params;
 
     const schema = Joi.object({
@@ -111,7 +115,9 @@ export default class RoomSubCategoryCtrl {
 
     try {
       const subCategories =
-        await RoomSubCategorySvc.getRoomSubCategoryByRoomCategoryID(categoryId);
+        await ChummeSubCategorySvc.getChummeSubCategoryByChummeCategoryID(
+          categoryId,
+        );
       return res.json({ subCategories });
     } catch (error: any) {
       return res.status(500).json({ message: error.message || error });
@@ -119,15 +125,16 @@ export default class RoomSubCategoryCtrl {
   }
 
   /**
-   * Update room subcategory
+   * Update chumme subcategory
    */
   static async updateSubCategory(req: Request, res: Response) {
     const { id } = req.params;
     const schema = Joi.object({
       name: Joi.string().min(1).max(100).optional(),
-      roomCategoryId: Joi.string().uuid().optional(),
+      chummeCategoryId: Joi.string().uuid().optional(),
       ownerId: Joi.string().uuid().optional(),
       isAd: Joi.boolean().optional(),
+      keyPassword: Joi.string().allow(null, "").optional(), // Null/Empty = public, otherwise private
       position: Joi.object().optional(),
       colorSet: Joi.object().optional(),
       sizeSet: Joi.object().optional(),
@@ -140,8 +147,6 @@ export default class RoomSubCategoryCtrl {
       tags: Joi.array().items(Joi.string()).optional(),
       emojiIcon: Joi.string().allow("").optional(),
       note: Joi.string().max(500).optional(),
-      artistId: Joi.string().uuid().optional(),
-      keyName: Joi.string().optional(),
     }).min(1);
 
     const { error, value } = schema.validate(req.body);
@@ -150,9 +155,12 @@ export default class RoomSubCategoryCtrl {
     }
 
     try {
-      const subCategory = await RoomSubCategorySvc.updateSubCategory(id, value);
+      const subCategory = await ChummeSubCategorySvc.updateSubCategory(
+        id,
+        value,
+      );
       return res.json({
-        message: "Room subcategory updated successfully",
+        message: "Chumme subcategory updated successfully",
         subCategory,
       });
     } catch (error: any) {
@@ -161,7 +169,7 @@ export default class RoomSubCategoryCtrl {
   }
 
   /**
-   * Delete room subcategory
+   * Delete chumme subcategory
    */
   static async deleteSubCategory(req: Request, res: Response) {
     const { id } = req.params;
@@ -176,8 +184,8 @@ export default class RoomSubCategoryCtrl {
     }
 
     try {
-      await RoomSubCategorySvc.deleteSubCategory(id);
-      return res.json({ message: "Room subcategory deleted successfully" });
+      await ChummeSubCategorySvc.deleteSubCategory(id);
+      return res.json({ message: "Chumme subcategory deleted successfully" });
     } catch (error: any) {
       return res.status(400).json({ message: error.message || error });
     }

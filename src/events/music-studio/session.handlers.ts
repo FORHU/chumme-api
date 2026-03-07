@@ -1,5 +1,5 @@
 import { Server } from "socket.io";
-import { StudioRole } from "@prisma/client";
+import { MusicStudioRole } from "@prisma/client";
 import MusicStudioSvc from "../../services/music-studio.service";
 import MusicStudioRepo from "../../repositories/music-studio.repository";
 import MusicStudioCacheSvc from "../../services/music-studio-cache.service";
@@ -22,7 +22,7 @@ export const registerSessionHandlers = (
    */
   socket.on("create_studio", async (data: CreateStudioPayload) => {
     try {
-      const { name, studioType, keyName, note, maxMembers } = data;
+      const { name, studioType, keyPassword, note, maxMembers } = data;
 
       if (!name || !studioType) {
         return socket.emit("create_studio_failed", {
@@ -33,7 +33,7 @@ export const registerSessionHandlers = (
       const result = await MusicStudioSvc.createStudio({
         name,
         studioType,
-        keyName,
+        keyPassword,
         note,
         ownerId: socket.user.id,
       });
@@ -69,8 +69,12 @@ export const registerSessionHandlers = (
    */
   socket.on("join_studio", async (data: JoinStudioPayload) => {
     try {
-      const { studioId, keyName, role } = data;
-      console.log("[DEBUG] Socket join_studio:", { studioId, keyName, role });
+      const { studioId, keyPassword, role } = data;
+      console.log("[DEBUG] Socket join_studio:", {
+        studioId,
+        keyPassword,
+        role,
+      });
 
       if (!studioId) {
         return socket.emit("join_studio_failed", {
@@ -80,7 +84,7 @@ export const registerSessionHandlers = (
       const result = await MusicStudioSvc.joinStudio(
         studioId,
         socket.user.id,
-        keyName,
+        keyPassword,
         role,
       );
 
@@ -103,8 +107,8 @@ export const registerSessionHandlers = (
           name: socket.user.name,
           role:
             role ||
-            (result.membership?.role as StudioRole) ||
-            StudioRole.LISTENER,
+            (result.membership?.role as MusicStudioRole) ||
+            MusicStudioRole.LISTENER,
           vocalRoleIndex: (result.membership as any)?.vocalRoleIndex || null,
         }),
         MusicStudioCacheSvc.setStudioType(studioId, result.data!.studioType),
@@ -195,8 +199,8 @@ export const registerSessionHandlers = (
         await MusicStudioCacheSvc.getCurrentSinger(studioId);
       if (
         currentSingerId === targetUserId &&
-        role !== StudioRole.SINGER &&
-        role !== StudioRole.PRODUCER
+        role !== MusicStudioRole.SINGER &&
+        role !== MusicStudioRole.PRODUCER
       ) {
         await MusicStudioCacheSvc.setCurrentSinger(studioId, null);
         io.to(studioId).emit("microphone_passed", {
@@ -282,7 +286,7 @@ export const registerSessionHandlers = (
 
       const updatedMembers = await MusicStudioRepo.updateAllMembersRole(
         studioId,
-        StudioRole.SINGER,
+        MusicStudioRole.SINGER,
       );
 
       await Promise.all(
@@ -298,7 +302,7 @@ export const registerSessionHandlers = (
 
       io.to(studioId).emit("all_users_upgraded", {
         studioId,
-        newRole: StudioRole.SINGER,
+        newRole: MusicStudioRole.SINGER,
         updatedBy: socket.user.id,
         allUsers: updatedMembers,
       });

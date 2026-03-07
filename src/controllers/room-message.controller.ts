@@ -10,7 +10,7 @@ export default class RoomMessageCtrl {
     const userId = (req as any).user.id;
 
     const schema = Joi.object({
-      roomSubCategoryId: Joi.string().uuid().required(),
+      chummeSubCategoryId: Joi.string().uuid().required(),
       content: Joi.any().required(),
       voiceMessageId: Joi.string().uuid().optional(),
       parentMessageId: Joi.string().uuid().optional(),
@@ -40,20 +40,20 @@ export default class RoomMessageCtrl {
    */
   static async getRoomMessages(req: Request, res: Response) {
     const userId = (req as any).user.id;
-    const { roomSubCategoryId } = req.params;
+    const { chummeSubCategoryId } = req.params;
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
     const parentMessageId = req.query.parentMessageId as string;
 
     const schema = Joi.object({
-      roomSubCategoryId: Joi.string().uuid().required(),
+      chummeSubCategoryId: Joi.string().uuid().required(),
       page: Joi.number().min(1).optional(),
       limit: Joi.number().min(1).max(50).optional(),
       parentMessageId: Joi.string().uuid().optional(),
     });
 
     const { error } = schema.validate({
-      roomSubCategoryId,
+      chummeSubCategoryId,
       page,
       limit,
       parentMessageId,
@@ -64,7 +64,7 @@ export default class RoomMessageCtrl {
 
     try {
       const response = await RoomMessageSvc.getRoomMessages(
-        roomSubCategoryId,
+        chummeSubCategoryId,
         userId,
         page,
         limit,

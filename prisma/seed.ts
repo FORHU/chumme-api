@@ -3,8 +3,8 @@ import { seedInterests } from "./seeders/interests.seeder";
 import { seedEmotions } from "./seeders/emotions.seeder";
 import { seedArtists } from "./seeders/artists.seeder";
 import { seedAlbums } from "./seeders/albums.seeder";
-import { seedRoomCategories } from "./seeders/roomCategory.seeder";
-import { seedRoomSubCategories } from "./seeders/roomSubCategory.seeder";
+import { seedChummeCategories } from "./seeders/chummeCategory.seeder";
+import { seedChummeSubCategories } from "./seeders/chummeSubCategory.seeder";
 
 const prisma = new PrismaClient();
 
@@ -16,8 +16,8 @@ async function main() {
     await seedEmotions(prisma);
     await seedArtists(prisma);
     await seedAlbums(prisma);
-    await seedRoomCategories(prisma);
-    await seedRoomSubCategories(prisma);
+    await seedChummeCategories(prisma);
+    await seedChummeSubCategories(prisma);
 
     console.log("🎉 All seeder modules executed successfully!");
   } catch (error) {

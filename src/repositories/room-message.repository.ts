@@ -5,7 +5,7 @@ export default class RoomMessageRepo {
    * Create a new message in a room
    */
   static async createMessage(data: {
-    roomSubCategoryId: string;
+    chummeSubCategoryId: string;
     authorId: string;
     content?: any;
     voiceMessageId?: string;
@@ -14,7 +14,7 @@ export default class RoomMessageRepo {
   }) {
     return prisma.roomMessage.create({
       data: {
-        roomSubCategoryId: data.roomSubCategoryId,
+        chummeSubCategoryId: data.chummeSubCategoryId,
         authorId: data.authorId,
         content: data.content || null,
         voiceMessageId: data.voiceMessageId || null,
@@ -64,7 +64,7 @@ export default class RoomMessageRepo {
    * Get messages for a room with pagination and threading support
    */
   static async getRoomMessages(
-    roomSubCategoryId: string,
+    chummeSubCategoryId: string,
     page: number = 1,
     limit: number = 20,
     parentMessageId?: string,
@@ -73,7 +73,7 @@ export default class RoomMessageRepo {
 
     return prisma.roomMessage.findMany({
       where: {
-        roomSubCategoryId,
+        chummeSubCategoryId,
         parentMessageId: parentMessageId || null, // Top level messages if no parentId
       },
       skip,

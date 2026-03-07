@@ -1,4 +1,8 @@
-import { StudioRole, StudioType, RelayMode } from "@prisma/client";
+import {
+  MusicStudioRole,
+  MusicStudioType,
+  MusicRelayMode,
+} from "@prisma/client";
 import MusicStudioCacheSvc from "../services/music-studio-cache.service";
 
 /**
@@ -22,8 +26,8 @@ export default class RelayManager {
 
     // Only automate if we are in RELAYSINGING and not in MANUAL mode
     if (
-      studioType !== StudioType.RELAYSINGING ||
-      relayMode === RelayMode.MANUAL
+      studioType !== MusicStudioType.RELAYSINGING ||
+      relayMode === MusicRelayMode.MANUAL
     ) {
       return { nextSingerId: null, targetRoleIndex: null };
     }
@@ -34,7 +38,7 @@ export default class RelayManager {
 
     // --- SMART AUTO / MODE DETECTION ---
 
-    if (relayMode === RelayMode.AUTO) {
+    if (relayMode === MusicRelayMode.AUTO) {
       // Use phrasing if available, fallback to 4-line interval
       if (phrasing && phrasing.length > 0) {
         const currentPart = phrasing.find(
@@ -47,11 +51,11 @@ export default class RelayManager {
       } else if (lineIndex >= 0 && lineIndex % 4 === 0) {
         shouldSwitch = true;
       }
-    } else if (relayMode === RelayMode.INTERVAL) {
+    } else if (relayMode === MusicRelayMode.INTERVAL) {
       if (lineIndex >= 0 && lineIndex % (relayInterval || 1) === 0) {
         shouldSwitch = true;
       }
-    } else if (relayMode === RelayMode.PHRASING) {
+    } else if (relayMode === MusicRelayMode.PHRASING) {
       const currentPart = phrasing.find((p: any) => p.startLine === lineIndex);
       if (currentPart) {
         shouldSwitch = true;
@@ -68,7 +72,8 @@ export default class RelayManager {
     const singers = members
       .filter(
         (m: any) =>
-          (m.role === StudioRole.SINGER || m.role === StudioRole.PRODUCER) &&
+          (m.role === MusicStudioRole.SINGER ||
+            m.role === MusicStudioRole.PRODUCER) &&
           m.isConnected === true,
       )
       .sort((a: any, b: any) => {

@@ -1,4 +1,4 @@
-import { PrismaClient, RoomCategory } from "@prisma/client";
+import { PrismaClient, ChummeCategory } from "@prisma/client";
 
 /**
  * Helper: Generate circular positions
@@ -22,17 +22,17 @@ function generateCircularPositions(
 }
 
 /**
- * Seeds exactly 10 subcategories (1 Lobby + 9 Topics) for each RoomCategory
+ * Seeds exactly 10 subcategories (1 Lobby + 9 Topics) for each ChummeCategory
  */
-export async function seedRoomSubCategories(
+export async function seedChummeSubCategories(
   prisma: PrismaClient,
-  categoriesInput?: RoomCategory[],
+  categoriesInput?: ChummeCategory[],
 ) {
-  console.log("🌱 Seeding Room SubCategories (10 per Category)...");
+  console.log("🌱 Seeding Chumme SubCategories (10 per Category)...");
 
   const categories =
     categoriesInput ||
-    (await prisma.roomCategory.findMany({
+    (await prisma.chummeCategory.findMany({
       where: { deletedAt: null },
     }));
 
@@ -70,9 +70,9 @@ export async function seedRoomSubCategories(
     );
 
     // Get existing subcategories for this category to avoid duplicates
-    const existingSubCats = await prisma.roomSubCategory.findMany({
+    const existingSubCats = await prisma.chummeSubCategory.findMany({
       where: {
-        roomCategoryId: category.id,
+        chummeCategoryId: category.id,
         deletedAt: null,
       },
       select: { name: true },
@@ -89,12 +89,11 @@ export async function seedRoomSubCategories(
 
       const position = item.type === "lobby" ? { x: 50, y: 50 } : positions[i];
 
-      await prisma.roomSubCategory.create({
+      // 1. Create Design first (as it's the "parent" in the 1:1 nested write perspective)
+      const design = await prisma.chummeVisualDesign.create({
         data: {
-          name: item.name,
-          roomCategoryId: category.id,
+          name: `${category.name} - ${item.name} Design`,
           position,
-          isAd: false,
           colorSet: {
             primary: item.type === "lobby" ? "#9d30ff" : "#ff0095",
             secondary: item.type === "lobby" ? "#c084fc" : "#f472b6",
@@ -106,16 +105,28 @@ export async function seedRoomSubCategories(
           opacity: 0.9,
           capacity: item.type === "lobby" ? 1000 : 500,
           status: "active",
-          keyName: null, // Password - seeded empty
-          metaData: { isCenterpiece: item.isCenterpiece },
           tags: [item.type],
           emojiIcon: "",
+          metaData: { isCenterpiece: item.isCenterpiece },
+        },
+      });
+
+      // 2. Create SubCategory connected to Design
+      await prisma.chummeSubCategory.create({
+        data: {
+          name: item.name,
+          chummeCategoryId: category.id,
+          keyPassword: null,
+          isAd: false,
+          chummeVisualDesignId: design.id,
         },
       });
     }
   }
 
-  console.log(`✅ Seeded subcategories for ${categories.length} categories.`);
+  console.log(
+    `✅ Seeded Chumme subcategories for ${categories.length} categories.`,
+  );
 }
 
-export default seedRoomSubCategories;
+export default seedChummeSubCategories;

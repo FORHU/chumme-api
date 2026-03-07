@@ -1,17 +1,18 @@
-import RoomSubCategoryRepo from "../repositories/room-subcategory.repository";
+import ChummeSubCategoryRepo from "../repositories/chumme-subcategory.repository";
 import S3Util from "../utils/s3.util";
 import S3PresignedUtil from "../utils/s3-presigned.util";
 
-export default class RoomSubCategorySvc {
+export default class ChummeSubCategorySvc {
   /**
-   * Create a new room subcategory
+   * Create a new chumme subcategory
    * Validates parent category exists and name is unique within category
    */
   static async createSubCategory(data: {
     name: string;
-    roomCategoryId: string;
+    chummeCategoryId: string;
     ownerId: string;
     isAd: boolean;
+    keyPassword?: string;
     position?: any;
     colorSet?: any;
     sizeSet?: any;
@@ -24,45 +25,76 @@ export default class RoomSubCategorySvc {
     tags?: string[];
     emojiIcon?: string;
     note?: string;
-    artistId?: string;
-    keyName?: string;
   }) {
     // Verify parent category exists
-    const categoryExists = await RoomSubCategoryRepo.categoryExists(
-      data.roomCategoryId,
+    const categoryExists = await ChummeSubCategoryRepo.categoryExists(
+      data.chummeCategoryId,
     );
     if (!categoryExists) {
       throw new Error("Parent category not found");
     }
 
     // Check if subcategory with same name already exists in this category (case-insensitive)
-    const existingSubCategory = await RoomSubCategoryRepo.findSubCategoryByName(
-      data.name,
-      data.roomCategoryId,
-    );
+    const existingSubCategory =
+      await ChummeSubCategoryRepo.findSubCategoryByName(
+        data.name,
+        data.chummeCategoryId,
+      );
     if (existingSubCategory) {
       throw new Error(
         `Subcategory with name "${data.name}" already exists in this category`,
       );
     }
 
-    const subCategory = await RoomSubCategoryRepo.createSubCategory(data);
+    const {
+      position,
+      colorSet,
+      sizeSet,
+      border,
+      shadow,
+      opacity,
+      capacity,
+      status,
+      metaData,
+      tags,
+      emojiIcon,
+      ...rest
+    } = data;
+
+    const subCategory = await ChummeSubCategoryRepo.createSubCategory({
+      ...rest,
+      chummeVisualDesign: {
+        position,
+        colorSet,
+        sizeSet,
+        border,
+        shadow,
+        opacity,
+        capacity,
+        status,
+        metaData,
+        tags,
+        emojiIcon,
+      },
+    });
     return subCategory;
   }
 
   /**
-   * Get all subcategories
+   * Get all chumme subcategories
    * Optionally filter by category
    */
-  static async getAllSubCategories(categoryId?: string) {
-    return RoomSubCategoryRepo.getAllSubCategories(categoryId);
+  static async getAllSubCategories(
+    params: { categoryId?: string; publicOnly?: boolean } = {},
+  ) {
+    return ChummeSubCategoryRepo.getAllSubCategories(params);
   }
 
   /**
-   * Get subcategory by ID
+   * Get chumme subcategory by ID
    */
   static async getSubCategoryById(id: string) {
-    const subCategory = await RoomSubCategoryRepo.getSubCategoryById(id);
+    const subCategory = await ChummeSubCategoryRepo.getSubCategoryById(id);
     if (!subCategory) {
       throw new Error("Subcategory not found");
     }
@@ -70,23 +102,29 @@ export default class RoomSubCategorySvc {
   }
 
   /**
-   * Get subcategories strictly by a parent room category ID
+   * Get subcategories strictly by a parent chumme category ID
    */
-  static async getRoomSubCategoryByRoomCategoryID(categoryId: string) {
-    return RoomSubCategoryRepo.getRoomSubCategoryByRoomCategoryID(categoryId);
+  static async getChummeSubCategoryByChummeCategoryID(
+    categoryId: string,
+    params: { publicOnly?: boolean } = {},
+  ) {
+    return ChummeSubCategoryRepo.getChummeSubCategoryByChummeCategoryID(
+      categoryId,
+      params,
+    );
   }
 
   /**
-   * Update subcategory
+   * Update chumme subcategory
    * Validates name uniqueness and parent category if changed
    */
   static async updateSubCategory(
     id: string,
     data: {
       name?: string;
-      roomCategoryId?: string;
-      ownerId?: string;
+      chummeCategoryId?: string;
       isAd?: boolean;
+      keyPassword?: string;
       position?: any;
       colorSet?: any;
       sizeSet?: any;
@@ -97,22 +135,21 @@ export default class RoomSubCategorySvc {
       status?: string;
       metaData?: any;
       tags?: string[];
+      ownerId?: string;
       emojiIcon?: string;
       note?: string;
-      artistId?: string;
-      keyName?: string;
     },
   ) {
     // Check if subcategory exists
-    const subCategory = await RoomSubCategoryRepo.getSubCategoryById(id);
+    const subCategory = await ChummeSubCategoryRepo.getSubCategoryById(id);
     if (!subCategory) {
       throw new Error("Subcategory not found");
     }
 
     // If changing category, verify new category exists
-    if (data.roomCategoryId) {
-      const categoryExists = await RoomSubCategoryRepo.categoryExists(
-        data.roomCategoryId,
+    if (data.chummeCategoryId) {
+      const categoryExists = await ChummeSubCategoryRepo.categoryExists(
+        data.chummeCategoryId,
       );
       if (!categoryExists) {
         throw new Error("Parent category not found");
@@ -122,9 +159,9 @@ export default class RoomSubCategorySvc {
     // If changing name, check for duplicates in the target category
     if (data.name) {
       const targetCategoryId =
-        data.roomCategoryId || subCategory.roomCategoryId;
+        data.chummeCategoryId || subCategory.chummeCategoryId;
       const existingSubCategory =
-        await RoomSubCategoryRepo.findSubCategoryByName(
+        await ChummeSubCategoryRepo.findSubCategoryByName(
           data.name,
           targetCategoryId,
         );
@@ -135,29 +172,59 @@ export default class RoomSubCategorySvc {
       }
     }
 
-    return RoomSubCategoryRepo.updateSubCategory(id, data);
+    const {
+      position,
+      colorSet,
+      sizeSet,
+      border,
+      shadow,
+      opacity,
+      capacity,
+      status,
+      metaData,
+      tags,
+      emojiIcon,
+      ...rest
+    } = data;
+
+    return ChummeSubCategoryRepo.updateSubCategory(id, {
+      ...rest,
+      chummeVisualDesign: {
+        position,
+        colorSet,
+        sizeSet,
+        border,
+        shadow,
+        opacity,
+        capacity,
+        status,
+        metaData,
+        tags,
+        emojiIcon,
+      },
+    });
   }
 
   /**
-   * Delete subcategory
+   * Delete chumme subcategory
    * Prevents deletion if subcategory has active rooms
    */
   static async deleteSubCategory(id: string) {
     // Check if subcategory exists
-    const subCategory = await RoomSubCategoryRepo.getSubCategoryById(id);
+    const subCategory = await ChummeSubCategoryRepo.getSubCategoryById(id);
     if (!subCategory) {
       throw new Error("Subcategory not found");
     }
 
-    // Check if subcategory has active rooms
-    const hasRooms = await RoomSubCategoryRepo.hasActiveRooms(id);
-    if (hasRooms) {
+    // Check if subcategory has active members
+    const hasMembers = await ChummeSubCategoryRepo.hasActiveChatMembers(id);
+    if (hasMembers) {
       throw new Error(
-        "Cannot delete subcategory with active rooms. Please delete all rooms first.",
+        "Cannot delete subcategory with active chat members. Please remove all members first.",
       );
     }
 
-    return RoomSubCategoryRepo.softDeleteSubCategory(id);
+    return ChummeSubCategoryRepo.softDeleteSubCategory(id);
   }
 
   /**
@@ -169,7 +236,7 @@ export default class RoomSubCategorySvc {
 
   /**
    * Helper to map a raw message to the structure expected by the frontend
-   * (Migrated from legacy RoomSvc)
+   * (Migrated from legacy ChummeSvc)
    */
   static async mapMessageWithSignedUrl(msg: any) {
     let voiceNote = undefined;
@@ -183,7 +250,7 @@ export default class RoomSubCategorySvc {
           signedUrl = await S3PresignedUtil.getDownloadUrl(key);
         } catch (err) {
           console.error(
-            `[RoomSubCategorySvc] Error signing URL for key ${key}:`,
+            `[ChummeSubCategorySvc] Error signing URL for key ${key}:`,
             err,
           );
         }

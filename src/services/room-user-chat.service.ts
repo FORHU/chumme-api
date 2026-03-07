@@ -1,5 +1,5 @@
 import RoomUserChatRepo from "../repositories/room-user-chat.repository";
-import RoomSubCategoryRepo from "../repositories/room-subcategory.repository";
+import ChummeSubCategoryRepo from "../repositories/chumme-subcategory.repository";
 import { UserChatRole } from "@prisma/client";
 
 export default class RoomUserChatSvc {
@@ -15,13 +15,19 @@ export default class RoomUserChatSvc {
    */
   static async joinRoom(
     userId: string,
-    roomSubCategoryId: string,
+    chummeSubCategoryId: string,
+    password?: string,
     roleInput: string = "MEMBER",
   ) {
     // Verify room exists
     const room =
-      await RoomSubCategoryRepo.getSubCategoryById(roomSubCategoryId);
+      await ChummeSubCategoryRepo.getSubCategoryById(chummeSubCategoryId);
     if (!room) throw new Error("Room does not exist");
+
+    // Check keyPassword: if null/empty string, it's public. Otherwise, verify password.
+    if (room.keyPassword && room.keyPassword !== password) {
+      throw new Error("Invalid password for this room");
+    }
 
     // Map string role to UserChatRole enum
     let chatRole: UserChatRole = UserChatRole.MEMBER;
@@ -29,25 +35,25 @@ export default class RoomUserChatSvc {
     if (upperRole === "OWNER") chatRole = UserChatRole.OWNER;
     if (upperRole === "ADMIN") chatRole = UserChatRole.ADMIN;
 
-    return RoomUserChatRepo.joinRoom(userId, roomSubCategoryId, chatRole);
+    return RoomUserChatRepo.joinRoom(userId, chummeSubCategoryId, chatRole);
   }
 
   /**
    * Leave a room
    */
-  static async leaveRoom(userId: string, roomSubCategoryId: string) {
-    return RoomUserChatRepo.leaveRoom(userId, roomSubCategoryId);
+  static async leaveRoom(userId: string, chummeSubCategoryId: string) {
+    return RoomUserChatRepo.leaveRoom(userId, chummeSubCategoryId);
   }
 
   /**
    * Get members of a room
    * Only room members can view the member list
    */
-  static async getRoomMembers(roomSubCategoryId: string, userIdIdx: string) {
+  static async getRoomMembers(chummeSubCategoryId: string, userIdIdx: string) {
     // Check if user is a member of the room
     const isMember = await RoomUserChatRepo.isMember(
       userIdIdx,
-      roomSubCategoryId,
+      chummeSubCategoryId,
     );
     if (!isMember) {
       throw new Error(
@@ -55,7 +61,7 @@ export default class RoomUserChatSvc {
       );
     }
 
-    return RoomUserChatRepo.getRoomMembers(roomSubCategoryId);
+    return RoomUserChatRepo.getRoomMembers(chummeSubCategoryId);
   }
 
   /**
@@ -63,17 +69,17 @@ export default class RoomUserChatSvc {
    */
   static async updateMemberRole(
     userId: string,
-    roomSubCategoryId: string,
+    chummeSubCategoryId: string,
     role: UserChatRole,
   ) {
-    return RoomUserChatRepo.updateRole(userId, roomSubCategoryId, role);
+    return RoomUserChatRepo.updateRole(userId, chummeSubCategoryId, role);
   }
 
   /**
    * Check if a user is in a room
    */
-  static async checkMembership(userId: string, roomSubCategoryId: string) {
-    return RoomUserChatRepo.isMember(userId, roomSubCategoryId);
+  static async checkMembership(userId: string, chummeSubCategoryId: string) {
+    return RoomUserChatRepo.isMember(userId, chummeSubCategoryId);
   }
 
   /**

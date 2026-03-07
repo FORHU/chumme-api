@@ -5,8 +5,8 @@ import chatRoutes from "./chat.route";
 import userRoute from "./user.route";
 import postRoute from "./post.route";
 
-import roomCategoryRoute from "./room-category.route";
-import roomSubCategoryRoute from "./room-subcategory.route";
+import chummeCategoryRoute from "./chumme-category.route";
+import chummeSubCategoryRoute from "./chumme-subcategory.route";
 import onboardingRoute from "./onboarding.route";
 import userInterestRoute from "./user-interest.route";
 import userEmotionRoute from "./user-emotion.route";
@@ -44,8 +44,8 @@ router.use("/v1/users", userRoute);
 router.use("/v1/posts", postRoute);
 router.use("/v1/user-chat", RoomUserChatRoute);
 
-router.use("/v1/room-categories", roomCategoryRoute);
-router.use("/v1/room-subcategories", roomSubCategoryRoute);
+router.use("/v1/chumme-categories", chummeCategoryRoute);
+router.use("/v1/chumme-subcategories", chummeSubCategoryRoute);
 router.use("/v1/onboarding", onboardingRoute);
 router.use("/v1/interests", userInterestRoute);
 router.use("/v1/emotions", userEmotionRoute);

@@ -1,5 +1,5 @@
 import { Server } from "socket.io";
-import { StudioRole, StudioType } from "@prisma/client";
+import { MusicStudioRole, MusicStudioType } from "@prisma/client";
 import MusicRepo from "../../repositories/music.repository";
 import MusicStudioSvc from "../../services/music-studio.service";
 import MusicStudioRepo from "../../repositories/music-studio.repository";
@@ -12,8 +12,8 @@ import {
   SaveRecordingPayload,
   StudioActionPayload,
   UpdateRolePayload,
-  SetRelayModePayload,
   UpdateVocalRolePayload,
+  SetRelayModePayload,
 } from "./types";
 
 export const registerProductionHandlers = (
@@ -43,7 +43,7 @@ export const registerProductionHandlers = (
           socket.user.id,
         );
 
-        if (!isOwner && membership?.role !== StudioRole.PRODUCER) {
+        if (!isOwner && membership?.role !== MusicStudioRole.PRODUCER) {
           return socket.emit("recording_countdown_failed", {
             message: "Only owner or producers can start countdown",
           });
@@ -87,7 +87,7 @@ export const registerProductionHandlers = (
           socket.user.id,
         );
 
-        if (!isOwner && membership?.role !== StudioRole.PRODUCER) return;
+        if (!isOwner && membership?.role !== MusicStudioRole.PRODUCER) return;
 
         await MusicStudioCacheSvc.setLyricIndex(studioId, lineIndex);
 
@@ -148,7 +148,7 @@ export const registerProductionHandlers = (
           socket.user.id,
         );
 
-        if (!isOwner && membership?.role !== StudioRole.PRODUCER) {
+        if (!isOwner && membership?.role !== MusicStudioRole.PRODUCER) {
           return socket.emit("select_song_failed", {
             message: "Only owner or producers can select songs",
           });
@@ -187,8 +187,8 @@ export const registerProductionHandlers = (
         );
         if (
           !isOwner &&
-          membership?.role !== StudioRole.PRODUCER &&
-          membership?.role !== StudioRole.SINGER
+          membership?.role !== MusicStudioRole.PRODUCER &&
+          membership?.role !== MusicStudioRole.SINGER
         ) {
           return socket.emit("queue_song_failed", {
             message: "Only singers or producers can queue songs",
@@ -227,7 +227,7 @@ export const registerProductionHandlers = (
           socket.user.id,
         );
 
-        if (!isOwner && membership?.role !== StudioRole.PRODUCER) {
+        if (!isOwner && membership?.role !== MusicStudioRole.PRODUCER) {
           return socket.emit("queue_action_failed", {
             message: "Only owner or producers can remove items",
           });
@@ -258,7 +258,7 @@ export const registerProductionHandlers = (
         socket.user.id,
       );
 
-      if (!isOwner && membership?.role !== StudioRole.PRODUCER) {
+      if (!isOwner && membership?.role !== MusicStudioRole.PRODUCER) {
         return socket.emit("queue_action_failed", {
           message: "Only owner or producers can skip/play next",
         });
@@ -297,8 +297,8 @@ export const registerProductionHandlers = (
 
       const canPass =
         isOwner ||
-        membership?.role === StudioRole.PRODUCER ||
-        (membership?.role === StudioRole.SINGER &&
+        membership?.role === MusicStudioRole.PRODUCER ||
+        (membership?.role === MusicStudioRole.SINGER &&
           socket.user.id === currentSingerId);
 
       if (!canPass) {

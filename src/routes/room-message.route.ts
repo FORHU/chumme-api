@@ -6,7 +6,7 @@ const router = express.Router();
 router.use(authenticate);
 
 router.post("/", RoomMessageCtrl.sendMessage);
-router.get("/:roomSubCategoryId", RoomMessageCtrl.getRoomMessages);
+router.get("/:chummeSubCategoryId", RoomMessageCtrl.getRoomMessages);
 router.delete("/:id", RoomMessageCtrl.removeMessage);
 
 export default router;

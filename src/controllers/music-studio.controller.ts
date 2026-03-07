@@ -12,7 +12,7 @@ export default class MusicStudioCtrl {
   static async createStudio(req: Request, res: Response) {
     const schema = Joi.object({
       name: Joi.string().required(),
-      keyName: Joi.string().allow(null, ""), // Optional - if not set, studio is public
+      keyPassword: Joi.string().allow(null, ""), // Optional - if not set, studio is public
       note: Joi.string(),
       studioType: Joi.string()
         .valid("RELAYSINGING", "CROWDSINGING", "COMPETITION")
@@ -51,7 +51,7 @@ export default class MusicStudioCtrl {
    * Get all studios with pagination
    */
   static async getStudios(req: Request, res: Response) {
-    const { page, limit, studioType, isPrivate } = req.query;
+    const { page, limit, studioType, publicOnly } = req.query;
     if (!studioType) {
       return res.status(400).json({ message: "Studio type is required" });
     }
@@ -60,7 +60,7 @@ export default class MusicStudioCtrl {
         page ? Number(page) : undefined,
         limit ? Number(limit) : undefined,
         studioType as any,
-        isPrivate !== undefined ? isPrivate === "true" : undefined,
+        publicOnly !== undefined ? publicOnly === "true" : undefined,
       );
       return res.json(result);
     } catch (err: any) {
@@ -108,7 +108,7 @@ export default class MusicStudioCtrl {
     }
 
     const schema = Joi.object({
-      keyName: Joi.string(), // Optional for public studios
+      keyPassword: Joi.string(), // Optional for public studios
       role: Joi.string().valid("LISTENER", "SINGER", "PRODUCER"),
     });
 
@@ -119,7 +119,7 @@ export default class MusicStudioCtrl {
       const result = await MusicStudioSvc.joinStudio(
         studioId,
         (req as any).user.id,
-        value.keyName,
+        value.keyPassword,
         value.role,
       );
       return res.json(result);
@@ -192,7 +192,7 @@ export default class MusicStudioCtrl {
     const schema = Joi.object({
       name: Joi.string(),
       note: Joi.string().allow("", null),
-      keyName: Joi.string(),
+      keyPassword: Joi.string(),
       studioType: Joi.string().valid(
         "RELAYSINGING",
         "CROWDSINGING",

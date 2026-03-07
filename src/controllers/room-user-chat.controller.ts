@@ -24,13 +24,17 @@ export default class RoomUserChatCtrl {
    */
   static async joinRoom(req: Request, res: Response) {
     const userId = (req as any).user.id;
-    const { roomSubCategoryId } = req.params;
+    const { chummeSubCategoryId } = req.params;
 
     const schema = Joi.object({
-      roomSubCategoryId: Joi.string().uuid().required(),
+      chummeSubCategoryId: Joi.string().uuid().required(),
+      password: Joi.string().allow(null, "").optional(), // Optional password for join validation
     });
 
-    const { error } = schema.validate({ roomSubCategoryId });
+    const { error } = schema.validate({
+      chummeSubCategoryId,
+      password: req.body.password,
+    });
     if (error) {
       return res.status(400).json({ message: error.message });
     }
@@ -38,7 +42,8 @@ export default class RoomUserChatCtrl {
     try {
       const membership = await RoomUserChatSvc.joinRoom(
         userId,
-        roomSubCategoryId,
+        chummeSubCategoryId,
+        req.body.password,
       );
       return res.status(201).json({
         message: "Successfully joined room",
@@ -54,19 +59,19 @@ export default class RoomUserChatCtrl {
    */
   static async leaveRoom(req: Request, res: Response) {
     const userId = (req as any).user.id;
-    const { roomSubCategoryId } = req.params;
+    const { chummeSubCategoryId } = req.params;
 
     const schema = Joi.object({
-      roomSubCategoryId: Joi.string().uuid().required(),
+      chummeSubCategoryId: Joi.string().uuid().required(),
     });
 
-    const { error } = schema.validate({ roomSubCategoryId });
+    const { error } = schema.validate({ chummeSubCategoryId });
     if (error) {
       return res.status(400).json({ message: error.message });
     }
 
     try {
-      await RoomUserChatSvc.leaveRoom(userId, roomSubCategoryId);
+      await RoomUserChatSvc.leaveRoom(userId, chummeSubCategoryId);
       return res.json({ message: "Successfully left room" });
     } catch (error: any) {
       return res.status(500).json({ message: error.message || error });
@@ -77,21 +82,21 @@ export default class RoomUserChatCtrl {
    * Get members of a room subcategory
    */
   static async getMembers(req: Request, res: Response) {
-    const { roomSubCategoryId } = req.params;
+    const { chummeSubCategoryId } = req.params;
     const userId = (req as any).user.id;
 
     const schema = Joi.object({
-      roomSubCategoryId: Joi.string().uuid().required(),
+      chummeSubCategoryId: Joi.string().uuid().required(),
     });
 
-    const { error } = schema.validate({ roomSubCategoryId });
+    const { error } = schema.validate({ chummeSubCategoryId });
     if (error) {
       return res.status(400).json({ message: error.message });
     }
 
     try {
       const members = await RoomUserChatSvc.getRoomMembers(
-        roomSubCategoryId,
+        chummeSubCategoryId,
         userId,
       );
       return res.json({ members });

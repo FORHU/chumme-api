@@ -1,7 +1,7 @@
 import MusicRepo from "../repositories/music.repository";
 import MusicStudioCacheSvc from "./music-studio-cache.service";
 import RelayManager from "../utils/relay-manager";
-import { StudioRole } from "@prisma/client";
+import { MusicStudioRole } from "@prisma/client";
 import MusicStudioRepo from "../repositories/music-studio.repository";
 
 /**
@@ -91,7 +91,9 @@ export default class MusicQueueSvc {
       if (!existingSinger) {
         const members = await MusicStudioCacheSvc.getMembers(studioId);
         const firstEligible = members.find(
-          (m) => m.role === StudioRole.SINGER || m.role === StudioRole.PRODUCER,
+          (m) =>
+            m.role === MusicStudioRole.SINGER ||
+            m.role === MusicStudioRole.PRODUCER,
         );
         if (firstEligible) {
           await MusicStudioCacheSvc.setCurrentSinger(

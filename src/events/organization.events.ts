@@ -41,7 +41,7 @@ export default (io: Server) => {
         );
 
         for (const room of userRooms) {
-          const roomId = room.roomSubCategoryId;
+          const roomId = room.chummeSubCategoryId;
           const userId = socket.user.id;
 
           // 1. Mark as disconnected in Redis

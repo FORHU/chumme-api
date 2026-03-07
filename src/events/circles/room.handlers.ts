@@ -1,5 +1,5 @@
 import { Server } from "socket.io";
-import RoomSubCategorySvc from "../../services/room-subcategory.service";
+import ChummeSubCategorySvc from "../../services/chumme-subcategory.service";
 import RoomUserChatSvc from "../../services/room-user-chat.service";
 import RoomMessageSvc from "../../services/room-message.service";
 import CircleCacheSvc from "../../services/circle-cache.service";
@@ -23,7 +23,7 @@ export const registerRoomHandlers = (
         return socket.emit("join_room_failed", { message: "room_id missing" });
       }
 
-      const room = await RoomSubCategorySvc.findById(room_id);
+      const room = await ChummeSubCategorySvc.findById(room_id);
       if (!room) {
         return socket.emit("join_room_failed", {
           room_id,
@@ -37,7 +37,12 @@ export const registerRoomHandlers = (
         room_id,
       );
       if (!isMember) {
-        await RoomUserChatSvc.joinRoom(socket.user.id, room_id, "MEMBER");
+        await RoomUserChatSvc.joinRoom(
+          socket.user.id,
+          room_id,
+          data.password,
+          "MEMBER",
+        );
         console.log(
           `[Circles] Persistent membership created for ${socket.user.id} in ${room_id}`,
         );
@@ -83,7 +88,7 @@ export const registerRoomHandlers = (
 
       // 1. Send message via service (it will check membership)
       const newMessage = await RoomMessageSvc.createMessage({
-        roomSubCategoryId: room_id,
+        chummeSubCategoryId: room_id,
         userId: socket.user.id,
         content: message,
         voiceMessageId,
@@ -92,7 +97,7 @@ export const registerRoomHandlers = (
 
       // 2. Map message for frontend
       const mappedMessage =
-        await RoomSubCategorySvc.mapMessageWithSignedUrl(newMessage);
+        await ChummeSubCategorySvc.mapMessageWithSignedUrl(newMessage);
 
       // 3. Broadcast
       io.to(room_id).emit("send_message_to_room", {

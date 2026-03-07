@@ -1,15 +1,17 @@
 import { Request, Response } from "express";
 import Joi from "joi";
-import RoomCategorySvc from "../services/room-category.service";
+import ChummeCategorySvc from "../services/chumme-category.service";
 
-export default class RoomCategoryCtrl {
+export default class ChummeCategoryCtrl {
   /**
-   * Create a new room category
+   * Create a new chumme category
    */
   static async createCategory(req: Request, res: Response) {
     const schema = Joi.object({
       name: Joi.string().min(1).max(100).required(),
       isAd: Joi.boolean().required(),
+      keyPassword: Joi.string().allow(null, "").optional(), // Null/Empty = public, otherwise private
+      traits: Joi.string().valid("NONE", "COLLABORATION", "FEEDS").optional(),
       position: Joi.object().optional(),
       colorSet: Joi.object().optional(),
       sizeSet: Joi.object().optional(),
@@ -22,7 +24,6 @@ export default class RoomCategoryCtrl {
       tags: Joi.array().items(Joi.string()).optional(),
       emojiIcon: Joi.string().allow("").optional(),
       note: Joi.string().max(500).optional(),
-      keyName: Joi.string().optional(),
     });
 
     const { error, value } = schema.validate(req.body);
@@ -31,9 +32,9 @@ export default class RoomCategoryCtrl {
     }
 
     try {
-      const category = await RoomCategorySvc.createCategory(value);
+      const category = await ChummeCategorySvc.createCategory(value);
       return res.status(201).json({
-        message: "Room category created successfully",
+        message: "Chumme category created successfully",
         category,
       });
     } catch (error: any) {
@@ -42,12 +43,14 @@ export default class RoomCategoryCtrl {
   }
 
   /**
-   * Get all room categories
+   * Get all chumme categories
    */
   static async getAllCategories(req: Request, res: Response) {
+    const { publicOnly } = req.query as any;
     try {
-      // const categories = await RoomCategorySvc.getAllCategories();
-      const categories = await RoomCategorySvc.getAllCategory();
+      const categories = await ChummeCategorySvc.getAllCategories({
+        publicOnly: publicOnly === "true",
+      });
 
       return res.json({ categories });
     } catch (error: any) {
@@ -56,7 +59,7 @@ export default class RoomCategoryCtrl {
   }
 
   /**
-   * Get room category by ID
+   * Get chumme category by ID
    */
   static async getCategoryById(req: Request, res: Response) {
     const { id } = req.params;
@@ -71,7 +74,7 @@ export default class RoomCategoryCtrl {
     }
 
     try {
-      const category = await RoomCategorySvc.getCategoryById(id);
+      const category = await ChummeCategorySvc.getCategoryById(id);
       return res.json({ category });
     } catch (error: any) {
       return res.status(404).json({ message: error.message || error });
@@ -79,13 +82,15 @@ export default class RoomCategoryCtrl {
   }
 
   /**
-   * Update room category
+   * Update chumme category
    */
   static async updateCategory(req: Request, res: Response) {
     const { id } = req.params;
     const schema = Joi.object({
       name: Joi.string().min(1).max(100).optional(),
       isAd: Joi.boolean().optional(),
+      keyPassword: Joi.string().allow(null, "").optional(), // Null/Empty = public, otherwise private
+      traits: Joi.string().valid("NONE", "COLLABORATION", "FEEDS").optional(),
       position: Joi.object().optional(),
       colorSet: Joi.object().optional(),
       sizeSet: Joi.object().optional(),
@@ -98,7 +103,6 @@ export default class RoomCategoryCtrl {
       tags: Joi.array().items(Joi.string()).optional(),
       emojiIcon: Joi.string().allow("").optional(),
       note: Joi.string().max(500).optional(),
-      keyName: Joi.string().optional(),
     }).min(1);
 
     const { error, value } = schema.validate(req.body);
@@ -107,9 +111,9 @@ export default class RoomCategoryCtrl {
     }
 
     try {
-      const category = await RoomCategorySvc.updateCategory(id, value);
+      const category = await ChummeCategorySvc.updateCategory(id, value);
       return res.json({
-        message: "Room category updated successfully",
+        message: "Chumme category updated successfully",
         category,
       });
     } catch (error: any) {
@@ -118,7 +122,7 @@ export default class RoomCategoryCtrl {
   }
 
   /**
-   * Delete room category
+   * Delete chumme category
    */
   static async deleteCategory(req: Request, res: Response) {
     const { id } = req.params;
@@ -133,57 +137,68 @@ export default class RoomCategoryCtrl {
     }
 
     try {
-      await RoomCategorySvc.deleteCategory(id);
-      return res.json({ message: "Room category deleted successfully" });
+      await ChummeCategorySvc.deleteCategory(id);
+      return res.json({ message: "Chumme category deleted successfully" });
     } catch (error: any) {
       return res.status(400).json({ message: error.message || error });
     }
   }
 
   /**
-   * Get all rooms in a category
+   * Get all subcategories in a category
    */
-  static async getRoomsInCategory(req: Request, res: Response) {
-    const { id } = req.params;
+  static async getSubCategoriesInCategory(req: Request, res: Response) {
+    const { categoryId } = req.params;
+    const { password } = req.query; // Category password could be provided via query
 
     const schema = Joi.object({
-      id: Joi.string().required(),
+      categoryId: Joi.string().required(),
+      password: Joi.string().allow(null, "").optional(),
     });
 
-    const { error } = schema.validate({ id });
+    const { error } = schema.validate({
+      categoryId,
+      password: (password as string) || undefined,
+    });
     if (error) {
       return res.status(400).json({ message: error.message });
     }
 
     try {
-      const rooms = await RoomCategorySvc.getRoomsInCategory(id);
-      return res.json({ rooms, count: rooms.length });
+      const subCategories = await ChummeCategorySvc.getSubCategoriesInCategory(
+        categoryId,
+        (password as string) || undefined,
+      );
+      return res.json({ subCategories, count: subCategories.length });
     } catch (error: any) {
       return res.status(400).json({ message: error.message || error });
     }
   }
 
   /**
-   * Bulk delete rooms in a category
+   * Bulk delete subcategories in a category
    */
-  static async bulkDeleteRooms(req: Request, res: Response) {
-    const { id } = req.params;
-    const { roomIds } = req.body;
+  static async bulkDeleteSubCategories(req: Request, res: Response) {
+    const { categoryId } = req.params;
+    const { ids } = req.body;
 
     const schema = Joi.object({
-      id: Joi.string().required(),
-      roomIds: Joi.array().items(Joi.string().uuid()).min(1).required(),
+      categoryId: Joi.string().required(),
+      ids: Joi.array().items(Joi.string().uuid()).min(1).required(),
     });
 
-    const { error } = schema.validate({ id, roomIds });
+    const { error } = schema.validate({ categoryId, ids });
     if (error) {
       return res.status(400).json({ message: error.message });
     }
 
     try {
-      const result = await RoomCategorySvc.bulkDeleteRooms(id, roomIds);
+      const result = await ChummeCategorySvc.bulkDeleteSubCategories(
+        req.params.categoryId,
+        req.body.ids,
+      );
       return res.json({
-        message: `${result.count} rooms deleted successfully`,
+        message: `${result.count} subcategories deleted successfully`,
         deletedCount: result.count,
       });
     } catch (error: any) {

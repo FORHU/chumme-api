@@ -1,12 +1,16 @@
 import { prisma } from "../utils/prisma";
-import { StudioRole, StudioType, RelayMode } from "@prisma/client";
+import {
+  MusicStudioRole,
+  MusicStudioType,
+  MusicRelayMode,
+} from "@prisma/client";
 
 interface CreateMusicStudioData {
   name: string;
-  keyName?: string; // Optional - if not set, studio is public
+  keyPassword?: string; // Optional - if not set, studio is public
   note?: string;
-  studioType: StudioType;
-  relayMode?: RelayMode;
+  studioType: MusicStudioType;
+  relayMode?: MusicRelayMode;
   relayInterval?: number;
   ownerId: string;
 }
@@ -20,17 +24,17 @@ export default class MusicStudioRepo {
     return prisma.musicStudio.create({
       data: {
         name: data.name,
-        keyName: data.keyName,
+        keyPassword: data.keyPassword,
         note: data.note,
         studioType: data.studioType,
         ownerId: data.ownerId,
-        relayMode: data.relayMode || RelayMode.AUTO,
+        relayMode: data.relayMode || MusicRelayMode.AUTO,
         relayInterval: data.relayInterval || 1,
         // Auto-add owner as PRODUCER member
         members: {
           create: {
             userId: data.ownerId,
-            role: StudioRole.PRODUCER,
+            role: MusicStudioRole.PRODUCER,
             isActive: true,
             vocalRoleIndex: 1,
           },
@@ -82,11 +86,11 @@ export default class MusicStudioRepo {
   }
 
   /**
-   * Find a MusicStudio by keyName (for joining)
+   * Find a MusicStudio by keyPassword (for joining)
    */
-  static async findByKeyName(keyName: string) {
+  static async findByKeyPassword(keyPassword: string) {
     return prisma.musicStudio.findFirst({
-      where: { keyName, deletedAt: null },
+      where: { keyPassword, deletedAt: null },
       include: {
         owner: true,
         members: {
@@ -104,21 +108,28 @@ export default class MusicStudioRepo {
     params: {
       page?: number;
       limit?: number;
-      studioType?: StudioType;
-      isPrivate?: boolean;
+      studioType?: MusicStudioType;
+      publicOnly?: boolean;
     } = {},
   ) {
     const page = params.page || 1;
     const limit = params.limit || 10;
     const skip = (page - 1) * limit;
 
-    const whereClause = {
+    const whereClause: any = {
       deletedAt: null,
       ...(params.studioType && { studioType: params.studioType }),
-      ...(params.isPrivate !== undefined && {
-        keyName: params.isPrivate ? { not: null } : null,
-      }),
     };
+
+    if (params.publicOnly !== undefined) {
+      if (params.publicOnly) {
+        whereClause.OR = [{ keyPassword: null }, { keyPassword: "" }];
+      } else {
+        whereClause.NOT = {
+          OR: [{ keyPassword: null }, { keyPassword: "" }],
+        };
+      }
+    }
 
     const [data, total] = await Promise.all([
       prisma.musicStudio.findMany({
@@ -198,7 +209,7 @@ export default class MusicStudioRepo {
   static async addUser(
     studioId: string,
     userId: string,
-    role: StudioRole = StudioRole.LISTENER,
+    role: MusicStudioRole = MusicStudioRole.LISTENER,
   ) {
     // Check if membership already exists
     const existing = await prisma.musicStudioMember.findUnique({
@@ -228,7 +239,9 @@ export default class MusicStudioRepo {
         role,
         isActive: true,
         vocalRoleIndex:
-          role === StudioRole.SINGER || role === StudioRole.PRODUCER ? 1 : null,
+          role === MusicStudioRole.SINGER || role === MusicStudioRole.PRODUCER
+            ? 1
+            : null,
       },
       include: { user: true, studio: true },
     });
@@ -314,7 +327,7 @@ export default class MusicStudioRepo {
   static async updateMemberRole(
     studioId: string,
     userId: string,
-    role: StudioRole,
+    role: MusicStudioRole,
   ) {
     return prisma.musicStudioMember.update({
       where: {
@@ -323,7 +336,9 @@ export default class MusicStudioRepo {
       data: {
         role,
         vocalRoleIndex:
-          role === StudioRole.SINGER || role === StudioRole.PRODUCER ? 1 : null,
+          role === MusicStudioRole.SINGER || role === MusicStudioRole.PRODUCER
+            ? 1
+            : null,
       },
       include: { user: true },
     });
@@ -332,7 +347,7 @@ export default class MusicStudioRepo {
   /**
    * Update all active members' roles in a studio (e.g., bulk upgrade to SINGER)
    */
-  static async updateAllMembersRole(studioId: string, role: StudioRole) {
+  static async updateAllMembersRole(studioId: string, role: MusicStudioRole) {
     await prisma.musicStudioMember.updateMany({
       where: {
         studioId,
@@ -341,7 +356,9 @@ export default class MusicStudioRepo {
       data: {
         role,
         vocalRoleIndex:
-          role === StudioRole.SINGER || role === StudioRole.PRODUCER ? 1 : null,
+          role === MusicStudioRole.SINGER || role === MusicStudioRole.PRODUCER
+            ? 1
+            : null,
       },
     });
 
@@ -415,7 +432,9 @@ export default class MusicStudioRepo {
       where: {
         studioId,
         isActive: true,
-        role: { in: [StudioRole.SINGER, StudioRole.PRODUCER] },
+        role: {
+          in: [MusicStudioRole.SINGER, MusicStudioRole.PRODUCER],
+        },
       },
       include: {
         user: {

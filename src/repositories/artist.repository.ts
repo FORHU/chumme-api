@@ -10,7 +10,7 @@ export const getAllArtists = async () => {
       name: true,
       bio: true,
       imageUrl: true,
-      roomCategories: {
+      chummeCategories: {
         select: {
           id: true,
           name: true,
@@ -50,7 +50,7 @@ export const getUserArtists = async (userId: string) => {
           name: true,
           bio: true,
           imageUrl: true,
-          roomCategories: {
+          chummeCategories: {
             select: {
               id: true,
               name: true,
@@ -95,7 +95,7 @@ export const findById = async (id: string) => {
       name: true,
       bio: true,
       imageUrl: true,
-      roomCategories: {
+      chummeCategories: {
         select: {
           id: true,
           name: true,
