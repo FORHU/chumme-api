@@ -617,7 +617,7 @@ export const mixVocalsWithBacking = async (
     return outputPath;
   } catch (err) {
     // Cleanup if something failed
-    if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
+    // if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
     throw err;
   }
 };

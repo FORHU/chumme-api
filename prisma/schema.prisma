@@ -7,6 +7,10 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ----------------------------
+//  Start: Auth Section
+// ----------------------------
+
 model User {
   id                     String                  @id @default(uuid())
   email                  String                  @unique
@@ -67,6 +71,14 @@ model Session {
   @@index([provider, providerUserId])
 }
 
+// ----------------------------
+//  End: Auth Section
+// ----------------------------
+
+// ----------------------------
+//  Start: Generic Section
+// ----------------------------
+
 model File {
   id            String         @id @default(uuid())
   filename      String?
@@ -81,6 +93,14 @@ model File {
   users         User[]
   videos        Video[]
 }
+
+// ----------------------------
+//  End: Generic Section
+// ----------------------------
+
+// ----------------------------
+//  Start: Room Chat Section
+// ----------------------------
 
 model RoomUserChat {
   id                String       @id @default(uuid())
@@ -195,10 +215,13 @@ model RoomMessageReaction {
   @@index([messageId])
 }
 
-/**
- * AI Chat
- */
+// ----------------------------
+//  End: Room Chat Section
+// ----------------------------
 
+// ----------------------------
+//  Start: AI Chat Section
+// ----------------------------
 model Conversation {
   id            String        @id @default(uuid())
   userId        String
@@ -251,50 +274,9 @@ model EmotionMemory {
   User          User        @relation(fields: [userId], references: [id])
 }
 
-model Post {
-  id        String     @id @default(uuid())
-  userId    String
-  content   String
-  mediaUrls String[]   @default([])
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  isDeleted Boolean    @default(false)
-  comments  Comment[]
-  feedItems FeedItem[]
-  likes     Like[]
-  user      User       @relation(fields: [userId], references: [id])
-
-  @@index([userId])
-}
-
-model Like {
-  id        String   @id @default(uuid())
-  postId    String
-  userId    String
-  createdAt DateTime @default(now())
-  isDeleted Boolean  @default(false)
-  post      Post     @relation(fields: [postId], references: [id])
-  user      User     @relation(fields: [userId], references: [id])
-
-  @@unique([postId, userId])
-  @@index([postId])
-  @@index([userId])
-}
-
-model Comment {
-  id        String   @id @default(uuid())
-  postId    String
-  userId    String
-  content   String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  isDeleted Boolean  @default(false)
-  post      Post     @relation(fields: [postId], references: [id])
-  user      User     @relation(fields: [userId], references: [id])
-
-  @@index([postId])
-  @@index([userId])
-}
+// ----------------------------
+//  Start: Social & Discovery Section
+// ----------------------------
 
 model Follow {
   id          String   @id @default(uuid())
@@ -345,19 +327,6 @@ model Emotion {
   videoEmotions          VideoEmotion[]
 }
 
-model MediaPostEmotion {
-  id          String    @id @default(uuid())
-  mediaPostId String
-  emotionId   String
-  createdAt   DateTime  @default(now())
-  emotion     Emotion   @relation(fields: [emotionId], references: [id])
-  mediaPost   MediaPost @relation(fields: [mediaPostId], references: [id])
-
-  @@unique([mediaPostId, emotionId])
-  @@index([mediaPostId])
-  @@index([emotionId])
-}
-
 model UserEmotionPreference {
   id        String   @id @default(uuid())
   userId    String
@@ -370,6 +339,14 @@ model UserEmotionPreference {
   @@index([userId])
   @@index([emotionId])
 }
+
+// ----------------------------
+//  End: Social & Discovery Section
+// ----------------------------
+
+// ----------------------------
+//  Start: Artist Section
+// ----------------------------
 
 model Artist {
   id                String           @id @default(uuid())
@@ -419,6 +396,102 @@ model UserArtist {
   @@index([userId])
   @@index([artistId])
 }
+
+// ----------------------------
+//  End: Artist Section
+// ----------------------------
+
+// ----------------------------
+//  Start: Feed Section
+// ----------------------------
+
+model Post {
+  id        String     @id @default(uuid())
+  userId    String
+  content   String
+  mediaUrls String[]   @default([])
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  isDeleted Boolean    @default(false)
+  comments  Comment[]
+  feedItems FeedItem[]
+  likes     Like[]
+  user      User       @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model Like {
+  id        String   @id @default(uuid())
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+  isDeleted Boolean  @default(false)
+  post      Post     @relation(fields: [postId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([postId, userId])
+  @@index([postId])
+  @@index([userId])
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  postId    String
+  userId    String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  isDeleted Boolean  @default(false)
+  post      Post     @relation(fields: [postId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([postId])
+  @@index([userId])
+}
+
+model FeedItem {
+  id          String       @id @default(uuid())
+  type        FeedItemType
+  postId      String?
+  videoId     String?
+  createdAt   DateTime     @default(now())
+  isDeleted   Boolean      @default(false)
+  mediaPostId String?
+  artistId    String?
+  bookmarks   Bookmark[]
+  MediaPost   MediaPost?   @relation(fields: [mediaPostId], references: [id], onDelete: Cascade)
+  post        Post?        @relation(fields: [postId], references: [id], onDelete: Cascade)
+  video       Video?       @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@index([type])
+  @@index([artistId])
+  @@index([mediaPostId])
+  @@index([postId])
+  @@index([videoId])
+}
+
+model Bookmark {
+  id        String    @id @default(uuid())
+  userId    String
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
+  updatedAt DateTime  @updatedAt
+  feedId    String
+  feed      FeedItem  @relation(fields: [feedId], references: [id])
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@unique([feedId, userId], name: "userFeed")
+}
+
+// ----------------------------
+//  End: Feed Section
+// ----------------------------
+
+// ----------------------------
+//  Start: remove table
+// ----------------------------
 
 model Video {
   id            String         @id @default(uuid())
@@ -475,40 +548,26 @@ model MediaPost {
   @@index([fileId])
 }
 
-model FeedItem {
-  id          String       @id @default(uuid())
-  type        FeedItemType
-  postId      String?
-  videoId     String?
-  createdAt   DateTime     @default(now())
-  isDeleted   Boolean      @default(false)
-  mediaPostId String?
-  artistId    String?
-  bookmarks   Bookmark[]
-  MediaPost   MediaPost?   @relation(fields: [mediaPostId], references: [id], onDelete: Cascade)
-  post        Post?        @relation(fields: [postId], references: [id], onDelete: Cascade)
-  video       Video?       @relation(fields: [videoId], references: [id], onDelete: Cascade)
+model MediaPostEmotion {
+  id          String    @id @default(uuid())
+  mediaPostId String
+  emotionId   String
+  createdAt   DateTime  @default(now())
+  emotion     Emotion   @relation(fields: [emotionId], references: [id])
+  mediaPost   MediaPost @relation(fields: [mediaPostId], references: [id])
 
-  @@index([createdAt])
-  @@index([type])
-  @@index([artistId])
+  @@unique([mediaPostId, emotionId])
   @@index([mediaPostId])
-  @@index([postId])
-  @@index([videoId])
+  @@index([emotionId])
 }
 
-model Bookmark {
-  id        String    @id @default(uuid())
-  userId    String
-  createdAt DateTime  @default(now())
-  deletedAt DateTime?
-  updatedAt DateTime  @updatedAt
-  feedId    String
-  feed      FeedItem  @relation(fields: [feedId], references: [id])
-  user      User      @relation(fields: [userId], references: [id])
+// ----------------------------
+//  End: remove table
+// ----------------------------
 
-  @@unique([feedId, userId], name: "userFeed")
-}
+// ----------------------------
+//  Music Section
+// ----------------------------
 
 model Playlist {
   id          String          @id @default(uuid())
@@ -693,6 +752,10 @@ model MusicTempRecord {
 
   @@index([studioId])
 }
+
+// ----------------------------
+//  Enums
+// ----------------------------
 
 enum Role {
   USER

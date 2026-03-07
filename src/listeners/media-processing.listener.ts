@@ -86,7 +86,7 @@ export class MediaProcessingWorker {
     }
 
     // Cleanup
-    fs.unlinkSync(tempPath);
+    // fs.unlinkSync(tempPath);
   }
 
   private async handleOptimizeAudio(job: MediaJob) {
@@ -127,7 +127,7 @@ export class MediaProcessingWorker {
     }
 
     // Cleanup
-    fs.unlinkSync(tempPath);
+    // fs.unlinkSync(tempPath);
   }
 
   private async handleGenerateHls(job: MediaJob) {
@@ -211,7 +211,7 @@ export class MediaProcessingWorker {
     }
 
     // Cleanup
-    fs.rmSync(hlsDir, { recursive: true, force: true });
+    // fs.rmSync(hlsDir, { recursive: true, force: true });
     logger.info(
       `[MediaWorker] HLS Processing completed for ${outputKeyPrefix}`,
     );

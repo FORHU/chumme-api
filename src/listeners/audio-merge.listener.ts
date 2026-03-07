@@ -328,13 +328,13 @@ export class AudioMergeWorker {
     } finally {
       // Final cleanup of the mixed file
       if (fs.existsSync(finalAudioPath)) {
-        try {
-          fs.unlinkSync(finalAudioPath);
-        } catch (e) {
-          logger.warn(
-            `[AudioMergeWorker] Failed to cleanup final mix: ${finalAudioPath}`,
-          );
-        }
+        // try {
+        //   fs.unlinkSync(finalAudioPath);
+        // } catch (e) {
+        //   logger.warn(
+        //     `[AudioMergeWorker] Failed to cleanup final mix: ${finalAudioPath}`,
+        //   );
+        // }
       }
     }
   }

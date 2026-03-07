@@ -65,9 +65,9 @@ export function makeTempPath(prefix: string, ext = ".wav"): string {
 /** Read a temp file into a Buffer and delete it. */
 export function readAndCleanup(filePath: string): Buffer {
   const buffer = fs.readFileSync(filePath);
-  try {
-    fs.unlinkSync(filePath);
-  } catch (_) {}
+  // try {
+  //   fs.unlinkSync(filePath);
+  // } catch (_) {}
   return buffer;
 }
 
@@ -77,9 +77,9 @@ export function readAndCleanup(filePath: string): Buffer {
 export function cleanupTempFiles(paths: string[]): void {
   const tmpDir = os.tmpdir();
   for (const p of paths) {
-    try {
-      if (p.startsWith(tmpDir)) fs.unlinkSync(p);
-    } catch (_) {}
+    // try {
+    //   if (p.startsWith(tmpDir)) fs.unlinkSync(p);
+    // } catch (_) {}
   }
 }
 
@@ -231,7 +231,7 @@ export const generateThumbnail = async (
       .on("end", () => {
         try {
           const buffer = fs.readFileSync(outputPath);
-          fs.unlinkSync(outputPath);
+          // fs.unlinkSync(outputPath);
           resolve(buffer);
         } catch (e) {
           reject(e);
