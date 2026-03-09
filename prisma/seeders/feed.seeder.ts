@@ -5,9 +5,9 @@ export async function seedFeedItems(prisma: PrismaClient) {
 
   // 1. Fetch all existing content that could be in a feed
   const [posts, videos, mediaPosts] = await Promise.all([
-    prisma.post.findMany({ where: { isDeleted: false } }),
+    prisma.socialPost.findMany({ where: { isDeleted: false } }),
     prisma.video.findMany({ where: { isDeleted: false } }),
-    prisma.mediaPost.findMany({ where: { isDeleted: false } }),
+    prisma.socialMediaPost.findMany({ where: { isDeleted: false } }),
   ]);
 
   console.log(
@@ -15,7 +15,7 @@ export async function seedFeedItems(prisma: PrismaClient) {
   );
 
   // 2. Fetch existing feed items to check for duplicates
-  const existingFeedItems = await prisma.feedItem.findMany({
+  const existingFeedItems = await prisma.socialFeedItem.findMany({
     select: { postId: true, videoId: true, mediaPostId: true },
   });
 
@@ -33,7 +33,7 @@ export async function seedFeedItems(prisma: PrismaClient) {
   const newPosts = posts.filter((p) => !existingPostIds.has(p.id));
   if (newPosts.length > 0) {
     console.log(`📝 Linking ${newPosts.length} new Posts...`);
-    await prisma.feedItem.createMany({
+    await prisma.socialFeedItem.createMany({
       data: newPosts.map((p) => ({
         type: FeedItemType.POST,
         postId: p.id,
@@ -48,7 +48,7 @@ export async function seedFeedItems(prisma: PrismaClient) {
   const newVideos = videos.filter((v) => !existingVideoIds.has(v.id));
   if (newVideos.length > 0) {
     console.log(`🎬 Linking ${newVideos.length} new Videos...`);
-    await prisma.feedItem.createMany({
+    await prisma.socialFeedItem.createMany({
       data: newVideos.map((v) => ({
         type: FeedItemType.VIDEO,
         videoId: v.id,
@@ -66,7 +66,7 @@ export async function seedFeedItems(prisma: PrismaClient) {
   );
   if (newMediaPosts.length > 0) {
     console.log(`🖼️ Linking ${newMediaPosts.length} new MediaPosts...`);
-    await prisma.feedItem.createMany({
+    await prisma.socialFeedItem.createMany({
       data: newMediaPosts.map((mp) => ({
         type: FeedItemType.MEDIA_POST,
         mediaPostId: mp.id,
