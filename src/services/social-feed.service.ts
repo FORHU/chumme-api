@@ -1,11 +1,11 @@
-import FeedRepo from "../repositories/feed.repository";
+import SocialFeedRepo from "../repositories/social-feed.repository";
 import CacheUtil from "../utils/cache.util";
 import {
   seededShuffle,
   shuffleArray,
   stringBacktickToArray,
 } from "../utils/helpers";
-export default class FeedSvc {
+export default class SocialFeedSvc {
   /**
    * Helper method to format feed items
    */
@@ -18,7 +18,7 @@ export default class FeedSvc {
             type: "post",
             content: {
               id: item.post.id,
-              text: item.post.text,
+              text: item.post.content,
               createdAt: item.post.createdAt,
               user: {
                 id: item.post.user?.id,
@@ -102,7 +102,7 @@ export default class FeedSvc {
     if (cachedIds && !refresh) {
       shuffledIds = cachedIds;
     } else {
-      const allIds = await FeedRepo.getGlobalFeedIds();
+      const allIds = await SocialFeedRepo.getGlobalFeedIds();
       shuffledIds = seededShuffle(allIds, seed);
       await CacheUtil.set(cacheKey, shuffledIds);
     }
@@ -112,7 +112,7 @@ export default class FeedSvc {
 
     if (pageIds.length === 0) return [];
 
-    const feedItems = await FeedRepo.getFeedItemsByIds(pageIds);
+    const feedItems = await SocialFeedRepo.getFeedItemsByIds(pageIds);
 
     // Restore the shuffled order (Prisma findMany with 'in' doesn't guarantee order)
     const idMap = new Map(feedItems.map((item) => [item.id, item]));
@@ -157,7 +157,7 @@ export default class FeedSvc {
     if (cachedIds && !refresh) {
       shuffledIds = cachedIds;
     } else {
-      const allIds = await FeedRepo.getPersonalizedFeedIds(
+      const allIds = await SocialFeedRepo.getPersonalizedFeedIds(
         userId,
         artistStringToArray,
       );
@@ -170,7 +170,7 @@ export default class FeedSvc {
 
     if (pageIds.length === 0) return [];
 
-    const feedItems = await FeedRepo.getFeedItemsByIds(pageIds);
+    const feedItems = await SocialFeedRepo.getFeedItemsByIds(pageIds);
 
     // Restore order
     const idMap = new Map(feedItems.map((item) => [item.id, item]));

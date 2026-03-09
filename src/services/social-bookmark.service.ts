@@ -1,10 +1,10 @@
-import { Bookmark } from "@prisma/client";
+import { SocialBookmark } from "@prisma/client";
 import UserRepo from "../repositories/user.repository";
 import { prisma } from "../utils/prisma";
-import BookmarkRepo from "../repositories/bookmark.repository";
+import SocialBookmarkRepo from "../repositories/social-bookmark.repository";
 import CacheUtil from "../utils/cache.util";
-import FeedRepo from "../repositories/feed.repository";
-export default class BookmarkSvc {
+import SocialFeedRepo from "../repositories/social-feed.repository";
+export default class SocialBookmarkSvc {
   static async fetchAllUserBookmarks(
     userId: string,
     page: number,
@@ -24,7 +24,11 @@ export default class BookmarkSvc {
       return cached;
     }
 
-    const bookmark = await BookmarkRepo.fetchUserBookmarks(userId, page, limit);
+    const bookmark = await SocialBookmarkRepo.fetchUserBookmarks(
+      userId,
+      page,
+      limit,
+    );
     await CacheUtil.set(cacheKey, bookmark);
     return bookmark; // make sure to return the value
   }
@@ -34,22 +38,23 @@ export default class BookmarkSvc {
     if (!user) throw new Error("User cannot be found");
 
     const query = { userFeed: { userId, feedId } };
-    const existingBookmark = await BookmarkRepo.getBookmark(query);
+    const existingBookmark = await SocialBookmarkRepo.getBookmark(query);
 
     let message = "";
 
     if (existingBookmark) {
-      await BookmarkRepo.deleteUserBookmark(existingBookmark.id);
+      await SocialBookmarkRepo.deleteUserBookmark(existingBookmark.id);
       message = "Bookmark removed";
     } else {
       try {
-        await BookmarkRepo.createUserBookmark(userId, feedId);
+        await SocialBookmarkRepo.createUserBookmark(userId, feedId);
         message = "Bookmark added";
       } catch (err: any) {
         // Race condition: bookmark was created between check and insert (double-tap)
         if (err?.code === "P2002") {
-          const existing = await BookmarkRepo.getBookmark(query);
-          if (existing) await BookmarkRepo.deleteUserBookmark(existing.id);
+          const existing = await SocialBookmarkRepo.getBookmark(query);
+          if (existing)
+            await SocialBookmarkRepo.deleteUserBookmark(existing.id);
           message = "Bookmark removed";
         } else {
           throw err;

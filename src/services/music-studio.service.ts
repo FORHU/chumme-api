@@ -779,7 +779,12 @@ export default class MusicStudioSvc {
   static async updateStudio(
     studioId: string,
     userId: string,
-    data: { name?: string; note?: string },
+    data: {
+      name?: string;
+      note?: string;
+      keyPassword?: string;
+      studioType?: MusicStudioType;
+    },
   ) {
     const studio = await MusicStudioRepo.findById(studioId);
 

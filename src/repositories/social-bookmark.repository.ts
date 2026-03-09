@@ -5,13 +5,13 @@ type NeededMetaData = {
   fullTitle?: string;
   songTitle?: string;
 };
-export default class BookmarkRepo {
+export default class SocialBookmarkRepo {
   static async fetchUserBookmarks(
     userId: string,
     page: number = 0,
-    limit: number = 20
+    limit: number = 20,
   ) {
-    const bookmarks = await prisma.bookmark.findMany({
+    const bookmarks = await prisma.socialBookmark.findMany({
       where: { userId },
       orderBy: { createdAt: "desc" },
       skip: page * limit,
@@ -90,21 +90,21 @@ export default class BookmarkRepo {
   }
 
   static async getBookmark(query: any) {
-    return prisma.bookmark.findUnique({
+    return prisma.socialBookmark.findUnique({
       where: query,
     });
   }
 
   static async removeBookmarksInFeedItem(feedId: string) {
-    return prisma.bookmark.deleteMany({ where: { feedId } });
+    return prisma.socialBookmark.deleteMany({ where: { feedId } });
   }
 
   static async deleteUserBookmark(bookmarkId: string) {
-    return prisma.bookmark.delete({ where: { id: bookmarkId } });
+    return prisma.socialBookmark.delete({ where: { id: bookmarkId } });
   }
 
   static async createUserBookmark(userId: string, feedId: string) {
-    return prisma.bookmark.create({
+    return prisma.socialBookmark.create({
       data: {
         feedId,
         userId,

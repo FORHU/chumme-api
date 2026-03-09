@@ -16,7 +16,7 @@ export default class RoomUserChatSvc {
   static async joinRoom(
     userId: string,
     chummeSubCategoryId: string,
-    password?: string,
+    keyPassword?: string,
     roleInput: string = "MEMBER",
   ) {
     // Verify room exists
@@ -25,7 +25,7 @@ export default class RoomUserChatSvc {
     if (!room) throw new Error("Room does not exist");
 
     // Check keyPassword: if null/empty string, it's public. Otherwise, verify password.
-    if (room.keyPassword && room.keyPassword !== password) {
+    if (room.keyPassword && room.keyPassword !== keyPassword) {
       throw new Error("Invalid password for this room");
     }
 

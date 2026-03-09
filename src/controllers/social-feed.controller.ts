@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
-import FeedSvc from "../services/feed.service";
+import SocialFeedSvc from "../services/social-feed.service";
 
-export default class FeedCtrl {
+export default class SocialFeedCtrl {
   /**
    * Get unified feed (posts + videos)
    * GET /api/feed?page=0&limit=20
@@ -13,7 +13,7 @@ export default class FeedCtrl {
       const refresh = req.query.refresh === "true";
       const seed = req.query.seed as string;
 
-      const feed = await FeedSvc.getFeed(page, limit, refresh, seed);
+      const feed = await SocialFeedSvc.getFeed(page, limit, refresh, seed);
 
       res.json({
         success: true,
@@ -54,7 +54,7 @@ export default class FeedCtrl {
       const artist = req.query.artist as string;
       const seed = (req.query.seed || req.query.seed_id) as string;
 
-      const feed = await FeedSvc.getPersonalizedFeed(
+      const feed = await SocialFeedSvc.getPersonalizedFeed(
         userId,
         page,
         limit,

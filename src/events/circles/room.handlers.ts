@@ -40,7 +40,7 @@ export const registerRoomHandlers = (
         await RoomUserChatSvc.joinRoom(
           socket.user.id,
           room_id,
-          data.password,
+          data.keyPassword,
           "MEMBER",
         );
         console.log(

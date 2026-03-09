@@ -49,7 +49,11 @@ const server = createServer(app);
 
 export const io = new Server(server, {
   cors: {
-    origin: "*",
+    origin: (origin, callback) => {
+      // Allow any origin for development, or specify your frontend URL
+      // Since express-cors is already configured with origin: true, we mirror that logic
+      callback(null, true);
+    },
     methods: ["GET", "POST"],
     credentials: true,
   },

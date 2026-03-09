@@ -28,12 +28,12 @@ export default class RoomUserChatCtrl {
 
     const schema = Joi.object({
       chummeSubCategoryId: Joi.string().uuid().required(),
-      password: Joi.string().allow(null, "").optional(), // Optional password for join validation
+      keyPassword: Joi.string().allow(null, "").optional(), // Optional password for join validation
     });
 
     const { error } = schema.validate({
       chummeSubCategoryId,
-      password: req.body.password,
+      keyPassword: req.body.keyPassword,
     });
     if (error) {
       return res.status(400).json({ message: error.message });
@@ -43,7 +43,7 @@ export default class RoomUserChatCtrl {
       const membership = await RoomUserChatSvc.joinRoom(
         userId,
         chummeSubCategoryId,
-        req.body.password,
+        req.body.keyPassword,
       );
       return res.status(201).json({
         message: "Successfully joined room",

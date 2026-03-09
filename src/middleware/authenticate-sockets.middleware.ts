@@ -12,21 +12,29 @@ const authenticateSocket = async (
   next: (err?: Error) => void,
 ) => {
   try {
-    const authHeader = socket.handshake.headers["authorization"];
+    let token: string | undefined;
 
-    if (!authHeader)
-      return next(new Error("Unauthorized: Missing authorization header"));
-
-    const parts = authHeader.split(" ");
-
-    if (parts.length !== 2 || parts[0] !== "Bearer") {
-      return next(new Error("Unauthorized: Invalid authorization!"));
+    // 1. Check handshake.auth (modern Socket.IO client-side 'auth' option)
+    const authToken = socket.handshake.auth?.token;
+    if (authToken) {
+      token = authToken.startsWith("Bearer ")
+        ? authToken.split(" ")[1]
+        : authToken;
     }
 
-    const token = parts[1];
+    // 2. Fallback to handshake.headers (legacy/custom header approach)
+    if (!token) {
+      const authHeader = socket.handshake.headers["authorization"];
+      if (authHeader) {
+        const parts = authHeader.split(" ");
+        if (parts.length === 2 && parts[0] === "Bearer") {
+          token = parts[1];
+        }
+      }
+    }
 
     if (!token) {
-      return next(new Error("Unauthorized: Token missing"));
+      return next(new Error("Unauthorized: Missing or invalid token"));
     }
 
     let decoded: any;

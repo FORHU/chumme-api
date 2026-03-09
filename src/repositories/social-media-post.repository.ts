@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../utils/prisma";
 
-export default class MediaPostRepo {
+export default class SocialMediaPostRepo {
   // Save / create video record
   static async createMediaPost(data: {
     title: string;
@@ -10,7 +10,7 @@ export default class MediaPostRepo {
     artistId?: string | null;
     meta_data?: any | null;
   }) {
-    return prisma.mediaPost.create({
+    return prisma.socialMediaPost.create({
       data: {
         title: data.title,
         fileId: data.fileId,
@@ -35,10 +35,10 @@ export default class MediaPostRepo {
     },
   ) {
     // Check if record exists before upserting
-    const existing = await prisma.mediaPost.findUnique({ where });
+    const existing = await prisma.socialMediaPost.findUnique({ where });
     const isUpdate = !!existing;
 
-    const mediaPost = await prisma.mediaPost.upsert({
+    const mediaPost = await prisma.socialMediaPost.upsert({
       where: where,
       create: {
         id: data.id,
@@ -94,7 +94,7 @@ export default class MediaPostRepo {
       whereClause.artistId = { in: artistIds };
     }
 
-    return prisma.mediaPost.findMany({
+    return prisma.socialMediaPost.findMany({
       where: whereClause,
       include: {
         file: true,
@@ -146,7 +146,7 @@ export default class MediaPostRepo {
       whereClause.artistId = { in: artistIds };
     }
 
-    return prisma.mediaPost.findMany({
+    return prisma.socialMediaPost.findMany({
       where: whereClause,
       include: {
         file: true,

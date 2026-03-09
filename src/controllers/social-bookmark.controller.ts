@@ -1,17 +1,17 @@
 import { Request, Response } from "express";
 import Joi from "joi";
-import BookmarkSvc from "../services/bookmark.service";
+import SocialBookmarkSvc from "../services/social-bookmark.service";
 
-export default class BookmarkCtrl {
+export default class SocialBookmarkCtrl {
   static async getAllBookmarks(req: Request, res: Response) {
     try {
       const page = parseInt(req.query.page as string) || 0;
       const limit = parseInt(req.query.limit as string) || 20;
 
-      const bookmark = await BookmarkSvc.fetchAllUserBookmarks(
+      const bookmark = await SocialBookmarkSvc.fetchAllUserBookmarks(
         req?.user?.id,
         page,
-        limit
+        limit,
       );
       return res.json({
         success: true,
@@ -37,9 +37,9 @@ export default class BookmarkCtrl {
 
       if (error) return res.status(400).json({ message: error.message });
 
-      const bookmark = await BookmarkSvc.saveBookmark(
+      const bookmark = await SocialBookmarkSvc.saveBookmark(
         req.user.id,
-        value.feedId
+        value.feedId,
       );
       return res.status(201).json({ message: "File saved", bookmark });
     } catch (err: any) {

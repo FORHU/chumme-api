@@ -1,17 +1,17 @@
-import VideoRepo from "../repositories/video.repository";
+// import SocialVideoRepo from "../repositories/video.repository";
 import FileRepo from "../repositories/file.repository";
 import SocialFeedRepo from "../repositories/social-feed.repository";
 import CacheUtil from "../utils/cache.util";
-import S3Util from "../utils/s3.util";
+import SocialMediaPostRepo from "../repositories/social-media-post.repository";
 
-export default class VideoSvc {
+export default class SocialMediaPostSvc {
   // Helper: Validate video data
-  private static async validateVideoData(data: {
+  private static async validateMediaPost(data: {
     title: string;
     fileId: string;
   }) {
     if (!data.title || data.title.trim().length === 0) {
-      throw new Error("Video title is required");
+      throw new Error("Media title is required");
     }
     if (!data.fileId) {
       throw new Error("fileId is required");
@@ -24,16 +24,16 @@ export default class VideoSvc {
     }
   }
 
-  static async saveVideo(data: {
+  static async saveMediaPost(data: {
     title: string;
     fileId: string;
     platform: any;
     artistId?: string;
     meta_data?: any;
   }) {
-    await this.validateVideoData(data);
+    await this.validateMediaPost(data);
 
-    const video = await VideoRepo.createVideo({
+    const mediaPost = await SocialMediaPostRepo.createMediaPost({
       title: data.title.trim(),
       fileId: data.fileId,
       platform: data.platform,
@@ -42,16 +42,16 @@ export default class VideoSvc {
     });
 
     // Create feed item for the new video
-    await SocialFeedRepo.createVideoFeedItem(video.id);
+    await SocialFeedRepo.createVideoFeedItem(mediaPost.id);
 
     // Clear feed cache for all pages (since new content was added)
     await CacheUtil.delByPattern(`feed:page:*`);
     await CacheUtil.delByPattern(`feed:personalized:*`);
 
-    return video;
+    return mediaPost;
   }
 
-  static async upsertVideo(data: {
+  static async upsertMediaPost(data: {
     externalUrl: string;
     title: string;
     fileId: string;
@@ -63,9 +63,9 @@ export default class VideoSvc {
       throw new Error("externalUrl is required to upsert a video");
     }
 
-    await this.validateVideoData(data);
+    await this.validateMediaPost(data);
 
-    const result = await VideoRepo.upsertVideo(
+    const result = await SocialMediaPostRepo.upsertMediaPost(
       { externalUrl: data.externalUrl },
       {
         title: data.title.trim(),
@@ -79,7 +79,7 @@ export default class VideoSvc {
 
     // Create feed item only for new videos, not updates
     if (!result.isUpdate) {
-      await SocialFeedRepo.createVideoFeedItem(result.video.id);
+      await SocialFeedRepo.createMediaPostFeedItem(result.mediaPost.id);
 
       // Clear feed cache for all pages (since new content was added)
       await CacheUtil.delByPattern(`feed:page:*`);
