@@ -11,7 +11,7 @@ export default class SocialBookmarkRepo {
     page: number = 0,
     limit: number = 20,
   ) {
-    const bookmarks = await prisma.socialBookmark.findMany({
+    const bookmarks = await prisma.socialUserBookmark.findMany({
       where: { userId },
       orderBy: { createdAt: "desc" },
       skip: page * limit,
@@ -19,46 +19,39 @@ export default class SocialBookmarkRepo {
       select: {
         id: true,
         createdAt: true,
-        feed: {
+        socialFeedItem: {
           select: {
+            id: true,
             type: true,
             postId: true,
-            video: {
-              select: {
-                id: true,
-                title: true,
-                artistId: true,
-                meta_data: true,
-                createdAt: true,
-                file: {
-                  select: {
-                    fileUrl: true,
-                  },
-                },
-              },
-            },
+            // Flat fields
+            title: true,
+            externalUrl: true,
+            platform: true,
+            metaData: true,
+            createdAt: true,
+            artist: true,
+            stats: true,
             post: {
               select: {
                 id: true,
                 content: true,
                 mediaUrls: true,
                 createdAt: true,
-                comments: true,
-                feedItems: true,
-                likes: true,
-                user: true,
-              },
-            },
-            MediaPost: {
-              select: {
-                id: true,
-                title: true,
-                file: {
+                user: {
                   select: {
-                    fileUrl: true,
+                    id: true,
+                    username: true,
+                    name: true,
+                    avatar: { select: { fileUrl: true } },
                   },
                 },
-                mediaPostEmotions: true,
+                _count: {
+                  select: {
+                    socialUserLikes: { where: { isDeleted: false } },
+                    socialUserComments: { where: { isDeleted: false } },
+                  },
+                },
               },
             },
           },
@@ -66,8 +59,8 @@ export default class SocialBookmarkRepo {
       },
     });
 
-    return bookmarks.map((item) => {
-      const meta = item.feed?.video?.meta_data as any;
+    return bookmarks.map((item: any) => {
+      const meta = item.socialFeedItem?.metaData as any;
 
       const filteredMeta: NeededMetaData = {
         caption: meta?.caption || null,
@@ -76,13 +69,22 @@ export default class SocialBookmarkRepo {
         songTitle: meta?.musicData?.songTitle || null,
       };
 
+      if (item.socialFeedItem?.post) {
+        (item.socialFeedItem.post as any)._count = {
+          likes: (item.socialFeedItem.post as any)._count.socialUserLikes,
+          comments: (item.socialFeedItem.post as any)._count.socialUserComments,
+        };
+      }
+
       return {
         ...item,
         feed: {
-          ...item.feed,
+          ...item.socialFeedItem,
           video: {
-            ...item.feed?.video,
+            id: item.socialFeedItem?.id,
+            title: item.socialFeedItem?.title,
             meta_data: filteredMeta,
+            externalUrl: item.socialFeedItem?.externalUrl,
           },
         },
       };
@@ -90,23 +92,23 @@ export default class SocialBookmarkRepo {
   }
 
   static async getBookmark(query: any) {
-    return prisma.socialBookmark.findUnique({
+    return prisma.socialUserBookmark.findUnique({
       where: query,
     });
   }
 
-  static async removeBookmarksInFeedItem(feedId: string) {
-    return prisma.socialBookmark.deleteMany({ where: { feedId } });
+  static async removeBookmarksInFeedItem(socialFeedItemId: string) {
+    return prisma.socialUserBookmark.deleteMany({ where: { socialFeedItemId } });
   }
 
   static async deleteUserBookmark(bookmarkId: string) {
-    return prisma.socialBookmark.delete({ where: { id: bookmarkId } });
+    return prisma.socialUserBookmark.delete({ where: { id: bookmarkId } });
   }
 
-  static async createUserBookmark(userId: string, feedId: string) {
-    return prisma.socialBookmark.create({
+  static async createUserBookmark(userId: string, socialFeedItemId: string) {
+    return prisma.socialUserBookmark.create({
       data: {
-        feedId,
+        socialFeedItemId,
         userId,
       },
     });

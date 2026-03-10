@@ -14,12 +14,12 @@ export default class VideoCtrl {
     try {
       const schema = Joi.object({
         title: Joi.string().required(),
-        fileId: Joi.string().uuid().required(),
         platform: Joi.string()
           .valid(...allowedPlatforms)
           .required(),
         artistId: Joi.string().uuid().optional(),
         meta_data: Joi.any().optional(),
+        externalUrl: Joi.string().uri().optional(),
       });
 
       const { error, value } = schema.validate(req.body);
@@ -27,35 +27,14 @@ export default class VideoCtrl {
 
       const video = await VideoSvc.saveVideo({
         title: value.title,
-        fileId: value.fileId,
         platform: value.platform,
         artistId: value.artistId,
         meta_data: value.meta_data,
+        externalUrl: value.externalUrl,
       });
 
-      // Trigger Media Processing in Background
-      try {
-        const file = await FileSvc.getFileById(value.fileId);
-        if (file && file.fileUrl) {
-          await MediaQueueSvc.publishJob({
-            jobType: "optimize_video",
-            inputUrl: file.fileUrl,
-            outputKeyPrefix: `videos/${video.id}`,
-            mediaId: video.id,
-          });
-          await MediaQueueSvc.publishJob({
-            jobType: "generate_hls",
-            inputUrl: file.fileUrl,
-            outputKeyPrefix: `videos/${video.id}`,
-            mediaId: video.id,
-          });
-          logger.info(
-            `[VideoCtrl] Queued optimization and HLS for video ${video.id}`,
-          );
-        }
-      } catch (e) {
-        logger.warn(`[VideoCtrl] Failed to queue media processing: ${e}`);
-      }
+      // Note: Media Processing (HLS/Optimization) is disabled for SocialFeedItems
+      // as they are primarily external URLs.
 
       return res
         .status(201)
@@ -70,7 +49,6 @@ export default class VideoCtrl {
       const schema = Joi.object({
         externalUrl: Joi.string().uri().required(),
         title: Joi.string().required(),
-        fileId: Joi.string().uuid().required(),
         platform: Joi.string()
           .valid(...allowedPlatforms)
           .required(),
@@ -84,39 +62,12 @@ export default class VideoCtrl {
       const { video, isUpdate } = await VideoSvc.upsertVideo({
         externalUrl: value.externalUrl,
         title: value.title,
-        fileId: value.fileId,
         platform: value.platform,
         artistId: value.artistId,
         meta_data: value.meta_data,
       });
 
-      // Trigger Media Processing for new videos
-      if (!isUpdate) {
-        try {
-          const file = await FileSvc.getFileById(value.fileId);
-          if (file && file.fileUrl) {
-            await MediaQueueSvc.publishJob({
-              jobType: "optimize_video",
-              inputUrl: file.fileUrl,
-              outputKeyPrefix: `videos/${video.id}`,
-              mediaId: video.id,
-            });
-            await MediaQueueSvc.publishJob({
-              jobType: "generate_hls",
-              inputUrl: file.fileUrl,
-              outputKeyPrefix: `videos/${video.id}`,
-              mediaId: video.id,
-            });
-            logger.info(
-              `[VideoCtrl] Queued processing for new upserted video ${video.id}`,
-            );
-          }
-        } catch (e) {
-          logger.warn(
-            `[VideoCtrl] Failed to queue media processing for upsert: ${e}`,
-          );
-        }
-      }
+      // Note: Media Processing disabled for upserted external videos.
 
       const message = isUpdate
         ? "Video updated"
@@ -206,10 +157,11 @@ export default class VideoCtrl {
         platform: value.platform,
         artistId: value.artistId,
         meta_data: value.meta_data,
-        fileId: fileRecord.id,
+        // Optional: If we want to store the local file URL as an externalUrl for fallback
+        externalUrl: fileRecord.fileUrl || undefined,
       });
 
-      // Trigger Media Processing in Background
+      // Note: Media Processing trigger for uploads is preserved if fileUrl exists
       try {
         if (fileRecord.fileUrl) {
           await MediaQueueSvc.publishJob({
@@ -218,14 +170,8 @@ export default class VideoCtrl {
             outputKeyPrefix: `videos/${video.id}`,
             mediaId: video.id,
           });
-          await MediaQueueSvc.publishJob({
-            jobType: "generate_hls",
-            inputUrl: fileRecord.fileUrl,
-            outputKeyPrefix: `videos/${video.id}`,
-            mediaId: video.id,
-          });
           logger.info(
-            `[VideoCtrl] Queued optimization and HLS for uploaded video ${video.id}`,
+            `[VideoCtrl] Queued optimization for uploaded video ${video.id}`,
           );
         }
       } catch (e) {

@@ -8,43 +8,33 @@ export default class SocialMediaPostSvc {
   // Helper: Validate video data
   private static async validateMediaPost(data: {
     title: string;
-    fileId: string;
   }) {
     if (!data.title || data.title.trim().length === 0) {
       throw new Error("Media title is required");
-    }
-    if (!data.fileId) {
-      throw new Error("fileId is required");
-    }
-
-    // Ensure file exists before creating/upserting a video that references it
-    const file = await FileRepo.findFileById(data.fileId);
-    if (!file) {
-      throw new Error("Referenced file not found");
     }
   }
 
   static async saveMediaPost(data: {
     title: string;
-    fileId: string;
     platform: any;
     artistId?: string;
     meta_data?: any;
+    externalUrl?: string;
   }) {
     await this.validateMediaPost(data);
 
     const mediaPost = await SocialMediaPostRepo.createMediaPost({
       title: data.title.trim(),
-      fileId: data.fileId,
       platform: data.platform,
       artistId: data.artistId ?? null,
       meta_data: data.meta_data ?? null,
+      externalUrl: data.externalUrl,
     });
 
-    // Create feed item for the new video
-    await SocialFeedRepo.createVideoFeedItem(mediaPost.id);
+    // Note: SocialFeedRepo.createMediaPostFeedItem(mediaPost.id) is redundant now 
+    // because SocialMediaPostRepo.createMediaPost creates a SocialFeedItem directly.
 
-    // Clear feed cache for all pages (since new content was added)
+    // Clear feed cache
     await CacheUtil.delByPattern(`feed:page:*`);
     await CacheUtil.delByPattern(`feed:personalized:*`);
 
@@ -54,7 +44,6 @@ export default class SocialMediaPostSvc {
   static async upsertMediaPost(data: {
     externalUrl: string;
     title: string;
-    fileId: string;
     platform: any;
     artistId?: string;
     meta_data?: any;
@@ -69,7 +58,6 @@ export default class SocialMediaPostSvc {
       { externalUrl: data.externalUrl },
       {
         title: data.title.trim(),
-        fileId: data.fileId,
         platform: data.platform,
         externalUrl: data.externalUrl,
         artistId: data.artistId ?? null,
@@ -77,15 +65,12 @@ export default class SocialMediaPostSvc {
       },
     );
 
-    // Create feed item only for new videos, not updates
+    // Clear feed cache only for new items
     if (!result.isUpdate) {
-      await SocialFeedRepo.createMediaPostFeedItem(result.mediaPost.id);
-
-      // Clear feed cache for all pages (since new content was added)
       await CacheUtil.delByPattern(`feed:page:*`);
       await CacheUtil.delByPattern(`feed:personalized:*`);
     }
 
-    return result; // { video, isUpdate }
+    return result; // { mediaPost, isUpdate }
   }
 }

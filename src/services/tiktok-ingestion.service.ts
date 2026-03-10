@@ -71,7 +71,6 @@ export async function processTikTokCrawlerData(
             const result = await VideoSvc.upsertVideo({
                 externalUrl: post.videoPage,
                 title: post.title || "TikTok Video",
-                fileId: fileResult.file.id,
                 platform: "TIKTOK",
                 artistId: artist.id,
                 meta_data: metadata,
@@ -104,22 +103,10 @@ export async function processTikTokCrawlerData(
                 }
 
                 if (emotionsToLink.length > 0) {
-                    try {
-                        await EmotionRepo.linkVideoToEmotions(
-                            result.video.id,
-                            emotionsToLink
-                        );
-                        console.log(
-                            `Linked emotions to video ${result.video.id}: ${emotionsToLink.join(", ")}`
-                        );
-                    } catch (emotionError) {
-                        console.warn(
-                            `Failed to link emotions for video ${result.video.id}:`,
-                            emotionError
-                        );
-                        // Don't fail the entire ingestion if emotion linking fails
-                    }
-                } else {
+                    // NOTE: Emotion linking is currently disabled for flat SocialFeedItem
+                    console.log(`[INGESTION] Emotion linking skipped for ${result.video.id}`);
+                }
+ else {
                     console.log(
                         `No emotions found in Spotify data for video ${result.video.id}`
                     );

@@ -1,4 +1,4 @@
-import { SocialBookmark } from "@prisma/client";
+import { SocialUserBookmark } from "@prisma/client";
 import UserRepo from "../repositories/user.repository";
 import { prisma } from "../utils/prisma";
 import SocialBookmarkRepo from "../repositories/social-bookmark.repository";
@@ -37,7 +37,7 @@ export default class SocialBookmarkSvc {
     const user = await UserRepo.findUserBookmark(userId);
     if (!user) throw new Error("User cannot be found");
 
-    const query = { userFeed: { userId, feedId } };
+    const query = { userFeed: { userId, socialFeedItemId: feedId } };
     const existingBookmark = await SocialBookmarkRepo.getBookmark(query);
 
     let message = "";

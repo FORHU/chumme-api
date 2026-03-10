@@ -49,9 +49,7 @@ export async function fetchVideosByEmotion(
     return videos.map((video: any) => ({
       id: video.id,
       title: video.title ?? "Video",
-      // url: video.file?.fileUrl || video.externalUrl || null,
-      artist: video.artist?.name ?? null,
-      artistImage: video.artist?.imageUrl ?? null,
+      artist: video.artistId ?? null,
       externalUrl: video.externalUrl ?? null,
     }));
   } catch (error: any) {

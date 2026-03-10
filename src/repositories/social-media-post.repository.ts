@@ -5,18 +5,22 @@ export default class SocialMediaPostRepo {
   // Save / create video record
   static async createMediaPost(data: {
     title: string;
-    fileId: string;
     platform: any;
     artistId?: string | null;
     meta_data?: any | null;
+    externalUrl?: string;
   }) {
-    return prisma.socialMediaPost.create({
+    return prisma.socialFeedItem.create({
       data: {
+        type: "MEDIA_POST",
         title: data.title,
-        fileId: data.fileId,
         platform: data.platform,
         artistId: data.artistId ?? null,
-        meta_data: data.meta_data ?? null,
+        metaData: data.meta_data ?? null,
+        externalUrl: data.externalUrl,
+        stats: {
+          create: {},
+        },
       },
     });
   }
@@ -27,35 +31,37 @@ export default class SocialMediaPostRepo {
     data: {
       id?: string;
       title: string;
-      fileId: string;
       platform: any;
       externalUrl: string;
       artistId?: string | null;
       meta_data?: any | null;
     },
   ) {
-    // Check if record exists before upserting
-    const existing = await prisma.socialMediaPost.findUnique({ where });
+    const existing = await prisma.socialFeedItem.findUnique({
+      where: { externalUrl: where.externalUrl },
+    });
     const isUpdate = !!existing;
 
-    const mediaPost = await prisma.socialMediaPost.upsert({
-      where: where,
+    const mediaPost = await prisma.socialFeedItem.upsert({
+      where: { externalUrl: where.externalUrl },
       create: {
         id: data.id,
+        type: "MEDIA_POST",
         title: data.title,
-        fileId: data.fileId,
         platform: data.platform,
         externalUrl: data.externalUrl,
         artistId: data.artistId ?? null,
-        meta_data: data.meta_data ?? null,
+        metaData: data.meta_data ?? null,
+        stats: {
+          create: {},
+        },
       },
       update: {
         title: data.title,
-        fileId: data.fileId,
         platform: data.platform,
         externalUrl: data.externalUrl,
         artistId: data.artistId ?? null,
-        meta_data: data.meta_data ?? null,
+        metaData: data.meta_data ?? null,
       },
     });
 
@@ -76,35 +82,15 @@ export default class SocialMediaPostRepo {
   ) {
     const whereClause: any = {
       isDeleted: false,
-      mediaPostEmotions: {
-        some: {
-          emotion: {
-            name: {
-              equals: emotionName.toLowerCase(),
-              mode: "insensitive",
-            },
-            isDeleted: false,
-          },
-        },
-      },
+      type: "MEDIA_POST",
     };
 
-    // Only add artist filter if artistIds are provided
     if (artistIds && artistIds.length > 0) {
       whereClause.artistId = { in: artistIds };
     }
 
-    return prisma.socialMediaPost.findMany({
+    return prisma.socialFeedItem.findMany({
       where: whereClause,
-      include: {
-        file: true,
-        artist: true,
-        mediaPostEmotions: {
-          include: {
-            emotion: true,
-          },
-        },
-      },
       orderBy: { createdAt: "desc" },
       take: limit,
     });
@@ -117,7 +103,7 @@ export default class SocialMediaPostRepo {
    * @param limit - Maximum number of results to return
    * @returns Array of videos with their relations
    */
-  static async findMediaPostssByEmotions(
+  static async findMediaPostsByEmotions(
     emotionNames: string[],
     artistIds?: string[],
     limit: number = 10,
@@ -128,35 +114,15 @@ export default class SocialMediaPostRepo {
 
     const whereClause: any = {
       isDeleted: false,
-      mediaPostEmotions: {
-        some: {
-          emotion: {
-            name: {
-              in: emotionNames.map((e) => e.toLowerCase()),
-              mode: "insensitive",
-            },
-            isDeleted: false,
-          },
-        },
-      },
+      type: "MEDIA_POST",
     };
 
-    // Only add artist filter if artistIds are provided
     if (artistIds && artistIds.length > 0) {
       whereClause.artistId = { in: artistIds };
     }
 
-    return prisma.socialMediaPost.findMany({
+    return prisma.socialFeedItem.findMany({
       where: whereClause,
-      include: {
-        file: true,
-        artist: true,
-        mediaPostEmotions: {
-          include: {
-            emotion: true,
-          },
-        },
-      },
       orderBy: { createdAt: "desc" },
       take: limit,
     });

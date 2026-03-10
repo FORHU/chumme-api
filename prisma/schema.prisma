@@ -31,10 +31,13 @@ model User {
   onboardingCompleted    Boolean                 @default(false)
   nationality            String?
   chatSessionId          String?
-  bookmarks              SocialBookmark[]
-  posts                  SocialPost[]
-  comments               SocialComment[]
-  likes                  SocialLike[]
+  socialUserBookmarks    SocialUserBookmark[]
+  socialUserPosts        SocialUserPost[]
+  socialUserComments     SocialUserComment[]
+  socialUserLikes        SocialUserLike[]
+  socialUserViews        SocialUserView[]
+  sessions               Session[]
+  sessionSocialAccounts  SessionSocialAccount[]
   chatMessages           ChatMessage[]
   conversations          Conversation[]
   emotionMemories        EmotionMemory[]
@@ -44,15 +47,14 @@ model User {
   messages               RoomMessage[]
   musicParts             MusicSingerPart[]
   ownedStudios           MusicStudio[]           @relation("StudioOwner")
+  musicRecords           MusicRecord[]           @relation("MusicRecordSingers")
   studioMemberships      MusicStudioMember[]     @relation("StudioMembership")
   playlists              Playlist[]
-  sessions               Session[]
   avatar                 File?                   @relation(fields: [avatarId], references: [id])
   userArtists            UserArtist[]
   userChatRoom           RoomUserChat[]
   userEmotionPreferences UserEmotionPreference[]
   userInterests          UserInterest[]
-  musicRecords           MusicRecord[]           @relation("MusicRecordSingers")
   messageReactions       RoomMessageReaction[]
 }
 
@@ -71,6 +73,24 @@ model Session {
   @@index([provider, providerUserId])
 }
 
+model SessionSocialAccount {
+  id             String    @id @default(uuid())
+  userId         String
+  platform       String // e.g., "google", "youtube", "facebook", "instagram", "tiktok"
+  providerUserId String // user ID on that platform
+  accessToken    String
+  refreshToken   String?
+  expiresAt      DateTime?
+  scopes         String? // optional: store granted scopes
+  avatarUrl      String? // optional
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, platform]) // ensures 1 account per platform per user
+}
+
 // ----------------------------
 //  End: Auth Section
 // ----------------------------
@@ -80,18 +100,16 @@ model Session {
 // ----------------------------
 
 model File {
-  id            String            @id @default(uuid())
+  id            String         @id @default(uuid())
   filename      String?
   fileUrl       String?
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
   deletedAt     DateTime?
   metaData      Json?
-  artistPersona ArtistPersona?    @relation("PersonaFile")
-  mediaPosts    SocialMediaPost[]
-  voiceMessages RoomMessage[]     @relation("VoiceMessageFile")
+  artistPersona ArtistPersona? @relation("PersonaFile")
+  voiceMessages RoomMessage[]  @relation("VoiceMessageFile")
   users         User[]
-  videos        Video[]
 }
 
 // ----------------------------
@@ -178,25 +196,24 @@ model ChummeVisualDesign {
 // ----------------------------
 
 model Artist {
-  id                String            @id @default(uuid())
-  name              String            @unique
+  id                String           @id @default(uuid())
+  name              String           @unique
   bio               String?
   imageUrl          String?
   nationality       String?
   genre             String?
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
-  isDeleted         Boolean           @default(false)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  isDeleted         Boolean          @default(false)
   instagramUsername String?
   tiktokUsername    String?
   persona           ArtistPersona?
   featuredArtists   FeaturedArtist[]
-  mediaPosts        SocialMediaPost[]
-  music             Music[]           @relation("MainArtist")
-  musicAlbum        MusicAlbum[]      @relation("MainArtist")
+  musicAlbum        MusicAlbum[]     @relation("MainArtist")
+  music             Music[]          @relation("MainArtist")
   chummeCategories  ChummeCategory[]
   userArtists       UserArtist[]
-  videos            Video[]
+  socialFeedItems   SocialFeedItem[]
 }
 
 model FeaturedArtist {
@@ -245,105 +262,116 @@ model UserArtist {
 //  Start: Social Section
 // ----------------------------
 
-model SocialPost {
-  id        String           @id @default(uuid())
-  userId    String
-  content   String
-  mediaUrls String[]         @default([])
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
-  isDeleted Boolean          @default(false)
-  comments  SocialComment[]
-  feedItems SocialFeedItem[]
-  likes     SocialLike[]
-  user      User             @relation(fields: [userId], references: [id])
+model SocialUserPost {
+  id                 String              @id @default(uuid())
+  userId             String
+  content            String
+  mediaUrls          String[]            @default([])
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  isDeleted          Boolean             @default(false)
+  socialUserComments SocialUserComment[]
+  socialUserLikes    SocialUserLike[]
+  socialFeedItem     SocialFeedItem?
+  user               User                @relation(fields: [userId], references: [id])
 
   @@index([userId])
 }
 
-model SocialLike {
-  id        String     @id @default(uuid())
-  postId    String
-  userId    String
-  createdAt DateTime   @default(now())
-  isDeleted Boolean    @default(false)
-  post      SocialPost @relation(fields: [postId], references: [id])
-  user      User       @relation(fields: [userId], references: [id])
+model SocialUserLike {
+  id             String         @id @default(uuid())
+  socialPostId   String
+  userId         String
+  createdAt      DateTime       @default(now())
+  isDeleted      Boolean        @default(false)
+  socialUserPost SocialUserPost @relation(fields: [socialPostId], references: [id])
+  user           User           @relation(fields: [userId], references: [id])
 
-  @@unique([postId, userId])
-  @@index([postId])
+  @@unique([socialPostId, userId])
+  @@index([socialPostId])
   @@index([userId])
 }
 
-model SocialComment {
-  id        String     @id @default(uuid())
-  postId    String
-  userId    String
-  content   String
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  isDeleted Boolean    @default(false)
-  post      SocialPost @relation(fields: [postId], references: [id])
-  user      User       @relation(fields: [userId], references: [id])
+model SocialUserComment {
+  id                    String             @id @default(uuid())
+  socialUserPostId      String
+  userId                String
+  parentSocialCommentId String?
+  parentSocialComment   SocialUserComment? @relation("ThreadedComments", fields: [parentSocialCommentId], references: [id])
 
-  @@index([postId])
+  content        String
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  isDeleted      Boolean             @default(false)
+  socialUserPost SocialUserPost      @relation(fields: [socialUserPostId], references: [id])
+  user           User                @relation(fields: [userId], references: [id])
+  replies        SocialUserComment[] @relation("ThreadedComments")
+
+  @@index([socialUserPostId])
   @@index([userId])
 }
 
-model SocialBookmark {
-  id        String         @id @default(uuid())
-  userId    String
-  createdAt DateTime       @default(now())
-  deletedAt DateTime?
-  updatedAt DateTime       @updatedAt
-  feedId    String
-  feed      SocialFeedItem @relation(fields: [feedId], references: [id])
-  user      User           @relation(fields: [userId], references: [id])
+model SocialUserBookmark {
+  id               String         @id @default(uuid())
+  userId           String
+  createdAt        DateTime       @default(now())
+  deletedAt        DateTime?
+  updatedAt        DateTime       @updatedAt
+  socialFeedItemId String
+  socialFeedItem   SocialFeedItem @relation(fields: [socialFeedItemId], references: [id])
+  user             User           @relation(fields: [userId], references: [id])
 
-  @@unique([feedId, userId], name: "userFeed")
+  @@unique([socialFeedItemId, userId], name: "userFeed")
+}
+
+model SocialUserView {
+  id               String         @id @default(uuid())
+  userId           String
+  createdAt        DateTime       @default(now())
+  deletedAt        DateTime?
+  updatedAt        DateTime       @updatedAt
+  socialFeedItemId String
+  socialFeedItem   SocialFeedItem @relation(fields: [socialFeedItemId], references: [id])
+  user             User           @relation(fields: [userId], references: [id])
+
+  @@unique([socialFeedItemId, userId], name: "userFeed")
 }
 
 model SocialFeedItem {
-  id          String           @id @default(uuid())
-  type        FeedItemType
-  postId      String?
-  videoId     String?
-  createdAt   DateTime         @default(now())
-  isDeleted   Boolean          @default(false)
-  mediaPostId String?
-  artistId    String?
-  bookmarks   SocialBookmark[]
-  MediaPost   SocialMediaPost? @relation(fields: [mediaPostId], references: [id], onDelete: Cascade)
-  post        SocialPost?      @relation(fields: [postId], references: [id], onDelete: Cascade)
-  video       Video?           @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  id                 String               @id @default(uuid())
+  type               FeedItemType
+  postId             String?              @unique
+  createdAt          DateTime             @default(now())
+  isDeleted          Boolean              @default(false)
+  artistId           String?
+
+  // Flat fields for external content (e.g. YouTube, social URLs)
+  title              String?
+  externalUrl        String?              @unique
+  platform           VideoPlatform?
+  metaData           Json?
+
+  socialUserBookmark SocialUserBookmark[]
+  post               SocialUserPost?      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  artist             Artist?              @relation(fields: [artistId], references: [id])
+  stats              SocialFeedStats?
+  socialUserViews    SocialUserView[]
 
   @@index([createdAt])
   @@index([type])
   @@index([artistId])
-  @@index([mediaPostId])
   @@index([postId])
-  @@index([videoId])
 }
 
-model SocialMediaPost {
-  id                String             @id @default(uuid())
-  title             String
-  platform          VideoPlatform
-  artistId          String?
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  isDeleted         Boolean            @default(false)
-  fileId            String
-  meta_data         Json?
-  externalUrl       String?            @unique
-  feedItems         SocialFeedItem[]
-  artist            Artist?            @relation(fields: [artistId], references: [id])
-  file              File               @relation(fields: [fileId], references: [id])
-  mediaPostEmotions MediaPostEmotion[]
+model SocialFeedStats {
+  socialFeedId String @id
+  views        Int    @default(0)
+  likes        Int    @default(0)
+  comments     Int    @default(0)
+  bookmarks    Int    @default(0)
+  score        Float  @default(0)
 
-  @@index([artistId])
-  @@index([platform])
-  @@index([fileId])
+  socialFeedItem SocialFeedItem @relation(fields: [socialFeedId], references: [id], onDelete: Cascade)
 }
 
 // ----------------------------
@@ -518,7 +546,6 @@ model Emotion {
   isDeleted              Boolean                 @default(false)
   mediaPostEmotions      MediaPostEmotion[]
   userEmotionPreferences UserEmotionPreference[]
-  videoEmotions          VideoEmotion[]
 }
 
 model UserEmotionPreference {
@@ -542,47 +569,31 @@ model UserEmotionPreference {
 //  Start: stale table
 // ----------------------------
 
-model Video {
-  id            String           @id @default(uuid())
-  title         String
-  platform      VideoPlatform
-  artistId      String?
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
-  isDeleted     Boolean          @default(false)
-  fileId        String
-  meta_data     Json?
-  externalUrl   String?          @unique
-  feedItems     SocialFeedItem[]
-  artist        Artist?          @relation(fields: [artistId], references: [id])
-  file          File             @relation(fields: [fileId], references: [id])
-  videoEmotions VideoEmotion[]
+model MediaPost {
+  id                String             @id @default(uuid())
+  title             String
+  platform          VideoPlatform
+  artistId          String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  isDeleted         Boolean            @default(false)
+  fileId            String
+  meta_data         Json?
+  externalUrl       String?            @unique
+  mediaPostEmotions MediaPostEmotion[]
 
   @@index([artistId])
   @@index([platform])
   @@index([fileId])
 }
 
-model VideoEmotion {
-  id        String   @id @default(uuid())
-  videoId   String
-  emotionId String
-  createdAt DateTime @default(now())
-  emotion   Emotion  @relation(fields: [emotionId], references: [id])
-  video     Video    @relation(fields: [videoId], references: [id])
-
-  @@unique([videoId, emotionId])
-  @@index([videoId])
-  @@index([emotionId])
-}
-
 model MediaPostEmotion {
-  id          String          @id @default(uuid())
+  id          String    @id @default(uuid())
   mediaPostId String
   emotionId   String
-  createdAt   DateTime        @default(now())
-  emotion     Emotion         @relation(fields: [emotionId], references: [id])
-  mediaPost   SocialMediaPost @relation(fields: [mediaPostId], references: [id])
+  createdAt   DateTime  @default(now())
+  emotion     Emotion   @relation(fields: [emotionId], references: [id])
+  mediaPost   MediaPost @relation(fields: [mediaPostId], references: [id])
 
   @@unique([mediaPostId, emotionId])
   @@index([mediaPostId])

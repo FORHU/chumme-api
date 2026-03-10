@@ -342,10 +342,8 @@ export async function fetchVideoRecommendation(
         id: selectedVideo.id,
         title: selectedVideo.title,
         externalUrl: selectedVideo.externalUrl || null,
-        file: {
-          id: selectedVideo.file?.id,
-          fileUrl: selectedVideo.file?.fileUrl,
-        },
+        // NOTE: file relation is removed in flat structure
+        file: null, 
         artist: selectedVideo.artist
           ? {
               id: selectedVideo.artist.id,

@@ -22,53 +22,36 @@ export default class SocialFeedSvc {
               createdAt: item.post.createdAt,
               user: {
                 id: item.post.user?.id,
+                username: item.post.user?.username,
+                name: item.post.user?.name,
+                avatar: item.post.user?.avatar?.fileUrl,
               },
               likesCount: item.post._count?.likes || 0,
               commentsCount: item.post._count?.comments || 0,
             },
           };
-        } else if (item.type === "VIDEO" && item.video) {
+        } else if (item.type === "VIDEO" || item.type === "MEDIA_POST") {
+          const meta = item.metaData || {};
           return {
             id: item.id,
-            type: "video",
+            type: item.type.toLowerCase(),
             content: {
-              id: item.video.id,
-              title: item.video.title,
-              platform: item.video.platform,
+              id: item.id,
+              title: item.title,
+              platform: item.platform,
+              externalUrl: item.externalUrl,
               meta_data: {
-                caption: item.video.meta_data?.caption || null,
+                caption: meta.caption || null,
+                artist: meta.musicData?.artist || null,
+                fullTitle: meta.musicData?.fullTitle || null,
+                songTitle: meta.musicData?.songTitle || null,
               },
-              artist: {
-                id: item.video.artist?.id,
-                name: item.video.artist?.name,
-                avatar: item.video.artist?.imageUrl,
-              },
-              file: {
-                id: item.video.file?.id,
-                fileUrl: item.video.file?.fileUrl,
-              },
-            },
-          };
-        } else if (item.type === "MEDIA_POST" && item.MediaPost) {
-          return {
-            id: item.id,
-            type: "media_post",
-            content: {
-              id: item.MediaPost.id,
-              title: item.MediaPost.title,
-              platform: item.MediaPost.platform,
-              meta_data: {
-                caption: item.MediaPost.meta_data?.caption || null,
-              },
-              artist: {
-                id: item.MediaPost.artist?.id,
-                name: item.MediaPost.artist?.name,
-                avatar: item.MediaPost.artist?.imageUrl,
-              },
-              file: {
-                id: item.MediaPost.file?.id,
-                fileUrl: item.MediaPost.file?.fileUrl,
-              },
+              artist: item.artist ? {
+                id: item.artist.id,
+                name: item.artist.name,
+                avatar: item.artist.imageUrl,
+              } : null,
+              stats: item.stats || { views: 0, likes: 0, comments: 0, bookmarks: 0 },
             },
           };
         }

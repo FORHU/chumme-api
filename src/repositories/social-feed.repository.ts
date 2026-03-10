@@ -10,38 +10,71 @@ export default class SocialFeedRepo {
       data: {
         type: "POST",
         postId,
+        stats: {
+          create: {},
+        },
       },
     });
   }
 
   /**
-   * Create a feed item for a video
+   * Create a feed item for external content (Video/Link)
    */
-  static async createVideoFeedItem(videoId: string) {
+  static async createExternalFeedItem(data: {
+    type: "VIDEO" | "MEDIA_POST";
+    title: string;
+    externalUrl: string;
+    platform: any; // VideoPlatform enum
+    metaData?: any;
+    artistId?: string;
+  }) {
     return await prisma.socialFeedItem.create({
       data: {
-        type: "VIDEO",
-        videoId,
+        type: data.type,
+        title: data.title,
+        externalUrl: data.externalUrl,
+        platform: data.platform,
+        metaData: data.metaData,
+        artistId: data.artistId,
+        stats: {
+          create: {},
+        },
       },
     });
   }
 
-  static async createMediaPostFeedItem(mediaPostId: string) {
-    return await prisma.socialFeedItem.create({
-      data: {
-        type: "MEDIA_POST",
-        mediaPostId,
-      },
-    });
+  /**
+   * Legacy wrapper - now uses direct storage
+   */
+  static async createVideoFeedItem(data: {
+    title: string;
+    externalUrl: string;
+    platform: any;
+    metaData?: any;
+    artistId?: string;
+  }) {
+    return this.createExternalFeedItem({ ...data, type: "VIDEO" });
+  }
+
+  static async createMediaPostFeedItem(data: {
+    title: string;
+    externalUrl: string;
+    platform: any;
+    metaData?: any;
+    artistId?: string;
+  }) {
+    return this.createExternalFeedItem({ ...data, type: "MEDIA_POST" });
   }
 
   /**
    * Get paginated feed with all content
    */
   static async getFeed(page: number = 0, limit: number = 20) {
-    return await prisma.socialFeedItem.findMany({
+    const items = await prisma.socialFeedItem.findMany({
       where: { isDeleted: false },
       include: {
+        artist: true,
+        stats: true,
         post: {
           where: { isDeleted: false },
           include: {
@@ -50,41 +83,13 @@ export default class SocialFeedRepo {
                 id: true,
                 username: true,
                 name: true,
-                avatar: true,
+                avatar: { select: { fileUrl: true } },
               },
             },
             _count: {
               select: {
-                likes: { where: { isDeleted: false } },
-                comments: { where: { isDeleted: false } },
-              },
-            },
-          },
-        },
-        video: {
-          where: { isDeleted: false },
-          include: {
-            artist: {
-              select: { id: true, name: true, imageUrl: true, genre: true },
-            },
-            file: true,
-            videoEmotions: {
-              include: {
-                emotion: { select: { id: true, name: true, icon: true } },
-              },
-            },
-          },
-        },
-        MediaPost: {
-          where: { isDeleted: false },
-          include: {
-            artist: {
-              select: { id: true, name: true, imageUrl: true, genre: true },
-            },
-            file: true,
-            mediaPostEmotions: {
-              include: {
-                emotion: { select: { id: true, name: true, icon: true } },
+                socialUserLikes: { where: { isDeleted: false } },
+                socialUserComments: { where: { isDeleted: false } },
               },
             },
           },
@@ -94,6 +99,16 @@ export default class SocialFeedRepo {
       skip: page * limit,
       take: limit,
     });
+
+    return items.map((item) => {
+      if (item.post) {
+        (item.post as any)._count = {
+          likes: (item.post as any)._count.socialUserLikes,
+          comments: (item.post as any)._count.socialUserComments,
+        };
+      }
+      return item;
+    });
   }
 
   /**
@@ -102,7 +117,7 @@ export default class SocialFeedRepo {
   static async getGlobalFeedIds(artistId?: string) {
     const where: any = { isDeleted: false };
     if (artistId) {
-      where.OR = [{ video: { artistId } }, { MediaPost: { artistId } }];
+      where.artistId = artistId;
     }
 
     const items = await prisma.socialFeedItem.findMany({
@@ -117,9 +132,11 @@ export default class SocialFeedRepo {
    * Get full content for specific feed item IDs
    */
   static async getFeedItemsByIds(ids: string[]) {
-    return await prisma.socialFeedItem.findMany({
+    const items = await prisma.socialFeedItem.findMany({
       where: { id: { in: ids } },
       include: {
+        artist: true,
+        stats: true,
         post: {
           where: { isDeleted: false },
           include: {
@@ -128,46 +145,28 @@ export default class SocialFeedRepo {
                 id: true,
                 username: true,
                 name: true,
-                avatar: true,
+                avatar: { select: { fileUrl: true } },
               },
             },
             _count: {
               select: {
-                likes: { where: { isDeleted: false } },
-                comments: { where: { isDeleted: false } },
-              },
-            },
-          },
-        },
-        video: {
-          where: { isDeleted: false },
-          include: {
-            artist: {
-              select: { id: true, name: true, imageUrl: true, genre: true },
-            },
-            file: true,
-            videoEmotions: {
-              include: {
-                emotion: { select: { id: true, name: true, icon: true } },
-              },
-            },
-          },
-        },
-        MediaPost: {
-          where: { isDeleted: false },
-          include: {
-            artist: {
-              select: { id: true, name: true, imageUrl: true, genre: true },
-            },
-            file: true,
-            mediaPostEmotions: {
-              include: {
-                emotion: { select: { id: true, name: true, icon: true } },
+                socialUserLikes: { where: { isDeleted: false } },
+                socialUserComments: { where: { isDeleted: false } },
               },
             },
           },
         },
       },
+    });
+
+    return items.map((item) => {
+      if (item.post) {
+        (item.post as any)._count = {
+          likes: (item.post as any)._count.socialUserLikes,
+          comments: (item.post as any)._count.socialUserComments,
+        };
+      }
+      return item;
     });
   }
 
@@ -182,18 +181,11 @@ export default class SocialFeedRepo {
   }
 
   /**
-   * Soft delete feed item when video is deleted
+   * Soft delete feed item when external content is removed (by URL)
    */
-  static async softDeleteByVideoId(videoId: string) {
+  static async softDeleteByUrl(externalUrl: string) {
     return await prisma.socialFeedItem.updateMany({
-      where: { videoId },
-      data: { isDeleted: true },
-    });
-  }
-
-  static async softDeleteByMediaPostId(mediaPostId: string) {
-    return await prisma.socialFeedItem.updateMany({
-      where: { mediaPostId },
+      where: { externalUrl },
       data: { isDeleted: true },
     });
   }
@@ -240,67 +232,32 @@ export default class SocialFeedRepo {
     ];
     if (artistInArray.length > 0) {
       orConditions.push({
-        type: "VIDEO",
-        video: { is: { artistId: { in: artistInArray }, isDeleted: false } },
-      });
-      orConditions.push({
-        type: "MEDIA_POST",
-        MediaPost: {
-          is: { artistId: { in: artistInArray }, isDeleted: false },
-        },
-      });
-    } else {
-      orConditions.push({
-        type: "VIDEO",
-        video: { is: { isDeleted: false } },
-      });
-      orConditions.push({
-        type: "MEDIA_POST",
-        MediaPost: { is: { isDeleted: false } },
+        artistId: { in: artistInArray },
       });
     }
 
-    return await prisma.socialFeedItem.findMany({
+    const items = await prisma.socialFeedItem.findMany({
       where: {
         isDeleted: false,
         OR: orConditions,
       },
       include: {
+        artist: true,
+        stats: true,
         post: {
           include: {
             user: {
-              select: { id: true, username: true, name: true, avatar: true },
+              select: {
+                id: true,
+                username: true,
+                name: true,
+                avatar: { select: { fileUrl: true } },
+              },
             },
             _count: {
               select: {
-                likes: { where: { isDeleted: false } },
-                comments: { where: { isDeleted: false } },
-              },
-            },
-          },
-        },
-        video: {
-          include: {
-            artist: {
-              select: { id: true, name: true, imageUrl: true, genre: true },
-            },
-            file: true,
-            videoEmotions: {
-              include: {
-                emotion: { select: { id: true, name: true, icon: true } },
-              },
-            },
-          },
-        },
-        MediaPost: {
-          include: {
-            artist: {
-              select: { id: true, name: true, imageUrl: true, genre: true },
-            },
-            file: true,
-            mediaPostEmotions: {
-              include: {
-                emotion: { select: { id: true, name: true, icon: true } },
+                socialUserLikes: { where: { isDeleted: false } },
+                socialUserComments: { where: { isDeleted: false } },
               },
             },
           },
@@ -309,6 +266,16 @@ export default class SocialFeedRepo {
       orderBy: { createdAt: "desc" },
       skip: page * limit,
       take: limit,
+    });
+
+    return items.map((item) => {
+      if (item.post) {
+        (item.post as any)._count = {
+          likes: (item.post as any)._count.socialUserLikes,
+          comments: (item.post as any)._count.socialUserComments,
+        };
+      }
+      return item;
     });
   }
 
@@ -341,23 +308,7 @@ export default class SocialFeedRepo {
 
     if (artistInArray.length > 0) {
       orConditions.push({
-        type: "VIDEO",
-        video: { is: { artistId: { in: artistInArray }, isDeleted: false } },
-      });
-      orConditions.push({
-        type: "MEDIA_POST",
-        MediaPost: {
-          is: { artistId: { in: artistInArray }, isDeleted: false },
-        },
-      });
-    } else {
-      orConditions.push({
-        type: "VIDEO",
-        video: { is: { isDeleted: false } },
-      });
-      orConditions.push({
-        type: "MEDIA_POST",
-        MediaPost: { is: { isDeleted: false } },
+        artistId: { in: artistInArray },
       });
     }
 

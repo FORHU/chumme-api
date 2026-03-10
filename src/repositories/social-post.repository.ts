@@ -6,7 +6,7 @@ export default class SocialPostRepo {
     content: string;
     mediaUrls?: string[];
   }) {
-    return prisma.socialPost.create({
+    return prisma.socialUserPost.create({
       data: {
         userId: data.userId,
         content: data.content,
@@ -36,7 +36,7 @@ export default class SocialPostRepo {
   }
 
   static async findPostById(postId: string) {
-    return prisma.socialPost.findUnique({
+    return prisma.socialUserPost.findUnique({
       where: {
         id: postId,
         isDeleted: false,
@@ -45,42 +45,41 @@ export default class SocialPostRepo {
   }
 
   static async findLike(postId: string, userId: string) {
-    // Find like regardless of isDeleted status
-    return prisma.socialLike.findFirst({
+    return prisma.socialUserLike.findFirst({
       where: {
-        postId,
+        socialPostId: postId,
         userId,
       },
     });
   }
 
   static async createLike(postId: string, userId: string) {
-    return prisma.socialLike.create({
+    return prisma.socialUserLike.create({
       data: {
-        postId,
+        socialPostId: postId,
         userId,
       },
     });
   }
 
   static async softDeleteLike(likeId: string) {
-    return prisma.socialLike.update({
+    return prisma.socialUserLike.update({
       where: { id: likeId },
       data: { isDeleted: true },
     });
   }
 
   static async reactivateLike(likeId: string) {
-    return prisma.socialLike.update({
+    return prisma.socialUserLike.update({
       where: { id: likeId },
       data: { isDeleted: false },
     });
   }
 
   static async getLikesCount(postId: string) {
-    return prisma.socialLike.count({
+    return prisma.socialUserLike.count({
       where: {
-        postId,
+        socialPostId: postId,
         isDeleted: false,
       },
     });
@@ -91,15 +90,15 @@ export default class SocialPostRepo {
     userId: string;
     content: string;
   }) {
-    return prisma.socialComment.create({
+    return prisma.socialUserComment.create({
       data: {
-        postId: data.postId,
+        socialUserPostId: data.postId,
         userId: data.userId,
         content: data.content,
       },
       select: {
         id: true,
-        postId: true,
+        socialUserPostId: true,
         content: true,
         createdAt: true,
         updatedAt: true,
@@ -120,14 +119,14 @@ export default class SocialPostRepo {
   }
 
   static async getCommentsByPostId(postId: string) {
-    return prisma.socialComment.findMany({
+    return prisma.socialUserComment.findMany({
       where: {
-        postId,
+        socialUserPostId: postId,
         isDeleted: false,
       },
       select: {
         id: true,
-        postId: true,
+        socialUserPostId: true,
         content: true,
         createdAt: true,
         updatedAt: true,
@@ -145,22 +144,22 @@ export default class SocialPostRepo {
         },
       },
       orderBy: {
-        createdAt: "desc", // Newest comments first
+        createdAt: "desc",
       },
     });
   }
 
   static async getCommentsCount(postId: string) {
-    return prisma.socialComment.count({
+    return prisma.socialUserComment.count({
       where: {
-        postId,
+        socialUserPostId: postId,
         isDeleted: false,
       },
     });
   }
 
   static async getPostsByUserId(userId: string) {
-    return prisma.socialPost.findMany({
+    const posts = await prisma.socialUserPost.findMany({
       where: {
         userId,
         isDeleted: false,
@@ -186,12 +185,12 @@ export default class SocialPostRepo {
         },
         _count: {
           select: {
-            likes: {
+            socialUserLikes: {
               where: {
                 isDeleted: false,
               },
             },
-            comments: {
+            socialUserComments: {
               where: {
                 isDeleted: false,
               },
@@ -203,10 +202,18 @@ export default class SocialPostRepo {
         createdAt: "desc",
       },
     });
+
+    return posts.map((post) => {
+      (post as any)._count = {
+        likes: (post as any)._count.socialUserLikes,
+        comments: (post as any)._count.socialUserComments,
+      };
+      return post;
+    });
   }
 
   static async getFeedPosts(userId: string) {
-    return prisma.socialPost.findMany({
+    const posts = await prisma.socialUserPost.findMany({
       where: {
         isDeleted: false,
         user: {
@@ -239,12 +246,12 @@ export default class SocialPostRepo {
         },
         _count: {
           select: {
-            likes: {
+            socialUserLikes: {
               where: {
                 isDeleted: false,
               },
             },
-            comments: {
+            socialUserComments: {
               where: {
                 isDeleted: false,
               },
@@ -255,6 +262,14 @@ export default class SocialPostRepo {
       orderBy: {
         createdAt: "desc",
       },
+    });
+
+    return posts.map((post) => {
+      (post as any)._count = {
+        likes: (post as any)._count.socialUserLikes,
+        comments: (post as any)._count.socialUserComments,
+      };
+      return post;
     });
   }
 }

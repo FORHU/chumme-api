@@ -1,4 +1,5 @@
 import * as userEmotionRepo from "../repositories/user-emotion.repository";
+import EmotionRepo from "../repositories/emotion.repository";
 import CacheUtil from "../utils/cache.util";
 
 
@@ -10,7 +11,7 @@ export const getAllEmotions = async () => {
         return JSON.parse(cached);
     }
 
-    const emotions = await userEmotionRepo.getAllEmotions();
+    const emotions = await EmotionRepo.getAllEmotions();
 
     await CacheUtil.set(cacheKey, JSON.stringify(emotions), 3600);
 

@@ -69,21 +69,9 @@ export class MediaProcessingWorker {
     logger.info(`[MediaWorker] Uploaded optimized video to ${s3Key}`);
 
     // 3. Update File Record in DB
-    // Find the File ID from the Video record
-    const video = await prisma.video.findUnique({
-      where: { id: mediaId },
-      select: { fileId: true },
-    });
-
-    if (video?.fileId) {
-      await prisma.file.update({
-        where: { id: video.fileId },
-        data: { fileUrl: optimizedUrl },
-      });
-      logger.info(
-        `[MediaWorker] Updated File record ${video.fileId} with optimized URL`,
-      );
-    }
+    // NOTE: This logic is temporarily disabled as we move to a flat SocialFeedItem structure.
+    // External links (SocialFeedItem) do not have local file IDs.
+    logger.info(`[MediaWorker] Skipped DB update for SocialFeedItem ${mediaId} (no fileId)`);
 
     // Cleanup
     // fs.unlinkSync(tempPath);
@@ -193,22 +181,8 @@ export class MediaProcessingWorker {
     }
 
     // 4. Update DB
-    if (masterUrl) {
-      const video = await prisma.video.findUnique({
-        where: { id: job.mediaId },
-        select: { fileId: true },
-      });
-
-      if (video?.fileId) {
-        await prisma.file.update({
-          where: { id: video.fileId },
-          data: { fileUrl: masterUrl },
-        });
-        logger.info(
-          `[MediaWorker] Updated File record ${video.fileId} with HLS Master URL`,
-        );
-      }
-    }
+    // NOTE: This logic is temporarily disabled as we move to a flat SocialFeedItem structure.
+    logger.info(`[MediaWorker] Skipped DB update for SocialFeedItem ${job.mediaId} (no fileId)`);
 
     // Cleanup
     // fs.rmSync(hlsDir, { recursive: true, force: true });

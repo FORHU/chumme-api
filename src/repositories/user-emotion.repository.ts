@@ -1,22 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../utils/prisma";
 
-export const getAllEmotions = async () => {
-    return await prisma.emotion.findMany({
-        where: {
-            isDeleted: false,
-        },
-        select: {
-            id: true,
-            name: true,
-            description: true,
-            icon: true,
-        },
-        orderBy: {
-            name: "asc",
-        },
-    });
-};
 
 export const getUserEmotions = async (userId: string) => {
     return await prisma.userEmotionPreference.findMany({

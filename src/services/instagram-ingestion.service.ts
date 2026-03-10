@@ -76,7 +76,6 @@ export async function processInstagramCrawlerData(
         videoResult = await VideoSvc.upsertVideo({
           externalUrl: post.url,
           title: post.title || "Instagram Post/Video",
-          fileId: fileResult.file.id,
           platform: "INSTAGRAM",
           artistId: artist.id,
           meta_data: metadata,
@@ -94,7 +93,6 @@ export async function processInstagramCrawlerData(
         mediaPostResult = await SocialMediaPostSvc.upsertMediaPost({
           externalUrl: post.url,
           title: post.title || "Instagram Post/Media",
-          fileId: fileResult.file.id,
           platform: "INSTAGRAM",
           artistId: artist.id,
           meta_data: metadata,
@@ -136,18 +134,8 @@ export async function processInstagramCrawlerData(
         }
 
         if (emotionsToLink.length > 0) {
-          try {
-            await EmotionRepo.linkVideoToEmotions(resultId, emotionsToLink);
-            console.log(
-              `Linked emotions to video ${resultId}: ${emotionsToLink.join(", ")}`,
-            );
-          } catch (emotionError) {
-            console.warn(
-              `Failed to link emotions for video ${resultId}:`,
-              emotionError,
-            );
-            // Don't fail the entire ingestion if emotion linking fails
-          }
+          // NOTE: Emotion linking is currently disabled for flat SocialFeedItem
+          console.log(`[INGESTION] Emotion linking skipped for ${resultId}`);
         } else {
           console.log(
             `No emotions found in Spotify data for video ${resultId}`,

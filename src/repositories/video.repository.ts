@@ -5,18 +5,22 @@ export default class VideoRepo {
   // Save / create video record
   static async createVideo(data: {
     title: string;
-    fileId: string;
     platform: any;
     artistId?: string | null;
     meta_data?: any | null;
+    externalUrl?: string;
   }) {
-    return prisma.video.create({
+    return prisma.socialFeedItem.create({
       data: {
+        type: "VIDEO",
         title: data.title,
-        fileId: data.fileId,
         platform: data.platform,
         artistId: data.artistId ?? null,
-        meta_data: data.meta_data ?? null,
+        metaData: data.meta_data ?? null,
+        externalUrl: data.externalUrl,
+        stats: {
+          create: {},
+        },
       },
     });
   }
@@ -27,35 +31,37 @@ export default class VideoRepo {
     data: {
       id?: string;
       title: string;
-      fileId: string;
       platform: any;
       externalUrl: string;
       artistId?: string | null;
       meta_data?: any | null;
     },
   ) {
-    // Check if record exists before upserting
-    const existing = await prisma.video.findUnique({ where });
+    const existing = await prisma.socialFeedItem.findUnique({
+      where: { externalUrl: where.externalUrl },
+    });
     const isUpdate = !!existing;
 
-    const video = await prisma.video.upsert({
-      where: where,
+    const video = await prisma.socialFeedItem.upsert({
+      where: { externalUrl: where.externalUrl },
       create: {
         id: data.id,
+        type: "VIDEO",
         title: data.title,
-        fileId: data.fileId,
         platform: data.platform,
         externalUrl: data.externalUrl,
         artistId: data.artistId ?? null,
-        meta_data: data.meta_data ?? null,
+        metaData: data.meta_data ?? null,
+        stats: {
+          create: {},
+        },
       },
       update: {
         title: data.title,
-        fileId: data.fileId,
         platform: data.platform,
         externalUrl: data.externalUrl,
         artistId: data.artistId ?? null,
-        meta_data: data.meta_data ?? null,
+        metaData: data.meta_data ?? null,
       },
     });
 
@@ -74,37 +80,19 @@ export default class VideoRepo {
     artistIds?: string[],
     limit: number = 10,
   ) {
+    // NOTE: emotions are not currently linked to flattened SocialFeedItem.
+    // Returning recent items from SocialFeedItem as a fallback or empty array.
     const whereClause: any = {
       isDeleted: false,
-      videoEmotions: {
-        some: {
-          emotion: {
-            name: {
-              equals: emotionName.toLowerCase(),
-              mode: "insensitive",
-            },
-            isDeleted: false,
-          },
-        },
-      },
+      type: "VIDEO",
     };
 
-    // Only add artist filter if artistIds are provided
     if (artistIds && artistIds.length > 0) {
       whereClause.artistId = { in: artistIds };
     }
 
-    return prisma.video.findMany({
+    return prisma.socialFeedItem.findMany({
       where: whereClause,
-      include: {
-        file: true,
-        artist: true,
-        videoEmotions: {
-          include: {
-            emotion: true,
-          },
-        },
-      },
       orderBy: { createdAt: "desc" },
       take: limit,
     });
@@ -128,35 +116,15 @@ export default class VideoRepo {
 
     const whereClause: any = {
       isDeleted: false,
-      videoEmotions: {
-        some: {
-          emotion: {
-            name: {
-              in: emotionNames.map((e) => e.toLowerCase()),
-              mode: "insensitive",
-            },
-            isDeleted: false,
-          },
-        },
-      },
+      type: "VIDEO",
     };
 
-    // Only add artist filter if artistIds are provided
     if (artistIds && artistIds.length > 0) {
       whereClause.artistId = { in: artistIds };
     }
 
-    return prisma.video.findMany({
+    return prisma.socialFeedItem.findMany({
       where: whereClause,
-      include: {
-        file: true,
-        artist: true,
-        videoEmotions: {
-          include: {
-            emotion: true,
-          },
-        },
-      },
       orderBy: { createdAt: "desc" },
       take: limit,
     });

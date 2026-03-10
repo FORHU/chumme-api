@@ -29,7 +29,7 @@ export default class UserRepo {
   static async findUserBookmark(userId: string) {
     return prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, bookmarks: true },
+      select: { id: true, socialUserBookmarks: true },
     });
   }
 

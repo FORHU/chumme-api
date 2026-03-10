@@ -29,6 +29,7 @@ import musicLibraryRoute from "./music-library.route";
 import mediaRoute from "./media.route";
 
 import systemRoute from "./system.route";
+import youtubeRoute from "./youtube.route";
 
 const router = express.Router();
 
@@ -68,5 +69,6 @@ router.use("/v1/music-studios", musicStudioRoute);
 router.use("/v1/music-library", musicLibraryRoute);
 router.use("/v1/media", mediaRoute);
 router.use("/v1/system", systemRoute);
+router.use("/v1/youtube", youtubeRoute);
 
 export default router;
