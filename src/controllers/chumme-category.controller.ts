@@ -11,10 +11,9 @@ export default class ChummeCategoryCtrl {
       name: Joi.string().min(1).max(100).required(),
       isAd: Joi.boolean().required(),
       keyPassword: Joi.string().allow(null, "").optional(), // Null/Empty = public, otherwise private
-      traits: Joi.string().valid("NONE", "COMMUNITIES", "ENTERTAINMENT").optional(),
-
-
-
+      traits: Joi.string()
+        .valid("NONE", "COMMUNITIES", "ENTERTAINMENT")
+        .optional(),
       position: Joi.object().optional(),
       colorSet: Joi.object().optional(),
       sizeSet: Joi.object().optional(),
@@ -93,9 +92,9 @@ export default class ChummeCategoryCtrl {
       name: Joi.string().min(1).max(100).optional(),
       isAd: Joi.boolean().optional(),
       keyPassword: Joi.string().allow(null, "").optional(), // Null/Empty = public, otherwise private
-      traits: Joi.string().valid("NONE", "COMMUNITIES", "ENTERTAINMENT").optional(),
-
-
+      traits: Joi.string()
+        .valid("NONE", "COMMUNITIES", "ENTERTAINMENT")
+        .optional(),
 
       position: Joi.object().optional(),
       colorSet: Joi.object().optional(),
@@ -219,13 +218,17 @@ export default class ChummeCategoryCtrl {
     const { trait } = req.params;
 
     if (!["COMMUNITIES", "ENTERTAINMENT"].includes(trait)) {
-      return res.status(400).json({ message: "Invalid trait. Must be COMMUNITIES or ENTERTAINMENT" });
+      return res
+        .status(400)
+        .json({
+          message: "Invalid trait. Must be COMMUNITIES or ENTERTAINMENT",
+        });
     }
 
-
-
     try {
-      const categories = await ChummeCategorySvc.getSpecializedCategories(trait as any);
+      const categories = await ChummeCategorySvc.getSpecializedCategories(
+        trait as any,
+      );
       return res.json({ categories });
     } catch (error: any) {
       return res.status(500).json({ message: error.message || error });

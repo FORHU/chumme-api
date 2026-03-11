@@ -22,7 +22,8 @@ export default class OnboardingSvc {
             onboardingCompleted: status.onboardingCompleted,
             selectedInterests: status.userInterests.map(ui => ui.interest),
             selectedEmotions: status.userEmotionPreferences.map(uep => uep.emotion),
-            selectedArtists: status.socialUserDiscoveries.flatMap(sud => sud.chummeArtists)
+            selectedArtists: [] // Relation chummeArtists was removed from SocialUserDiscovery
+
         };
 
         await CacheUtil.set(cacheKey, response);

@@ -36,63 +36,21 @@ export const getRandomArtists = async (limit: number) => {
 };
 
 export const getUserArtists = async (userId: string) => {
-  const userArtistPref = await prisma.socialUserDiscovery.findUnique({
-    where: {
-      userId,
-    },
-    include: {
-      chummeArtists: {
-        where: {
-          isDeleted: false,
-        },
-        select: {
-          id: true,
-          name: true,
-          bio: true,
-          imageUrl: true,
-          chummeCategories: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-        },
-      },
-    },
-  });
-
-  return userArtistPref ? userArtistPref.chummeArtists : [];
+  // Relation chummeArtists was removed from SocialUserDiscovery
+  return [];
 };
+
 
 export const addUserArtists = async (userId: string, artistIds: string[]) => {
-  await prisma.socialUserDiscovery.upsert({
-    where: { userId },
-    update: {
-      chummeArtists: {
-        connect: artistIds.map((id) => ({ id })),
-      },
-    },
-    create: {
-      userId,
-      chummeArtists: {
-        connect: artistIds.map((id) => ({ id })),
-      },
-    },
-  });
+  // Relation chummeArtists was removed from SocialUserDiscovery
 };
 
+
 export const removeUserArtist = async (userId: string, artistId: string) => {
-  return await prisma.socialUserDiscovery.update({
-    where: {
-      userId,
-    },
-    data: {
-      chummeArtists: {
-        disconnect: [{ id: artistId }],
-      },
-    },
-  });
+  // Relation chummeArtists was removed from SocialUserDiscovery
+  return null;
 };
+
 
 export const findById = async (id: string) => {
   return prisma.chummeArtist.findFirst({

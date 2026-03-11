@@ -1,9 +1,11 @@
 import express from "express";
-import chummeArtistPersonaRoute from "./chumme-artist-persona.routes";
+import chummeArtistPersonaRoute from "./artist-persona.routes";
+
 import authRoute from "./auth.route";
 import chatRoutes from "./chat.route";
 import userRoute from "./user.route";
 import postRoute from "./social-post.route";
+import socialUserDiscoveryRoute from "./social-user-discovery.route";
 
 import chummeCategoryRoute from "./chumme-category.route";
 import chummeSubCategoryRoute from "./chumme-subcategory.route";
@@ -57,6 +59,7 @@ router.use("/v1/onboarding", onboardingRoute);
 
 router.use("/v1/interests", userInterestRoute);
 router.use("/v1/emotions", userEmotionRoute);
+router.use("/v1/social-discovery", socialUserDiscoveryRoute);
 router.use("/v1/artists", chummeArtistRoute);
 router.use("/v1/files", fileRoute);
 router.use("/v1/feed", feedRoute);

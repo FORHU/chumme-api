@@ -12,23 +12,23 @@ datasource db {
 // ----------------------------
 
 model User {
-  id                     String                  @id @default(uuid())
-  email                  String                  @unique
+  id                     String                 @id @default(uuid())
+  email                  String                 @unique
   password               String?
   name                   String?
-  username               String                  @unique
-  role                   Role                    @default(USER)
-  isActive               Boolean                 @default(true)
+  username               String                 @unique
+  role                   Role                   @default(USER)
+  isActive               Boolean                @default(true)
   lastLoginAt            DateTime?
-  createdAt              DateTime                @default(now())
-  updatedAt              DateTime                @updatedAt
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
   avatarId               String?
-  isDeleted              Boolean                 @default(false)
+  isDeleted              Boolean                @default(false)
   mobileNumber           String?
   otpCode                String?
   otpExpiry              DateTime?
-  isEmailVerified        Boolean                 @default(false)
-  onboardingCompleted    Boolean                 @default(false)
+  isEmailVerified        Boolean                @default(false)
+  onboardingCompleted    Boolean                @default(false)
   nationality            String?
   chatSessionId          String?
   socialUserBookmarks    SocialUserBookmark[]
@@ -39,19 +39,20 @@ model User {
   socialUserDiscoveries  SocialUserDiscovery[]
   sessions               Session[]
   sessionSocialAccounts  SessionSocialAccount[]
-  roomsOwned             ChummeSubCategory[]     @relation("ChummeSubCategoryOwner")
+  roomsOwned             ChummeSubCategory[]    @relation("ChummeSubCategoryOwner")
   musicSingerParts       MusicSingerPart[]
-  musicStudios           MusicStudio[]           @relation("StudioOwner")
-  musicRecords           MusicRecord[]           @relation("MusicRecordSingers")
-  musicStudioMemberships MusicStudioMember[]     @relation("StudioMembership")
+  musicStudios           MusicStudio[]          @relation("StudioOwner")
+  musicRecords           MusicRecord[]          @relation("MusicRecordSingers")
+  musicStudioMemberships MusicStudioMember[]    @relation("StudioMembership")
   musicPlaylists         MusicPlaylist[]
   chatMessages           ChatMessage[]
   conversations          Conversation[]
   emotionMemories        EmotionMemory[]
-  following              Follow[]                @relation("UserFollows")
-  followers              Follow[]                @relation("UserFollowers")
+  following              Follow[]               @relation("UserFollows")
+  followers              Follow[]               @relation("UserFollowers")
   roomMessage            RoomMessage[]
-  avatar                 File?                   @relation(fields: [avatarId], references: [id])
+  avatar                 File?                  @relation("UserAvatar", fields: [avatarId], references: [id])
+
   userChatRoom           RoomUserChat[]
   userEmotionPreferences UserEmotionPreference[]
   userInterests          UserInterest[]
@@ -100,16 +101,18 @@ model SessionSocialAccount {
 // ----------------------------
 
 model File {
-  id                  String               @id @default(uuid())
-  filename            String?
-  fileUrl             String?
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
-  deletedAt           DateTime?
-  metaData            Json?
-  chummeArtistPersona ChummeArtistPersona? @relation("PersonaFile")
-  voiceMessages       RoomMessage[]        @relation("VoiceMessageFile")
-  users               User[]
+  id            String               @id @default(uuid())
+  filename      String?
+  fileUrl       String?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  deletedAt     DateTime?
+  metaData      Json?
+  personaAudio  ChummeArtistPersona? @relation("PersonaAudioFile")
+  personaVideo  ChummeArtistPersona? @relation("PersonaVideoFile")
+  personaImage  ChummeArtistPersona? @relation("PersonaImageFile")
+  voiceMessages RoomMessage[]        @relation("VoiceMessageFile")
+  users         User[]               @relation("UserAvatar")
 }
 
 // ----------------------------
@@ -214,52 +217,49 @@ model ChummeVisualDesign {
   chummeTopicCategory ChummeTopicCategory? @relation("TopicCategoryDesign")
 }
 
-// ----------------------------
-//  End: Chumme Section
-// ----------------------------
-// ----------------------------
-
-// ----------------------------
-//  Start: Artist Section
-// ----------------------------
-
 model ChummeArtist {
-  id                    String                @id @default(uuid())
-  name                  String                @unique
-  bio                   String?
-  imageUrl              String?
-  nationality           String?
-  genre                 String?
-  createdAt             DateTime              @default(now())
-  updatedAt             DateTime              @updatedAt
-  isDeleted             Boolean               @default(false)
-  instagramUsername     String?
-  tiktokUsername        String?
-  chummeArtistPersona   ChummeArtistPersona?
-  musicFeaturedArtists  MusicFeaturedArtist[]
-  musicAlbum            MusicAlbum[]          @relation("MainArtist")
-  music                 Music[]               @relation("MainArtist")
-  chummeCategories      ChummeCategory[]
-  socialUserDiscoveries SocialUserDiscovery[]
-  socialFeedItems       SocialFeedItem[]
+  id                   String                @id @default(uuid())
+  name                 String                @unique
+  bio                  String?
+  imageUrl             String?
+  nationality          String?
+  genre                String?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  isDeleted            Boolean               @default(false)
+  instagramUsername    String?
+  tiktokUsername       String?
+  chummeArtistPersona  ChummeArtistPersona?
+  musicFeaturedArtists MusicFeaturedArtist[]
+  musicAlbum           MusicAlbum[]          @relation("MainArtist")
+  music                Music[]               @relation("MainArtist")
+  chummeCategories     ChummeCategory[]
+  socialFeedItems      SocialFeedItem[]
 }
 
 model ChummeArtistPersona {
   id             String        @id @default(uuid())
+  name           String
+  voiceKey       String
+  persona        String
+  audioPathId    String?       @unique
+  audioPath      File?         @relation("PersonaAudioFile", fields: [audioPathId], references: [id])
+  videoPathId    String?       @unique
+  videoPath      File?         @relation("PersonaVideoFile", fields: [videoPathId], references: [id])
+  imagePathId    String?       @unique
+  imagePath      File?         @relation("PersonaImageFile", fields: [imagePathId], references: [id])
   chummeArtistId String?       @unique
-  personaVoiceId String
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  deletedAt      DateTime?
-  personaFileId  String        @unique
   chummeArtist   ChummeArtist? @relation(fields: [chummeArtistId], references: [id])
-  personaFile    File          @relation("PersonaFile", fields: [personaFileId], references: [id])
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   @@index([chummeArtistId])
 }
 
 // ----------------------------
-//  End: Artist Section
+//  End: Chumme Section
 // ----------------------------
 
 // ----------------------------
@@ -274,7 +274,6 @@ model SocialUserDiscovery {
   chummeCategories      ChummeCategory[]
   chummeSubCategories   ChummeSubCategory[]
   chummeTopicCategories ChummeTopicCategory[]
-  chummeArtists         ChummeArtist[]
 
   @@unique([userId])
   @@index([userId])
@@ -872,5 +871,4 @@ enum ChummeTraits {
   NONE
   COMMUNITIES //Circles/chats
   ENTERTAINMENT //Music/videos ETC.....onboarding
-  SPORTS
 }

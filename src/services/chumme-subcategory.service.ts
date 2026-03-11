@@ -13,6 +13,7 @@ export default class ChummeSubCategorySvc {
     ownerId: string;
     isAd: boolean;
     keyPassword?: string;
+    traits?: "NONE" | "COMMUNITIES" | "ENTERTAINMENT";
     position?: any;
     colorSet?: any;
     sizeSet?: any;
@@ -63,6 +64,7 @@ export default class ChummeSubCategorySvc {
 
     const subCategory = await ChummeSubCategoryRepo.createSubCategory({
       ...rest,
+      chummeTraits: data.traits,
       chummeVisualDesign: {
         position,
         colorSet,
@@ -125,6 +127,7 @@ export default class ChummeSubCategorySvc {
       chummeCategoryId?: string;
       isAd?: boolean;
       keyPassword?: string;
+      traits?: "NONE" | "COMMUNITIES" | "ENTERTAINMENT";
       position?: any;
       colorSet?: any;
       sizeSet?: any;
@@ -189,6 +192,7 @@ export default class ChummeSubCategorySvc {
 
     return ChummeSubCategoryRepo.updateSubCategory(id, {
       ...rest,
+      chummeTraits: data.traits,
       chummeVisualDesign: {
         position,
         colorSet,
