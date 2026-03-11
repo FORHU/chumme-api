@@ -262,7 +262,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
           id: "5e3f6d8b-21e1-4c79-91aa-0f1b23c3d4e5",
           name: "Pop",
           note: "Popular music from global artists.",
-          subcategories: [
+          topiccategories: [
             {
               id: "0c2e1f4a-6e57-4a4e-9d1e-32e1d9f7a111",
               name: "Pop Artists",
@@ -289,7 +289,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
           id: "0d5f3c77-18c4-4f7c-8f9a-8a7d1b2c3d4e",
           name: "Rock",
           note: "Rock bands, guitar music, and live performances.",
-          subcategories: [
+          topiccategories: [
             {
               id: "8d94a5f1-6a22-4c8d-9b21-4c1f9d01c121",
               name: "Rock Bands",
@@ -324,7 +324,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
           id: "6c4b9d4e-83c4-4d92-9b19-7a2e1d3f4a5b",
           name: "Action",
           note: "High-energy films with fights and adventure.",
-          subcategories: [
+          topiccategories: [
             {
               id: "2b17e90c-9bfa-4b32-a2c2-21d0a8c2a201",
               name: "Superhero Movies",
@@ -346,7 +346,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
           id: "9c6a7e5d-1f4a-4c90-b9e3-8e2b1d3f4c5d",
           name: "Horror",
           note: "Scary movies and supernatural thrillers.",
-          subcategories: [
+          topiccategories: [
             {
               id: "e92c10f4-3d21-44f8-b17d-1f01a9d8b211",
               name: "Ghost Movies",
@@ -376,7 +376,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
           id: "3e5b8d1c-3d4e-49c8-bc19-2a1e4f6d7b8c",
           name: "NBA",
           note: "National Basketball Association league updates.",
-          subcategories: [
+          topiccategories: [
             {
               id: "4a8e9c77-64d2-4c1f-b4e1-29d5f9c3b301",
               name: "NBA Players",
@@ -398,7 +398,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
           id: "7b2e3c4d-9f8e-41c1-bc2a-8e9d2a3f4b5c",
           name: "Street Basketball",
           note: "Pickup games and streetball culture.",
-          subcategories: [
+          topiccategories: [
             {
               id: "f9c0b8c4-1f6c-48a2-a09b-73e4d2f8b311",
               name: "Streetball Tricks",
@@ -428,7 +428,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
           id: "ab7e1c2d-4f3a-49c8-bd6e-3e1c2b4f5a6d",
           name: "Indoor Volleyball",
           note: "Traditional indoor volleyball competitions.",
-          subcategories: [
+          topiccategories: [
             {
               id: "ce4f2a98-5a33-4b3c-9c2a-4d9f1a7e4411",
               name: "Pro Leagues",
@@ -450,7 +450,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
           id: "702b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d",
           name: "Beach Volleyball",
           note: "Volleyball played on sand courts.",
-          subcategories: [
+          topiccategories: [
             {
               id: "c4a9f8c1-7a2e-4e52-b1c4-6c4d7b9a12f1",
               name: "Beach Tournaments",
@@ -607,8 +607,8 @@ export async function seedChummeCategories(prisma: PrismaClient) {
         });
 
         // Seed Topic Categories (Third level)
-        if (sub.subcategories && sub.subcategories.length > 0) {
-          for (const topic of sub.subcategories) {
+        if (sub.topiccategories && sub.topiccategories.length > 0) {
+          for (const topic of sub.topiccategories) {
             await prisma.chummeTopicCategory.upsert({
               where: { id: topic.id },
               update: {
@@ -627,7 +627,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
             });
           }
           console.log(
-            `✅ Seeded ${sub.subcategories.length} topic categories for subcategory ${sub.name}`,
+            `✅ Seeded ${sub.topiccategories.length} topic categories for subcategory ${sub.name}`,
           );
         }
       }
