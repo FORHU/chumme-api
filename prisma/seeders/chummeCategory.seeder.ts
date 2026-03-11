@@ -8,7 +8,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
 
   // 1. Get or create admin user for ownership
   let systemUser = await prisma.user.findFirst({
-    where: { email: "admin@chumme.com" },
+    where: { email: "aiforhu@gmail.com" },
   });
 
   if (!systemUser) {
@@ -253,48 +253,224 @@ export async function seedChummeCategories(prisma: PrismaClient) {
 
   const categoriesData = [
     {
-      id: "1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d",
+      id: "7a1c7d6c-2f45-4a9d-9c9e-5a6e7b3c11f2",
       name: "Music",
-      keyPassword: null,
       chummeTraits: "ENTERTAINMENT",
       note: "Songs, artists, bands, albums, concerts, and music culture.",
+      subcategories: [
+        {
+          id: "5e3f6d8b-21e1-4c79-91aa-0f1b23c3d4e5",
+          name: "Pop",
+          note: "Popular music from global artists.",
+          subcategories: [
+            {
+              id: "0c2e1f4a-6e57-4a4e-9d1e-32e1d9f7a111",
+              name: "Pop Artists",
+              note: "Famous pop singers and bands.",
+            },
+            {
+              id: "cfa92b76-31c1-4f0d-82a2-d98a4e72c112",
+              name: "Pop Songs",
+              note: "Trending and classic pop songs.",
+            },
+            {
+              id: "1aab8a22-4b66-4f5f-9e51-6f2f9f93c113",
+              name: "Pop Albums",
+              note: "Album releases and rankings.",
+            },
+            {
+              id: "e7b5a4f2-53b5-4b6f-a6e7-3e8a9f20c114",
+              name: "Pop Charts",
+              note: "Top pop music charts.",
+            },
+          ],
+        },
+        {
+          id: "0d5f3c77-18c4-4f7c-8f9a-8a7d1b2c3d4e",
+          name: "Rock",
+          note: "Rock bands, guitar music, and live performances.",
+          subcategories: [
+            {
+              id: "8d94a5f1-6a22-4c8d-9b21-4c1f9d01c121",
+              name: "Rock Bands",
+              note: "Famous rock groups.",
+            },
+            {
+              id: "a4d6f9c7-0c1a-4e92-b3a1-98f5c5e1c122",
+              name: "Classic Rock",
+              note: "Legendary rock songs and artists.",
+            },
+            {
+              id: "2b0a1a5e-5c1b-4b3d-a7b9-01f1d8f2c123",
+              name: "Rock Concerts",
+              note: "Live rock performances.",
+            },
+            {
+              id: "c93d6b87-73a3-4c0c-82d1-bf1f9a12c124",
+              name: "Guitar Solos",
+              note: "Iconic rock guitar moments.",
+            },
+          ],
+        },
+      ],
     },
     {
-      id: "2b3c4d5e-6f7a-8b9c-0d1e-2f3a4b5c6d7e",
+      id: "b7a90c8f-1a9e-4e87-b7d5-97c3e2b3a222",
       name: "Movies",
-      keyPassword: null,
       chummeTraits: "ENTERTAINMENT",
       note: "Films, cinema releases, movie reviews, actors, and directors.",
+      subcategories: [
+        {
+          id: "6c4b9d4e-83c4-4d92-9b19-7a2e1d3f4a5b",
+          name: "Action",
+          note: "High-energy films with fights and adventure.",
+          subcategories: [
+            {
+              id: "2b17e90c-9bfa-4b32-a2c2-21d0a8c2a201",
+              name: "Superhero Movies",
+              note: "Marvel and DC action films.",
+            },
+            {
+              id: "c2fbc92a-0e91-4e49-8b98-1f72f4e4a202",
+              name: "Car Chase Movies",
+              note: "Fast-paced action scenes.",
+            },
+            {
+              id: "98c1a2a0-d8f1-4cbb-b5c7-3d90e8b2a203",
+              name: "Martial Arts Films",
+              note: "Combat and fighting movies.",
+            },
+          ],
+        },
+        {
+          id: "9c6a7e5d-1f4a-4c90-b9e3-8e2b1d3f4c5d",
+          name: "Horror",
+          note: "Scary movies and supernatural thrillers.",
+          subcategories: [
+            {
+              id: "e92c10f4-3d21-44f8-b17d-1f01a9d8b211",
+              name: "Ghost Movies",
+              note: "Supernatural haunting films.",
+            },
+            {
+              id: "74f9b7e1-21f7-4c31-8c8e-9a9d8b2a2212",
+              name: "Zombie Movies",
+              note: "Apocalypse and zombie stories.",
+            },
+            {
+              id: "1b82a0c7-99c7-4c48-87e2-0e1e91a0b213",
+              name: "Psychological Horror",
+              note: "Mind-bending horror films.",
+            },
+          ],
+        },
+      ],
     },
     {
-      id: "3c4d5e6f-7a8b-9c0d-1e2f-3a4b5c6d7e8f",
-      name: "TV Shows",
-      keyPassword: null,
-      chummeTraits: "ENTERTAINMENT",
-      note: "Television series, streaming shows, episodes, and fan discussions.",
-    },
-    {
-      id: "4d5e6f7a-8b9c-0d1e-2f3a-4b5c6d7e8f9a",
-      name: "Celebrities",
-      keyPassword: null,
-      chummeTraits: "ENTERTAINMENT",
-      note: "Famous personalities, actors, influencers, and celebrity news.",
-    },
-    {
-      id: "6f7a8b9c-0d1e-2f3a-4b5c-6d7e8f9a0b1c",
+      id: "a5c9c3d8-4b33-4c92-9c6b-1a0d9e7b3333",
       name: "Basketball",
-      keyPassword: null,
       chummeTraits: "ENTERTAINMENT",
       note: "Basketball games, leagues, players, highlights, and training.",
+      subcategories: [
+        {
+          id: "3e5b8d1c-3d4e-49c8-bc19-2a1e4f6d7b8c",
+          name: "NBA",
+          note: "National Basketball Association league updates.",
+          subcategories: [
+            {
+              id: "4a8e9c77-64d2-4c1f-b4e1-29d5f9c3b301",
+              name: "NBA Players",
+              note: "Famous basketball athletes.",
+            },
+            {
+              id: "d5c7b93f-7f93-4d1b-90e3-7c1d2e4f3302",
+              name: "NBA Highlights",
+              note: "Best dunks and plays.",
+            },
+            {
+              id: "0b1e2f9a-bc8f-4d4b-86f7-5a8c7c6b3303",
+              name: "NBA Trades",
+              note: "Player transfers and rumors.",
+            },
+          ],
+        },
+        {
+          id: "7b2e3c4d-9f8e-41c1-bc2a-8e9d2a3f4b5c",
+          name: "Street Basketball",
+          note: "Pickup games and streetball culture.",
+          subcategories: [
+            {
+              id: "f9c0b8c4-1f6c-48a2-a09b-73e4d2f8b311",
+              name: "Streetball Tricks",
+              note: "Creative basketball moves.",
+            },
+            {
+              id: "1f7d3a4c-5e7c-41a9-b7e2-8d7e1a9b3312",
+              name: "Local Courts",
+              note: "Community basketball courts.",
+            },
+            {
+              id: "ab9fbc34-23e7-4cbb-8d1b-0e1c7d8a3313",
+              name: "Street Tournaments",
+              note: "Neighborhood competitions.",
+            },
+          ],
+        },
+      ],
     },
     {
-      id: "7a8b9c0d-1e2f-3a4b-5c6d-7e8f9a0b1c2d",
+      id: "c5a3d8e7-6d4c-4f3b-a2e1-9b1f3d7a4444",
       name: "Volleyball",
-      keyPassword: null,
       chummeTraits: "ENTERTAINMENT",
       note: "Volleyball matches, teams, tournaments, and player skills.",
+      subcategories: [
+        {
+          id: "ab7e1c2d-4f3a-49c8-bd6e-3e1c2b4f5a6d",
+          name: "Indoor Volleyball",
+          note: "Traditional indoor volleyball competitions.",
+          subcategories: [
+            {
+              id: "ce4f2a98-5a33-4b3c-9c2a-4d9f1a7e4411",
+              name: "Pro Leagues",
+              note: "Professional volleyball competitions.",
+            },
+            {
+              id: "2c6e8a10-0e8f-4b6e-8e4b-9e2d8f7a4412",
+              name: "Team Strategies",
+              note: "Team formations and tactics.",
+            },
+            {
+              id: "74b8d8a4-5b7d-42b0-9f2c-6a3d2f9e4413",
+              name: "Player Positions",
+              note: "Setter, libero, spiker roles.",
+            },
+          ],
+        },
+        {
+          id: "702b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d",
+          name: "Beach Volleyball",
+          note: "Volleyball played on sand courts.",
+          subcategories: [
+            {
+              id: "c4a9f8c1-7a2e-4e52-b1c4-6c4d7b9a12f1",
+              name: "Beach Tournaments",
+              note: "International beach volleyball competitions.",
+            },
+            {
+              id: "9f3e2b77-1f4c-4c9d-8d52-2b6f1f9c0e44",
+              name: "Beach Players",
+              note: "Top beach volleyball athletes.",
+            },
+            {
+              id: "7b1a0c54-3f9d-45aa-a5a7-58e8d9f2c6b2",
+              name: "Beach Techniques",
+              note: "Skills used in sand volleyball.",
+            },
+          ],
+        },
+      ],
     },
-  ];
+  ] as any[];
 
   for (const country of countriesData) {
     const {
@@ -406,6 +582,58 @@ export async function seedChummeCategories(prisma: PrismaClient) {
           note: category.note,
         },
       });
+    }
+
+    // Seed Subcategories
+    if (category.subcategories && category.subcategories.length > 0) {
+      for (const sub of category.subcategories) {
+        await prisma.chummeSubCategory.upsert({
+          where: { id: sub.id },
+          update: {
+            name: sub.name,
+            note: sub.note,
+            chummeCategoryId: category.id,
+            chummeTraits: (category.chummeTraits as any) || "NONE",
+            ownerId: systemUser.id,
+          },
+          create: {
+            id: sub.id,
+            name: sub.name,
+            note: sub.note,
+            chummeCategoryId: category.id,
+            chummeTraits: (category.chummeTraits as any) || "NONE",
+            ownerId: systemUser.id,
+          },
+        });
+
+        // Seed Topic Categories (Third level)
+        if (sub.subcategories && sub.subcategories.length > 0) {
+          for (const topic of sub.subcategories) {
+            await prisma.chummeTopicCategory.upsert({
+              where: { id: topic.id },
+              update: {
+                name: topic.name,
+                note: topic.note,
+                chummeSubCategoryId: sub.id,
+                chummeTraits: (category.chummeTraits as any) || "NONE",
+              },
+              create: {
+                id: topic.id,
+                name: topic.name,
+                note: topic.note,
+                chummeSubCategoryId: sub.id,
+                chummeTraits: (category.chummeTraits as any) || "NONE",
+              },
+            });
+          }
+          console.log(
+            `✅ Seeded ${sub.subcategories.length} topic categories for subcategory ${sub.name}`,
+          );
+        }
+      }
+      console.log(
+        `✅ Seeded ${category.subcategories.length} subcategories for ${category.name}`,
+      );
     }
   }
 

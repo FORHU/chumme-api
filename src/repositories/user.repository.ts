@@ -86,23 +86,11 @@ export default class UserRepo {
             },
           },
         },
-        socialUserDiscoveries: {
-          include: {
-            chummeArtists: {
-              select: {
-                id: true,
-                name: true,
-                bio: true,
-                imageUrl: true,
-                nationality: true,
-                genre: true,
-              },
-            },
-          },
-        },
+        socialUserDiscoveries: true,
         _count: {
           select: { socialUserDiscoveries: true },
         },
+
       },
     });
   }
@@ -196,6 +184,7 @@ export default class UserRepo {
         _count: {
           select: { socialUserDiscoveries: true },
         },
+
       },
     });
   }

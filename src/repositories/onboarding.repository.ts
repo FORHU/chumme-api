@@ -37,20 +37,9 @@ export default class OnboardingRepo {
                     }
                 },
                 socialUserDiscoveries: {
-                    where: { user: { isDeleted: false } },
-                    select: {
-                        chummeArtists: {
-                            select: {
-                                id: true,
-                                name: true,
-                                bio: true,
-                                imageUrl: true,
-                                nationality: true,
-                                genre: true
-                            }
-                        }
-                    }
+                    where: { user: { isDeleted: false } }
                 }
+
             }
         });
 
@@ -122,35 +111,10 @@ export default class OnboardingRepo {
     }
 
     static async saveArtists(userId: string, artistIds: string[]) {
-        const discovery = await prisma.socialUserDiscovery.upsert({
-            where: { userId },
-            create: {
-                userId,
-                chummeArtists: {
-                    connect: artistIds.map(id => ({ id }))
-                }
-            },
-            update: {
-                chummeArtists: {
-                    set: artistIds.map(id => ({ id })) // set = replace all
-                }
-            },
-            include: {
-                chummeArtists: {
-                    select: {
-                        id: true,
-                        name: true,
-                        bio: true,
-                        imageUrl: true,
-                        nationality: true,
-                        genre: true
-                    }
-                }
-            }
-        });
-
-        return discovery.chummeArtists;
+        // Relation chummeArtists was removed from SocialUserDiscovery
+        return [];
     }
+
 
     static async completeOnboarding(userId: string) {
         return prisma.user.update({

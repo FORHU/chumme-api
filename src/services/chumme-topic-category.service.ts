@@ -4,14 +4,67 @@ export default class ChummeTopicCategorySvc {
   /**
    * Create a new chumme topic category
    */
-  static async createTopicCategory(data: any) {
-    return ChummeTopicCategoryRepo.createTopicCategory(data);
+  static async createTopicCategory(data: {
+    name: string;
+    chummeSubCategoryId: string;
+    isAd: boolean;
+    keyPassword?: string;
+    traits?: "NONE" | "COMMUNITIES" | "ENTERTAINMENT";
+    note?: string;
+    position?: any;
+    colorSet?: any;
+    sizeSet?: any;
+    border?: any;
+    shadow?: any;
+    opacity?: number;
+    capacity?: number;
+    status?: string;
+    metaData?: any;
+    tags?: string[];
+    emojiIcon?: string;
+  }) {
+    const {
+      position,
+      colorSet,
+      sizeSet,
+      border,
+      shadow,
+      opacity,
+      capacity,
+      status,
+      metaData,
+      tags,
+      emojiIcon,
+      traits,
+      ...rest
+    } = data;
+
+    return ChummeTopicCategoryRepo.createTopicCategory({
+      ...rest,
+      chummeTraits: traits,
+      chummeVisualDesign: {
+        position,
+        colorSet,
+        sizeSet,
+        border,
+        shadow,
+        opacity,
+        capacity,
+        status,
+        metaData,
+        tags,
+        emojiIcon,
+      },
+    });
   }
 
   /**
    * Get all chumme topic categories
    */
-  static async getAllTopicCategories(params: { subCategoryId?: string; publicOnly?: boolean } = {}) {
+  static async getAllTopicCategories(params: {
+    subCategoryId?: string;
+    publicOnly?: boolean;
+  } = {}) {
     return ChummeTopicCategoryRepo.getAllTopicCategories(params);
   }
 
@@ -19,7 +72,8 @@ export default class ChummeTopicCategorySvc {
    * Get chumme topic category by ID
    */
   static async getTopicCategoryById(id: string) {
-    const topicCategory = await ChummeTopicCategoryRepo.getTopicCategoryById(id);
+    const topicCategory =
+      await ChummeTopicCategoryRepo.getTopicCategoryById(id);
     if (!topicCategory) {
       throw new Error("Topic Category not found");
     }
@@ -29,9 +83,63 @@ export default class ChummeTopicCategorySvc {
   /**
    * Update chumme topic category
    */
-  static async updateTopicCategory(id: string, data: any) {
+  static async updateTopicCategory(
+    id: string,
+    data: {
+      name?: string;
+      chummeSubCategoryId?: string;
+      isAd?: boolean;
+      keyPassword?: string;
+      traits?: "NONE" | "COMMUNITIES" | "ENTERTAINMENT";
+      note?: string;
+      position?: any;
+      colorSet?: any;
+      sizeSet?: any;
+      border?: any;
+      shadow?: any;
+      opacity?: number;
+      capacity?: number;
+      status?: string;
+      metaData?: any;
+      tags?: string[];
+      emojiIcon?: string;
+    },
+  ) {
     await this.getTopicCategoryById(id);
-    return ChummeTopicCategoryRepo.updateTopicCategory(id, data);
+
+    const {
+      position,
+      colorSet,
+      sizeSet,
+      border,
+      shadow,
+      opacity,
+      capacity,
+      status,
+      metaData,
+      tags,
+      emojiIcon,
+      traits,
+      ...rest
+    } = data;
+
+    return ChummeTopicCategoryRepo.updateTopicCategory(id, {
+      ...rest,
+      chummeTraits: traits,
+      chummeVisualDesign: {
+        position,
+        colorSet,
+        sizeSet,
+        border,
+        shadow,
+        opacity,
+        capacity,
+        status,
+        metaData,
+        tags,
+        emojiIcon,
+      },
+    });
   }
 
   /**
