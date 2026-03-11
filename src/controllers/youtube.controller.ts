@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import YouTubeService from "../services/youtube.service";
-import VideoSvc from "../services/video.service";
+import SocialFeedSvc from "../services/social-feed.service";
+
 import FileRepo from "../repositories/file.repository";
 
 export default class YouTubeCtrl {
@@ -196,17 +197,18 @@ export default class YouTubeCtrl {
 
         if (!videoId) continue;
 
-        const result = await VideoSvc.upsertVideo({
+        const result = await SocialFeedSvc.upsertExternalMedia({
           externalUrl,
           title,
-          platform: "YOUTUBE",
-          artistId,
-          meta_data: {
+          socialPlatform: "YOUTUBE",
+          chummeArtistId: artistId,
+          metaData: {
             youtubeId: videoId,
             snippet: item.snippet,
             contentDetails: item.contentDetails,
           },
         });
+
 
         imported.push({
           videoId,

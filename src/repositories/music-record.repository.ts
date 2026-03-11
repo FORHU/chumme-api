@@ -50,9 +50,9 @@ export default class MusicRecordRepo {
         music: {
           include: {
             musicArtist: true,
-            featuredArtists: {
+            musicFeaturedArtists: {
               include: {
-                artist: true,
+                chummeArtist: true,
               },
             },
           },

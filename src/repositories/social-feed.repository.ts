@@ -8,7 +8,6 @@ export default class SocialFeedRepo {
   static async createPostFeedItem(postId: string) {
     return await prisma.socialFeedItem.create({
       data: {
-        type: "POST",
         postId,
         stats: {
           create: {},
@@ -17,63 +16,18 @@ export default class SocialFeedRepo {
     });
   }
 
-  /**
-   * Create a feed item for external content (Video/Link)
-   */
-  static async createExternalFeedItem(data: {
-    type: "VIDEO" | "MEDIA_POST";
-    title: string;
-    externalUrl: string;
-    platform: any; // VideoPlatform enum
-    metaData?: any;
-    artistId?: string;
-  }) {
-    return await prisma.socialFeedItem.create({
-      data: {
-        type: data.type,
-        title: data.title,
-        externalUrl: data.externalUrl,
-        platform: data.platform,
-        metaData: data.metaData,
-        artistId: data.artistId,
-        stats: {
-          create: {},
-        },
-      },
-    });
-  }
 
-  /**
-   * Legacy wrapper - now uses direct storage
-   */
-  static async createVideoFeedItem(data: {
-    title: string;
-    externalUrl: string;
-    platform: any;
-    metaData?: any;
-    artistId?: string;
-  }) {
-    return this.createExternalFeedItem({ ...data, type: "VIDEO" });
-  }
-
-  static async createMediaPostFeedItem(data: {
-    title: string;
-    externalUrl: string;
-    platform: any;
-    metaData?: any;
-    artistId?: string;
-  }) {
-    return this.createExternalFeedItem({ ...data, type: "MEDIA_POST" });
-  }
 
   /**
    * Get paginated feed with all content
    */
   static async getFeed(page: number = 0, limit: number = 20) {
     const items = await prisma.socialFeedItem.findMany({
-      where: { isDeleted: false },
+      where: { 
+        isDeleted: false,
+      },
       include: {
-        artist: true,
+        chummeArtist: true,
         stats: true,
         post: {
           where: { isDeleted: false },
@@ -114,10 +68,10 @@ export default class SocialFeedRepo {
   /**
    * Get all available feed item IDs for a given filter (global or artist)
    */
-  static async getGlobalFeedIds(artistId?: string) {
+  static async getGlobalFeedIds(chummeArtistId?: string) {
     const where: any = { isDeleted: false };
-    if (artistId) {
-      where.artistId = artistId;
+    if (chummeArtistId) {
+      where.chummeArtistId = chummeArtistId;
     }
 
     const items = await prisma.socialFeedItem.findMany({
@@ -133,9 +87,11 @@ export default class SocialFeedRepo {
    */
   static async getFeedItemsByIds(ids: string[]) {
     const items = await prisma.socialFeedItem.findMany({
-      where: { id: { in: ids } },
+      where: { 
+        id: { in: ids },
+      },
       include: {
-        artist: true,
+        chummeArtist: true,
         stats: true,
         post: {
           where: { isDeleted: false },
@@ -221,7 +177,6 @@ export default class SocialFeedRepo {
 
     const orConditions: Prisma.SocialFeedItemWhereInput[] = [
       {
-        type: "POST",
         post: {
           is: {
             userId: { in: followingIds },
@@ -230,11 +185,7 @@ export default class SocialFeedRepo {
         },
       },
     ];
-    if (artistInArray.length > 0) {
-      orConditions.push({
-        artistId: { in: artistInArray },
-      });
-    }
+
 
     const items = await prisma.socialFeedItem.findMany({
       where: {
@@ -242,7 +193,7 @@ export default class SocialFeedRepo {
         OR: orConditions,
       },
       include: {
-        artist: true,
+        chummeArtist: true,
         stats: true,
         post: {
           include: {
@@ -296,7 +247,6 @@ export default class SocialFeedRepo {
 
     const orConditions: Prisma.SocialFeedItemWhereInput[] = [
       {
-        type: "POST",
         post: {
           is: {
             userId: { in: followingIds },
@@ -306,11 +256,6 @@ export default class SocialFeedRepo {
       },
     ];
 
-    if (artistInArray.length > 0) {
-      orConditions.push({
-        artistId: { in: artistInArray },
-      });
-    }
 
     const items = await prisma.socialFeedItem.findMany({
       where: {
@@ -322,4 +267,72 @@ export default class SocialFeedRepo {
 
     return items.map((i) => i.id);
   }
+
+  /**
+   * Upsert external media (YouTube/TikTok/etc) directly into SocialFeedItem
+   */
+  static async upsertExternalMedia(
+    where: { externalUrl: string },
+    data: {
+      id?: string;
+      title: string;
+      socialPlatform: any;
+      externalUrl: string;
+      chummeArtistId?: string | null;
+      metaData?: any | null;
+    },
+  ) {
+    const existing = await prisma.socialFeedItem.findUnique({
+      where: { externalUrl: where.externalUrl },
+    });
+    const isUpdate = !!existing;
+
+    const item = await prisma.socialFeedItem.upsert({
+      where: { externalUrl: where.externalUrl },
+      create: {
+        id: data.id,
+        title: data.title,
+        socialPlatform: data.socialPlatform,
+        externalUrl: data.externalUrl,
+        chummeArtistId: data.chummeArtistId ?? null,
+        metaData: data.metaData ?? null,
+        stats: {
+          create: {},
+        },
+      },
+      update: {
+        title: data.title,
+        socialPlatform: data.socialPlatform,
+        externalUrl: data.externalUrl,
+        chummeArtistId: data.chummeArtistId ?? null,
+        metaData: data.metaData ?? null,
+      },
+    });
+
+    return { item, isUpdate };
+  }
+
+  /**
+   * Find external media items by multiple artist IDs (optional)
+   */
+  static async findExternalMedia(
+    chummeArtistIds?: string[],
+    limit: number = 10,
+  ) {
+    const where: any = {
+      isDeleted: false,
+      NOT: { externalUrl: null },
+    };
+
+    if (chummeArtistIds && chummeArtistIds.length > 0) {
+      where.chummeArtistId = { in: chummeArtistIds };
+    }
+
+    return prisma.socialFeedItem.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      take: limit,
+    });
+  }
 }
+

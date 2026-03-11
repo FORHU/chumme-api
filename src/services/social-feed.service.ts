@@ -12,7 +12,8 @@ export default class SocialFeedSvc {
   private static formatFeedItems(feedItems: any[]) {
     return feedItems
       .map((item: any) => {
-        if (item.type === "POST" && item.post) {
+        // If it has a post object, it's a social post
+        if (item.post) {
           return {
             id: item.id,
             type: "post",
@@ -30,35 +31,30 @@ export default class SocialFeedSvc {
               commentsCount: item.post._count?.comments || 0,
             },
           };
-        } else if (item.type === "VIDEO" || item.type === "MEDIA_POST") {
-          const meta = item.metaData || {};
+        }
+        
+        // If it has an externalUrl, it's a video or media post
+        if (item.externalUrl) {
           return {
             id: item.id,
-            type: item.type.toLowerCase(),
+            type: "video", // Or use a field to distinguish if relevant
             content: {
-              id: item.id,
               title: item.title,
-              platform: item.platform,
-              externalUrl: item.externalUrl,
-              meta_data: {
-                caption: meta.caption || null,
-                artist: meta.musicData?.artist || null,
-                fullTitle: meta.musicData?.fullTitle || null,
-                songTitle: meta.musicData?.songTitle || null,
-              },
-              artist: item.artist ? {
-                id: item.artist.id,
-                name: item.artist.name,
-                avatar: item.artist.imageUrl,
-              } : null,
-              stats: item.stats || { views: 0, likes: 0, comments: 0, bookmarks: 0 },
-            },
+              url: item.externalUrl,
+              platform: item.socialPlatform,
+              metaData: item.metaData,
+              artist: item.chummeArtist,
+              stats: item.stats,
+              createdAt: item.createdAt,
+            }
           };
         }
+
         return null;
       })
       .filter(Boolean);
   }
+
 
   /**
    * Get unified feed with pagination
@@ -163,4 +159,43 @@ export default class SocialFeedSvc {
 
     return this.formatFeedItems(orderedItems);
   }
+
+  /**
+   * Upsert external media (YouTube/TikTok/Instagram)
+   */
+  static async upsertExternalMedia(data: {
+    externalUrl: string;
+    title: string;
+    socialPlatform: any;
+    chummeArtistId?: string;
+    metaData?: any;
+  }) {
+    if (!data.externalUrl) {
+      throw new Error("externalUrl is required to upsert external media");
+    }
+
+    if (!data.title || data.title.trim().length === 0) {
+      throw new Error("Title is required");
+    }
+
+    const { item, isUpdate } = await SocialFeedRepo.upsertExternalMedia(
+      { externalUrl: data.externalUrl },
+      {
+        title: data.title.trim(),
+        socialPlatform: data.socialPlatform,
+        externalUrl: data.externalUrl,
+        chummeArtistId: data.chummeArtistId ?? null,
+        metaData: data.metaData ?? null,
+      },
+    );
+
+    // Clear feed cache only for new items
+    if (!isUpdate) {
+      await CacheUtil.delByPattern(`feed:page:*`);
+      await CacheUtil.delByPattern(`feed:personalized:*`);
+    }
+
+    return { item, isUpdate };
+  }
 }
+

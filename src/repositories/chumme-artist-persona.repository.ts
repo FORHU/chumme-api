@@ -1,9 +1,9 @@
 import { prisma } from "../utils/prisma";
 
-export const findByArtistId = async (artistId: string) => {
+export const findByArtistId = async (chummeArtistId: string) => {
   return prisma.chummeArtistPersona.findFirst({
     where: {
-      chummeArtistId: artistId,
+      chummeArtistId,
       deletedAt: null,
     },
     include: {

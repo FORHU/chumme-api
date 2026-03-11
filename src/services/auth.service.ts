@@ -1,4 +1,5 @@
 import AuthRepo from "../repositories/auth.repository";
+import SessionSessionSocialAccountRepo from "../repositories/session-social-account.repository";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import { OAuth2Client } from "google-auth-library";
@@ -204,7 +205,7 @@ export default class AuthSvc {
           role: user.role,
           avatar: user.avatar?.fileUrl,
           onboardingCompleted: user.onboardingCompleted,
-          artistCount: user._count?.userArtists ?? 0,
+          artistCount: user._count?.socialUserDiscoveries ?? 0,
         },
       };
     } catch (error) {
@@ -380,6 +381,25 @@ export default class AuthSvc {
         avatarUrl: payload.picture,
       });
 
+      // Persist the social account tokens for multi-platform support
+      // Link as "google"
+      await SessionSessionSocialAccountRepo.upsertSocialAccount({
+        userId: user.id,
+        platform: "google",
+        providerUserId: payload.sub,
+        accessToken: idToken,
+        avatarUrl: payload.picture,
+      });
+
+      // Also link as "youtube" context for discovery features
+      await SessionSessionSocialAccountRepo.upsertSocialAccount({
+        userId: user.id,
+        platform: "youtube",
+        providerUserId: payload.sub,
+        accessToken: idToken,
+        avatarUrl: payload.picture,
+      });
+
       // Complete OAuth login flow with provider info
       return this.generateAuthResponse(
         user,
@@ -418,6 +438,15 @@ export default class AuthSvc {
         name: userData.name,
         provider: "facebook",
         facebookId: userData.id,
+        avatarUrl: userData.picture?.data?.url,
+      });
+
+      // Persist the social account tokens for multi-platform support
+      await SessionSessionSocialAccountRepo.upsertSocialAccount({
+        userId: user.id,
+        platform: "facebook",
+        providerUserId: userData.id,
+        accessToken,
         avatarUrl: userData.picture?.data?.url,
       });
 
@@ -492,7 +521,7 @@ export default class AuthSvc {
         role: finalUser.role,
         avatar: finalUser.avatar?.fileUrl,
         onboardingCompleted: finalUser.onboardingCompleted,
-        artistCount: finalUser._count?.userArtists ?? 0,
+        artistCount: finalUser._count?.socialUserDiscoveries ?? 0,
       },
     };
   }

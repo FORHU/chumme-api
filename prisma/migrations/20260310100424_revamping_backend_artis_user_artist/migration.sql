@@ -1,0 +1,12 @@
+-- AlterTable
+ALTER TABLE "MediaPost" ALTER COLUMN "platform" DROP DEFAULT;
+
+-- AlterTable
+ALTER TABLE "MusicPlaylist" ALTER COLUMN "description" DROP DEFAULT,
+ALTER COLUMN "imageUrl" DROP DEFAULT,
+ALTER COLUMN "name" DROP DEFAULT,
+ALTER COLUMN "userId" DROP DEFAULT;
+
+-- AlterTable
+ALTER TABLE "SocialFeedItem" ALTER COLUMN "feedItemType" DROP DEFAULT,
+ALTER COLUMN "socialPlatform" DROP DEFAULT;

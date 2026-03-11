@@ -91,7 +91,7 @@ export async function seedArtists(prisma: PrismaClient) {
   ];
 
   for (const artist of artistsData) {
-    await prisma.artist.upsert({
+    await prisma.chummeArtist.upsert({
       where: { id: artist.id },
       update: {
         ...artist,

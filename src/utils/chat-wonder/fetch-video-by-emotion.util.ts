@@ -1,4 +1,5 @@
-import VideoRepo from "../../repositories/video.repository";
+import SocialFeedRepo from "../../repositories/social-feed.repository";
+
 import logger from "../logger";
 
 /**
@@ -20,22 +21,22 @@ export async function fetchVideosByEmotion(
       `[FETCH-VIDEO-BY-EMOTION] Fetching videos for emotions: ${emotionArray.join(", ")}`,
     );
     // Try with detected emotions first
-    let videos = await VideoRepo.findVideosByEmotions(
-      emotionArray,
+    let videos = await SocialFeedRepo.findExternalMedia(
       undefined, // no artist filter
       limit,
     );
+
 
     // Fallback to neutral emotions if no results
     if (!videos || videos.length === 0) {
       logger.info(
         `[FETCH-VIDEO-BY-EMOTION] No videos for ${emotionArray.join(", ")}, trying neutral`,
       );
-      videos = await VideoRepo.findVideosByEmotions(
-        ["neutral", "content", "peaceful"],
+      videos = await SocialFeedRepo.findExternalMedia(
         undefined,
         limit,
       );
+
     }
 
     if (!videos || videos.length === 0) {

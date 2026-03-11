@@ -38,7 +38,7 @@ export default class MusicRepo {
           : undefined,
         musicFile: musicFileId ? { connect: { id: musicFileId } } : undefined,
         parts: parts ? { create: parts } : undefined,
-        playlists: playlistId
+        musicSubPlaylists: playlistId
           ? {
               create: {
                 playlistId: playlistId,
@@ -61,9 +61,9 @@ export default class MusicRepo {
       where: { id },
       include: {
         musicArtist: true,
-        featuredArtists: {
+        musicFeaturedArtists: {
           include: {
-            artist: true,
+            chummeArtist: true,
           },
         },
         musicAlbum: true,
@@ -141,7 +141,7 @@ export default class MusicRepo {
       ...(artistId && { musicArtistId: artistId }),
       ...(isKaraoke !== undefined && { isKaraoke }),
       ...(playlistId && {
-        playlists: {
+        musicSubPlaylists: {
           some: {
             playlistId: playlistId,
           },
@@ -156,9 +156,9 @@ export default class MusicRepo {
         skip: skip,
         include: {
           musicArtist: true,
-          featuredArtists: {
+          musicFeaturedArtists: {
             include: {
-              artist: true,
+              chummeArtist: true,
             },
           },
           musicFile: true,
@@ -191,7 +191,7 @@ export default class MusicRepo {
       where: { id },
       data: {
         ...musicData,
-        playlists: playlistId
+        musicSubPlaylists: playlistId
           ? {
               upsert: {
                 where: {

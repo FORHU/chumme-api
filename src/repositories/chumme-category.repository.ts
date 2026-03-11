@@ -8,7 +8,7 @@ export default class ChummeCategoryRepo {
     name: string;
     isAd: boolean;
     keyPassword?: string;
-    traits?: "NONE" | "COLLABORATION" | "FEEDS";
+    chummeTraits?: "COMMUNITIES" | "ENTERTAINMENT";
     note?: string;
     chummeVisualDesign?: {
       position?: any;
@@ -29,7 +29,7 @@ export default class ChummeCategoryRepo {
         name: data.name,
         isAd: data.isAd,
         keyPassword: data.keyPassword || null,
-        traits: data.traits || "NONE",
+        chummeTraits: data.chummeTraits || "ENTERTAINMENT",
         note: data.note || null,
         chummeVisualDesign: data.chummeVisualDesign
           ? {
@@ -66,7 +66,7 @@ export default class ChummeCategoryRepo {
       include: {
         chummeCategory: {
           include: {
-            artists: { select: { id: true, name: true, imageUrl: true } },
+            chummeArtists: { select: { id: true, name: true, imageUrl: true } },
           },
         },
       },
@@ -85,7 +85,7 @@ export default class ChummeCategoryRepo {
         }),
       },
       include: {
-        artists: {
+        chummeArtists: {
           select: { id: true, name: true, imageUrl: true },
         },
         chummeSubCategories: {
@@ -145,7 +145,7 @@ export default class ChummeCategoryRepo {
         deletedAt: null,
       },
       include: {
-        artists: {
+        chummeArtists: {
           select: { id: true, name: true, imageUrl: true },
         },
         chummeSubCategories: {
@@ -193,7 +193,7 @@ export default class ChummeCategoryRepo {
       name?: string;
       isAd?: boolean;
       keyPassword?: string;
-      traits?: "NONE" | "COLLABORATION" | "FEEDS";
+      chummeTraits?: "COMMUNITIES" | "ENTERTAINMENT";
       note?: string;
       chummeVisualDesign?: {
         position?: any;
@@ -218,7 +218,7 @@ export default class ChummeCategoryRepo {
         name: data.name,
         isAd: data.isAd,
         keyPassword: data.keyPassword,
-        traits: data.traits,
+        chummeTraits: data.chummeTraits,
         note: data.note === undefined ? undefined : data.note || null,
         chummeVisualDesign: data.chummeVisualDesign
           ? {
@@ -304,7 +304,7 @@ export default class ChummeCategoryRepo {
             name: true,
           },
           include: {
-            artists: {
+            chummeArtists: {
               select: {
                 id: true,
                 name: true,
@@ -355,6 +355,57 @@ export default class ChummeCategoryRepo {
         deletedAt: new Date(),
         updatedAt: new Date(),
       },
+    });
+  }
+
+  /**
+   * Get specialized categories based on trait
+   * COMMUNITIES: Fetch Category -> SubCategory (2 levels)
+   * ENTERTAINMENT: Fetch Category -> SubCategory -> TopicCategory (3 levels)
+   */
+  static async getSpecializedCategories(trait: "COMMUNITIES" | "ENTERTAINMENT") {
+
+
+    const isCommunities = trait === "COMMUNITIES";
+
+    return prisma.chummeCategory.findMany({
+      where: {
+        deletedAt: null,
+        chummeTraits: trait,
+      },
+      select: {
+        id: true,
+        name: true,
+        note: true,
+        isAd: true,
+        chummeTraits: true,
+        chummeVisualDesign: isCommunities ? true : false,
+        chummeSubCategories: {
+          where: { deletedAt: null },
+          select: {
+            id: true,
+            name: true,
+            note: true,
+            isAd: true,
+            chummeVisualDesign: isCommunities ? true : false,
+            // Exclude userChatRooms for SubCategories in ENTERTAINMENT mode
+            userChatRooms: isCommunities ? true : false,
+            chummeTopicCategories: !isCommunities
+              ? {
+                  where: { deletedAt: null },
+                  select: {
+                    id: true,
+                    name: true,
+                    note: true,
+                    isAd: true,
+                    chummeVisualDesign: true,
+                  },
+                }
+              : false,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
     });
   }
 }

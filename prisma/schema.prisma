@@ -36,22 +36,22 @@ model User {
   socialUserComments     SocialUserComment[]
   socialUserLikes        SocialUserLike[]
   socialUserViews        SocialUserView[]
+  socialUserDiscoveries  SocialUserDiscovery[]
   sessions               Session[]
   sessionSocialAccounts  SessionSocialAccount[]
+  roomsOwned             ChummeSubCategory[]     @relation("ChummeSubCategoryOwner")
+  musicSingerParts       MusicSingerPart[]
+  musicStudios           MusicStudio[]           @relation("StudioOwner")
+  musicRecords           MusicRecord[]           @relation("MusicRecordSingers")
+  musicStudioMemberships MusicStudioMember[]     @relation("StudioMembership")
+  musicPlaylists         MusicPlaylist[]
   chatMessages           ChatMessage[]
   conversations          Conversation[]
   emotionMemories        EmotionMemory[]
   following              Follow[]                @relation("UserFollows")
   followers              Follow[]                @relation("UserFollowers")
-  roomsOwned             ChummeSubCategory[]     @relation("ChummeSubCategoryOwner")
-  messages               RoomMessage[]
-  musicParts             MusicSingerPart[]
-  ownedStudios           MusicStudio[]           @relation("StudioOwner")
-  musicRecords           MusicRecord[]           @relation("MusicRecordSingers")
-  studioMemberships      MusicStudioMember[]     @relation("StudioMembership")
-  playlists              Playlist[]
+  roomMessage            RoomMessage[]
   avatar                 File?                   @relation(fields: [avatarId], references: [id])
-  userArtists            UserArtist[]
   userChatRoom           RoomUserChat[]
   userEmotionPreferences UserEmotionPreference[]
   userInterests          UserInterest[]
@@ -100,16 +100,16 @@ model SessionSocialAccount {
 // ----------------------------
 
 model File {
-  id            String         @id @default(uuid())
-  filename      String?
-  fileUrl       String?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  deletedAt     DateTime?
-  metaData      Json?
-  artistPersona ArtistPersona? @relation("PersonaFile")
-  voiceMessages RoomMessage[]  @relation("VoiceMessageFile")
-  users         User[]
+  id                  String               @id @default(uuid())
+  filename            String?
+  fileUrl             String?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  deletedAt           DateTime?
+  metaData            Json?
+  chummeArtistPersona ChummeArtistPersona? @relation("PersonaFile")
+  voiceMessages       RoomMessage[]        @relation("VoiceMessageFile")
+  users               User[]
 }
 
 // ----------------------------
@@ -121,30 +121,33 @@ model File {
 // ----------------------------
 
 model ChummeCategory {
-  id          String                @id @default(uuid())
-  name        String
-  note        String?
-  keyPassword String? // Null/Empty = public, otherwise private
-  isAd        Boolean               @default(false)
-  traits      ChummeCategoryTraits?
+  id           String       @id @default(uuid())
+  name         String
+  note         String?
+  keyPassword  String? // Null/Empty = public, otherwise private
+  isAd         Boolean      @default(false)
+  chummeTraits ChummeTraits @default(NONE)
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   // Relations
-  artists              Artist[]
-  chummeSubCategories  ChummeSubCategory[]
-  chummeVisualDesign   ChummeVisualDesign? @relation("CategoryDesign", fields: [chummeVisualDesignId], references: [id])
-  chummeVisualDesignId String?             @unique
+  chummeArtists         ChummeArtist[]
+  chummeSubCategories   ChummeSubCategory[]
+  chummeVisualDesign    ChummeVisualDesign?  @relation("CategoryDesign", fields: [chummeVisualDesignId], references: [id])
+  chummeVisualDesignId  String?              @unique
+  socialUserDiscovery   SocialUserDiscovery? @relation(fields: [socialUserDiscoveryId], references: [id])
+  socialUserDiscoveryId String?
 }
 
 model ChummeSubCategory {
-  id          String  @id @default(uuid())
-  name        String
-  note        String?
-  keyPassword String? // Null/Empty = public, otherwise private
-  isAd        Boolean @default(false)
+  id           String       @id @default(uuid())
+  name         String
+  note         String?
+  keyPassword  String? // Null/Empty = public, otherwise private
+  isAd         Boolean      @default(false)
+  chummeTraits ChummeTraits @default(NONE)
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -155,10 +158,34 @@ model ChummeSubCategory {
   chummeCategoryId String
   chummeCategory   ChummeCategory @relation(fields: [chummeCategoryId], references: [id])
 
-  userChatRooms        RoomUserChat[]
-  roomMessages         RoomMessage[]
-  chummeVisualDesign   ChummeVisualDesign? @relation("SubCategoryDesign", fields: [chummeVisualDesignId], references: [id])
-  chummeVisualDesignId String?             @unique
+  userChatRooms         RoomUserChat[]
+  roomMessages          RoomMessage[]
+  chummeVisualDesign    ChummeVisualDesign?   @relation("SubCategoryDesign", fields: [chummeVisualDesignId], references: [id])
+  chummeVisualDesignId  String?               @unique
+  chummeTopicCategories ChummeTopicCategory[]
+  socialUserDiscoveries SocialUserDiscovery?  @relation(fields: [socialUserDiscoveryId], references: [id])
+  socialUserDiscoveryId String?
+}
+
+model ChummeTopicCategory {
+  id           String       @id @default(uuid())
+  name         String
+  note         String?
+  keyPassword  String? // Null/Empty = public, otherwise private
+  isAd         Boolean      @default(false)
+  chummeTraits ChummeTraits @default(NONE)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  chummeSubCategoryId String
+  chummeSubCategory   ChummeSubCategory @relation(fields: [chummeSubCategoryId], references: [id])
+
+  chummeVisualDesign    ChummeVisualDesign?  @relation("TopicCategoryDesign", fields: [chummeVisualDesignId], references: [id])
+  chummeVisualDesignId  String?              @unique
+  socialUserDiscoveries SocialUserDiscovery? @relation(fields: [socialUserDiscoveryId], references: [id])
+  socialUserDiscoveryId String?
 }
 
 model ChummeVisualDesign {
@@ -182,8 +209,9 @@ model ChummeVisualDesign {
   emojiIcon String   @default("")
 
   // One-to-One relations
-  chummeCategory    ChummeCategory?    @relation("CategoryDesign")
-  chummeSubCategory ChummeSubCategory? @relation("SubCategoryDesign")
+  chummeCategory      ChummeCategory?      @relation("CategoryDesign")
+  chummeSubCategory   ChummeSubCategory?   @relation("SubCategoryDesign")
+  chummeTopicCategory ChummeTopicCategory? @relation("TopicCategoryDesign")
 }
 
 // ----------------------------
@@ -195,63 +223,39 @@ model ChummeVisualDesign {
 //  Start: Artist Section
 // ----------------------------
 
-model Artist {
-  id                String           @id @default(uuid())
-  name              String           @unique
-  bio               String?
-  imageUrl          String?
-  nationality       String?
-  genre             String?
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
-  isDeleted         Boolean          @default(false)
-  instagramUsername String?
-  tiktokUsername    String?
-  persona           ArtistPersona?
-  featuredArtists   FeaturedArtist[]
-  musicAlbum        MusicAlbum[]     @relation("MainArtist")
-  music             Music[]          @relation("MainArtist")
-  chummeCategories  ChummeCategory[]
-  userArtists       UserArtist[]
-  socialFeedItems   SocialFeedItem[]
+model ChummeArtist {
+  id                    String                @id @default(uuid())
+  name                  String                @unique
+  bio                   String?
+  imageUrl              String?
+  nationality           String?
+  genre                 String?
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  isDeleted             Boolean               @default(false)
+  instagramUsername     String?
+  tiktokUsername        String?
+  chummeArtistPersona   ChummeArtistPersona?
+  musicFeaturedArtists  MusicFeaturedArtist[]
+  musicAlbum            MusicAlbum[]          @relation("MainArtist")
+  music                 Music[]               @relation("MainArtist")
+  chummeCategories      ChummeCategory[]
+  socialUserDiscoveries SocialUserDiscovery[]
+  socialFeedItems       SocialFeedItem[]
 }
 
-model FeaturedArtist {
-  id        String   @id @default(uuid())
-  artistId  String
-  musicId   String
-  createdAt DateTime @default(now())
-  artist    Artist   @relation(fields: [artistId], references: [id])
-  music     Music    @relation(fields: [musicId], references: [id])
-
-  @@unique([artistId, musicId])
-}
-
-model ArtistPersona {
-  id             String    @id @default(uuid())
-  artistId       String?   @unique
+model ChummeArtistPersona {
+  id             String        @id @default(uuid())
+  chummeArtistId String?       @unique
   personaVoiceId String
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
   deletedAt      DateTime?
-  personaFileId  String    @unique
-  artist         Artist?   @relation(fields: [artistId], references: [id])
-  personaFile    File      @relation("PersonaFile", fields: [personaFileId], references: [id])
+  personaFileId  String        @unique
+  chummeArtist   ChummeArtist? @relation(fields: [chummeArtistId], references: [id])
+  personaFile    File          @relation("PersonaFile", fields: [personaFileId], references: [id])
 
-  @@index([artistId])
-}
-
-model UserArtist {
-  id        String   @id @default(uuid())
-  userId    String
-  artistId  String
-  createdAt DateTime @default(now())
-  artist    Artist   @relation(fields: [artistId], references: [id])
-  user      User     @relation(fields: [userId], references: [id])
-
-  @@unique([userId, artistId])
-  @@index([userId])
-  @@index([artistId])
+  @@index([chummeArtistId])
 }
 
 // ----------------------------
@@ -262,19 +266,17 @@ model UserArtist {
 //  Start: Social Section
 // ----------------------------
 
-model SocialUserPost {
-  id                 String              @id @default(uuid())
-  userId             String
-  content            String
-  mediaUrls          String[]            @default([])
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-  isDeleted          Boolean             @default(false)
-  socialUserComments SocialUserComment[]
-  socialUserLikes    SocialUserLike[]
-  socialFeedItem     SocialFeedItem?
-  user               User                @relation(fields: [userId], references: [id])
+model SocialUserDiscovery {
+  id                    String                @id @default(uuid())
+  userId                String
+  createdAt             DateTime              @default(now())
+  user                  User                  @relation(fields: [userId], references: [id])
+  chummeCategories      ChummeCategory[]
+  chummeSubCategories   ChummeSubCategory[]
+  chummeTopicCategories ChummeTopicCategory[]
+  chummeArtists         ChummeArtist[]
 
+  @@unique([userId])
   @@index([userId])
 }
 
@@ -289,6 +291,22 @@ model SocialUserLike {
 
   @@unique([socialPostId, userId])
   @@index([socialPostId])
+  @@index([userId])
+}
+
+model SocialUserPost {
+  id                 String              @id @default(uuid())
+  userId             String
+  content            String
+  mediaUrls          String[]            @default([])
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  isDeleted          Boolean             @default(false)
+  socialUserComments SocialUserComment[]
+  socialUserLikes    SocialUserLike[]
+  socialFeedItem     SocialFeedItem?
+  user               User                @relation(fields: [userId], references: [id])
+
   @@index([userId])
 }
 
@@ -338,28 +356,26 @@ model SocialUserView {
 }
 
 model SocialFeedItem {
-  id                 String               @id @default(uuid())
-  type               FeedItemType
-  postId             String?              @unique
-  createdAt          DateTime             @default(now())
-  isDeleted          Boolean              @default(false)
-  artistId           String?
+  id             String   @id @default(uuid())
+  postId         String?  @unique
+  createdAt      DateTime @default(now())
+  isDeleted      Boolean  @default(false)
+  chummeArtistId String?
 
   // Flat fields for external content (e.g. YouTube, social URLs)
-  title              String?
-  externalUrl        String?              @unique
-  platform           VideoPlatform?
-  metaData           Json?
+  title          String?
+  externalUrl    String?         @unique
+  socialPlatform SocialPlatform?
+  metaData       Json?
 
   socialUserBookmark SocialUserBookmark[]
   post               SocialUserPost?      @relation(fields: [postId], references: [id], onDelete: Cascade)
-  artist             Artist?              @relation(fields: [artistId], references: [id])
+  chummeArtist       ChummeArtist?        @relation(fields: [chummeArtistId], references: [id])
   stats              SocialFeedStats?
   socialUserViews    SocialUserView[]
 
   @@index([createdAt])
-  @@index([type])
-  @@index([artistId])
+  @@index([chummeArtistId])
   @@index([postId])
 }
 
@@ -572,8 +588,8 @@ model UserEmotionPreference {
 model MediaPost {
   id                String             @id @default(uuid())
   title             String
-  platform          VideoPlatform
-  artistId          String?
+  platform          SocialPlatform
+  chummeArtistId    String?
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
   isDeleted         Boolean            @default(false)
@@ -582,7 +598,7 @@ model MediaPost {
   externalUrl       String?            @unique
   mediaPostEmotions MediaPostEmotion[]
 
-  @@index([artistId])
+  @@index([chummeArtistId])
   @@index([platform])
   @@index([fileId])
 }
@@ -608,44 +624,57 @@ model MediaPostEmotion {
 //  Music Section
 // ----------------------------
 
-model Playlist {
-  id          String          @id @default(uuid())
+model MusicFeaturedArtist {
+  id             String       @id @default(uuid())
+  chummeArtistId String
+  musicId        String
+  createdAt      DateTime     @default(now())
+  chummeArtist   ChummeArtist @relation(fields: [chummeArtistId], references: [id])
+  music          Music        @relation(fields: [musicId], references: [id])
+
+  @@unique([chummeArtistId, musicId])
+}
+
+model MusicPlaylist {
+  id          String             @id @default(uuid())
   name        String
   description String
   imageUrl    String
   deletedAt   DateTime?
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
   userId      String
-  tracks      MusicPlaylist[]
-  user        User            @relation(fields: [userId], references: [id])
+  tracks      MusicSubPlaylist[]
+  user        User               @relation(fields: [userId], references: [id])
+  music       Music?             @relation(fields: [musicId], references: [id])
+  musicId     String?
 }
 
-model MusicPlaylist {
-  id         String    @id @default(uuid())
+model MusicSubPlaylist {
+  id         String        @id @default(uuid())
   musicId    String
   playlistId String
-  order      Int       @default(0)
-  createdAt  DateTime  @default(now())
+  order      Int           @default(0)
+  createdAt  DateTime      @default(now())
   deletedAt  DateTime?
-  updatedAt  DateTime  @updatedAt
-  music      Music     @relation(fields: [musicId], references: [id])
-  playlist   Playlist  @relation(fields: [playlistId], references: [id])
+  updatedAt  DateTime      @updatedAt
+  music      Music         @relation(fields: [musicId], references: [id])
+  playlist   MusicPlaylist @relation(fields: [playlistId], references: [id])
 
   @@unique([musicId, playlistId])
 }
 
 model MusicAlbum {
-  id            String    @id @default(uuid())
+  id            String        @id @default(uuid())
   album         String
   genre         String
   language      String
   musicArtistId String?
   deletedAt     DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
   music         Music[]
-  musicArtist   Artist?   @relation("MainArtist", fields: [musicArtistId], references: [id])
+  musicArtist   ChummeArtist? @relation("MainArtist", fields: [musicArtistId], references: [id])
 
   @@index([musicArtistId])
 }
@@ -665,26 +694,27 @@ model MusicLibrary {
 }
 
 model Music {
-  id              String            @id @default(uuid())
-  musicArtistId   String?
-  title           String
-  duration        Float?
-  bpm             Int?
-  hasWordTiming   Boolean           @default(false)
-  release_date    DateTime
-  musicAlbumId    String?
-  createdAt       DateTime          @default(now())
-  deletedAt       DateTime?
-  updatedAt       DateTime          @updatedAt
-  isKaraoke       Boolean           @default(false)
-  musicFileId     String
-  featuredArtists FeaturedArtist[]
-  musicAlbum      MusicAlbum?       @relation(fields: [musicAlbumId], references: [id])
-  musicArtist     Artist?           @relation("MainArtist", fields: [musicArtistId], references: [id])
-  musicFile       MusicLibrary      @relation("MusicLibraryFile", fields: [musicFileId], references: [id])
-  parts           MusicSingerPart[]
-  playlists       MusicPlaylist[]
-  records         MusicRecord[]
+  id                   String                @id @default(uuid())
+  musicArtistId        String?
+  title                String
+  duration             Float?
+  bpm                  Int?
+  hasWordTiming        Boolean               @default(false)
+  release_date         DateTime
+  musicAlbumId         String?
+  createdAt            DateTime              @default(now())
+  deletedAt            DateTime?
+  updatedAt            DateTime              @updatedAt
+  isKaraoke            Boolean               @default(false)
+  musicFileId          String
+  musicFeaturedArtists MusicFeaturedArtist[]
+  musicAlbum           MusicAlbum?           @relation(fields: [musicAlbumId], references: [id])
+  musicArtist          ChummeArtist?         @relation("MainArtist", fields: [musicArtistId], references: [id])
+  musicFile            MusicLibrary          @relation("MusicLibraryFile", fields: [musicFileId], references: [id])
+  parts                MusicSingerPart[]
+  playlists            MusicPlaylist[]
+  records              MusicRecord[]
+  musicSubPlaylists    MusicSubPlaylist[]
 
   @@index([musicArtistId])
   @@index([musicAlbumId])
@@ -790,17 +820,11 @@ enum Role {
   ADMIN
 }
 
-enum VideoPlatform {
+enum SocialPlatform {
   YOUTUBE
   FACEBOOK
   INSTAGRAM
   TIKTOK
-}
-
-enum FeedItemType {
-  POST
-  VIDEO
-  MEDIA_POST
 }
 
 enum ChatMessageRole {
@@ -844,8 +868,9 @@ enum UserChatRole {
   MEMBER
 }
 
-enum ChummeCategoryTraits {
+enum ChummeTraits {
   NONE
-  COLLABORATION
-  FEEDS
+  COMMUNITIES //Circles/chats
+  ENTERTAINMENT //Music/videos ETC.....onboarding
+  SPORTS
 }

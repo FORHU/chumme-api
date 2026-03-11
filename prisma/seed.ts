@@ -4,7 +4,6 @@ import { seedEmotions } from "./seeders/emotions.seeder";
 import { seedArtists } from "./seeders/artists.seeder";
 import { seedAlbums } from "./seeders/albums.seeder";
 import { seedChummeCategories } from "./seeders/chummeCategory.seeder";
-import { seedChummeSubCategories } from "./seeders/chummeSubCategory.seeder";
 
 const prisma = new PrismaClient();
 
@@ -17,7 +16,6 @@ async function main() {
     await seedArtists(prisma);
     await seedAlbums(prisma);
     await seedChummeCategories(prisma);
-    await seedChummeSubCategories(prisma);
 
     console.log("🎉 All seeder modules executed successfully!");
   } catch (error) {

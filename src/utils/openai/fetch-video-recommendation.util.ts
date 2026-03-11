@@ -1,5 +1,6 @@
-import VideoRepo from "../../repositories/video.repository";
-import * as ArtistRepo from "../../repositories/artist.repository";
+import SocialFeedRepo from "../../repositories/social-feed.repository";
+
+import * as ChummeArtistRepo from "../../repositories/chumme-artist.repository";
 import logger from "../logger";
 import { detectVideoIntent } from "./detect-video-intent.util";
 import { detectRequestedArtist } from "./detect-requested-artist.util";
@@ -104,7 +105,7 @@ export async function fetchVideoRecommendation(
     );
 
     // Get all available artists to help AI detect mentioned artist
-    const allArtists = await ArtistRepo.getAllArtists();
+    const allArtists = await ChummeArtistRepo.getAllArtists();
     const artistNames = allArtists.map((a) => a.name);
 
     // Check for multiple artists first (OR/AND)
@@ -135,11 +136,11 @@ export async function fetchVideoRecommendation(
         .filter(Boolean) as string[];
 
       if (requestedArtistIds.length > 0) {
-        const rawVideos = await VideoRepo.findVideosByEmotions(
-          finalEmotions,
+        const rawVideos = await SocialFeedRepo.findExternalMedia(
           requestedArtistIds,
           10,
         );
+
         // Filter shown videos immediately
         videos = await filterShownVideos(rawVideos, userId);
 
@@ -185,11 +186,11 @@ export async function fetchVideoRecommendation(
         );
         const artist = allArtists.find((a) => a.name === requestedArtist);
         if (artist) {
-          const rawVideos = await VideoRepo.findVideosByEmotions(
-            finalEmotions,
+          const rawVideos = await SocialFeedRepo.findExternalMedia(
             [artist.id],
             10,
           );
+
           // Filter shown videos immediately
           videos = await filterShownVideos(rawVideos, userId);
 
@@ -225,11 +226,12 @@ export async function fetchVideoRecommendation(
     }
 
     // Priority 2: If no artist mentioned or no results (or all results were seen), try user's favorite artists
+    /*
     if (videos.length === 0) {
       logger.info(
         `[VIDEO-RECOMMENDATION] Priority 2: Searching with user's favorite artists`,
       );
-      const userArtists = await ArtistRepo.getUserArtists(userId);
+      const userArtists = await ChummeArtistRepo.getUserArtists(userId);
       const artistIds = (userArtists || [])
         .map((ua: any) => ua.artistId || (ua.artist && ua.artist.id))
         .filter(Boolean);
@@ -262,17 +264,18 @@ export async function fetchVideoRecommendation(
         }
       }
     }
+    */
 
     // Priority 3: If still no videos, search by emotion only across all videos
     if (videos.length === 0) {
       logger.info(
         `[VIDEO-RECOMMENDATION] Priority 3: Searching by emotions only across all videos`,
       );
-      const rawVideos = await VideoRepo.findVideosByEmotions(
-        finalEmotions,
+      const rawVideos = await SocialFeedRepo.findExternalMedia(
         undefined,
         10,
       );
+
 
       // Filter shown videos
       videos = await filterShownVideos(rawVideos, userId);

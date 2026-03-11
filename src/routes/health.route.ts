@@ -1,5 +1,4 @@
 import express from "express";
-import { videoPostListener, instagramPostListener } from "../listeners";
 
 const router = express.Router();
 
@@ -10,26 +9,19 @@ router.get("/health", (req, res) => {
         timestamp: new Date().toISOString(),
         services: {
             api: "healthy",
-            rabbitmq:
-                videoPostListener.isConnectionActive() &&
-                instagramPostListener.isConnectionActive()
-                    ? "healthy"
-                    : "unhealthy",
         },
     };
 
-    const statusCode = health.services.rabbitmq === "healthy" ? 200 : 503;
+    const statusCode = 200;
 
     res.status(statusCode).json(health);
 });
 
-// RabbitMQ specific health check
+// RabbitMQ specific health check (disabled since listeners were removed)
 router.get("/health/rabbitmq", (req, res) => {
-    const isHealthy = videoPostListener.isConnectionActive();
-
-    res.status(isHealthy ? 200 : 503).json({
+    res.status(200).json({
         service: "rabbitmq",
-        status: isHealthy ? "healthy" : "unhealthy",
+        status: "disabled",
         timestamp: new Date().toISOString(),
     });
 });

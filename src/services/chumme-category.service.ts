@@ -9,7 +9,10 @@ export default class ChummeCategorySvc {
     name: string;
     keyPassword?: string;
     isAd: boolean;
-    traits?: "NONE" | "COLLABORATION" | "FEEDS";
+    traits?: "NONE" | "COMMUNITIES" | "ENTERTAINMENT";
+
+
+
     note?: string;
     position?: any;
     colorSet?: any;
@@ -96,7 +99,10 @@ export default class ChummeCategorySvc {
       name?: string;
       keyPassword?: string;
       isAd?: boolean;
-      traits?: "NONE" | "COLLABORATION" | "FEEDS";
+      traits?: "NONE" | "COMMUNITIES" | "ENTERTAINMENT";
+
+
+
       note?: string;
       position?: any;
       colorSet?: any;
@@ -229,5 +235,12 @@ export default class ChummeCategorySvc {
     }
 
     return ChummeCategoryRepo.bulkDeleteSubCategories(roomIds);
+  }
+
+  /**
+   * Get specialized categories based on trait
+   */
+  static async getSpecializedCategories(trait: "COMMUNITIES" | "ENTERTAINMENT") {
+    return ChummeCategoryRepo.getSpecializedCategories(trait);
   }
 }

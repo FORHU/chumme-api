@@ -183,7 +183,7 @@ export default class SocialPostSvc {
         id: user.id,
         username: user.username,
         name: user.name,
-        avatar: user.avatar,
+        avatar: (user as any).avatar,
       },
     };
     await CacheUtil.set(cachedKey, result);

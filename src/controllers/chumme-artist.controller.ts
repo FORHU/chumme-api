@@ -1,10 +1,10 @@
 import { Request, Response } from "express";
 import Joi from "joi";
-import * as artistService from "../services/artist.service";
+import * as chummeArtistService from "../services/chumme-artist.service";
 
 export const getAllArtists = async (req: Request, res: Response) => {
   try {
-    const artists = await artistService.getAllArtists();
+    const artists = await chummeArtistService.getAllArtists();
 
     res.status(200).json({
       success: true,
@@ -23,7 +23,7 @@ export const getAllArtists = async (req: Request, res: Response) => {
 export const getArtistById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const artist = await artistService.getArtistById(id);
+    const artist = await chummeArtistService.getArtistById(id);
 
     if (!artist) {
       return res.status(404).json({
@@ -66,7 +66,7 @@ export const createArtist = async (req: Request, res: Response) => {
       });
     }
 
-    const artist = await artistService.createArtist(value);
+    const artist = await chummeArtistService.createArtist(value);
 
     res.status(201).json({
       success: true,
@@ -103,7 +103,7 @@ export const updateArtist = async (req: Request, res: Response) => {
       });
     }
 
-    const artist = await artistService.updateArtist(id, value);
+    const artist = await chummeArtistService.updateArtist(id, value);
 
     res.status(200).json({
       success: true,
@@ -122,7 +122,7 @@ export const updateArtist = async (req: Request, res: Response) => {
 export const deleteArtist = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    await artistService.deleteArtist(id);
+    await chummeArtistService.deleteArtist(id);
 
     res.status(200).json({
       success: true,
@@ -141,7 +141,7 @@ export const getUserArtists = async (req: Request, res: Response) => {
   try {
     const userId = req.user.id;
 
-    const userArtists = await artistService.getUserArtists(userId);
+    const userArtists = await chummeArtistService.getUserArtists(userId);
 
     res.status(200).json({
       success: true,
@@ -181,7 +181,7 @@ export const addUserArtists = async (req: Request, res: Response) => {
     const userId = req.user.id;
     const { artistIds } = value;
 
-    const updatedArtists = await artistService.addUserArtists(
+    const updatedArtists = await chummeArtistService.addUserArtists(
       userId,
       artistIds,
     );
@@ -220,14 +220,7 @@ export const removeUserArtist = async (req: Request, res: Response) => {
     const userId = req.user.id;
     const { artistId } = value;
 
-    const result = await artistService.removeUserArtist(userId, artistId);
-
-    if (result.count === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Artist not found in your preferences",
-      });
-    }
+    await chummeArtistService.removeUserArtist(userId, artistId);
 
     res.status(200).json({
       success: true,
@@ -248,7 +241,7 @@ export const skipOnboarding = async (req: Request, res: Response) => {
     const userId = req.user.id;
 
     // 1. Assign 4 random artists
-    const updatedArtists = await artistService.assignRandomArtists(userId);
+    const updatedArtists = await chummeArtistService.assignRandomArtists(userId);
 
     // 2. Mark onboarding as complete using the central Onboarding service
     const OnboardingSvc = (await import("../services/onboarding.service"))

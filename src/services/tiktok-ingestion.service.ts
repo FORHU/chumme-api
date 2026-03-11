@@ -1,6 +1,7 @@
-import VideoSvc from "./video.service";
+import SocialFeedSvc from "./social-feed.service";
+
 import FileRepo from "../repositories/file.repository";
-import { upsertArtist } from "../repositories/artist.repository";
+import { upsertArtist } from "../repositories/chumme-artist.repository";
 import EmotionRepo from "../repositories/emotion.repository";
 import type { VideoPostEvent } from "../listeners/tiktok-post.listener";
 
@@ -67,22 +68,24 @@ export async function processTikTokCrawlerData(
                 musicData: post.metadata || null,
             };
 
-            // Step 2c: upsert video (service layer handles FeedItem creation)
-            const result = await VideoSvc.upsertVideo({
+            // Step 2c: upsert external media (service layer handles FeedItem creation)
+            const result = await SocialFeedSvc.upsertExternalMedia({
                 externalUrl: post.videoPage,
                 title: post.title || "TikTok Video",
-                platform: "TIKTOK",
-                artistId: artist.id,
-                meta_data: metadata,
+                socialPlatform: "TIKTOK",
+                chummeArtistId: artist.id,
+                metaData: metadata,
             });
+
 
             if (result.isUpdate) {
                 updatedVideos++;
-                console.log(`Updated existing video: ${result.video.id}`);
+                console.log(`Updated existing video: ${result.item.id}`);
             } else {
                 newVideos++;
-                console.log(`Created new video: ${result.video.id}`);
+                console.log(`Created new video: ${result.item.id}`);
             }
+
 
             // Step 2d: Extract and link emotions from Spotify data
             if (post.metadata?.spotifyData?.data?.emotion) {
@@ -104,18 +107,19 @@ export async function processTikTokCrawlerData(
 
                 if (emotionsToLink.length > 0) {
                     // NOTE: Emotion linking is currently disabled for flat SocialFeedItem
-                    console.log(`[INGESTION] Emotion linking skipped for ${result.video.id}`);
+                    console.log(`[INGESTION] Emotion linking skipped for ${result.item.id}`);
                 }
  else {
                     console.log(
-                        `No emotions found in Spotify data for video ${result.video.id}`
+                        `No emotions found in Spotify data for video ${result.item.id}`
                     );
                 }
             } else {
                 console.log(
-                    `No Spotify emotion data available for video ${result.video.id}`
+                    `No Spotify emotion data available for video ${result.item.id}`
                 );
             }
+
         } catch (error) {
             console.error(`Error processing post ${post.id}:`, error);
             // Continue with other posts even if one fails

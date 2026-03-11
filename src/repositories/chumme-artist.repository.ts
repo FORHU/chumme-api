@@ -1,7 +1,7 @@
 import { prisma } from "../utils/prisma";
 
 export const getAllArtists = async () => {
-  return prisma.artist.findMany({
+  return prisma.chummeArtist.findMany({
     where: {
       isDeleted: false,
     },
@@ -27,7 +27,7 @@ export const getRandomArtists = async (limit: number) => {
   // Prisma doesn't have a native elegant "ORDER BY RANDOM()" so we query raw.
   const randomArtists = await prisma.$queryRaw`
     SELECT id, name, bio, "imageUrl"
-    FROM "Artist"
+    FROM "ChummeArtist"
     WHERE "isDeleted" = false
     ORDER BY RANDOM()
     LIMIT ${limit};
@@ -36,15 +36,15 @@ export const getRandomArtists = async (limit: number) => {
 };
 
 export const getUserArtists = async (userId: string) => {
-  return await prisma.userArtist.findMany({
+  const userArtistPref = await prisma.socialUserDiscovery.findUnique({
     where: {
       userId,
-      artist: {
-        isDeleted: false,
-      },
     },
     include: {
-      artist: {
+      chummeArtists: {
+        where: {
+          isDeleted: false,
+        },
         select: {
           id: true,
           name: true,
@@ -59,33 +59,43 @@ export const getUserArtists = async (userId: string) => {
         },
       },
     },
-    orderBy: {
-      createdAt: "desc",
+  });
+
+  return userArtistPref ? userArtistPref.chummeArtists : [];
+};
+
+export const addUserArtists = async (userId: string, artistIds: string[]) => {
+  await prisma.socialUserDiscovery.upsert({
+    where: { userId },
+    update: {
+      chummeArtists: {
+        connect: artistIds.map((id) => ({ id })),
+      },
+    },
+    create: {
+      userId,
+      chummeArtists: {
+        connect: artistIds.map((id) => ({ id })),
+      },
     },
   });
 };
 
-export const addUserArtists = async (userId: string, artistIds: string[]) => {
-  await prisma.userArtist.createMany({
-    data: artistIds.map((artistId) => ({
-      userId,
-      artistId,
-    })),
-    skipDuplicates: true,
-  });
-};
-
 export const removeUserArtist = async (userId: string, artistId: string) => {
-  return await prisma.userArtist.deleteMany({
+  return await prisma.socialUserDiscovery.update({
     where: {
       userId,
-      artistId,
+    },
+    data: {
+      chummeArtists: {
+        disconnect: [{ id: artistId }],
+      },
     },
   });
 };
 
 export const findById = async (id: string) => {
-  return prisma.artist.findFirst({
+  return prisma.chummeArtist.findFirst({
     where: {
       id,
       isDeleted: false,
@@ -114,7 +124,7 @@ export const create = async (data: {
   instagramUsername?: string | null;
   tiktokUsername?: string | null;
 }) => {
-  return prisma.artist.create({
+  return prisma.chummeArtist.create({
     data,
   });
 };
@@ -131,14 +141,14 @@ export const update = async (
     tiktokUsername?: string | null;
   },
 ) => {
-  return prisma.artist.update({
+  return prisma.chummeArtist.update({
     where: { id },
     data,
   });
 };
 
 export const deleteArtist = async (id: string) => {
-  return prisma.artist.update({
+  return prisma.chummeArtist.update({
     where: { id },
     data: { isDeleted: true },
   });
@@ -151,7 +161,7 @@ export const upsertArtist = async (data: {
   genre?: string | null;
 }) => {
   // Use upsert to handle concurrent requests gracefully
-  const artist = await prisma.artist.upsert({
+  const artist = await prisma.chummeArtist.upsert({
     where: {
       name: data.name,
     },

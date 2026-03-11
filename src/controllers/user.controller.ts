@@ -8,7 +8,7 @@ export default class UserCtrl {
       const user = req.user; // From auth middleware
       return res.json({
         ...user,
-        artistCount: user._count?.userArtists ?? 0,
+        artistCount: user._count?.socialUserDiscoveries ?? 0,
       });
     } catch (error) {
       console.error("Error in getCurrentUser:", error);

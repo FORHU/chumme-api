@@ -36,11 +36,10 @@ export default class OnboardingRepo {
                         }
                     }
                 },
-                userArtists: {
+                socialUserDiscoveries: {
                     where: { user: { isDeleted: false } },
                     select: {
-                        artistId: true,
-                        artist: {
+                        chummeArtists: {
                             select: {
                                 id: true,
                                 name: true,
@@ -123,26 +122,21 @@ export default class OnboardingRepo {
     }
 
     static async saveArtists(userId: string, artistIds: string[]) {
-        // Delete all existing artists for this user
-        await prisma.userArtist.deleteMany({
-            where: { userId }
-        });
-
-        // Create new artist selections
-        if (artistIds.length > 0) {
-            await prisma.userArtist.createMany({
-                data: artistIds.map(artistId => ({
-                    userId,
-                    artistId
-                }))
-            });
-        }
-
-        // Return updated selections
-        return prisma.userArtist.findMany({
+        const discovery = await prisma.socialUserDiscovery.upsert({
             where: { userId },
+            create: {
+                userId,
+                chummeArtists: {
+                    connect: artistIds.map(id => ({ id }))
+                }
+            },
+            update: {
+                chummeArtists: {
+                    set: artistIds.map(id => ({ id })) // set = replace all
+                }
+            },
             include: {
-                artist: {
+                chummeArtists: {
                     select: {
                         id: true,
                         name: true,
@@ -154,6 +148,8 @@ export default class OnboardingRepo {
                 }
             }
         });
+
+        return discovery.chummeArtists;
     }
 
     static async completeOnboarding(userId: string) {

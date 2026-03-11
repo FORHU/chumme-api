@@ -41,7 +41,7 @@ export default class AuthRepo {
         createdAt: true,
         updatedAt: true,
         _count: {
-          select: { userArtists: true },
+          select: { socialUserDiscoveries: true },
         },
       },
     });
@@ -60,7 +60,7 @@ export default class AuthRepo {
           },
         },
         _count: {
-          select: { userArtists: true },
+          select: { socialUserDiscoveries: true },
         },
       },
     });
@@ -92,7 +92,7 @@ export default class AuthRepo {
         lastLoginAt: true,
         onboardingCompleted: true,
         _count: {
-          select: { userArtists: true },
+          select: { socialUserDiscoveries: true },
         },
       },
     });
@@ -148,7 +148,7 @@ export default class AuthRepo {
           },
         },
         _count: {
-          select: { userArtists: true },
+          select: { socialUserDiscoveries: true },
         },
       },
     });
@@ -185,7 +185,7 @@ export default class AuthRepo {
         role: true,
         onboardingCompleted: true,
         _count: {
-          select: { userArtists: true },
+          select: { socialUserDiscoveries: true },
         },
       },
     });
@@ -204,7 +204,7 @@ export default class AuthRepo {
         avatar: {
           select: { fileUrl: true },
         },
-        _count: { select: { userArtists: true } },
+        _count: { select: { socialUserDiscoveries: true } },
       },
     });
 
@@ -239,7 +239,7 @@ export default class AuthRepo {
             data: { avatarId: avatarFile.id },
             include: {
               avatar: { select: { fileUrl: true } },
-              _count: { select: { userArtists: true } },
+              _count: { select: { socialUserDiscoveries: true } },
             },
           });
         }
@@ -291,7 +291,7 @@ export default class AuthRepo {
         avatar: {
           select: { fileUrl: true },
         },
-        _count: { select: { userArtists: true } },
+        _count: { select: { socialUserDiscoveries: true } },
       },
     });
   }
@@ -310,7 +310,7 @@ export default class AuthRepo {
         avatar: {
           select: { fileUrl: true },
         },
-        _count: { select: { userArtists: true } },
+        _count: { select: { socialUserDiscoveries: true } },
       },
     });
 
@@ -345,7 +345,7 @@ export default class AuthRepo {
             data: { avatarId: avatarFile.id },
             include: {
               avatar: { select: { fileUrl: true } },
-              _count: { select: { userArtists: true } },
+              _count: { select: { socialUserDiscoveries: true } },
             },
           });
         }
@@ -397,7 +397,7 @@ export default class AuthRepo {
         avatar: {
           select: { fileUrl: true },
         },
-        _count: { select: { userArtists: true } },
+        _count: { select: { socialUserDiscoveries: true } },
       },
     });
   }

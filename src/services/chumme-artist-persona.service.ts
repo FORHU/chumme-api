@@ -1,16 +1,16 @@
-import * as artistPersonaRepo from "../repositories/artist-persona.repository";
+import * as chummeArtistPersonaRepo from "../repositories/chumme-artist-persona.repository";
 import CacheUtil from "../utils/cache.util";
 import { BadRequestError } from "../utils/error.util";
 
-export const getPersonaByArtistId = async (artistId: string) => {
-  const cacheKey = `artist:${artistId}:persona`;
+export const getPersonaByArtistId = async (chummeArtistId: string) => {
+  const cacheKey = `artist:${chummeArtistId}:persona`;
 
   const cached = await CacheUtil.get(cacheKey);
   if (cached) {
     return JSON.parse(cached);
   }
 
-  const persona = await artistPersonaRepo.findByArtistId(artistId);
+  const persona = await chummeArtistPersonaRepo.findByArtistId(chummeArtistId);
 
   if (persona) {
     await CacheUtil.set(cacheKey, JSON.stringify(persona), 3600);
@@ -26,7 +26,7 @@ export const getAllPersonas = async () => {
     return JSON.parse(cached);
   }
 
-  const personas = await artistPersonaRepo.getAll();
+  const personas = await chummeArtistPersonaRepo.getAll();
 
   await CacheUtil.set(cacheKey, JSON.stringify(personas), 3600);
 
@@ -34,21 +34,21 @@ export const getAllPersonas = async () => {
 };
 
 export const createPersona = async (data: {
-  artistId?: string | null;
+  chummeArtistId?: string | null;
   personaVoiceId: string;
   personaFileId: string;
 }) => {
-  const existingPersona = await artistPersonaRepo.findByPersonaFileId(
+  const existingPersona = await chummeArtistPersonaRepo.findByPersonaFileId(
     data.personaFileId,
   );
   if (existingPersona) {
     throw new BadRequestError("File is already assigned to another persona");
   }
 
-  const persona = await artistPersonaRepo.create(data);
+  const persona = await chummeArtistPersonaRepo.create(data);
 
-  if (data.artistId) {
-    await CacheUtil.del(`artist:${data.artistId}:persona`);
+  if (data.chummeArtistId) {
+    await CacheUtil.del(`artist:${data.chummeArtistId}:persona`);
   }
   return persona;
 };
@@ -56,13 +56,13 @@ export const createPersona = async (data: {
 export const updatePersona = async (
   id: string,
   data: {
-    artistId?: string | null;
+    chummeArtistId?: string | null;
     personaVoiceId?: string;
     personaFileId?: string;
   },
 ) => {
   if (data.personaFileId) {
-    const existingPersona = await artistPersonaRepo.findByPersonaFileId(
+    const existingPersona = await chummeArtistPersonaRepo.findByPersonaFileId(
       data.personaFileId,
     );
     if (existingPersona && existingPersona.id !== id) {
@@ -70,7 +70,7 @@ export const updatePersona = async (
     }
   }
 
-  const persona = await artistPersonaRepo.update(id, data);
+  const persona = await chummeArtistPersonaRepo.update(id, data);
 
   if (persona.chummeArtistId) {
     await CacheUtil.del(`artist:${persona.chummeArtistId}:persona`);
@@ -78,11 +78,11 @@ export const updatePersona = async (
   return persona;
 };
 
-export const deletePersona = async (id: string, artistId?: string) => {
-  const result = await artistPersonaRepo.deletePersona(id);
+export const deletePersona = async (id: string, chummeArtistId?: string) => {
+  const result = await chummeArtistPersonaRepo.deletePersona(id);
 
-  if (artistId) {
-    await CacheUtil.del(`artist:${artistId}:persona`);
+  if (chummeArtistId) {
+    await CacheUtil.del(`artist:${chummeArtistId}:persona`);
   }
   return result;
 };

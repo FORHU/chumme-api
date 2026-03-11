@@ -22,7 +22,7 @@ export default class OnboardingSvc {
             onboardingCompleted: status.onboardingCompleted,
             selectedInterests: status.userInterests.map(ui => ui.interest),
             selectedEmotions: status.userEmotionPreferences.map(uep => uep.emotion),
-            selectedArtists: status.userArtists.map(ua => ua.artist)
+            selectedArtists: status.socialUserDiscoveries.flatMap(sud => sud.chummeArtists)
         };
 
         await CacheUtil.set(cacheKey, response);
@@ -66,7 +66,7 @@ export default class OnboardingSvc {
         await CacheUtil.del(`onboarding:status:${userId}`);
         await CacheUtil.del(`user:${userId}:artists`);
 
-        return result.map(ua => ua.artist);
+        return result; //Repo now returns artist array directly
     }
 
     /**

@@ -62,7 +62,6 @@ export const io = new Server(server, {
 (global as any).io = io;
 
 import events from "./events";
-import { videoPostListener, instagramPostListener } from "./listeners";
 
 events(io);
 
@@ -87,21 +86,6 @@ connectToPrisma()
       console.error("Failed to connect shared RabbitMQ service:", error);
     }
 
-    // Initialize RabbitMQ crawler listeners
-    try {
-      await instagramPostListener.connect();
-      await instagramPostListener.startListening();
-      await videoPostListener.connect();
-      await videoPostListener.startListening();
-
-      console.log("Video Post RabbitMQ listener initialized successfully");
-    } catch (error) {
-      console.error(
-        "Failed to initialize Video Post RabbitMQ listener:",
-        error,
-      );
-      // Don't crash the server if RabbitMQ fails
-    }
 
     // Initialize Workers (conditional)
     const startWorkers = process.env.START_WORKERS !== "false";
@@ -119,7 +103,8 @@ connectToPrisma()
         console.error("Failed to initialize Audio Merge worker:", error);
       }
 
-      // Media Processing Worker (Video/HLS)
+      /*
+      // Media Processing Worker (Video/HLS) - DISABLED (Stale)
       try {
         const { MediaProcessingWorker } = await import(
           "./listeners/media-processing.listener"
@@ -132,6 +117,7 @@ connectToPrisma()
       } catch (error) {
         console.error("Failed to initialize Media Processing worker:", error);
       }
+      */
     } else {
       console.log("Workers disabled by START_WORKERS=false");
     }

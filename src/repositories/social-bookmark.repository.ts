@@ -22,15 +22,14 @@ export default class SocialBookmarkRepo {
         socialFeedItem: {
           select: {
             id: true,
-            type: true,
             postId: true,
             // Flat fields
             title: true,
             externalUrl: true,
-            platform: true,
+            socialPlatform: true,
             metaData: true,
             createdAt: true,
-            artist: true,
+            chummeArtist: true,
             stats: true,
             post: {
               select: {

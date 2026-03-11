@@ -86,9 +86,9 @@ export default class UserRepo {
             },
           },
         },
-        userArtists: {
+        socialUserDiscoveries: {
           include: {
-            artist: {
+            chummeArtists: {
               select: {
                 id: true,
                 name: true,
@@ -101,7 +101,7 @@ export default class UserRepo {
           },
         },
         _count: {
-          select: { userArtists: true },
+          select: { socialUserDiscoveries: true },
         },
       },
     });
@@ -194,7 +194,7 @@ export default class UserRepo {
         createdAt: true,
         updatedAt: true,
         _count: {
-          select: { userArtists: true },
+          select: { socialUserDiscoveries: true },
         },
       },
     });

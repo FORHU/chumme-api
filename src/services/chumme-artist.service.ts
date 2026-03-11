@@ -1,4 +1,4 @@
-import * as artistRepo from "../repositories/artist.repository";
+import * as chummeArtistRepo from "../repositories/chumme-artist.repository";
 import CacheUtil from "../utils/cache.util";
 
 export const getAllArtists = async () => {
@@ -9,7 +9,7 @@ export const getAllArtists = async () => {
     return JSON.parse(cached);
   }
 
-  const artists = await artistRepo.getAllArtists();
+  const artists = await chummeArtistRepo.getAllArtists();
 
   await CacheUtil.set(cacheKey, JSON.stringify(artists), 3600);
 
@@ -24,7 +24,7 @@ export const getUserArtists = async (userId: string) => {
     return JSON.parse(cached);
   }
 
-  const userArtists = await artistRepo.getUserArtists(userId);
+  const userArtists = await chummeArtistRepo.getUserArtists(userId);
 
   await CacheUtil.set(cacheKey, JSON.stringify(userArtists), 3600);
 
@@ -32,7 +32,7 @@ export const getUserArtists = async (userId: string) => {
 };
 
 export const addUserArtists = async (userId: string, artistIds: string[]) => {
-  await artistRepo.addUserArtists(userId, artistIds);
+  await chummeArtistRepo.addUserArtists(userId, artistIds);
 
   // Clear user artists cache
   await CacheUtil.del(`user:${userId}:artists`);
@@ -41,12 +41,12 @@ export const addUserArtists = async (userId: string, artistIds: string[]) => {
   // Clear personalized feed cache since artist preferences changed
   await CacheUtil.delByPattern(`feed:personalized:${userId}:*`);
 
-  const data = await artistRepo.getUserArtists(userId);
+  const data = await chummeArtistRepo.getUserArtists(userId);
   return data;
 };
 
 export const assignRandomArtists = async (userId: string) => {
-  const randomArtists = await artistRepo.getRandomArtists(4);
+  const randomArtists = await chummeArtistRepo.getRandomArtists(4);
 
   if (randomArtists.length === 0) {
     return [];
@@ -60,7 +60,7 @@ export const assignRandomArtists = async (userId: string) => {
 };
 
 export const removeUserArtist = async (userId: string, artistId: string) => {
-  const result = await artistRepo.removeUserArtist(userId, artistId);
+  const result = await chummeArtistRepo.removeUserArtist(userId, artistId);
 
   // Clear user artists cache
   await CacheUtil.del(`user:${userId}:artists`);
@@ -80,7 +80,7 @@ export const getArtistById = async (id: string) => {
     return JSON.parse(cached);
   }
 
-  const artist = await artistRepo.findById(id);
+  const artist = await chummeArtistRepo.findById(id);
 
   if (artist) {
     await CacheUtil.set(cacheKey, JSON.stringify(artist), 3600);
@@ -90,7 +90,7 @@ export const getArtistById = async (id: string) => {
 };
 
 export const createArtist = async (data: any) => {
-  const artist = await artistRepo.create(data);
+  const artist = await chummeArtistRepo.create(data);
 
   // Clear global artists cache
   await CacheUtil.del("artists:all");
@@ -99,7 +99,7 @@ export const createArtist = async (data: any) => {
 };
 
 export const updateArtist = async (id: string, data: any) => {
-  const artist = await artistRepo.update(id, data);
+  const artist = await chummeArtistRepo.update(id, data);
 
   // Clear caches
   await CacheUtil.del("artists:all");
@@ -109,7 +109,7 @@ export const updateArtist = async (id: string, data: any) => {
 };
 
 export const deleteArtist = async (id: string) => {
-  const result = await artistRepo.deleteArtist(id);
+  const result = await chummeArtistRepo.deleteArtist(id);
 
   // Clear caches
   await CacheUtil.del("artists:all");

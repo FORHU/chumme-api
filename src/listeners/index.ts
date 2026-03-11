@@ -1,4 +1,2 @@
-import { instagramPostListener } from "./instagram-post.listener";
-import { videoPostListener } from "./tiktok-post.listener";
-
-export { videoPostListener, instagramPostListener };
+// No active listeners currently required for pruned social flow
+export {};

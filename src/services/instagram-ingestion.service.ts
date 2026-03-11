@@ -1,10 +1,11 @@
-import VideoSvc from "./video.service";
+import SocialFeedSvc from "./social-feed.service";
+
 import FileRepo from "../repositories/file.repository";
-import { upsertArtist } from "../repositories/artist.repository";
+import { upsertArtist } from "../repositories/chumme-artist.repository";
 import EmotionRepo from "../repositories/emotion.repository";
 import { InstagramPostEvent } from "../listeners/instagram-post.listener";
-import SocialMediaPostRepo from "../repositories/social-media-post.repository";
-import SocialMediaPostSvc from "./social-media-post.service";
+
+
 
 /**
  * Service for processing TikTok crawler data and ingesting it into the database
@@ -73,47 +74,52 @@ export async function processInstagramCrawlerData(
 
       if (post.type === "Video") {
         // Step 2c: upsert video (service layer handles FeedItem creation)
-        videoResult = await VideoSvc.upsertVideo({
+        videoResult = await SocialFeedSvc.upsertExternalMedia({
           externalUrl: post.url,
           title: post.title || "Instagram Post/Video",
-          platform: "INSTAGRAM",
-          artistId: artist.id,
-          meta_data: metadata,
+          socialPlatform: "INSTAGRAM",
+          chummeArtistId: artist.id,
+          metaData: metadata,
         });
+
 
         if (videoResult.isUpdate) {
           updatedVideos++;
-          console.log(`Updated existing video: ${videoResult.video.id}`);
+          console.log(`Updated existing video: ${videoResult.item.id}`);
         } else {
           newVideos++;
-          console.log(`Created new video: ${videoResult.video.id}`);
+          console.log(`Created new video: ${videoResult.item.id}`);
         }
+
       } else {
         //for type == 'Image' | 'Sidecar', use MediaPostService
-        mediaPostResult = await SocialMediaPostSvc.upsertMediaPost({
+        mediaPostResult = await SocialFeedSvc.upsertExternalMedia({
           externalUrl: post.url,
           title: post.title || "Instagram Post/Media",
-          platform: "INSTAGRAM",
-          artistId: artist.id,
-          meta_data: metadata,
+          socialPlatform: "INSTAGRAM",
+          chummeArtistId: artist.id,
+          metaData: metadata,
         });
+
 
         if (mediaPostResult.isUpdate) {
           updatedPosts++;
           console.log(
-            `Updated existing video: ${mediaPostResult.mediaPost.id}`,
+            `Updated existing video: ${mediaPostResult.item.id}`,
           );
         } else {
           newPosts++;
-          console.log(`Created new video: ${mediaPostResult.mediaPost.id}`);
+          console.log(`Created new video: ${mediaPostResult.item.id}`);
         }
+
       }
 
       const resultId = videoResult
-        ? videoResult.video.id
+        ? videoResult.item.id
         : mediaPostResult
-          ? mediaPostResult.mediaPost.id
+          ? mediaPostResult.item.id
           : "";
+
 
       // Step 2d: Extract and link emotions from Spotify data
       if (post.metadata?.spotifyData?.data?.emotion) {

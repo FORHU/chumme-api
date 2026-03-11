@@ -8,7 +8,6 @@ import {
   defaultOpenAIRequest,
   composePrompt,
   getTextEmbedding,
-  fetchVideoRecommendation,
   detectEmotion,
   detectLanguage,
   detectSpecificSong,
@@ -57,16 +56,6 @@ interface AdditionalContext {
   shouldDetectSong: boolean;
 }
 
-/**
- * Video recommendation result with metadata
- */
-interface VideoResult {
-  video: any | null;
-  metadata?: any;
-  mappedEmotion?: string;
-  wasMapping?: boolean;
-  originalEmotion?: string;
-}
 
 export default class ChatSvc {
   /**
@@ -214,101 +203,6 @@ export default class ChatSvc {
     };
   }
 
-  // ========================================
-  // PRIVATE HELPERS - VIDEO PROCESSING
-  // ========================================
-
-  /**
-   * Processes video recommendation logic
-   * - Maps emotions
-   * - Determines video emotions (counter-emotion strategy)
-   * - Fetches recommendation
-   * - Adds metadata
-   */
-  private static async processVideoRecommendation(
-    inputText: string,
-    userId: string,
-    context: ChatContext,
-    additionalContext: AdditionalContext
-  ): Promise<VideoResult> {
-    logger.info(
-      `[CHAT-SERVICE] Available emotions in DB: ${context.emotionNames.join(", ")}`
-    );
-    logger.info(
-      `[CHAT-SERVICE] Detected emotion from AI: "${context.emotion}" (confidence: ${context.confidence})`
-    );
-
-    // Map detected emotion to database emotion
-    const { mappedEmotion, wasMapping, originalEmotion } =
-      await mapEmotionToDatabase(context.emotion, context.emotionNames);
-
-    if (wasMapping) {
-      logger.info(
-        `[CHAT-SERVICE] Emotion mapped: "${originalEmotion}" → "${mappedEmotion}"`
-      );
-    }
-
-    // Determine video emotions (counter-emotion logic)
-    const { primaryEmotions, fallbackEmotions, strategy } =
-      await determineVideoEmotions(
-        mappedEmotion,
-        context.confidence,
-        context.emotionNames,
-        inputText
-      );
-
-    logger.info(
-      `[CHAT-SERVICE] Emotion strategy: ${strategy}, Primary: [${primaryEmotions.join(", ")}], Fallback: [${fallbackEmotions.join(", ")}]`
-    );
-
-    // Fetch video recommendation
-    let result = await fetchVideoRecommendation(
-      inputText,
-      primaryEmotions,
-      context.confidence,
-      userId,
-      context.chatHistoryArray
-    );
-
-    // Try fallback emotions if needed
-    if (!result.video && fallbackEmotions.length > 0) {
-      logger.info(
-        `[CHAT-SERVICE] No videos found with primary emotions, trying fallback`
-      );
-      result = await fetchVideoRecommendation(
-        inputText,
-        fallbackEmotions,
-        context.confidence,
-        userId,
-        context.chatHistoryArray
-      );
-    }
-
-    // Add metadata
-    let videoMetadata = result.metadata || {};
-
-    if (additionalContext.detectedLanguage) {
-      videoMetadata = {
-        ...videoMetadata,
-        languageMismatch: additionalContext.detectedLanguage,
-      };
-    }
-
-    if (additionalContext.specificSong.songTitle && !result.video) {
-      videoMetadata = {
-        ...videoMetadata,
-        specificSongNotFound: additionalContext.specificSong,
-      };
-    }
-
-    return {
-      video: result.video,
-      metadata: videoMetadata,
-      mappedEmotion,
-      wasMapping,
-      originalEmotion,
-    };
-  }
 
   // ========================================
   // PRIVATE HELPERS - AI RESPONSE
@@ -322,8 +216,7 @@ export default class ChatSvc {
    */
   private static async generateAIResponse(
     inputText: string,
-    context: ChatContext,
-    videoResult: VideoResult
+    context: ChatContext
   ): Promise<string> {
     // Filter out duplicate messages from RAG
     const recentMessageIds = new Set(
@@ -342,12 +235,12 @@ export default class ChatSvc {
 
     const prompt = composePrompt(
       inputText,
-      videoResult.mappedEmotion || context.emotion,
+      context.emotion,
       context.confidence,
       context.chatHistoryArray,
       relevantHistory as any[],
-      videoResult.video,
-      videoResult.metadata
+      null,
+      undefined
     );
 
     const start = Date.now();
@@ -495,19 +388,10 @@ export default class ChatSvc {
     // Detect language and song intent
     const additionalContext = await this.detectAdditionalContext(inputText);
 
-    // Process video recommendation
-    const videoResult = await this.processVideoRecommendation(
-      inputText,
-      userId,
-      context,
-      additionalContext
-    );
-
     // Generate AI response with full context
     const finalChatResponse = await this.generateAIResponse(
       inputText,
-      context,
-      videoResult
+      context
     );
 
     // Save user message
@@ -534,7 +418,7 @@ export default class ChatSvc {
 
     // Create emotion memory
     const emotionMemory = await ChatRepo.createEmotionMemory({
-      emotion: videoResult.mappedEmotion || context.emotion,
+      emotion: context.emotion,
       confidence: context.confidence,
       ChatMessage: { connect: { id: chatMessage.id } },
       User: { connect: { id: userId } },
@@ -546,16 +430,12 @@ export default class ChatSvc {
       response: finalChatResponse,
       emotion_data: {
         ...context.emotionResult,
-        mappedEmotion: videoResult.wasMapping
-          ? videoResult.mappedEmotion
-          : undefined,
-        wasMapped: videoResult.wasMapping,
       },
       conversationId: conversationId,
       chatMessageId: chatMessage.id,
       emotionMemoryId: emotionMemory.id,
       aiResponseId: aiResponse.id,
-      video: videoResult.video,
+      video: null,
     };
   }
 
