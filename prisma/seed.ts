@@ -7,6 +7,7 @@ import { seedAlbums } from "./seeders/musicAlbums.seeder";
 import { seedChummeCategories } from "./seeders/chummeCategory.seeder";
 import { seedUsers } from "./seeders/users.seeder";
 import { seedChummeArtistPersonas } from "./seeders/chummeArtistPersona.seeder";
+import { seedSocialUserDiscovery } from "./seeders/socialUserDiscovery.seeder";
 
 
 
@@ -24,6 +25,7 @@ async function main() {
     await seedAlbums(prisma);
     await seedChummeArtistPersonas(prisma);
     await seedChummeCategories(prisma);
+    await seedSocialUserDiscovery(prisma);
 
 
     console.log("🎉 All seeder modules executed successfully!");
