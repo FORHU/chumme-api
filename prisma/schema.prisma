@@ -13,7 +13,7 @@ model User {
   password               String?
   name                   String?
   username               String                  @unique
-  role                   Role                    @default(USER)
+  role                   UserRole                @default(USER)
   isActive               Boolean                 @default(true)
   lastLoginAt            DateTime?
   createdAt              DateTime                @default(now())
@@ -723,9 +723,11 @@ model MusicTempRecord {
   @@index([studioId])
 }
 
-enum Role {
+enum UserRole {
   USER
   ADMIN
+  SUPER_ADMIN
+  DEVELOPER
 }
 
 enum SocialPlatform {
