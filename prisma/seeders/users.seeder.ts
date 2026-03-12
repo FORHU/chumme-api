@@ -1,4 +1,4 @@
-import { PrismaClient, Role } from "@prisma/client";
+import { PrismaClient, UserRole } from "@prisma/client";
 import crypto from "crypto";
 
 /**
@@ -12,7 +12,7 @@ export async function seedUsers(prisma: PrismaClient) {
       email: "aiforhu@gmail.com",
       username: "ChummeAI",
       name: "Chumme Global Connect",
-      role: Role.ADMIN,
+      role: UserRole.ADMIN,
       password: "Forhu2026!",
       isEmailVerified: true,
       onboardingCompleted: false,
@@ -21,7 +21,7 @@ export async function seedUsers(prisma: PrismaClient) {
       email: "melomaku01@gmail.com",
       username: "pogi123",
       name: "Mark Pogi It",
-      role: Role.ADMIN,
+      role: UserRole.ADMIN,
       password: "Password123!",
       isEmailVerified: true,
       onboardingCompleted: false,
@@ -30,7 +30,7 @@ export async function seedUsers(prisma: PrismaClient) {
       email: "sumoaccnt@gmail.com",
       username: "sumoDev",
       name: "Sumo Suntok",
-      role: Role.ADMIN,
+      role: UserRole.ADMIN,
       password: "@Password17",
       isEmailVerified: true,
       onboardingCompleted: false,
@@ -39,7 +39,7 @@ export async function seedUsers(prisma: PrismaClient) {
       email: "euanthieu@yopmail.com",
       username: "u1",
       name: "u1",
-      role: Role.ADMIN,
+      role: UserRole.ADMIN,
       password: "Abc12345",
       isEmailVerified: true,
       onboardingCompleted: false,
@@ -48,7 +48,7 @@ export async function seedUsers(prisma: PrismaClient) {
       email: "userOne@test.com",
       username: "TestUser1",
       name: "Test User One",
-      role: Role.ADMIN,
+      role: UserRole.ADMIN,
       password: "Abc12345",
       isEmailVerified: true,
       onboardingCompleted: false,
@@ -57,7 +57,7 @@ export async function seedUsers(prisma: PrismaClient) {
       email: "userTwo@test.com",
       username: "TestUser2",
       name: "Test User Two",
-      role: Role.ADMIN,
+      role: UserRole.ADMIN,
       password: "Abc12345",
       isEmailVerified: true,
       onboardingCompleted: false,
@@ -66,7 +66,7 @@ export async function seedUsers(prisma: PrismaClient) {
       email: "userThree@test.com",
       username: "TestThree2",
       name: "Test User Three",
-      role: Role.ADMIN,
+      role: UserRole.ADMIN,
       password: "Abc12345",
       isEmailVerified: true,
       onboardingCompleted: false,

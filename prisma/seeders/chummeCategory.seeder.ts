@@ -25,7 +25,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
   }
 
   // 2. Define Countries (Chumme Categories)
-  const countriesData = [
+  const communitiesData = [
     {
       id: "f2d7e7c3-5c64-4f6c-9c9a-7a8f3f4e91a1",
       name: "Chumme Nation",
@@ -723,9 +723,49 @@ export async function seedChummeCategories(prisma: PrismaClient) {
         },
       ],
     },
+    {
+      id: "d3e4f5a6-7b8c-4d9e-af0b-1c2d3e4f5g6h",
+      name: "Gaming",
+      chummeTraits: "ENTERTAINMENT",
+      note: "Video games, streamers, esports tournaments, and gaming communities.",
+      subcategories: [
+        {
+          id: "e1f2g3h4-i5j6-k7l8-m9n0-o1p2q3r4s5t6",
+          name: "League of Legends",
+          note: "Popular MOBA game by Riot Games.",
+          topiccategories: [
+            {
+              id: "f1a2b3c4-d5e6-4a7b-8c9d-012345678901",
+              name: "LOL Worlds",
+              note: "The annual League of Legends World Championship.",
+            },
+            {
+              id: "a1b2c3d4-e5f6-4a7b-8c9d-012345678902",
+              name: "Faker",
+              note: "Legendary professional LOL player for T1.",
+            },
+            {
+              id: "b1c2d3e4-f5g6-4a7b-8c9d-012345678903",
+              name: "KDA",
+              note: "Virtual K-pop girl group based on LOL champions.",
+            },
+            {
+              id: "c1d2e3f4-g5h6-4a7b-8c9d-012345678904",
+              name: "LoL Esports",
+              note: "Global esports competitions for League of Legends.",
+            },
+            {
+              id: "d1e2f3g4-h5i6-4a7b-8c9d-012345678905",
+              name: "Champion Guides",
+              note: "Builds, tips, and strategies for LOL champions.",
+            },
+          ],
+        },
+      ],
+    },
   ] as any[];
 
-  for (const country of countriesData) {
+  for (const country of communitiesData) {
     const {
       position,
       colorSet,
@@ -759,7 +799,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
       });
 
       if (existingCategory.chummeVisualDesignId) {
-        await prisma.chummeVisualDesign.update({
+        await prisma.chummeCategoryDesign.update({
           where: { id: existingCategory.chummeVisualDesignId },
           data: {
             position,
@@ -777,7 +817,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
       }
     } else {
       // Create new
-      const design = await prisma.chummeVisualDesign.create({
+      const design = await prisma.chummeCategoryDesign.create({
         data: {
           name: `${categoryData.name} Design`,
           position,
@@ -806,7 +846,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
     }
   }
 
-  console.log(`✅ Seeded ${countriesData.length} Countries.`);
+  console.log(`✅ Seeded ${communitiesData.length} Countries.`);
 
   // 3. Seed Other Categories
   console.log("🌱 Seeding General Categories...");

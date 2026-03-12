@@ -113,9 +113,8 @@ model ChummeCategory {
   keyPassword           String?
   populationCount       Int                   @default(0)
   chummeTraits          ChummeTraits          @default(NONE)
-  socialUserDiscoveryId String?
+  socialUserDiscoveries SocialUserDiscovery[]
   chummeVisualDesign    ChummeCategoryDesign? @relation("CategoryDesign", fields: [chummeVisualDesignId], references: [id])
-  socialUserDiscovery   SocialUserDiscovery?  @relation(fields: [socialUserDiscoveryId], references: [id])
   chummeSubCategories   ChummeSubCategory[]
   chummeArtists         ChummeArtist[]        @relation("ChummeArtistToChummeCategory")
 }
@@ -134,11 +133,10 @@ model ChummeSubCategory {
   keyPassword           String?
   populationCount       Int                   @default(0)
   chummeTraits          ChummeTraits          @default(NONE)
-  socialUserDiscoveryId String?
+  socialUserDiscoveries SocialUserDiscovery[]
   chummeCategory        ChummeCategory        @relation(fields: [chummeCategoryId], references: [id])
   chummeVisualDesign    ChummeCategoryDesign? @relation("SubCategoryDesign", fields: [chummeVisualDesignId], references: [id])
   owner                 User?                 @relation("ChummeSubCategoryOwner", fields: [ownerId], references: [id])
-  socialUserDiscoveries SocialUserDiscovery?  @relation(fields: [socialUserDiscoveryId], references: [id])
   chummeTopicCategories ChummeTopicCategory[]
   roomMessages          RoomMessage[]
   userChatRooms         RoomUserChat[]
@@ -157,10 +155,9 @@ model ChummeTopicCategory {
   deletedAt             DateTime?
   chummeSubCategoryId   String
   chummeVisualDesignId  String?               @unique
-  socialUserDiscoveryId String?
+  socialUserDiscoveries SocialUserDiscovery[]
   chummeSubCategory     ChummeSubCategory     @relation(fields: [chummeSubCategoryId], references: [id])
   chummeVisualDesign    ChummeCategoryDesign? @relation("TopicCategoryDesign", fields: [chummeVisualDesignId], references: [id])
-  socialUserDiscoveries SocialUserDiscovery?  @relation(fields: [socialUserDiscoveryId], references: [id])
 }
 
 model ChummeCategoryDesign {
