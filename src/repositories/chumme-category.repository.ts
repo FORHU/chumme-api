@@ -96,6 +96,7 @@ export default class ChummeCategoryRepo {
             name: true,
             note: true,
             isAd: true,
+            populationCount: true,
             createdAt: true,
             updatedAt: true,
             chummeVisualDesign: {
@@ -112,12 +113,6 @@ export default class ChummeCategoryRepo {
                 emojiIcon: true,
               },
             },
-            _count: {
-              select: {
-                userChatRooms: true,
-                roomMessages: true,
-              },
-            },
             chummeTopicCategories: {
               where: { deletedAt: null },
               select: {
@@ -125,6 +120,7 @@ export default class ChummeCategoryRepo {
                 name: true,
                 note: true,
                 isAd: true,
+                populationCount: true,
               },
             },
           },
@@ -166,6 +162,7 @@ export default class ChummeCategoryRepo {
             name: true,
             note: true,
             isAd: true,
+            populationCount: true,
             createdAt: true,
             updatedAt: true,
             chummeVisualDesign: {
@@ -182,12 +179,6 @@ export default class ChummeCategoryRepo {
                 emojiIcon: true,
               },
             },
-            _count: {
-              select: {
-                userChatRooms: true,
-                roomMessages: true,
-              },
-            },
             chummeTopicCategories: {
               where: { deletedAt: null },
               select: {
@@ -195,6 +186,7 @@ export default class ChummeCategoryRepo {
                 name: true,
                 note: true,
                 isAd: true,
+                populationCount: true,
               },
             },
           },
@@ -347,12 +339,6 @@ export default class ChummeCategoryRepo {
             emojiIcon: true,
           },
         },
-        _count: {
-          select: {
-            userChatRooms: true,
-            roomMessages: true,
-          },
-        },
       },
       orderBy: {
         createdAt: "desc",
@@ -422,6 +408,7 @@ export default class ChummeCategoryRepo {
       note: true,
       isAd: true,
       chummeTraits: true,
+      populationCount: true,
       chummeSubCategories: {
         where: { deletedAt: null },
         select: {
@@ -429,8 +416,7 @@ export default class ChummeCategoryRepo {
           name: true,
           note: true,
           isAd: true,
-          // Include userChatRooms for Communities, exclude for Entertainment
-          userChatRooms: isCommunities ? true : false,
+          populationCount: true,
           chummeTopicCategories: !isCommunities
             ? {
                 where: { deletedAt: null },
@@ -439,6 +425,7 @@ export default class ChummeCategoryRepo {
                   name: true,
                   note: true,
                   isAd: true,
+                  populationCount: true,
                 },
               }
             : false,

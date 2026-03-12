@@ -111,6 +111,7 @@ model ChummeCategory {
   isAd                  Boolean               @default(false)
   chummeVisualDesignId  String?               @unique
   keyPassword           String?
+  populationCount       Int                   @default(0)
   chummeTraits          ChummeTraits          @default(NONE)
   socialUserDiscoveryId String?
   chummeVisualDesign    ChummeCategoryDesign? @relation("CategoryDesign", fields: [chummeVisualDesignId], references: [id])
@@ -131,6 +132,7 @@ model ChummeSubCategory {
   chummeVisualDesignId  String?               @unique
   isAd                  Boolean               @default(false)
   keyPassword           String?
+  populationCount       Int                   @default(0)
   chummeTraits          ChummeTraits          @default(NONE)
   socialUserDiscoveryId String?
   chummeCategory        ChummeCategory        @relation(fields: [chummeCategoryId], references: [id])
@@ -149,6 +151,7 @@ model ChummeTopicCategory {
   keyPassword           String?
   isAd                  Boolean               @default(false)
   chummeTraits          ChummeTraits          @default(NONE)
+  populationCount       Int                   @default(0)
   createdAt             DateTime              @default(now())
   updatedAt             DateTime              @updatedAt
   deletedAt             DateTime?
