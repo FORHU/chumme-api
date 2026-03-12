@@ -74,15 +74,15 @@ export default class ChummeCategorySvc {
     return ChummeCategoryRepo.getAllCategories(params);
   }
 
-  static async getAllCategory(params: { publicOnly?: boolean } = {}) {
-    return ChummeCategoryRepo.getAllCategory(params);
-  }
 
   /**
    * Get chumme category by ID
    */
-  static async getCategoryById(id: string) {
-    const category = await ChummeCategoryRepo.getCategoryById(id);
+  static async getCategoryById(
+    id: string,
+    trait?: "COMMUNITIES" | "ENTERTAINMENT",
+  ) {
+    const category = await ChummeCategoryRepo.getCategoryById(id, trait);
     if (!category) {
       throw new Error("Category not found");
     }
@@ -242,5 +242,19 @@ export default class ChummeCategorySvc {
    */
   static async getSpecializedCategories(trait: "COMMUNITIES" | "ENTERTAINMENT") {
     return ChummeCategoryRepo.getSpecializedCategories(trait);
+  }
+
+  /**
+   * Get all entertainment categories
+   */
+  static async getChummeEntertainment() {
+    return ChummeCategoryRepo.getChummeEntertainment();
+  }
+
+  /**
+   * Get all communities categories
+   */
+  static async getChummeCommunities() {
+    return ChummeCategoryRepo.getChummeCommunities();
   }
 }

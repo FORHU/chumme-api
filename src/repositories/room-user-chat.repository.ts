@@ -53,7 +53,10 @@ export default class RoomUserChatRepo {
     chummeSubCategoryId: string,
     role: UserChatRole = "MEMBER",
   ) {
-    return prisma.roomUserChat.upsert({
+    // 1. Check if already a member to avoid double counting
+    const isAlreadyMember = await this.isMember(userId, chummeSubCategoryId);
+
+    const membership = await prisma.roomUserChat.upsert({
       where: {
         userId_chummeSubCategoryId: {
           userId,
@@ -68,14 +71,49 @@ export default class RoomUserChatRepo {
         chummeSubCategoryId,
         userChatRole: role,
       },
+      include: {
+        chummeSubCategory: true,
+      },
     });
+
+    // 2. Update population if newly joined
+    if (!isAlreadyMember) {
+      const ChummeCategoryRepo = (await import("./chumme-category.repository"))
+        .default;
+      await ChummeCategoryRepo.updateSubCategoryPopulation(
+        chummeSubCategoryId,
+        "COMMUNITIES",
+        1,
+      );
+      await ChummeCategoryRepo.updatePopulation(
+        membership.chummeSubCategory.chummeCategoryId,
+        "COMMUNITIES",
+        1,
+      );
+    }
+
+    return membership;
   }
 
   /**
    * Remove a user from a room
    */
   static async leaveRoom(userId: string, chummeSubCategoryId: string) {
-    return prisma.roomUserChat.delete({
+    const membership = await prisma.roomUserChat.findUnique({
+      where: {
+        userId_chummeSubCategoryId: {
+          userId,
+          chummeSubCategoryId,
+        },
+      },
+      include: {
+        chummeSubCategory: true,
+      },
+    });
+
+    if (!membership) return;
+
+    await prisma.roomUserChat.delete({
       where: {
         userId_chummeSubCategoryId: {
           userId,
@@ -83,6 +121,20 @@ export default class RoomUserChatRepo {
         },
       },
     });
+
+    // Update population
+    const ChummeCategoryRepo = (await import("./chumme-category.repository"))
+      .default;
+    await ChummeCategoryRepo.updateSubCategoryPopulation(
+      chummeSubCategoryId,
+      "COMMUNITIES",
+      -1,
+    );
+    await ChummeCategoryRepo.updatePopulation(
+      membership.chummeSubCategory.chummeCategoryId,
+      "COMMUNITIES",
+      -1,
+    );
   }
 
   /**
@@ -168,9 +220,38 @@ export default class RoomUserChatRepo {
   }
 
   static async leaveAllRooms(userId: string) {
-    return prisma.roomUserChat.deleteMany({
+    // 1. Get all memberships to update populations
+    const memberships = await prisma.roomUserChat.findMany({
+      where: { userId },
+      include: {
+        chummeSubCategory: true,
+      },
+    });
+
+    if (memberships.length === 0) return { count: 0 };
+
+    // 2. Delete all memberships
+    const result = await prisma.roomUserChat.deleteMany({
       where: { userId },
     });
+
+    // 3. Update populations (Communities)
+    const ChummeCategoryRepo = (await import("./chumme-category.repository"))
+      .default;
+    for (const membership of memberships) {
+      await ChummeCategoryRepo.updateSubCategoryPopulation(
+        membership.chummeSubCategoryId,
+        "COMMUNITIES",
+        -1,
+      );
+      await ChummeCategoryRepo.updatePopulation(
+        membership.chummeSubCategory.chummeCategoryId,
+        "COMMUNITIES",
+        -1,
+      );
+    }
+
+    return result;
   }
 
   static async getRoomsByUserId(userId: string) {

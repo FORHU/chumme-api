@@ -26,7 +26,28 @@ export default class SocialUserDiscoveryRepo {
       topicCategoryIds?: string[];
     },
   ) {
-    return prisma.socialUserDiscovery.upsert({
+    // 1. Get existing to identify changes
+    const existing = await this.getByUserId(userId);
+    const existingCatIds = existing?.chummeCategories.map((c) => c.id) || [];
+    const newCatIds = data.categoryIds || [];
+
+    const existingSubCatIds =
+      existing?.chummeSubCategories.map((c) => c.id) || [];
+    const newSubCatIds = data.subCategoryIds || [];
+
+    // 2. Identify additions and removals
+    const addedCats = newCatIds.filter((id) => !existingCatIds.includes(id));
+    const removedCats = existingCatIds.filter((id) => !newCatIds.includes(id));
+
+    const addedSubCats = newSubCatIds.filter(
+      (id) => !existingSubCatIds.includes(id),
+    );
+    const removedSubCats = existingSubCatIds.filter(
+      (id) => !newSubCatIds.includes(id),
+    );
+
+    // 3. Perform upsert
+    const discovery = await prisma.socialUserDiscovery.upsert({
       where: { userId },
       update: {
         chummeCategories: data.categoryIds
@@ -57,5 +78,43 @@ export default class SocialUserDiscoveryRepo {
         chummeTopicCategories: true,
       },
     });
+
+    // 4. Update population counts (Entertainment)
+    if (
+      addedCats.length > 0 ||
+      removedCats.length > 0 ||
+      addedSubCats.length > 0 ||
+      removedSubCats.length > 0
+    ) {
+      // Lazy load to avoid circular dependency
+      const ChummeCategoryRepo = (await import("./chumme-category.repository"))
+        .default;
+
+      // Category level
+      for (const id of addedCats) {
+        await ChummeCategoryRepo.updatePopulation(id, "ENTERTAINMENT", 1);
+      }
+      for (const id of removedCats) {
+        await ChummeCategoryRepo.updatePopulation(id, "ENTERTAINMENT", -1);
+      }
+
+      // SubCategory level
+      for (const id of addedSubCats) {
+        await ChummeCategoryRepo.updateSubCategoryPopulation(
+          id,
+          "ENTERTAINMENT",
+          1,
+        );
+      }
+      for (const id of removedSubCats) {
+        await ChummeCategoryRepo.updateSubCategoryPopulation(
+          id,
+          "ENTERTAINMENT",
+          -1,
+        );
+      }
+    }
+
+    return discovery;
   }
 }

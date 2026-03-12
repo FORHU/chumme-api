@@ -110,6 +110,7 @@ export default class MusicStudioRepo {
       limit?: number;
       studioType?: MusicStudioType;
       publicOnly?: boolean;
+      search?: string;
     } = {},
   ) {
     const page = params.page || 1;
@@ -121,13 +122,25 @@ export default class MusicStudioRepo {
       ...(params.studioType && { studioType: params.studioType }),
     };
 
+    if (params.search) {
+      whereClause.OR = [
+        { name: { contains: params.search, mode: "insensitive" } },
+        { note: { contains: params.search, mode: "insensitive" } },
+      ];
+    }
+
     if (params.publicOnly !== undefined) {
-      if (params.publicOnly) {
-        whereClause.OR = [{ keyPassword: null }, { keyPassword: "" }];
+      const visibilityFilter = params.publicOnly
+        ? { OR: [{ keyPassword: null }, { keyPassword: "" }] }
+        : { NOT: { OR: [{ keyPassword: null }, { keyPassword: "" }] } };
+
+      if (whereClause.OR) {
+        // If search already added an OR, we need to wrap both in an AND to ensure both filters apply
+        const existingOR = whereClause.OR;
+        delete whereClause.OR;
+        whereClause.AND = [{ OR: existingOR }, visibilityFilter];
       } else {
-        whereClause.NOT = {
-          OR: [{ keyPassword: null }, { keyPassword: "" }],
-        };
+        Object.assign(whereClause, visibilityFilter);
       }
     }
 
@@ -161,6 +174,7 @@ export default class MusicStudioRepo {
       },
     };
   }
+
 
   /**
    * Get studios owned by a user
@@ -443,5 +457,17 @@ export default class MusicStudioRepo {
       },
     });
     return members.map((m) => m.user);
+  }
+
+  /**
+   * Get all active studio names
+   */
+  static async getAllNames() {
+    const studios = await prisma.musicStudio.findMany({
+      where: { deletedAt: null },
+      select: { name: true },
+      orderBy: { name: "asc" },
+    });
+    return studios.map((s) => s.name);
   }
 }

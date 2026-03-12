@@ -21,6 +21,8 @@ router.post(
   ChummeCategoryCtrl.bulkDeleteSubCategories,
 );
 
+router.get("/entertainment", ChummeCategoryCtrl.getChummeEntertainment);
+router.get("/communities", ChummeCategoryCtrl.getChummeCommunities);
 router.get("/specialized/:trait", ChummeCategoryCtrl.getSpecializedCategories);
 
 export default router;

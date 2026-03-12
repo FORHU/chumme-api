@@ -130,6 +130,7 @@ model ChummeCategory {
   keyPassword  String? // Null/Empty = public, otherwise private
   isAd         Boolean      @default(false)
   chummeTraits ChummeTraits @default(NONE)
+  population   Json         @default("{\"Entertainment\": 0, \"Communities\": 0}")
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -151,6 +152,7 @@ model ChummeSubCategory {
   keyPassword  String? // Null/Empty = public, otherwise private
   isAd         Boolean      @default(false)
   chummeTraits ChummeTraits @default(NONE)
+  population   Json         @default("{\"Entertainment\": 0, \"Communities\": 0}")
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt

@@ -51,7 +51,7 @@ export default class MusicStudioCtrl {
    * Get all studios with pagination
    */
   static async getStudios(req: Request, res: Response) {
-    const { page, limit, studioType, publicOnly } = req.query;
+    const { page, limit, studioType, publicOnly, search } = req.query;
     if (!studioType) {
       return res.status(400).json({ message: "Studio type is required" });
     }
@@ -61,7 +61,20 @@ export default class MusicStudioCtrl {
         limit ? Number(limit) : undefined,
         studioType as any,
         publicOnly !== undefined ? publicOnly === "true" : undefined,
+        search as string,
       );
+      return res.json(result);
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message || err });
+    }
+  }
+
+  /**
+   * Get all studio names as an array
+   */
+  static async getStudioNames(req: Request, res: Response) {
+    try {
+      const result = await MusicStudioSvc.getAllStudioNames();
       return res.json(result);
     } catch (err: any) {
       return res.status(500).json({ message: err.message || err });
