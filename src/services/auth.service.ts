@@ -203,11 +203,11 @@ export default class AuthSvc {
           username: user.username,
           name: user.name,
           role: user.role,
-          avatar: user.avatar?.fileUrl,
-          onboardingCompleted: user.onboardingCompleted,
-          artistCount: user._count?.socialUserDiscoveries ?? 0,
-        },
-      };
+            avatar: user.avatar?.fileUrl,
+            onboardingCompleted: user.onboardingCompleted,
+            artistCount: user.socialUserDiscoveries ? 1 : 0,
+          },
+        };
     } catch (error) {
       throw "Invalid refresh token";
     }
@@ -521,7 +521,7 @@ export default class AuthSvc {
         role: finalUser.role,
         avatar: finalUser.avatar?.fileUrl,
         onboardingCompleted: finalUser.onboardingCompleted,
-        artistCount: finalUser._count?.socialUserDiscoveries ?? 0,
+        artistCount: finalUser.socialUserDiscoveries ? 1 : 0,
       },
     };
   }
