@@ -46,39 +46,48 @@ export default class SocialUserDiscoveryRepo {
       (id) => !newSubCatIds.includes(id),
     );
 
-    // 3. Perform upsert
-    const discovery = await prisma.socialUserDiscovery.upsert({
-      where: { userId },
-      update: {
-        chummeCategories: data.categoryIds
-          ? { set: data.categoryIds.map((id) => ({ id })) }
-          : undefined,
-        chummeSubCategories: data.subCategoryIds
-          ? { set: data.subCategoryIds.map((id) => ({ id })) }
-          : undefined,
-        chummeTopicCategories: data.topicCategoryIds
-          ? { set: data.topicCategoryIds.map((id) => ({ id })) }
-          : undefined,
-      },
-      create: {
-        userId,
-        chummeCategories: data.categoryIds
-          ? { connect: data.categoryIds.map((id) => ({ id })) }
-          : undefined,
-        chummeSubCategories: data.subCategoryIds
-          ? { connect: data.subCategoryIds.map((id) => ({ id })) }
-          : undefined,
-        chummeTopicCategories: data.topicCategoryIds
-          ? { connect: data.topicCategoryIds.map((id) => ({ id })) }
-          : undefined,
-      },
-      include: {
-        chummeCategories: true,
-        chummeSubCategories: true,
-        chummeTopicCategories: true,
-      },
-    });
+    // 3. Perform upsert and mark onboarding as complete in a transaction
+    return prisma.$transaction(async (tx) => {
+      // Create or update discovery preferences
+      const discovery = await tx.socialUserDiscovery.upsert({
+        where: { userId },
+        update: {
+          chummeCategories: data.categoryIds
+            ? { set: data.categoryIds.map((id) => ({ id })) }
+            : undefined,
+          chummeSubCategories: data.subCategoryIds
+            ? { set: data.subCategoryIds.map((id) => ({ id })) }
+            : undefined,
+          chummeTopicCategories: data.topicCategoryIds
+            ? { set: data.topicCategoryIds.map((id) => ({ id })) }
+            : undefined,
+        },
+        create: {
+          userId,
+          chummeCategories: data.categoryIds
+            ? { connect: data.categoryIds.map((id) => ({ id })) }
+            : undefined,
+          chummeSubCategories: data.subCategoryIds
+            ? { connect: data.subCategoryIds.map((id) => ({ id })) }
+            : undefined,
+          chummeTopicCategories: data.topicCategoryIds
+            ? { connect: data.topicCategoryIds.map((id) => ({ id })) }
+            : undefined,
+        },
+        include: {
+          chummeCategories: true,
+          chummeSubCategories: true,
+          chummeTopicCategories: true,
+        },
+      });
 
-    return discovery;
+      // Mark user onboarding as complete
+      await tx.user.update({
+        where: { id: userId },
+        data: { onboardingCompleted: true },
+      });
+
+      return discovery;
+    });
   }
 }

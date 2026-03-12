@@ -12,7 +12,6 @@ import chummeSubCategoryRoute from "./chumme-subcategory.route";
 import chummeTopicCategoryRoute from "./chumme-topic-category.route";
 
 
-import onboardingRoute from "./onboarding.route";
 import userInterestRoute from "./user-interest.route";
 import userEmotionRoute from "./user-emotion.route";
 import chummeArtistRoute from "./chumme-artist.route";
@@ -53,7 +52,6 @@ router.use("/v1/user-chat", RoomUserChatRoute);
 router.use("/v1/chumme-categories", chummeCategoryRoute);
 router.use("/v1/chumme-subcategories", chummeSubCategoryRoute);
 router.use("/v1/chumme-topic-categories", chummeTopicCategoryRoute);
-router.use("/v1/onboarding", onboardingRoute);
 
 
 

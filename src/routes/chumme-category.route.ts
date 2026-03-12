@@ -7,6 +7,12 @@ router.use(authenticate);
 
 router.post("/create", ChummeCategoryCtrl.createCategory);
 router.get("/", ChummeCategoryCtrl.getAllCategories);
+// Specific named routes MUST come before /:id
+router.get("/entertainment", ChummeCategoryCtrl.getChummeEntertainment);
+router.get("/communities", ChummeCategoryCtrl.getChummeCommunities);
+router.get("/specialized/:trait", ChummeCategoryCtrl.getSpecializedCategories);
+
+// Wildcard /:id comes LAST
 router.get("/:id", ChummeCategoryCtrl.getCategoryById);
 router.put("/:id", ChummeCategoryCtrl.updateCategory);
 router.delete("/:id", ChummeCategoryCtrl.deleteCategory);
@@ -20,9 +26,5 @@ router.post(
   "/:categoryId/subcategories/bulk-delete",
   ChummeCategoryCtrl.bulkDeleteSubCategories,
 );
-
-router.get("/entertainment", ChummeCategoryCtrl.getChummeEntertainment);
-router.get("/communities", ChummeCategoryCtrl.getChummeCommunities);
-router.get("/specialized/:trait", ChummeCategoryCtrl.getSpecializedCategories);
 
 export default router;

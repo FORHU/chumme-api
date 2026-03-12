@@ -724,13 +724,13 @@ export async function seedChummeCategories(prisma: PrismaClient) {
       ],
     },
     {
-      id: "d3e4f5a6-7b8c-4d9e-af0b-1c2d3e4f5g6h",
+      id: "d3e4f5a6-7b8c-4d9e-af0b-1c2d3e4f5f6e",
       name: "Gaming",
       chummeTraits: "ENTERTAINMENT",
       note: "Video games, streamers, esports tournaments, and gaming communities.",
       subcategories: [
         {
-          id: "e1f2g3h4-i5j6-k7l8-m9n0-o1p2q3r4s5t6",
+          id: "e1f2a3b4-b5a6-4c7d-8e9f-a1b2c3d4e5f6",
           name: "League of Legends",
           note: "Popular MOBA game by Riot Games.",
           topiccategories: [
@@ -745,17 +745,17 @@ export async function seedChummeCategories(prisma: PrismaClient) {
               note: "Legendary professional LOL player for T1.",
             },
             {
-              id: "b1c2d3e4-f5g6-4a7b-8c9d-012345678903",
+              id: "b1c2d3e4-f5e6-4a7b-8c9d-012345678903",
               name: "KDA",
               note: "Virtual K-pop girl group based on LOL champions.",
             },
             {
-              id: "c1d2e3f4-g5h6-4a7b-8c9d-012345678904",
+              id: "c1d2e3f4-a5b6-4a7b-8c9d-012345678904",
               name: "LoL Esports",
               note: "Global esports competitions for League of Legends.",
             },
             {
-              id: "d1e2f3g4-h5i6-4a7b-8c9d-012345678905",
+              id: "d1e2f3a4-b5c6-4a7b-8c9d-012345678905",
               name: "Champion Guides",
               note: "Builds, tips, and strategies for LOL champions.",
             },
