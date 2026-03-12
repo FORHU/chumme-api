@@ -216,14 +216,23 @@ export default class MusicStudioSvc {
     limit?: number,
     studioType?: MusicStudioType,
     publicOnly?: boolean,
+    search?: string,
   ) {
     const result = await MusicStudioRepo.findAll({
       page,
       limit,
       studioType,
       publicOnly,
+      search,
     });
     return { message: "Studios fetched successfully", ...result };
+  }
+
+  /**
+   * Get names of all existing studios
+   */
+  static async getAllStudioNames() {
+    return MusicStudioRepo.getAllNames();
   }
 
   /**

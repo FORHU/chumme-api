@@ -87,10 +87,6 @@ export default class UserRepo {
           },
         },
         socialUserDiscoveries: true,
-        _count: {
-          select: { socialUserDiscoveries: true },
-        },
-
       },
     });
   }
@@ -180,11 +176,7 @@ export default class UserRepo {
         },
         lastLoginAt: true,
         createdAt: true,
-        updatedAt: true,
-        _count: {
-          select: { socialUserDiscoveries: true },
-        },
-
+        socialUserDiscoveries: true,
       },
     });
   }

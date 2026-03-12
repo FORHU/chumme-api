@@ -8,7 +8,7 @@ export default class ChummeCategoryRepo {
     name: string;
     isAd: boolean;
     keyPassword?: string;
-    chummeTraits?: "COMMUNITIES" | "ENTERTAINMENT";
+    chummeTraits?: "NONE" | "COMMUNITIES" | "ENTERTAINMENT";
     note?: string;
     chummeVisualDesign?: {
       position?: any;
@@ -73,6 +73,7 @@ export default class ChummeCategoryRepo {
     });
   }
 
+
   /**
    * Get all non-deleted categories with subcategory counts
    */
@@ -95,6 +96,7 @@ export default class ChummeCategoryRepo {
             name: true,
             note: true,
             isAd: true,
+            populationCount: true,
             createdAt: true,
             updatedAt: true,
             chummeVisualDesign: {
@@ -111,10 +113,14 @@ export default class ChummeCategoryRepo {
                 emojiIcon: true,
               },
             },
-            _count: {
+            chummeTopicCategories: {
+              where: { deletedAt: null },
               select: {
-                userChatRooms: true,
-                roomMessages: true,
+                id: true,
+                name: true,
+                note: true,
+                isAd: true,
+                populationCount: true,
               },
             },
           },
@@ -124,21 +130,22 @@ export default class ChummeCategoryRepo {
     });
   }
 
-  static async getAllCategory(params: { publicOnly?: boolean } = {}) {
-    return prisma.chummeCategory.findMany({
-      where: {
-        deletedAt: null,
-        ...(params.publicOnly && {
-          OR: [{ keyPassword: null }, { keyPassword: "" }],
-        }),
-      },
-    });
-  }
-
   /**
-   * Get category by ID with subcategories
+   * Get category by ID with refined trait selection
    */
-  static async getCategoryById(id: string) {
+  static async getCategoryById(
+    id: string,
+    trait?: "COMMUNITIES" | "ENTERTAINMENT",
+  ) {
+    const isCommunities = trait === "COMMUNITIES";
+
+    if (trait) {
+      return prisma.chummeCategory.findFirst({
+        where: { id, deletedAt: null },
+        select: this.getSpecializedSelect(isCommunities) as any,
+      });
+    }
+
     return prisma.chummeCategory.findFirst({
       where: {
         id: id,
@@ -155,6 +162,7 @@ export default class ChummeCategoryRepo {
             name: true,
             note: true,
             isAd: true,
+            populationCount: true,
             createdAt: true,
             updatedAt: true,
             chummeVisualDesign: {
@@ -171,10 +179,14 @@ export default class ChummeCategoryRepo {
                 emojiIcon: true,
               },
             },
-            _count: {
+            chummeTopicCategories: {
+              where: { deletedAt: null },
               select: {
-                userChatRooms: true,
-                roomMessages: true,
+                id: true,
+                name: true,
+                note: true,
+                isAd: true,
+                populationCount: true,
               },
             },
           },
@@ -193,7 +205,7 @@ export default class ChummeCategoryRepo {
       name?: string;
       isAd?: boolean;
       keyPassword?: string;
-      chummeTraits?: "COMMUNITIES" | "ENTERTAINMENT";
+      chummeTraits?: "NONE" | "COMMUNITIES" | "ENTERTAINMENT";
       note?: string;
       chummeVisualDesign?: {
         position?: any;
@@ -327,12 +339,6 @@ export default class ChummeCategoryRepo {
             emojiIcon: true,
           },
         },
-        _count: {
-          select: {
-            userChatRooms: true,
-            roomMessages: true,
-          },
-        },
       },
       orderBy: {
         createdAt: "desc",
@@ -363,9 +369,9 @@ export default class ChummeCategoryRepo {
    * COMMUNITIES: Fetch Category -> SubCategory (2 levels)
    * ENTERTAINMENT: Fetch Category -> SubCategory -> TopicCategory (3 levels)
    */
-  static async getSpecializedCategories(trait: "COMMUNITIES" | "ENTERTAINMENT") {
-
-
+  static async getSpecializedCategories(
+    trait: "COMMUNITIES" | "ENTERTAINMENT",
+  ) {
     const isCommunities = trait === "COMMUNITIES";
 
     return prisma.chummeCategory.findMany({
@@ -373,39 +379,58 @@ export default class ChummeCategoryRepo {
         deletedAt: null,
         chummeTraits: trait,
       },
-      select: {
-        id: true,
-        name: true,
-        note: true,
-        isAd: true,
-        chummeTraits: true,
-        chummeVisualDesign: isCommunities ? true : false,
-        chummeSubCategories: {
-          where: { deletedAt: null },
-          select: {
-            id: true,
-            name: true,
-            note: true,
-            isAd: true,
-            chummeVisualDesign: isCommunities ? true : false,
-            // Exclude userChatRooms for SubCategories in ENTERTAINMENT mode
-            userChatRooms: isCommunities ? true : false,
-            chummeTopicCategories: !isCommunities
-              ? {
-                  where: { deletedAt: null },
-                  select: {
-                    id: true,
-                    name: true,
-                    note: true,
-                    isAd: true,
-                    chummeVisualDesign: true,
-                  },
-                }
-              : false,
-          },
-        },
-      },
+      select: this.getSpecializedSelect(isCommunities) as any,
       orderBy: { createdAt: "desc" },
     });
+  }
+
+  /**
+   * Get all categories with ENTERTAINMENT trait
+   */
+  static async getChummeEntertainment() {
+    return this.getSpecializedCategories("ENTERTAINMENT");
+  }
+
+  /**
+   * Get all categories with COMMUNITIES trait
+   */
+  static async getChummeCommunities() {
+    return this.getSpecializedCategories("COMMUNITIES");
+  }
+
+  /**
+   * Helper for specialized selection logic
+   */
+  private static getSpecializedSelect(isCommunities: boolean) {
+    return {
+      id: true,
+      name: true,
+      note: true,
+      isAd: true,
+      chummeTraits: true,
+      populationCount: true,
+      chummeSubCategories: {
+        where: { deletedAt: null },
+        select: {
+          id: true,
+          name: true,
+          note: true,
+          isAd: true,
+          populationCount: true,
+          chummeTopicCategories: !isCommunities
+            ? {
+                where: { deletedAt: null },
+                select: {
+                  id: true,
+                  name: true,
+                  note: true,
+                  isAd: true,
+                  populationCount: true,
+                },
+              }
+            : false,
+        },
+      },
+    };
   }
 }

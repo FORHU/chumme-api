@@ -1,12 +1,16 @@
 import { Request, Response } from "express";
 import Joi from "joi";
 import ChummeCategorySvc from "../services/chumme-category.service";
+import ChummeCategoriesConsts from "../constants/chumme-categories.constants";
 
 export default class ChummeCategoryCtrl {
   /**
    * Create a new chumme category
    */
   static async createCategory(req: Request, res: Response) {
+    if (!req.body.traits) {
+      return res.status(400).json({ message: "Trait is required" });
+    }
     const schema = Joi.object({
       name: Joi.string().min(1).max(100).required(),
       isAd: Joi.boolean().required(),
@@ -44,15 +48,9 @@ export default class ChummeCategoryCtrl {
     }
   }
 
-  /**
-   * Get all chumme categories
-   */
   static async getAllCategories(req: Request, res: Response) {
-    const { publicOnly } = req.query as any;
     try {
-      const categories = await ChummeCategorySvc.getAllCategories({
-        publicOnly: publicOnly === "true",
-      });
+      const categories = await ChummeCategorySvc.getAllCategories();
 
       return res.json({ categories });
     } catch (error: any) {
@@ -65,18 +63,29 @@ export default class ChummeCategoryCtrl {
    */
   static async getCategoryById(req: Request, res: Response) {
     const { id } = req.params;
+    const { trait } = req.query;
 
     const schema = Joi.object({
       id: Joi.string().required(),
+      trait: Joi.string()
+        .valid("COMMUNITIES", "ENTERTAINMENT")
+        .optional()
+        .allow(null, ""),
     });
 
-    const { error } = schema.validate({ id });
+    const { error } = schema.validate({
+      id,
+      trait: (trait as string) || undefined,
+    });
     if (error) {
       return res.status(400).json({ message: error.message });
     }
 
     try {
-      const category = await ChummeCategorySvc.getCategoryById(id);
+      const category = await ChummeCategorySvc.getCategoryById(
+        id,
+        (trait as any) || undefined,
+      );
       return res.json({ category });
     } catch (error: any) {
       return res.status(404).json({ message: error.message || error });
@@ -217,18 +226,40 @@ export default class ChummeCategoryCtrl {
   static async getSpecializedCategories(req: Request, res: Response) {
     const { trait } = req.params;
 
-    if (!["COMMUNITIES", "ENTERTAINMENT"].includes(trait)) {
-      return res
-        .status(400)
-        .json({
-          message: "Invalid trait. Must be COMMUNITIES or ENTERTAINMENT",
-        });
+    if (!ChummeCategoriesConsts.CHUMME_TRAITS.includes(trait)) {
+      return res.status(400).json({
+        message: `Invalid trait: ${trait}`,
+      });
     }
 
     try {
       const categories = await ChummeCategorySvc.getSpecializedCategories(
         trait as any,
       );
+      return res.json({ categories });
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message || error });
+    }
+  }
+
+  /**
+   * Get all entertainment categories
+   */
+  static async getChummeEntertainment(req: Request, res: Response) {
+    try {
+      const categories = await ChummeCategorySvc.getChummeEntertainment();
+      return res.json({ categories });
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message || error });
+    }
+  }
+
+  /**
+   * Get all communities categories
+   */
+  static async getChummeCommunities(req: Request, res: Response) {
+    try {
+      const categories = await ChummeCategorySvc.getChummeCommunities();
       return res.json({ categories });
     } catch (error: any) {
       return res.status(500).json({ message: error.message || error });

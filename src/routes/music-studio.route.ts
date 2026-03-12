@@ -8,6 +8,7 @@ router.use(authenticate);
 
 // List endpoints
 router.get("/list", MusicStudioCtrl.getStudios);
+router.get("/names", MusicStudioCtrl.getStudioNames);
 router.get("/my-studios", MusicStudioCtrl.getMyStudios);
 router.get("/joined", MusicStudioCtrl.getJoinedStudios);
 

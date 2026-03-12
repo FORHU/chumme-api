@@ -22,10 +22,13 @@ export default class SocialUserDiscoveryCtrl {
   static async updateDiscovery(req: Request, res: Response) {
     const userId = (req as any).user.id;
     const schema = Joi.object({
-      categoryIds: Joi.array().items(Joi.string().uuid()).optional(),
-      subCategoryIds: Joi.array().items(Joi.string().uuid()).optional(),
-      topicCategoryIds: Joi.array().items(Joi.string().uuid()).optional(),
-    }).min(1);
+      categoryIds: Joi.array().items(Joi.string().uuid()).required().min(2),
+      subCategoryIds: Joi.array().items(Joi.string().uuid()).required().min(5),
+      topicCategoryIds: Joi.array()
+        .items(Joi.string().uuid())
+        .required()
+        .min(10),
+    });
 
     const { error, value } = schema.validate(req.body);
     if (error) {
