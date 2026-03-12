@@ -76,21 +76,6 @@ export default class RoomUserChatRepo {
       },
     });
 
-    // 2. Update population if newly joined
-    if (!isAlreadyMember) {
-      const ChummeCategoryRepo = (await import("./chumme-category.repository"))
-        .default;
-      await ChummeCategoryRepo.updateSubCategoryPopulation(
-        chummeSubCategoryId,
-        "COMMUNITIES",
-        1,
-      );
-      await ChummeCategoryRepo.updatePopulation(
-        membership.chummeSubCategory.chummeCategoryId,
-        "COMMUNITIES",
-        1,
-      );
-    }
 
     return membership;
   }
@@ -122,19 +107,6 @@ export default class RoomUserChatRepo {
       },
     });
 
-    // Update population
-    const ChummeCategoryRepo = (await import("./chumme-category.repository"))
-      .default;
-    await ChummeCategoryRepo.updateSubCategoryPopulation(
-      chummeSubCategoryId,
-      "COMMUNITIES",
-      -1,
-    );
-    await ChummeCategoryRepo.updatePopulation(
-      membership.chummeSubCategory.chummeCategoryId,
-      "COMMUNITIES",
-      -1,
-    );
   }
 
   /**
@@ -235,21 +207,6 @@ export default class RoomUserChatRepo {
       where: { userId },
     });
 
-    // 3. Update populations (Communities)
-    const ChummeCategoryRepo = (await import("./chumme-category.repository"))
-      .default;
-    for (const membership of memberships) {
-      await ChummeCategoryRepo.updateSubCategoryPopulation(
-        membership.chummeSubCategoryId,
-        "COMMUNITIES",
-        -1,
-      );
-      await ChummeCategoryRepo.updatePopulation(
-        membership.chummeSubCategory.chummeCategoryId,
-        "COMMUNITIES",
-        -1,
-      );
-    }
 
     return result;
   }

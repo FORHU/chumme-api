@@ -9,7 +9,7 @@ export default class ChummeCategorySvc {
     name: string;
     keyPassword?: string;
     isAd: boolean;
-    traits?: "NONE" | "COMMUNITIES" | "ENTERTAINMENT";
+    chummeTraits?: "NONE" | "COMMUNITIES" | "ENTERTAINMENT";
 
 
 
@@ -99,7 +99,7 @@ export default class ChummeCategorySvc {
       name?: string;
       keyPassword?: string;
       isAd?: boolean;
-      traits?: "NONE" | "COMMUNITIES" | "ENTERTAINMENT";
+      chummeTraits?: "NONE" | "COMMUNITIES" | "ENTERTAINMENT";
 
 
 

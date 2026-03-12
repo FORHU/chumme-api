@@ -79,42 +79,6 @@ export default class SocialUserDiscoveryRepo {
       },
     });
 
-    // 4. Update population counts (Entertainment)
-    if (
-      addedCats.length > 0 ||
-      removedCats.length > 0 ||
-      addedSubCats.length > 0 ||
-      removedSubCats.length > 0
-    ) {
-      // Lazy load to avoid circular dependency
-      const ChummeCategoryRepo = (await import("./chumme-category.repository"))
-        .default;
-
-      // Category level
-      for (const id of addedCats) {
-        await ChummeCategoryRepo.updatePopulation(id, "ENTERTAINMENT", 1);
-      }
-      for (const id of removedCats) {
-        await ChummeCategoryRepo.updatePopulation(id, "ENTERTAINMENT", -1);
-      }
-
-      // SubCategory level
-      for (const id of addedSubCats) {
-        await ChummeCategoryRepo.updateSubCategoryPopulation(
-          id,
-          "ENTERTAINMENT",
-          1,
-        );
-      }
-      for (const id of removedSubCats) {
-        await ChummeCategoryRepo.updateSubCategoryPopulation(
-          id,
-          "ENTERTAINMENT",
-          -1,
-        );
-      }
-    }
-
     return discovery;
   }
 }

@@ -8,6 +8,9 @@ export default class ChummeCategoryCtrl {
    * Create a new chumme category
    */
   static async createCategory(req: Request, res: Response) {
+    if (!req.body.traits) {
+      return res.status(400).json({ message: "Trait is required" });
+    }
     const schema = Joi.object({
       name: Joi.string().min(1).max(100).required(),
       isAd: Joi.boolean().required(),

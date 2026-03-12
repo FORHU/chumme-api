@@ -8,7 +8,7 @@ export default class ChummeCategoryRepo {
     name: string;
     isAd: boolean;
     keyPassword?: string;
-    chummeTraits?: "COMMUNITIES" | "ENTERTAINMENT";
+    chummeTraits?: "NONE" | "COMMUNITIES" | "ENTERTAINMENT";
     note?: string;
     chummeVisualDesign?: {
       position?: any;
@@ -73,61 +73,6 @@ export default class ChummeCategoryRepo {
     });
   }
 
-  /**
-   * Update category population count
-   */
-  static async updatePopulation(
-    categoryId: string,
-    trait: "ENTERTAINMENT" | "COMMUNITIES",
-    increment: number,
-  ) {
-    const category = await prisma.chummeCategory.findUnique({
-      where: { id: categoryId },
-      select: { population: true },
-    });
-
-    if (!category) return;
-
-    const population = (category.population as any) || {
-      Entertainment: 0,
-      Communities: 0,
-    };
-    const key = trait === "ENTERTAINMENT" ? "Entertainment" : "Communities";
-    population[key] = Math.max(0, (population[key] || 0) + increment);
-
-    return prisma.chummeCategory.update({
-      where: { id: categoryId },
-      data: { population },
-    });
-  }
-
-  /**
-   * Update subcategory population count
-   */
-  static async updateSubCategoryPopulation(
-    subCategoryId: string,
-    trait: "ENTERTAINMENT" | "COMMUNITIES",
-    increment: number,
-  ) {
-    const subCategory = await prisma.chummeSubCategory.findUnique({
-      where: { id: subCategoryId },
-      select: { population: true, chummeTraits: true },
-    });
-
-    if (!subCategory) return;
-
-    const population = (subCategory.population as any) || {
-      Entertainment: 0,
-      Communities: 0,
-    };
-    const key = trait === "ENTERTAINMENT" ? "Entertainment" : "Communities";
-    population[key] = Math.max(0, (population[key] || 0) + increment);
-
-    return prisma.chummeSubCategory.update({
-      where: { id: subCategoryId },
-      data: { population },
-    });
-  }
 
   /**
    * Get all non-deleted categories with subcategory counts
@@ -151,7 +96,6 @@ export default class ChummeCategoryRepo {
             name: true,
             note: true,
             isAd: true,
-            population: true,
             createdAt: true,
             updatedAt: true,
             chummeVisualDesign: {
@@ -222,7 +166,6 @@ export default class ChummeCategoryRepo {
             name: true,
             note: true,
             isAd: true,
-            population: true,
             createdAt: true,
             updatedAt: true,
             chummeVisualDesign: {
@@ -245,6 +188,15 @@ export default class ChummeCategoryRepo {
                 roomMessages: true,
               },
             },
+            chummeTopicCategories: {
+              where: { deletedAt: null },
+              select: {
+                id: true,
+                name: true,
+                note: true,
+                isAd: true,
+              },
+            },
           },
           orderBy: { createdAt: "desc" },
         },
@@ -261,7 +213,7 @@ export default class ChummeCategoryRepo {
       name?: string;
       isAd?: boolean;
       keyPassword?: string;
-      chummeTraits?: "COMMUNITIES" | "ENTERTAINMENT";
+      chummeTraits?: "NONE" | "COMMUNITIES" | "ENTERTAINMENT";
       note?: string;
       chummeVisualDesign?: {
         position?: any;
@@ -470,7 +422,6 @@ export default class ChummeCategoryRepo {
       note: true,
       isAd: true,
       chummeTraits: true,
-      population: true,
       chummeSubCategories: {
         where: { deletedAt: null },
         select: {
@@ -478,7 +429,6 @@ export default class ChummeCategoryRepo {
           name: true,
           note: true,
           isAd: true,
-          population: true,
           // Include userChatRooms for Communities, exclude for Entertainment
           userChatRooms: isCommunities ? true : false,
           chummeTopicCategories: !isCommunities
