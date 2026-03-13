@@ -1,6 +1,6 @@
 import { Router } from "express";
-import SessionSessionSocialAccountCtrl from "../controllers/session-social-account.controller";
-import { authenticate } from "../middleware/auth.middleware";
+import SessionSessionSocialAccountCtrl from "../../controllers/net-communities/session-social-account.controller";
+import { authenticate } from "../../middleware/auth.middleware";
 
 const router = Router();
 

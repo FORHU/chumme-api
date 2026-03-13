@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
-import YouTubeService from "../services/youtube.service";
-import SocialFeedSvc from "../services/social-feed.service";
+import YouTubeService from "../../services/net-communities/youtube.service";
+import SocialFeedSvc from "../../services/social-feed.service";
 
-import FileRepo from "../repositories/file.repository";
+import FileRepo from "../../repositories/file.repository";
 
 export default class YouTubeCtrl {
   /**
@@ -208,7 +208,6 @@ export default class YouTubeCtrl {
             contentDetails: item.contentDetails,
           },
         });
-
 
         imported.push({
           videoId,

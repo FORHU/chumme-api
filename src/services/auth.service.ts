@@ -1,5 +1,5 @@
 import AuthRepo from "../repositories/auth.repository";
-import SessionSessionSocialAccountRepo from "../repositories/session-social-account.repository";
+import SessionSessionSocialAccountRepo from "../repositories/net-communities/session-social-account.repository";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import { OAuth2Client } from "google-auth-library";

@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import SessionSessionSocialAccountSvc from "../services/session-social-account.service";
+import SessionSessionSocialAccountSvc from "../../services/net-communities/session-social-account.service";
 
 export default class SessionSessionSocialAccountCtrl {
   /**

@@ -1,6 +1,6 @@
 import { OAuth2Client } from "google-auth-library";
 import axios from "axios";
-import SessionSocialAccountRepo from "../repositories/session-social-account.repository";
+import SessionSocialAccountRepo from "../../repositories/net-communities/session-social-account.repository";
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 
