@@ -61,8 +61,21 @@ export class WorkerMetrics {
   }
 
   startPeriodicLogging() {
-    this.intervalHandle = setInterval(() => {
-      logger.info("[WorkerMetrics] Periodic report", this.getSnapshot());
+    this.intervalHandle = setInterval(async () => {
+      const snapshot = this.getSnapshot();
+      logger.info("[WorkerMetrics] Periodic report", snapshot);
+
+      // Persist to Redis for main API consumption
+      try {
+        const RedisUtil = (await import("./redis.util")).default;
+        if (RedisUtil.redisClient) {
+          await RedisUtil.redisClient.set("worker:metrics:snapshot", JSON.stringify(snapshot), {
+            EX: 300, // 5 mins TTL
+          });
+        }
+      } catch (err) {
+        logger.error("[WorkerMetrics] Failed to save snapshot to Redis:", err);
+      }
     }, METRICS_INTERVAL_MS);
     if (this.intervalHandle.unref) this.intervalHandle.unref();
   }

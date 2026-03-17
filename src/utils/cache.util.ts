@@ -6,6 +6,10 @@ export default class CacheUtil {
   static async get<T = any>(key: string): Promise<T | null> {
     try {
       const redis = RedisUtil.useConnection();
+      if (!redis) {
+        logger.warn(`[CacheUtil:get] Redis connection not available for key: ${key}`);
+        return null;
+      }
       const data = await redis.get(key);
 
       if (!data) {
@@ -26,6 +30,10 @@ export default class CacheUtil {
   ): Promise<void> {
     try {
       const redis = RedisUtil.useConnection();
+      if (!redis) {
+        logger.warn(`[CacheUtil:set] Redis connection not available for key: ${key}`);
+        return;
+      }
       const serialized = JSON.stringify(value);
       if (!ttlSeconds) {
         ttlSeconds = REDIS_TTL_SECONDS;
@@ -43,6 +51,10 @@ export default class CacheUtil {
   static async del(key: string): Promise<void> {
     try {
       const redis = RedisUtil.useConnection();
+      if (!redis) {
+        logger.warn(`[CacheUtil:del] Redis connection not available for key: ${key}`);
+        return;
+      }
       await redis.del(key);
     } catch (error) {
       logger.error(`[CacheUtil:del] Failed to delete key ${key}:`, error);
@@ -52,6 +64,10 @@ export default class CacheUtil {
   static async delByPattern(pattern: string): Promise<void> {
     try {
       const redis = RedisUtil.useConnection();
+      if (!redis) {
+        logger.warn(`[CacheUtil:delByPattern] Redis connection not available for pattern: ${pattern}`);
+        return;
+      }
       const keys = await redis.keys(pattern);
       if (keys.length) {
         await redis.del(keys);
@@ -67,6 +83,10 @@ export default class CacheUtil {
   static async flushAll(): Promise<void> {
     try {
       const redis = RedisUtil.useConnection();
+      if (!redis) {
+        logger.warn("[CacheUtil:flushAll] Redis connection not available");
+        return;
+      }
       await redis.flushAll();
       logger.info("[CacheUtil] Redis cache flushed successfully");
     } catch (error) {

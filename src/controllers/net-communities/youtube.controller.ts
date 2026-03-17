@@ -56,6 +56,7 @@ export default class YouTubeCtrl {
   static async searchVideos(req: Request, res: Response) {
     try {
       const { q, maxResults } = req.query;
+      const regionCode = req.headers["x-country-code"] as string | undefined;
 
       if (!q) {
         return res
@@ -66,6 +67,7 @@ export default class YouTubeCtrl {
       const results = await YouTubeService.searchVideos(
         q as string,
         maxResults ? parseInt(maxResults as string) : 5,
+        regionCode,
       );
 
       return res.json({

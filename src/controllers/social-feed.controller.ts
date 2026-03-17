@@ -13,7 +13,8 @@ export default class SocialFeedCtrl {
       const refresh = req.query.refresh === "true";
       const seed = req.query.seed as string;
 
-      const feed = await SocialFeedSvc.getFeed(page, limit, refresh, seed);
+      const countryCode = req.headers["x-country-code"] as string | undefined;
+      const feed = await SocialFeedSvc.getFeed(page, limit, refresh, seed, countryCode);
 
       res.json({
         success: true,
@@ -54,6 +55,7 @@ export default class SocialFeedCtrl {
       const artist = req.query.artist as string;
       const seed = (req.query.seed || req.query.seed_id) as string;
 
+      const countryCode = req.headers["x-country-code"] as string | undefined;
       const feed = await SocialFeedSvc.getPersonalizedFeed(
         userId,
         page,
@@ -61,6 +63,7 @@ export default class SocialFeedCtrl {
         artist,
         refresh,
         seed,
+        countryCode,
       );
 
       res.json({
@@ -71,6 +74,27 @@ export default class SocialFeedCtrl {
           limit,
           hasMore: feed?.length === limit,
         },
+      });
+    } catch (error: any) {
+      res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  }
+
+  /**
+   * Get comments for a feed item (scraped + local)
+   * GET /api/feed/:id/comments
+   */
+  static async getComments(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const comments = await SocialFeedSvc.getFeedItemComments(id);
+
+      res.json({
+        success: true,
+        data: comments,
       });
     } catch (error: any) {
       res.status(400).json({

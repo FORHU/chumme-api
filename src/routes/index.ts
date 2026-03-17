@@ -33,8 +33,18 @@ import mediaRoute from "./media.route";
 import systemRoute from "./system.route";
 import socialAccountRoute from "./net-communities/session-social-account.route";
 import youtubeRoute from "./net-communities/youtube.route";
+import monitoringRoute from "./monitoring.route";
+import discoveryRoute from "./discovery.route";
 
 const router = express.Router();
+
+// ... existing routes
+
+router.use("/v1/system", systemRoute);
+router.use("/v1/session-social-accounts", socialAccountRoute);
+router.use("/v1/youtube", youtubeRoute);
+router.use("/v1/monitoring", monitoringRoute);
+router.use("/v1/discovery", discoveryRoute);
 
 router.get("/v1", (_, res) => {
   res.json({
@@ -72,9 +82,5 @@ router.use("/v1/music-records", musicRecordRoute);
 router.use("/v1/music-studios", musicStudioRoute);
 router.use("/v1/music-library", musicLibraryRoute);
 router.use("/v1/media", mediaRoute);
-
-router.use("/v1/system", systemRoute);
-router.use("/v1/session-social-accounts", socialAccountRoute);
-router.use("/v1/youtube", youtubeRoute);
 
 export default router;

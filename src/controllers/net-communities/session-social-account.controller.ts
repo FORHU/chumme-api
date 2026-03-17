@@ -8,7 +8,7 @@ export default class SessionSessionSocialAccountCtrl {
   static async linkAccount(req: Request, res: Response) {
     try {
       const userId = (req as any).user?.id;
-      const { platform, token } = req.body;
+      const { platform, token, accessToken } = req.body;
 
       if (!platform || !token) {
         return res
@@ -20,7 +20,7 @@ export default class SessionSessionSocialAccountCtrl {
       switch (platform.toLowerCase()) {
         case "google":
         case "youtube":
-          result = await SessionSessionSocialAccountSvc.linkGoogleAccount(userId, token);
+          result = await SessionSessionSocialAccountSvc.linkGoogleAccount(userId, token, accessToken);
           break;
         case "facebook":
         case "instagram":

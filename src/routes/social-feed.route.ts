@@ -6,5 +6,6 @@ const router = express.Router();
 
 router.get("/", SocialFeedCtrl.getFeed);
 router.get("/personalized", authenticate, SocialFeedCtrl.getPersonalizedFeed);
+router.get("/:id/comments", SocialFeedCtrl.getComments);
 
 export default router;

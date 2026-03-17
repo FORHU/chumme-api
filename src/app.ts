@@ -103,6 +103,21 @@ connectToPrisma()
         console.error("Failed to initialize Audio Merge worker:", error);
       }
 
+      // Ingestion Worker & Scheduler
+      try {
+        const { IngestionWorker } = await import("./listeners/ingestion.listener");
+        const ingestionWorker = new IngestionWorker();
+        await ingestionWorker.start();
+
+        const { SchedulingService } = await import(
+          "./services/net-communities/ingestion/scheduling.service"
+        );
+        await SchedulingService.start();
+        console.log("Ingestion Pipeline & Scheduler initialized successfully");
+      } catch (error) {
+        console.error("Failed to initialize Ingestion Pipeline:", error);
+      }
+
       /*
       // Media Processing Worker (Video/HLS) - DISABLED (Stale)
       try {

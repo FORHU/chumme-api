@@ -90,4 +90,41 @@ export default class SocialUserDiscoveryRepo {
       return discovery;
     });
   }
+
+  /**
+   * Fetch all active categories, subcategories, and topic categories with their discovery keywords
+   */
+  static async getAllSearchableCategories() {
+    const categories = await prisma.chummeCategory.findMany({
+      where: { deletedAt: null },
+      select: { id: true, discoveryKeywords: true },
+    });
+
+    const subCategories = await prisma.chummeSubCategory.findMany({
+      where: { deletedAt: null },
+      select: { id: true, discoveryKeywords: true, chummeCategoryId: true },
+    });
+
+    const topicCategories = await prisma.chummeTopicCategory.findMany({
+      where: { deletedAt: null },
+      select: { id: true, discoveryKeywords: true, chummeSubCategoryId: true },
+    });
+
+    return {
+      categories: categories.map(c => ({
+        id: c.id,
+        discoveryKeywords: c.discoveryKeywords as string[],
+      })),
+      subCategories: subCategories.map(s => ({
+        id: s.id,
+        discoveryKeywords: s.discoveryKeywords as string[],
+        chummeCategoryId: s.chummeCategoryId,
+      })),
+      topicCategories: topicCategories.map(t => ({
+        id: t.id,
+        discoveryKeywords: t.discoveryKeywords as string[],
+        chummeSubCategoryId: t.chummeSubCategoryId,
+      })),
+    };
+  }
 }

@@ -12,6 +12,7 @@ export default class CircleCacheSvc {
   }
 
   static async addRoomPresence(roomId: string, userId: string, userData: any) {
+    if (!this.client) return;
     const key = `${this.CIRCLE_PREFIX}${roomId}:presence`;
     const data = {
       ...userData,
@@ -23,6 +24,7 @@ export default class CircleCacheSvc {
   }
 
   static async removeRoomPresence(roomId: string, userId: string) {
+    if (!this.client) return;
     const key = `${this.CIRCLE_PREFIX}${roomId}:presence`;
     await this.client.hDel(key, userId);
   }
@@ -32,6 +34,7 @@ export default class CircleCacheSvc {
     userId: string,
     isConnected: boolean,
   ) {
+    if (!this.client) return;
     const key = `${this.CIRCLE_PREFIX}${roomId}:presence`;
     const memberJson = await this.client.hGet(key, userId);
     if (memberJson) {
@@ -43,12 +46,14 @@ export default class CircleCacheSvc {
   }
 
   static async getRoomPresence(roomId: string) {
+    if (!this.client) return [];
     const key = `${this.CIRCLE_PREFIX}${roomId}:presence`;
     const members = await this.client.hGetAll(key);
     return Object.values(members).map((m) => JSON.parse(m));
   }
 
   static async getMemberPresence(roomId: string, userId: string) {
+    if (!this.client) return null;
     const key = `${this.CIRCLE_PREFIX}${roomId}:presence`;
     const memberJson = await this.client.hGet(key, userId);
     return memberJson ? JSON.parse(memberJson) : null;
