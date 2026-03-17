@@ -94,15 +94,51 @@ export class SchedulingService {
           chummeCategory: true,
           chummeSubCategory: true,
           chummeTopicCategory: true,
+          schedules: {
+            where: { isActive: true },
+          },
         },
       });
 
-      // Filter for precise interval check
-      const dueTargets = targetsToCrawl.filter((target) => {
-        if (!target.lastCrawledAt) return true;
-        const hoursSinceLastCrawl =
-          (now.getTime() - target.lastCrawledAt.getTime()) / (1000 * 60 * 60);
-        return hoursSinceLastCrawl >= target.crawlIntervalHours;
+      // Filter for precise interval or exact time check
+      const dueTargets = targetsToCrawl.filter((target: any) => {
+        // 1. Fallback to original interval if no active schedules exist
+        if (!target.schedules || target.schedules.length === 0) {
+          if (!target.lastCrawledAt) return true;
+          const hoursSinceLastCrawl =
+            (now.getTime() - target.lastCrawledAt.getTime()) / (1000 * 60 * 60);
+          return hoursSinceLastCrawl >= target.crawlIntervalHours;
+        }
+
+        // 2. Evaluate schedules
+        return target.schedules.some((schedule: any) => {
+          if (schedule.mode === "MANUAL") return false; // Skip manual override schedules in auto-loop
+
+          if (schedule.exactTime) {
+            const [hourStr] = schedule.exactTime.split(":");
+            const schedHour = parseInt(hourStr, 10);
+            const currentHour = now.getHours();
+
+            if (currentHour === schedHour) {
+              // Throttle: Prevent re-triggering multiple times in the same hour window
+              if (
+                target.lastCrawledAt &&
+                now.getTime() - target.lastCrawledAt.getTime() < 1000 * 60 * 45
+              ) {
+                return false;
+              }
+              return true;
+            }
+          } else if (schedule.intervalHours) {
+            if (!target.lastCrawledAt) return true;
+            const hoursSinceLastCrawl =
+              (now.getTime() - target.lastCrawledAt.getTime()) /
+              (1000 * 60 * 60);
+            return hoursSinceLastCrawl >= schedule.intervalHours;
+          }
+
+          return false;
+        });
       });
 
       logger.info(

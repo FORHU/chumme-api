@@ -1,5 +1,6 @@
 import express from "express";
 import chummeArtistPersonaRoute from "./artist-persona.routes";
+import ingestionScheduleRoute from "./social-ingestion-schedule.route";
 
 import authRoute from "./auth.route";
 import chatRoutes from "./chat.route";
@@ -82,5 +83,6 @@ router.use("/v1/music-records", musicRecordRoute);
 router.use("/v1/music-studios", musicStudioRoute);
 router.use("/v1/music-library", musicLibraryRoute);
 router.use("/v1/media", mediaRoute);
+router.use("/v1/ingestion-schedules", ingestionScheduleRoute);
 
 export default router;
