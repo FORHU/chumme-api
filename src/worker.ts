@@ -63,6 +63,23 @@ async function main() {
     logger.error("[Worker] Failed to start MediaProcessingWorker:", error);
   }
 
+  try {
+    const { IngestionWorker } = require("./listeners/ingestion.listener");
+    const ingestionWorker = new IngestionWorker();
+    await ingestionWorker.start();
+    logger.info("[Worker] IngestionWorker started");
+  } catch (error) {
+    logger.error("[Worker] Failed to start IngestionWorker:", error);
+  }
+
+  try {
+    const { SchedulingService } = require("./services/net-communities/ingestion/scheduling.service");
+    await SchedulingService.start();
+    logger.info("[Worker] SchedulingService started");
+  } catch (error) {
+    logger.error("[Worker] Failed to start SchedulingService:", error);
+  }
+
   isHealthy = true;
   healthServer.listen(WORKER_PORT, () => {
     logger.info(`[Worker] Health endpoint listening on :${WORKER_PORT}/health`);

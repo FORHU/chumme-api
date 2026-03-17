@@ -42,7 +42,8 @@ export const registerSingerHandlers = (
 
       // Rate limiting
       const lastRequestKey = `studio:ratelimit:${socket.user.id}`;
-      const isRateLimited = await RedisUtil.useConnection().get(lastRequestKey);
+      const redis = RedisUtil.useConnection();
+      const isRateLimited = redis ? await redis.get(lastRequestKey) : null;
 
       if (isRateLimited) {
         return socket.emit("request_singer_failed", {
@@ -50,7 +51,9 @@ export const registerSingerHandlers = (
         });
       }
 
-      await RedisUtil.useConnection().set(lastRequestKey, "1", { EX: 30 });
+      if (redis) {
+        await redis.set(lastRequestKey, "1", { EX: 30 });
+      }
 
       await MusicStudioCacheSvc.addSingerRequest(studioId, socket.user.id, {
         userId: socket.user.id,

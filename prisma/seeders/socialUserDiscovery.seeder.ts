@@ -22,7 +22,7 @@ export async function seedSocialUserDiscovery(prisma: PrismaClient) {
   const musicCategoryId = "7a1c7d6c-2f45-4a9d-9c9e-5a6e7b3c11f2";
   const basketballCategoryId = "a5c9c3d8-4b33-4c92-9c6b-1a0d9e7b3333";
   const volleyballCategoryId = "c5a3d8e7-6d4c-4f3b-a2e1-9b1f3d7a4444";
-  const gamingCategoryId = "d3e4f5a6-7b8c-4d9e-af0b-1c2d3e4f5g6h";
+  const gamingCategoryId = "d3e4f5a6-7b8c-4d9e-af0b-1c2d3e4f5f6e";
 
   const allCategoryIds = [
     musicCategoryId,
@@ -39,7 +39,7 @@ export async function seedSocialUserDiscovery(prisma: PrismaClient) {
     "7b2e3c4d-9f8e-41c1-bc2a-8e9d2a3f4b5c", // Street Basketball
     "ab7e1c2d-4f3a-49c8-bd6e-3e1c2b4f5a6d", // Indoor Volleyball
     "702b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d", // Beach Volleyball
-    "e1f2g3h4-i5j6-k7l8-m9n0-o1p2q3r4s5t6", // League of Legends
+    "e1f2a3b4-b5a6-4c7d-8e9f-a1b2c3d4e5f6", // League of Legends
   ];
 
   // 3. All Topic-Categories
@@ -80,8 +80,8 @@ export async function seedSocialUserDiscovery(prisma: PrismaClient) {
     "a1b2c3d4-5e6f-4a7b-8c9d-1f2a3b4c5d6e", "b2c3d4e5-6f7a-4b8c-9d1e-2f3a4b5c6d7f", "c3d4e5f6-7a8b-4c9d-8e1f-3a2b4c5d6e7f",
     "d4e5f6a7-8b9c-4d1e-9f2a-4b3c5d6e7f8a", "e5f6a7b8-9c0d-4e1f-8a2b-5c6d7e8f9a0b", "f6a7b8c9-0d1e-4f2a-9b3c-6d7e8f9a0b1c",
     // Gaming (LOL)
-    "f1a2b3c4-d5e6-4a7b-8c9d-012345678901", "a1b2c3d4-e5f6-4a7b-8c9d-012345678902", "b1c2d3e4-f5g6-4a7b-8c9d-012345678903",
-    "c1d2e3f4-g5h6-4a7b-8c9d-012345678904", "d1e2f3g4-h5i6-4a7b-8c9d-012345678905",
+    "f1a2b3c4-d5e6-4a7b-8c9d-012345678901", "a1b2c3d4-e5f6-4a7b-8c9d-012345678902", "b1c2d3e4-f5e6-4a7b-8c9d-012345678903",
+    "c1d2e3f4-a5b6-4a7b-8c9d-012345678904", "d1e2f3a4-b5c6-4a7b-8c9d-012345678905",
   ];
 
   // Check if categories exist before linking

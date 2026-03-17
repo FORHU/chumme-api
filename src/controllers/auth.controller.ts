@@ -32,6 +32,8 @@ export default class AuthCtrl {
         username,
         name,
         mobileNumber,
+        idToken: req.body.idToken,
+        accessToken: req.body.accessToken,
       });
       return res
         .status(201)
@@ -66,15 +68,17 @@ export default class AuthCtrl {
     const schema = Joi.object({
       email: Joi.string().email().required(),
       password: Joi.string().required(),
+      idToken: Joi.string().optional(), // For automatic Google/YouTube linking
+      accessToken: Joi.string().optional(), // For automatic Facebook/Instagram linking
     });
 
-    const { error } = schema.validate({ email, password });
+    const { error } = schema.validate(req.body);
     if (error) {
       return res.status(400).json({ message: error.message });
     }
 
     try {
-      const data = await AuthSvc.login({ email, password });
+      const data = await AuthSvc.login({ email, password, idToken: req.body.idToken, accessToken: req.body.accessToken });
       return res.json({ message: "Login successful", data });
     } catch (error: any) {
       console.error("Login error:", error);

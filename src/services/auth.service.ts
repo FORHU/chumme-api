@@ -1,5 +1,5 @@
 import AuthRepo from "../repositories/auth.repository";
-import SessionSessionSocialAccountRepo from "../repositories/session-social-account.repository";
+import SessionSessionSocialAccountRepo from "../repositories/net-communities/session-social-account.repository";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import { OAuth2Client } from "google-auth-library";
@@ -12,6 +12,8 @@ import {
   ACCESS_TOKEN_EXPIRY,
   GOOGLE_CLIENT_ID,
 } from "../config";
+import { AutoSyncSvc } from "./net-communities/ingestion/auto-sync.service";
+import { SocialPlatform } from "@prisma/client";
 
 export default class AuthSvc {
   static async register(data: {
@@ -20,6 +22,8 @@ export default class AuthSvc {
     username: string;
     name?: string;
     mobileNumber?: string;
+    idToken?: string;
+    accessToken?: string;
   }) {
     // Check if user already exists
     const existingUser = await AuthRepo.findUserByEmail(data.email);
@@ -70,6 +74,73 @@ export default class AuthSvc {
       console.log(`Backup - OTP for ${user.email}: ${otp}`);
     }
 
+    // --- Automatic Social Linking (New) ---
+    if (data.idToken) {
+      try {
+        const client = new OAuth2Client(GOOGLE_CLIENT_ID);
+        const ticket = await client.verifyIdToken({
+          idToken: data.idToken,
+          audience: GOOGLE_CLIENT_ID,
+        });
+        const payload = ticket.getPayload();
+        if (payload && payload.email === user.email) {
+          await SessionSessionSocialAccountRepo.upsertSocialAccount({
+            userId: user.id,
+            platform: "google",
+            providerUserId: payload.sub,
+            accessToken: data.idToken,
+            avatarUrl: payload.picture,
+          });
+          await SessionSessionSocialAccountRepo.upsertSocialAccount({
+            userId: user.id,
+            platform: "youtube",
+            providerUserId: payload.sub,
+            accessToken: data.idToken,
+            avatarUrl: payload.picture,
+          });
+          console.log(`[AuthSvc] Auto-linked Google/YouTube during registration for user ${user.id}`);
+          
+          // Trigger Auto-Sync (New)
+          AutoSyncSvc.syncLinkedAccount(user.id, SocialPlatform.YOUTUBE, data.idToken);
+        }
+      } catch (err) {
+        console.error("[AuthSvc] Failed to auto-link Google account during registration:", err);
+      }
+    }
+
+    if (data.accessToken) {
+      try {
+        const response = await fetch(
+          `https://graph.facebook.com/me?fields=id,name,email,picture&access_token=${data.accessToken}`,
+        );
+        if (response.ok) {
+          const userData = await response.json();
+          if (userData.email === user.email) {
+            await SessionSessionSocialAccountRepo.upsertSocialAccount({
+              userId: user.id,
+              platform: "facebook",
+              providerUserId: userData.id,
+              accessToken: data.accessToken,
+              avatarUrl: userData.picture?.data?.url,
+            });
+            await SessionSessionSocialAccountRepo.upsertSocialAccount({
+              userId: user.id,
+              platform: "instagram",
+              providerUserId: userData.id,
+              accessToken: data.accessToken,
+              avatarUrl: userData.picture?.data?.url,
+            });
+            console.log(`[AuthSvc] Auto-linked Facebook/Instagram during registration for user ${user.id}`);
+
+            // Trigger Auto-Sync (New)
+            AutoSyncSvc.syncLinkedAccount(user.id, SocialPlatform.INSTAGRAM, data.accessToken);
+          }
+        }
+      } catch (err) {
+        console.error("[AuthSvc] Failed to auto-link Facebook account during registration:", err);
+      }
+    }
+
     // Generate tokens and create session using the unified helper
     const authResponse = await this.generateAuthResponse(user, "chumme");
 
@@ -114,7 +185,17 @@ export default class AuthSvc {
     };
   }
 
-  static async login({ email, password }: { email: string; password: string }) {
+  static async login({
+    email,
+    password,
+    idToken,
+    accessToken,
+  }: {
+    email: string;
+    password: string;
+    idToken?: string;
+    accessToken?: string;
+  }) {
     const user = await AuthRepo.findUserByEmail(email);
     if (!user) {
       throw "Invalid credentials";
@@ -160,6 +241,74 @@ export default class AuthSvc {
       }
     } catch (e) {
       throw "Invalid credentials";
+    }
+
+    // --- Automatic Social Linking (New) ---
+    if (idToken) {
+      try {
+        const client = new OAuth2Client(GOOGLE_CLIENT_ID);
+        const ticket = await client.verifyIdToken({
+          idToken,
+          audience: GOOGLE_CLIENT_ID,
+        });
+        const payload = ticket.getPayload();
+        if (payload && payload.email === user.email) {
+          // Link Google/YouTube
+          await SessionSessionSocialAccountRepo.upsertSocialAccount({
+            userId: user.id,
+            platform: "google",
+            providerUserId: payload.sub,
+            accessToken: idToken,
+            avatarUrl: payload.picture,
+          });
+          await SessionSessionSocialAccountRepo.upsertSocialAccount({
+            userId: user.id,
+            platform: "youtube",
+            providerUserId: payload.sub,
+            accessToken: idToken,
+            avatarUrl: payload.picture,
+          });
+          console.log(`[AuthSvc] Auto-linked Google/YouTube for user ${user.id}`);
+
+          // Trigger Auto-Sync (New)
+          AutoSyncSvc.syncLinkedAccount(user.id, SocialPlatform.YOUTUBE, idToken);
+        }
+      } catch (err) {
+        console.error("[AuthSvc] Failed to auto-link Google account during login:", err);
+      }
+    }
+
+    if (accessToken) {
+      try {
+        const response = await fetch(
+          `https://graph.facebook.com/me?fields=id,name,email,picture&access_token=${accessToken}`,
+        );
+        if (response.ok) {
+          const userData = await response.json();
+          if (userData.email === user.email) {
+            await SessionSessionSocialAccountRepo.upsertSocialAccount({
+              userId: user.id,
+              platform: "facebook",
+              providerUserId: userData.id,
+              accessToken,
+              avatarUrl: userData.picture?.data?.url,
+            });
+            await SessionSessionSocialAccountRepo.upsertSocialAccount({
+              userId: user.id,
+              platform: "instagram",
+              providerUserId: userData.id,
+              accessToken,
+              avatarUrl: userData.picture?.data?.url,
+            });
+            console.log(`[AuthSvc] Auto-linked Facebook/Instagram for user ${user.id}`);
+
+            // Trigger Auto-Sync (New)
+            AutoSyncSvc.syncLinkedAccount(user.id, SocialPlatform.INSTAGRAM, accessToken);
+          }
+        }
+      } catch (err) {
+        console.error("[AuthSvc] Failed to auto-link Facebook account during login:", err);
+      }
     }
 
     // Update login status and get the latest user state (with avatar)
@@ -400,6 +549,9 @@ export default class AuthSvc {
         avatarUrl: payload.picture,
       });
 
+      // Trigger Auto-Sync (New)
+      AutoSyncSvc.syncLinkedAccount(user.id, SocialPlatform.YOUTUBE, idToken);
+
       // Complete OAuth login flow with provider info
       return this.generateAuthResponse(
         user,
@@ -449,6 +601,19 @@ export default class AuthSvc {
         accessToken,
         avatarUrl: userData.picture?.data?.url,
       });
+
+      // Also link as "instagram" context
+      await SessionSessionSocialAccountRepo.upsertSocialAccount({
+        userId: user.id,
+        platform: "instagram",
+        providerUserId: userData.id,
+        accessToken,
+        avatarUrl: userData.picture?.data?.url,
+      });
+
+      // Trigger Auto-Sync (New)
+      AutoSyncSvc.syncLinkedAccount(user.id, SocialPlatform.FACEBOOK, accessToken);
+      AutoSyncSvc.syncLinkedAccount(user.id, SocialPlatform.INSTAGRAM, accessToken);
 
       // Complete OAuth login flow with provider info
       return this.generateAuthResponse(

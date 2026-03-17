@@ -1,5 +1,6 @@
 import express from "express";
 import chummeArtistPersonaRoute from "./artist-persona.routes";
+import ingestionScheduleRoute from "./social-ingestion-schedule.route";
 
 import authRoute from "./auth.route";
 import chatRoutes from "./chat.route";
@@ -11,8 +12,6 @@ import chummeCategoryRoute from "./chumme-category.route";
 import chummeSubCategoryRoute from "./chumme-subcategory.route";
 import chummeTopicCategoryRoute from "./chumme-topic-category.route";
 
-
-import onboardingRoute from "./onboarding.route";
 import userInterestRoute from "./user-interest.route";
 import userEmotionRoute from "./user-emotion.route";
 import chummeArtistRoute from "./chumme-artist.route";
@@ -32,11 +31,21 @@ import musicStudioRoute from "./music-studio.route";
 import musicLibraryRoute from "./music-library.route";
 import mediaRoute from "./media.route";
 
-
 import systemRoute from "./system.route";
-import socialAccountRoute from "./session-social-account.route";
+import socialAccountRoute from "./net-communities/session-social-account.route";
+import youtubeRoute from "./net-communities/youtube.route";
+import monitoringRoute from "./monitoring.route";
+import discoveryRoute from "./discovery.route";
 
 const router = express.Router();
+
+// ... existing routes
+
+router.use("/v1/system", systemRoute);
+router.use("/v1/session-social-accounts", socialAccountRoute);
+router.use("/v1/youtube", youtubeRoute);
+router.use("/v1/monitoring", monitoringRoute);
+router.use("/v1/discovery", discoveryRoute);
 
 router.get("/v1", (_, res) => {
   res.json({
@@ -53,9 +62,6 @@ router.use("/v1/user-chat", RoomUserChatRoute);
 router.use("/v1/chumme-categories", chummeCategoryRoute);
 router.use("/v1/chumme-subcategories", chummeSubCategoryRoute);
 router.use("/v1/chumme-topic-categories", chummeTopicCategoryRoute);
-router.use("/v1/onboarding", onboardingRoute);
-
-
 
 router.use("/v1/interests", userInterestRoute);
 router.use("/v1/emotions", userEmotionRoute);
@@ -76,11 +82,7 @@ router.use("/v1/playlists", playlistRoute);
 router.use("/v1/music-records", musicRecordRoute);
 router.use("/v1/music-studios", musicStudioRoute);
 router.use("/v1/music-library", musicLibraryRoute);
-// router.use("/v1/videos", videoRoute);
 router.use("/v1/media", mediaRoute);
-
-
-router.use("/v1/system", systemRoute);
-router.use("/v1/session-social-accounts", socialAccountRoute);
+router.use("/v1/ingestion-schedules", ingestionScheduleRoute);
 
 export default router;

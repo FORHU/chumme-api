@@ -58,6 +58,7 @@ export default class YouTubeService {
   static async searchVideos(
     query: string,
     maxResults: number = 5,
+    regionCode?: string,
   ): Promise<youtube_v3.Schema$SearchResult[]> {
     const youtube = this.getYouTubeClient();
 
@@ -67,6 +68,7 @@ export default class YouTubeService {
         q: query,
         type: ["video"],
         maxResults,
+        regionCode,
       });
 
       return response.data.items || [];
@@ -87,7 +89,7 @@ export default class YouTubeService {
 
     try {
       const response = await youtube.channels.list({
-        part: ["snippet", "contentDetails", "statistics"],
+        part: ["snippet", "contentDetails", "statistics", "brandingSettings"],
         id: params.channelId ? [params.channelId] : undefined,
         forHandle: params.handle,
       });
@@ -124,6 +126,58 @@ export default class YouTubeService {
       };
     } catch (error) {
       console.error("Error fetching YouTube playlist items:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get the primary channel of the authenticated user
+   */
+  static async getMyChannel(
+    accessToken: string,
+  ): Promise<youtube_v3.Schema$Channel | null> {
+    // Note: To use OAuth token, we need a separate client instance or use the auth field
+    const oauth2Client = new google.auth.OAuth2();
+    oauth2Client.setCredentials({ access_token: accessToken });
+
+    const youtube = google.youtube({
+      version: "v3",
+      auth: oauth2Client,
+    });
+
+    try {
+      const response = await youtube.channels.list({
+        part: ["snippet", "contentDetails", "statistics", "brandingSettings"],
+        mine: true,
+      });
+
+      return response.data.items?.[0] || null;
+    } catch (error) {
+      console.error("Error fetching YouTube 'mine' channel:", error);
+      return null;
+    }
+  }
+
+  /**
+   * Get comment threads for a video
+   */
+  static async getCommentThreads(
+    videoId: string,
+    maxResults: number = 20,
+  ): Promise<youtube_v3.Schema$CommentThread[]> {
+    const youtube = this.getYouTubeClient();
+
+    try {
+      const response = await youtube.commentThreads.list({
+        part: ["snippet"],
+        videoId: videoId,
+        maxResults,
+        order: "relevance", // Get top comments
+      });
+
+      return response.data.items || [];
+    } catch (error) {
+      console.error("Error fetching YouTube comment threads:", error);
       throw error;
     }
   }

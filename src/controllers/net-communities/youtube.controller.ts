@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
-import YouTubeService from "../services/youtube.service";
-import SocialFeedSvc from "../services/social-feed.service";
+import YouTubeService from "../../services/net-communities/youtube.service";
+import SocialFeedSvc from "../../services/social-feed.service";
 
-import FileRepo from "../repositories/file.repository";
+import FileRepo from "../../repositories/file.repository";
 
 export default class YouTubeCtrl {
   /**
@@ -56,6 +56,7 @@ export default class YouTubeCtrl {
   static async searchVideos(req: Request, res: Response) {
     try {
       const { q, maxResults } = req.query;
+      const regionCode = req.headers["x-country-code"] as string | undefined;
 
       if (!q) {
         return res
@@ -66,6 +67,7 @@ export default class YouTubeCtrl {
       const results = await YouTubeService.searchVideos(
         q as string,
         maxResults ? parseInt(maxResults as string) : 5,
+        regionCode,
       );
 
       return res.json({
@@ -208,7 +210,6 @@ export default class YouTubeCtrl {
             contentDetails: item.contentDetails,
           },
         });
-
 
         imported.push({
           videoId,

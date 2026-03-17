@@ -30,7 +30,11 @@ export default class SocialBookmarkRepo {
             metaData: true,
             createdAt: true,
             chummeArtist: true,
-            stats: true,
+            views: true,
+            likes: true,
+            comments: true,
+            bookmarks: true,
+            score: true,
             post: {
               select: {
                 id: true,
@@ -79,6 +83,13 @@ export default class SocialBookmarkRepo {
         ...item,
         feed: {
           ...item.socialFeedItem,
+          stats: {
+            views: item.socialFeedItem?.views || 0,
+            likes: item.socialFeedItem?.likes || 0,
+            comments: item.socialFeedItem?.comments || 0,
+            bookmarks: item.socialFeedItem?.bookmarks || 0,
+            score: item.socialFeedItem?.score || 0,
+          },
           video: {
             id: item.socialFeedItem?.id,
             title: item.socialFeedItem?.title,

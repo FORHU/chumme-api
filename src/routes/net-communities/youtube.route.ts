@@ -1,5 +1,5 @@
 import express from "express";
-import YouTubeCtrl from "../controllers/youtube.controller";
+import YouTubeCtrl from "../../controllers/net-communities/youtube.controller";
 
 const router = express.Router();
 

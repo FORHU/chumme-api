@@ -97,6 +97,7 @@ export default class ChummeCategoryRepo {
             note: true,
             isAd: true,
             populationCount: true,
+            discoveryKeywords: true,
             createdAt: true,
             updatedAt: true,
             chummeVisualDesign: {
@@ -121,6 +122,7 @@ export default class ChummeCategoryRepo {
                 note: true,
                 isAd: true,
                 populationCount: true,
+                discoveryKeywords: true,
               },
             },
           },
@@ -163,6 +165,7 @@ export default class ChummeCategoryRepo {
             note: true,
             isAd: true,
             populationCount: true,
+            discoveryKeywords: true,
             createdAt: true,
             updatedAt: true,
             chummeVisualDesign: {
@@ -187,6 +190,7 @@ export default class ChummeCategoryRepo {
                 note: true,
                 isAd: true,
                 populationCount: true,
+                discoveryKeywords: true,
               },
             },
           },
@@ -302,7 +306,16 @@ export default class ChummeCategoryRepo {
         chummeCategoryId: categoryId,
         deletedAt: null,
       },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        note: true,
+        isAd: true,
+        populationCount: true,
+        chummeTraits: true,
+        discoveryKeywords: true,
+        createdAt: true,
+        updatedAt: true,
         owner: {
           select: {
             id: true,
@@ -314,8 +327,6 @@ export default class ChummeCategoryRepo {
           select: {
             id: true,
             name: true,
-          },
-          include: {
             chummeArtists: {
               select: {
                 id: true,
@@ -417,6 +428,7 @@ export default class ChummeCategoryRepo {
           note: true,
           isAd: true,
           populationCount: true,
+          discoveryKeywords: true,
           chummeTopicCategories: !isCommunities
             ? {
                 where: { deletedAt: null },
@@ -426,11 +438,13 @@ export default class ChummeCategoryRepo {
                   note: true,
                   isAd: true,
                   populationCount: true,
+                  discoveryKeywords: true,
                 },
               }
             : false,
         },
       },
+      discoveryKeywords: true,
     };
   }
 }

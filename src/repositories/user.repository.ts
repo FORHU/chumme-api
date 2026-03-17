@@ -180,4 +180,11 @@ export default class UserRepo {
       },
     });
   }
+
+  static async markOnboardingComplete(userId: string) {
+    return prisma.user.update({
+      where: { id: userId },
+      data: { onboardingCompleted: true },
+    });
+  }
 }

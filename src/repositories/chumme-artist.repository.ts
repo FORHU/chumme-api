@@ -139,3 +139,23 @@ export const upsertArtist = async (data: {
 
   return artist;
 };
+
+export const getRisingStars = async (limit: number = 10) => {
+  return prisma.chummeArtist.findMany({
+    where: {
+      isDraft: true,
+      isDeleted: false,
+    },
+    include: {
+      chummeCategories: {
+        select: { id: true, name: true }
+      },
+      socialFeedItems: {
+        where: { isDeleted: false },
+        orderBy: { score: "desc" },
+        take: 3
+      }
+    },
+    take: limit,
+  });
+};

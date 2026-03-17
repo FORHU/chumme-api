@@ -1,6 +1,8 @@
 import { OAuth2Client } from "google-auth-library";
 import axios from "axios";
-import SessionSocialAccountRepo from "../repositories/session-social-account.repository";
+import SessionSocialAccountRepo from "../../repositories/net-communities/session-social-account.repository";
+import { AutoSyncSvc } from "./ingestion/auto-sync.service";
+import { SocialPlatform } from "@prisma/client";
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 
@@ -8,7 +10,7 @@ export default class SessionSocialAccountSvc {
   /**
    * Link a Google/YouTube account to an existing user
    */
-  static async linkGoogleAccount(userId: string, idToken: string) {
+  static async linkGoogleAccount(userId: string, idToken: string, googleAccessToken?: string) {
     const client = new OAuth2Client(GOOGLE_CLIENT_ID);
 
     try {
@@ -42,9 +44,12 @@ export default class SessionSocialAccountSvc {
         userId,
         platform: "youtube",
         providerUserId: payload.sub,
-        accessToken: idToken,
+        accessToken: googleAccessToken || idToken,
         avatarUrl: payload.picture,
       });
+
+      // Trigger Auto-Sync (New)
+      AutoSyncSvc.syncLinkedAccount(userId, SocialPlatform.YOUTUBE, googleAccessToken || idToken);
 
       return { message: "Google and YouTube accounts linked successfully" };
     } catch (error: any) {
@@ -91,6 +96,9 @@ export default class SessionSocialAccountSvc {
         accessToken,
         avatarUrl: userData.picture?.data?.url,
       });
+
+      // Trigger Auto-Sync (New)
+      AutoSyncSvc.syncLinkedAccount(userId, SocialPlatform.FACEBOOK, accessToken);
 
       return { message: "Facebook and Instagram accounts linked successfully" };
     } catch (error: any) {

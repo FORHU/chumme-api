@@ -17,6 +17,7 @@ export default class MusicStudioCacheSvc {
    * Add a member to the studio cache
    */
   static async addMember(studioId: string, userId: string, userData: any) {
+    if (!this.client) return;
     const key = `${this.STUDIO_PREFIX}${studioId}:members`;
     const data = {
       ...userData,
@@ -31,6 +32,7 @@ export default class MusicStudioCacheSvc {
    * Remove a member from the studio cache
    */
   static async removeMember(studioId: string, userId: string) {
+    if (!this.client) return;
     const key = `${this.STUDIO_PREFIX}${studioId}:members`;
     await this.client.hDel(key, userId);
   }
@@ -43,6 +45,7 @@ export default class MusicStudioCacheSvc {
     userId: string,
     isConnected: boolean,
   ) {
+    if (!this.client) return;
     const key = `${this.STUDIO_PREFIX}${studioId}:members`;
     const memberJson = await this.client.hGet(key, userId);
     if (memberJson) {
@@ -57,6 +60,7 @@ export default class MusicStudioCacheSvc {
    * Get all active members in the studio
    */
   static async getMembers(studioId: string) {
+    if (!this.client) return [];
     const key = `${this.STUDIO_PREFIX}${studioId}:members`;
     const members = await this.client.hGetAll(key);
     return Object.values(members).map((m) => JSON.parse(m));
@@ -66,6 +70,7 @@ export default class MusicStudioCacheSvc {
    * Get a specific member from the studio cache
    */
   static async getMember(studioId: string, userId: string) {
+    if (!this.client) return null;
     const key = `${this.STUDIO_PREFIX}${studioId}:members`;
     const memberJson = await this.client.hGet(key, userId);
     return memberJson ? JSON.parse(memberJson) : null;
@@ -75,6 +80,7 @@ export default class MusicStudioCacheSvc {
    * Set recording state (IDLE, RECORDING, PLAYBACK)
    */
   static async setStudioState(studioId: string, state: string) {
+    if (!this.client) return;
     const key = `${this.STUDIO_PREFIX}${studioId}:state`;
     await this.client.set(key, state, { EX: this.TTL });
   }
@@ -83,6 +89,7 @@ export default class MusicStudioCacheSvc {
    * Get current studio state
    */
   static async getStudioState(studioId: string) {
+    if (!this.client) return "IDLE";
     const key = `${this.STUDIO_PREFIX}${studioId}:state`;
     return (await this.client.get(key)) || "IDLE";
   }
@@ -95,6 +102,7 @@ export default class MusicStudioCacheSvc {
     userId: string,
     userData: any,
   ) {
+    if (!this.client) return;
     const key = `${this.STUDIO_PREFIX}${studioId}:requests`;
     await this.client.hSet(
       key,
@@ -111,6 +119,7 @@ export default class MusicStudioCacheSvc {
    * Remove a singer request (after approval/rejection)
    */
   static async removeSingerRequest(studioId: string, userId: string) {
+    if (!this.client) return;
     const key = `${this.STUDIO_PREFIX}${studioId}:requests`;
     await this.client.hDel(key, userId);
   }
@@ -119,6 +128,7 @@ export default class MusicStudioCacheSvc {
    * Get all pending singer requests
    */
   static async getSingerRequests(studioId: string) {
+    if (!this.client) return [];
     const key = `${this.STUDIO_PREFIX}${studioId}:requests`;
     const requests = await this.client.hGetAll(key);
     return Object.values(requests).map((r) => JSON.parse(r));
@@ -128,6 +138,7 @@ export default class MusicStudioCacheSvc {
    * Sync lyric progress
    */
   static async setLyricIndex(studioId: string, index: number) {
+    if (!this.client) return;
     const key = `${this.STUDIO_PREFIX}${studioId}:lyric`;
     await this.client.set(key, index.toString(), { EX: this.TTL });
   }
@@ -136,6 +147,7 @@ export default class MusicStudioCacheSvc {
    * Get current lyric progress
    */
   static async getLyricIndex(studioId: string) {
+    if (!this.client) return 0;
     const key = `${this.STUDIO_PREFIX}${studioId}:lyric`;
     const index = await this.client.get(key);
     return index ? parseInt(index) : 0;
@@ -145,6 +157,7 @@ export default class MusicStudioCacheSvc {
    * Set active song for the studio
    */
   static async setActiveSong(studioId: string, musicId: string) {
+    if (!this.client) return;
     const key = `${this.STUDIO_PREFIX}${studioId}:activeSong`;
     await this.client.set(key, musicId, { EX: this.TTL });
   }
@@ -153,6 +166,7 @@ export default class MusicStudioCacheSvc {
    * Get currently active song in the studio
    */
   static async getActiveSong(studioId: string) {
+    if (!this.client) return null;
     const key = `${this.STUDIO_PREFIX}${studioId}:activeSong`;
     return await this.client.get(key);
   }
@@ -161,6 +175,7 @@ export default class MusicStudioCacheSvc {
    * Set the current active singer (for RELAYSINGING mode)
    */
   static async setCurrentSinger(studioId: string, userId: string | null) {
+    if (!this.client) return;
     const key = `${this.STUDIO_PREFIX}${studioId}:currentSinger`;
     if (userId) {
       await this.client.set(key, userId, { EX: this.TTL });
@@ -173,6 +188,7 @@ export default class MusicStudioCacheSvc {
    * Get the current active singer
    */
   static async getCurrentSinger(studioId: string) {
+    if (!this.client) return null;
     const key = `${this.STUDIO_PREFIX}${studioId}:currentSinger`;
     return await this.client.get(key);
   }
@@ -181,6 +197,7 @@ export default class MusicStudioCacheSvc {
    * Set the current active role index (0 for "All-Sing", 1+ for specific roles)
    */
   static async setCurrentRoleIndex(studioId: string, roleIndex: number | null) {
+    if (!this.client) return;
     const key = `${this.STUDIO_PREFIX}${studioId}:currentRoleIndex`;
     if (roleIndex !== null) {
       await this.client.set(key, roleIndex.toString(), { EX: this.TTL });
@@ -193,6 +210,7 @@ export default class MusicStudioCacheSvc {
    * Get the current active role index
    */
   static async getCurrentRoleIndex(studioId: string) {
+    if (!this.client) return null;
     const key = `${this.STUDIO_PREFIX}${studioId}:currentRoleIndex`;
     const index = await this.client.get(key);
     return index !== null ? parseInt(index) : null;
@@ -202,6 +220,7 @@ export default class MusicStudioCacheSvc {
    * Set max members for a studio
    */
   static async setMaxMembers(studioId: string, count: number) {
+    if (!this.client) return;
     const key = `${this.STUDIO_PREFIX}${studioId}:maxMembers`;
     await this.client.set(key, count.toString(), { EX: this.TTL });
   }
@@ -210,6 +229,7 @@ export default class MusicStudioCacheSvc {
    * Get max members for a studio (default 20)
    */
   static async getMaxMembers(studioId: string) {
+    if (!this.client) return 20;
     const key = `${this.STUDIO_PREFIX}${studioId}:maxMembers`;
     const count = await this.client.get(key);
     return count ? parseInt(count) : 20;
@@ -219,6 +239,7 @@ export default class MusicStudioCacheSvc {
    * Add a user to the performance queue
    */
   static async addToQueue(studioId: string, userId: string) {
+    if (!this.client) return;
     const key = `${this.STUDIO_PREFIX}${studioId}:queue`;
     await this.client.rPush(key, userId);
     await this.client.expire(key, this.TTL);
@@ -228,6 +249,7 @@ export default class MusicStudioCacheSvc {
    * Remove a user from the performance queue
    */
   static async removeFromQueue(studioId: string, userId: string) {
+    if (!this.client) return;
     const key = `${this.STUDIO_PREFIX}${studioId}:queue`;
     await this.client.lRem(key, 0, userId);
   }
@@ -236,6 +258,7 @@ export default class MusicStudioCacheSvc {
    * Get the current performance queue
    */
   static async getQueue(studioId: string) {
+    if (!this.client) return [];
     const key = `${this.STUDIO_PREFIX}${studioId}:queue`;
     return this.client.lRange(key, 0, -1);
   }
@@ -244,6 +267,7 @@ export default class MusicStudioCacheSvc {
    * Reorder the performance queue (atomically replace)
    */
   static async reorderQueue(studioId: string, userIds: string[]) {
+    if (!this.client) return;
     const key = `${this.STUDIO_PREFIX}${studioId}:queue`;
     await this.client
       .multi()
@@ -264,6 +288,7 @@ export default class MusicStudioCacheSvc {
    * Set the studio type (RELAYSINGING, CROWDSINGING) in Redis
    */
   static async setStudioType(studioId: string, type: MusicStudioType) {
+    if (!this.client) return;
     const key = `${this.STUDIO_PREFIX}${studioId}:type`;
     await this.client.set(key, type, { EX: this.TTL });
   }
@@ -272,6 +297,7 @@ export default class MusicStudioCacheSvc {
    * Get the studio type from Redis
    */
   static async getStudioType(studioId: string) {
+    if (!this.client) return null;
     const key = `${this.STUDIO_PREFIX}${studioId}:type`;
     return await this.client.get(key);
   }
@@ -280,6 +306,7 @@ export default class MusicStudioCacheSvc {
    * Set the studio relay mode (MANUAL, INTERVAL, PHRASING)
    */
   static async setRelayMode(studioId: string, mode: MusicRelayMode) {
+    if (!this.client) return;
     const key = `${this.STUDIO_PREFIX}${studioId}:relayMode`;
     await this.client.set(key, mode, { EX: this.TTL });
   }
@@ -288,6 +315,7 @@ export default class MusicStudioCacheSvc {
    * Get the studio relay mode
    */
   static async getRelayMode(studioId: string) {
+    if (!this.client) return "MANUAL";
     const key = `${this.STUDIO_PREFIX}${studioId}:relayMode`;
     return (await this.client.get(key)) || "MANUAL";
   }
@@ -296,6 +324,7 @@ export default class MusicStudioCacheSvc {
    * Set the relay interval (for INTERVAL mode)
    */
   static async setRelayInterval(studioId: string, interval: number) {
+    if (!this.client) return;
     const key = `${this.STUDIO_PREFIX}${studioId}:relayInterval`;
     await this.client.set(key, interval.toString(), { EX: this.TTL });
   }
@@ -304,6 +333,7 @@ export default class MusicStudioCacheSvc {
    * Get the relay interval
    */
   static async getRelayInterval(studioId: string) {
+    if (!this.client) return 1;
     const key = `${this.STUDIO_PREFIX}${studioId}:relayInterval`;
     const interval = await this.client.get(key);
     return interval ? parseInt(interval) : 1;
@@ -313,6 +343,7 @@ export default class MusicStudioCacheSvc {
    * Set the phrasing performance map (for PHRASING mode)
    */
   static async setPhrasing(studioId: string, phrasing: any[]) {
+    if (!this.client) return;
     const key = `${this.STUDIO_PREFIX}${studioId}:phrasing`;
     await this.client.set(key, JSON.stringify(phrasing), { EX: this.TTL });
   }
@@ -321,6 +352,7 @@ export default class MusicStudioCacheSvc {
    * Get the phrasing performance map
    */
   static async getPhrasing(studioId: string): Promise<any[]> {
+    if (!this.client) return [];
     const key = `${this.STUDIO_PREFIX}${studioId}:phrasing`;
     const data = await this.client.get(key);
     return data ? JSON.parse(data) : [];
@@ -332,6 +364,7 @@ export default class MusicStudioCacheSvc {
    * Limit: Max 10 songs per studio
    */
   static async addMusicToQueue(studioId: string, musicData: any) {
+    if (!this.client) return;
     const key = `${this.STUDIO_PREFIX}${studioId}:musicQueue`;
     const length = await this.client.lLen(key);
     if (length >= 10) {
@@ -346,6 +379,7 @@ export default class MusicStudioCacheSvc {
    * Returns: Array of music objects (FIFO order)
    */
   static async getMusicQueue(studioId: string) {
+    if (!this.client) return [];
     const key = `${this.STUDIO_PREFIX}${studioId}:musicQueue`;
     const queue = await this.client.lRange(key, 0, -1);
     return queue.map((item) => JSON.parse(item));
@@ -356,6 +390,7 @@ export default class MusicStudioCacheSvc {
    * Strategy: Mark as deleted (__DELETED__) then remove from list
    */
   static async removeMusicFromQueue(studioId: string, index: number) {
+    if (!this.client) return;
     const key = `${this.STUDIO_PREFIX}${studioId}:musicQueue`;
     // Mark as deleted then remove (Redis list manipulation)
     // UUID is safe unique marker
@@ -369,6 +404,7 @@ export default class MusicStudioCacheSvc {
    * Operation: LPOP (Removes and returns the first item)
    */
   static async popNextMusic(studioId: string) {
+    if (!this.client) return null;
     const key = `${this.STUDIO_PREFIX}${studioId}:musicQueue`;
     const item = await this.client.lPop(key);
     return item ? JSON.parse(item) : null;
@@ -379,6 +415,7 @@ export default class MusicStudioCacheSvc {
    * Operation: DEL key
    */
   static async clearMusicQueue(studioId: string) {
+    if (!this.client) return;
     const key = `${this.STUDIO_PREFIX}${studioId}:musicQueue`;
     await this.client.del(key);
   }
@@ -387,6 +424,7 @@ export default class MusicStudioCacheSvc {
    * Set the recording start time (server reference time)
    */
   static async setRecordingStartTime(studioId: string, timestamp: number) {
+    if (!this.client) return;
     const key = `${this.STUDIO_PREFIX}${studioId}:recordingStartTime`;
     await this.client.set(key, timestamp.toString(), { EX: this.TTL });
   }
@@ -395,6 +433,7 @@ export default class MusicStudioCacheSvc {
    * Get the recording start time
    */
   static async getRecordingStartTime(studioId: string) {
+    if (!this.client) return null;
     const key = `${this.STUDIO_PREFIX}${studioId}:recordingStartTime`;
     const time = await this.client.get(key);
     return time ? parseInt(time) : null;
@@ -404,6 +443,7 @@ export default class MusicStudioCacheSvc {
    * Set the recording end time
    */
   static async setRecordingEndTime(studioId: string, timestamp: number) {
+    if (!this.client) return;
     const key = `${this.STUDIO_PREFIX}${studioId}:recordingEndTime`;
     await this.client.set(key, timestamp.toString(), { EX: this.TTL });
   }
@@ -412,6 +452,7 @@ export default class MusicStudioCacheSvc {
    * Get the recording end time
    */
   static async getRecordingEndTime(studioId: string) {
+    if (!this.client) return null;
     const key = `${this.STUDIO_PREFIX}${studioId}:recordingEndTime`;
     const time = await this.client.get(key);
     return time ? parseInt(time) : null;
@@ -421,6 +462,7 @@ export default class MusicStudioCacheSvc {
    * Clear all session data (on studio close)
    */
   static async clearStudioSession(studioId: string) {
+    if (!this.client) return;
     const keys = [
       `${this.STUDIO_PREFIX}${studioId}:members`,
       `${this.STUDIO_PREFIX}${studioId}:state`,

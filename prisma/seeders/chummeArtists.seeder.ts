@@ -67,6 +67,7 @@ export async function seedArtists(prisma: PrismaClient) {
       genre: "All track Records",
       instagramUsername: "",
       tiktokUsername: "",
+      isDraft: true,
     },
     {
       id: "97c60f60-0d0f-408c-b5a3-fe684b1b7232",
@@ -87,6 +88,17 @@ export async function seedArtists(prisma: PrismaClient) {
       genre: "pop",
       instagramUsername: "",
       tiktokUsername: "",
+    },
+    {
+      id: "a123bc45-e89b-12d3-a456-426614174000",
+      name: "Draft Testing Artist",
+      bio: "System generated artist used solely to test isDraft=true query exclusions filters setups.",
+      imageUrl: "",
+      nationality: "Any",
+      genre: "Test",
+      instagramUsername: "",
+      tiktokUsername: "",
+      isDraft: true,
     },
   ];
 
