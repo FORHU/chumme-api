@@ -112,7 +112,7 @@ model ChummeCategory {
   chummeVisualDesignId  String?                 @unique
   keyPassword           String?
   populationCount       Int                     @default(0)
-  chummeTraits          ChummeTraits            @default(NONE)
+  chummeTrait           ChummeTraits            @default(NONE)
   socialUserDiscoveries SocialUserDiscovery[]
   ingestionTargets      SocialIngestionTarget[]
   discoveryKeywords     String[]
@@ -135,7 +135,7 @@ model ChummeSubCategory {
   isAd                  Boolean                 @default(false)
   keyPassword           String?
   populationCount       Int                     @default(0)
-  chummeTraits          ChummeTraits            @default(NONE)
+  chummeTrait           ChummeTraits            @default(NONE)
   socialUserDiscoveries SocialUserDiscovery[]
   ingestionTargets      SocialIngestionTarget[]
   discoveryKeywords     String[]
@@ -154,7 +154,7 @@ model ChummeTopicCategory {
   note                  String?
   keyPassword           String?
   isAd                  Boolean                 @default(false)
-  chummeTraits          ChummeTraits            @default(NONE)
+  chummeTrait           ChummeTraits            @default(NONE)
   populationCount       Int                     @default(0)
   createdAt             DateTime                @default(now())
   updatedAt             DateTime                @updatedAt
@@ -890,4 +890,13 @@ enum ChummeTraits {
   NONE
   COMMUNITIES
   ENTERTAINMENT
+}
+
+model SystemSetting {
+  key         String   @id
+  value       String
+  name        String?
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

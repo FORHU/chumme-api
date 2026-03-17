@@ -113,7 +113,7 @@ connectToPrisma()
           "./services/net-communities/ingestion/scheduling.service"
         );
         await SchedulingService.start();
-        console.log("Ingestion Pipeline & Scheduler initialized successfully");
+        console.log("Ingestion Pipeline initialized (Scheduler Paused)");
       } catch (error) {
         console.error("Failed to initialize Ingestion Pipeline:", error);
       }

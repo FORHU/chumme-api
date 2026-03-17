@@ -9,9 +9,7 @@ export default class ChummeCategorySvc {
     name: string;
     keyPassword?: string;
     isAd: boolean;
-    chummeTraits?: "NONE" | "COMMUNITIES" | "ENTERTAINMENT";
-
-
+    chummeTrait?: "NONE" | "COMMUNITIES" | "ENTERTAINMENT";
 
     note?: string;
     position?: any;
@@ -74,15 +72,14 @@ export default class ChummeCategorySvc {
     return ChummeCategoryRepo.getAllCategories(params);
   }
 
-
   /**
    * Get chumme category by ID
    */
   static async getCategoryById(
     id: string,
-    trait?: "COMMUNITIES" | "ENTERTAINMENT",
+    chummeTrait?: "COMMUNITIES" | "ENTERTAINMENT",
   ) {
-    const category = await ChummeCategoryRepo.getCategoryById(id, trait);
+    const category = await ChummeCategoryRepo.getCategoryById(id, chummeTrait);
     if (!category) {
       throw new Error("Category not found");
     }
@@ -99,9 +96,7 @@ export default class ChummeCategorySvc {
       name?: string;
       keyPassword?: string;
       isAd?: boolean;
-      chummeTraits?: "NONE" | "COMMUNITIES" | "ENTERTAINMENT";
-
-
+      chummeTrait?: "NONE" | "COMMUNITIES" | "ENTERTAINMENT";
 
       note?: string;
       position?: any;
@@ -240,8 +235,10 @@ export default class ChummeCategorySvc {
   /**
    * Get specialized categories based on trait
    */
-  static async getSpecializedCategories(trait: "COMMUNITIES" | "ENTERTAINMENT") {
-    return ChummeCategoryRepo.getSpecializedCategories(trait);
+  static async getSpecializedCategories(
+    chummeTrait: "COMMUNITIES" | "ENTERTAINMENT",
+  ) {
+    return ChummeCategoryRepo.getSpecializedCategories(chummeTrait);
   }
 
   /**

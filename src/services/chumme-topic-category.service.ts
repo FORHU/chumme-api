@@ -9,7 +9,7 @@ export default class ChummeTopicCategorySvc {
     chummeSubCategoryId: string;
     isAd: boolean;
     keyPassword?: string;
-    traits?: "NONE" | "COMMUNITIES" | "ENTERTAINMENT";
+    chummeTrait?: "NONE" | "COMMUNITIES" | "ENTERTAINMENT";
     note?: string;
     position?: any;
     colorSet?: any;
@@ -35,13 +35,13 @@ export default class ChummeTopicCategorySvc {
       metaData,
       tags,
       emojiIcon,
-      traits,
+      chummeTrait,
       ...rest
     } = data;
 
     return ChummeTopicCategoryRepo.createTopicCategory({
       ...rest,
-      chummeTraits: traits,
+      chummeTrait: chummeTrait,
       chummeVisualDesign: {
         position,
         colorSet,
@@ -61,10 +61,12 @@ export default class ChummeTopicCategorySvc {
   /**
    * Get all chumme topic categories
    */
-  static async getAllTopicCategories(params: {
-    subCategoryId?: string;
-    publicOnly?: boolean;
-  } = {}) {
+  static async getAllTopicCategories(
+    params: {
+      subCategoryId?: string;
+      publicOnly?: boolean;
+    } = {},
+  ) {
     return ChummeTopicCategoryRepo.getAllTopicCategories(params);
   }
 
@@ -90,7 +92,7 @@ export default class ChummeTopicCategorySvc {
       chummeSubCategoryId?: string;
       isAd?: boolean;
       keyPassword?: string;
-      traits?: "NONE" | "COMMUNITIES" | "ENTERTAINMENT";
+      chummeTrait?: "NONE" | "COMMUNITIES" | "ENTERTAINMENT";
       note?: string;
       position?: any;
       colorSet?: any;
@@ -119,13 +121,13 @@ export default class ChummeTopicCategorySvc {
       metaData,
       tags,
       emojiIcon,
-      traits,
+      chummeTrait,
       ...rest
     } = data;
 
     return ChummeTopicCategoryRepo.updateTopicCategory(id, {
       ...rest,
-      chummeTraits: traits,
+      chummeTrait: chummeTrait,
       chummeVisualDesign: {
         position,
         colorSet,

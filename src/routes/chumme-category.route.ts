@@ -10,7 +10,10 @@ router.get("/", ChummeCategoryCtrl.getAllCategories);
 // Specific named routes MUST come before /:id
 router.get("/entertainment", ChummeCategoryCtrl.getChummeEntertainment);
 router.get("/communities", ChummeCategoryCtrl.getChummeCommunities);
-router.get("/specialized/:trait", ChummeCategoryCtrl.getSpecializedCategories);
+router.get(
+  "/specialized/:chummeTrait",
+  ChummeCategoryCtrl.getSpecializedCategories,
+);
 
 // Wildcard /:id comes LAST
 router.get("/:id", ChummeCategoryCtrl.getCategoryById);

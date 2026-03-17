@@ -8,7 +8,7 @@ export default class ChummeCategoryRepo {
     name: string;
     isAd: boolean;
     keyPassword?: string;
-    chummeTraits?: "NONE" | "COMMUNITIES" | "ENTERTAINMENT";
+    chummeTrait?: "NONE" | "COMMUNITIES" | "ENTERTAINMENT";
     note?: string;
     chummeVisualDesign?: {
       position?: any;
@@ -29,7 +29,7 @@ export default class ChummeCategoryRepo {
         name: data.name,
         isAd: data.isAd,
         keyPassword: data.keyPassword || null,
-        chummeTraits: data.chummeTraits || "ENTERTAINMENT",
+        chummeTrait: data.chummeTrait,
         note: data.note || null,
         chummeVisualDesign: data.chummeVisualDesign
           ? {
@@ -72,7 +72,6 @@ export default class ChummeCategoryRepo {
       },
     });
   }
-
 
   /**
    * Get all non-deleted categories with subcategory counts
@@ -137,11 +136,11 @@ export default class ChummeCategoryRepo {
    */
   static async getCategoryById(
     id: string,
-    trait?: "COMMUNITIES" | "ENTERTAINMENT",
+    chummeTrait?: "COMMUNITIES" | "ENTERTAINMENT",
   ) {
-    const isCommunities = trait === "COMMUNITIES";
+    const isCommunities = chummeTrait === "COMMUNITIES";
 
-    if (trait) {
+    if (chummeTrait) {
       return prisma.chummeCategory.findFirst({
         where: { id, deletedAt: null },
         select: this.getSpecializedSelect(isCommunities) as any,
@@ -209,7 +208,7 @@ export default class ChummeCategoryRepo {
       name?: string;
       isAd?: boolean;
       keyPassword?: string;
-      chummeTraits?: "NONE" | "COMMUNITIES" | "ENTERTAINMENT";
+      chummeTrait?: "NONE" | "COMMUNITIES" | "ENTERTAINMENT";
       note?: string;
       chummeVisualDesign?: {
         position?: any;
@@ -234,7 +233,7 @@ export default class ChummeCategoryRepo {
         name: data.name,
         isAd: data.isAd,
         keyPassword: data.keyPassword,
-        chummeTraits: data.chummeTraits,
+        chummeTrait: data.chummeTrait,
         note: data.note === undefined ? undefined : data.note || null,
         chummeVisualDesign: data.chummeVisualDesign
           ? {
@@ -312,7 +311,7 @@ export default class ChummeCategoryRepo {
         note: true,
         isAd: true,
         populationCount: true,
-        chummeTraits: true,
+        chummeTrait: true,
         discoveryKeywords: true,
         createdAt: true,
         updatedAt: true,
@@ -381,14 +380,14 @@ export default class ChummeCategoryRepo {
    * ENTERTAINMENT: Fetch Category -> SubCategory -> TopicCategory (3 levels)
    */
   static async getSpecializedCategories(
-    trait: "COMMUNITIES" | "ENTERTAINMENT",
+    chummeTrait: "COMMUNITIES" | "ENTERTAINMENT",
   ) {
-    const isCommunities = trait === "COMMUNITIES";
+    const isCommunities = chummeTrait === "COMMUNITIES";
 
     return prisma.chummeCategory.findMany({
       where: {
         deletedAt: null,
-        chummeTraits: trait,
+        chummeTrait: chummeTrait,
       },
       select: this.getSpecializedSelect(isCommunities) as any,
       orderBy: { createdAt: "desc" },
@@ -418,7 +417,7 @@ export default class ChummeCategoryRepo {
       name: true,
       note: true,
       isAd: true,
-      chummeTraits: true,
+      chummeTrait: true,
       populationCount: true,
       chummeSubCategories: {
         where: { deletedAt: null },

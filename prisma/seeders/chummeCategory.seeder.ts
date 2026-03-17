@@ -42,7 +42,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
       tags: ["Global", "Chumme", "World Community", "Digital Nation"],
       emojiIcon: "🌍",
       keyPassword: null,
-      chummeTraits: "COMMUNITIES",
+      chummeTrait: "COMMUNITIES",
     },
     {
       id: "96b3c9bf-1077-46aa-b37d-f16f28486936",
@@ -59,7 +59,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
       tags: ["USA", "North America"],
       emojiIcon: "🇺🇸",
       keyPassword: null,
-      chummeTraits: "COMMUNITIES",
+      chummeTrait: "COMMUNITIES",
     },
     {
       id: "77a9a080-bf60-4feb-9bbd-c0727c774ebd",
@@ -76,7 +76,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
       tags: ["UK", "Europe"],
       emojiIcon: "🇬🇧",
       keyPassword: null,
-      chummeTraits: "COMMUNITIES",
+      chummeTrait: "COMMUNITIES",
     },
     {
       id: "4ed0e800-c7a6-41d8-9c1a-7463c67e9126",
@@ -93,7 +93,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
       tags: ["Japan", "Asia"],
       emojiIcon: "🇯🇵",
       keyPassword: null,
-      chummeTraits: "COMMUNITIES",
+      chummeTrait: "COMMUNITIES",
     },
     {
       id: "f7ac5ac8-5a1d-4b4f-b5c0-45eb3102bc3d",
@@ -110,7 +110,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
       tags: ["Korea", "Asia"],
       emojiIcon: "🇰🇷",
       keyPassword: null,
-      chummeTraits: "COMMUNITIES",
+      chummeTrait: "COMMUNITIES",
     },
     {
       id: "1e888904-a298-4091-bdbf-6a3206bc8ee6",
@@ -127,7 +127,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
       tags: ["Canada", "North America"],
       emojiIcon: "🇨🇦",
       keyPassword: null,
-      chummeTraits: "COMMUNITIES",
+      chummeTrait: "COMMUNITIES",
     },
     {
       id: "cbe1ffec-945b-4128-a580-4e58cd7f4b6b",
@@ -144,7 +144,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
       tags: ["Australia", "Oceania"],
       emojiIcon: "🇦🇺",
       keyPassword: null,
-      chummeTraits: "COMMUNITIES",
+      chummeTrait: "COMMUNITIES",
     },
     {
       id: "4fa52b4d-287e-4be4-a9fb-af71fefcb6d1",
@@ -161,7 +161,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
       tags: ["Brazil", "South America"],
       emojiIcon: "🇧🇷",
       keyPassword: null,
-      chummeTraits: "COMMUNITIES",
+      chummeTrait: "COMMUNITIES",
     },
     {
       id: "74043e34-6f34-4d01-beee-63a4b5348b70",
@@ -178,7 +178,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
       tags: ["Indonesia", "Asia"],
       emojiIcon: "🇮🇩",
       keyPassword: null,
-      chummeTraits: "COMMUNITIES",
+      chummeTrait: "COMMUNITIES",
     },
 
     {
@@ -196,7 +196,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
       tags: ["Philippines", "Asia"],
       emojiIcon: "🇵🇭",
       keyPassword: null,
-      chummeTraits: "COMMUNITIES",
+      chummeTrait: "COMMUNITIES",
     },
     {
       id: "2c6d44e6-33a8-4e47-8e3b-bd1fbd5fa102",
@@ -213,7 +213,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
       tags: ["India", "Asia"],
       emojiIcon: "🇮🇳",
       keyPassword: null,
-      chummeTraits: "COMMUNITIES",
+      chummeTrait: "COMMUNITIES",
     },
     {
       id: "e24d4f59-15b4-4b36-bfe3-5e3ed2c9c103",
@@ -230,7 +230,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
       tags: ["Germany", "Europe"],
       emojiIcon: "🇩🇪",
       keyPassword: null,
-      chummeTraits: "COMMUNITIES",
+      chummeTrait: "COMMUNITIES",
     },
     {
       id: "94a0ad14-b1d7-4d2b-b10d-45f8b2a4d104",
@@ -247,7 +247,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
       tags: ["France", "Europe"],
       emojiIcon: "🇫🇷",
       keyPassword: null,
-      chummeTraits: "COMMUNITIES",
+      chummeTrait: "COMMUNITIES",
     },
   ];
 
@@ -255,7 +255,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
     {
       id: "7a1c7d6c-2f45-4a9d-9c9e-5a6e7b3c11f2",
       name: "Music",
-      chummeTraits: "ENTERTAINMENT",
+      chummeTrait: "ENTERTAINMENT",
       note: "Songs, artists, bands, albums, concerts, and music culture.",
       discoveryKeywords: ["music trending", "new music releases", "billboard hot 100", "popular music videos"],
       subcategories: [
@@ -490,7 +490,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
     {
       id: "a5c9c3d8-4b33-4c92-9c6b-1a0d9e7b3333",
       name: "Basketball",
-      chummeTraits: "ENTERTAINMENT",
+      chummeTrait: "ENTERTAINMENT",
       note: "Basketball games, leagues, players, highlights, and training.",
       discoveryKeywords: ["basketball highlights", "nba news", "basketball training", "streetball"],
       subcategories: [
@@ -630,7 +630,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
     {
       id: "c5a3d8e7-6d4c-4f3b-a2e1-9b1f3d7a4444",
       name: "Volleyball",
-      chummeTraits: "ENTERTAINMENT",
+      chummeTrait: "ENTERTAINMENT",
       note: "Volleyball matches, teams, tournaments, and player skills.",
       discoveryKeywords: ["volleyball match", "haikyuu", "volleyball highlights", "beach volleyball"],
       subcategories: [
@@ -735,7 +735,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
     {
       id: "d3e4f5a6-7b8c-4d9e-af0b-1c2d3e4f5f6e",
       name: "Gaming",
-      chummeTraits: "ENTERTAINMENT",
+      chummeTrait: "ENTERTAINMENT",
       note: "Video games, streamers, esports tournaments, and gaming communities.",
       discoveryKeywords: ["video games", "gaming", "esports", "twitch", "streamers"],
       subcategories: [
@@ -805,7 +805,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
           name: categoryData.name,
           isAd: categoryData.isAd,
           keyPassword: categoryData.keyPassword || null,
-          chummeTraits: (categoryData.chummeTraits as any) || "NONE",
+          chummeTrait: (categoryData.chummeTrait as any) || "NONE",
         },
       });
 
@@ -850,7 +850,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
           name: categoryData.name,
           isAd: categoryData.isAd ?? false,
           keyPassword: categoryData.keyPassword || null,
-          chummeTraits: (categoryData.chummeTraits as any) || "NONE",
+          chummeTrait: (categoryData.chummeTrait as any) || "NONE",
           chummeVisualDesignId: design.id,
         },
       });
@@ -872,7 +872,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
         data: {
           name: category.name,
           keyPassword: category.keyPassword,
-          chummeTraits: (category.chummeTraits as any) || "NONE",
+          chummeTrait: (category.chummeTrait as any) || "NONE",
           note: category.note,
           discoveryKeywords: (category as any).discoveryKeywords || [],
         },
@@ -883,7 +883,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
           id: category.id,
           name: category.name,
           keyPassword: category.keyPassword,
-          chummeTraits: (category.chummeTraits as any) || "NONE",
+          chummeTrait: (category.chummeTrait as any) || "NONE",
           note: category.note,
           discoveryKeywords: (category as any).discoveryKeywords || [],
         },
@@ -899,7 +899,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
             name: sub.name,
             note: sub.note,
             chummeCategoryId: category.id,
-            chummeTraits: (category.chummeTraits as any) || "NONE",
+            chummeTrait: (category.chummeTrait as any) || "NONE",
             ownerId: systemUser.id,
             discoveryKeywords: (sub as any).discoveryKeywords || [],
           },
@@ -908,7 +908,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
             name: sub.name,
             note: sub.note,
             chummeCategoryId: category.id,
-            chummeTraits: (category.chummeTraits as any) || "NONE",
+            chummeTrait: (category.chummeTrait as any) || "NONE",
             ownerId: systemUser.id,
             discoveryKeywords: (sub as any).discoveryKeywords || [],
           },
@@ -923,7 +923,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
                 name: topic.name,
                 note: topic.note,
                 chummeSubCategoryId: sub.id,
-                chummeTraits: (category.chummeTraits as any) || "NONE",
+                chummeTrait: (category.chummeTrait as any) || "NONE",
                 discoveryKeywords: (topic as any).discoveryKeywords || [],
               },
               create: {
@@ -931,7 +931,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
                 name: topic.name,
                 note: topic.note,
                 chummeSubCategoryId: sub.id,
-                chummeTraits: (category.chummeTraits as any) || "NONE",
+                chummeTrait: (category.chummeTrait as any) || "NONE",
                 discoveryKeywords: (topic as any).discoveryKeywords || [],
               },
             });

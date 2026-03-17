@@ -75,7 +75,7 @@ async function main() {
   try {
     const { SchedulingService } = require("./services/net-communities/ingestion/scheduling.service");
     await SchedulingService.start();
-    logger.info("[Worker] SchedulingService started");
+    logger.info("[Worker] SchedulingService loaded (Paused for Manual Mode)");
   } catch (error) {
     logger.error("[Worker] Failed to start SchedulingService:", error);
   }

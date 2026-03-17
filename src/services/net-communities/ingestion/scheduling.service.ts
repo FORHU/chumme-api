@@ -34,6 +34,13 @@ export class SchedulingService {
   }
 
   static async processScheduledTasks(force: boolean = false): Promise<void> {
+    if (!force && !(await this.isSchedulerEnabled())) {
+      logger.info(
+        "[SchedulingService] Automatic scheduler is disabled in settings. Skipping...",
+      );
+      return;
+    }
+
     logger.info(
       "[SchedulingService] Checking for scheduled ingestion tasks...",
     );
@@ -74,13 +81,13 @@ export class SchedulingService {
         OR: [
           {
             chummeSubCategory: {
-              chummeCategory: { chummeTraits: "ENTERTAINMENT" },
+              chummeCategory: { chummeTrait: "ENTERTAINMENT" },
             },
           },
           {
             chummeTopicCategory: {
               chummeSubCategory: {
-                chummeCategory: { chummeTraits: "ENTERTAINMENT" },
+                chummeCategory: { chummeTrait: "ENTERTAINMENT" },
               },
             },
           },
@@ -201,37 +208,38 @@ export class SchedulingService {
    * Scan categories for discovery keywords and trigger scouting searches
    */
   static async processScoutTasks(): Promise<void> {
+    if (!(await this.isSchedulerEnabled())) {
+      logger.info(
+        "[SchedulingService] Scout scheduler is disabled in settings. Skipping...",
+      );
+      return;
+    }
+
     logger.info("[SchedulingService] Running category-based talent scout...");
 
     try {
-      // 1. Get all categories with keywords
-      const categories = await prisma.chummeCategory.findMany({
-        where: { discoveryKeywords: { isEmpty: false } },
-      });
-
       const subCategories = await prisma.chummeSubCategory.findMany({
         where: { discoveryKeywords: { isEmpty: false } },
+        include: { chummeCategory: true }
       });
 
       const topicCategories = await prisma.chummeTopicCategory.findMany({
         where: { discoveryKeywords: { isEmpty: false } },
+        include: { chummeSubCategory: { include: { chummeCategory: true } } }
       });
 
       const allItems = [
-        ...categories.map((c) => ({
-          id: c.id,
-          keywords: c.discoveryKeywords,
-          type: "category",
-        })),
         ...subCategories.map((s) => ({
           id: s.id,
           keywords: s.discoveryKeywords,
           type: "subCategory",
+          categoryId: s.chummeCategoryId,
         })),
         ...topicCategories.map((t) => ({
           id: t.id,
           keywords: t.discoveryKeywords,
           type: "topicCategory",
+          categoryId: t.chummeSubCategory?.chummeCategoryId,
         })),
       ];
 
@@ -256,7 +264,7 @@ export class SchedulingService {
             targetId: keyword,
             priority: 1,
             meta: {
-              categoryId: item.type === "category" ? item.id : undefined,
+              categoryId: item.categoryId,
               subCategoryId: item.type === "subCategory" ? item.id : undefined,
               topicCategoryId:
                 item.type === "topicCategory" ? item.id : undefined,
@@ -271,6 +279,24 @@ export class SchedulingService {
       }
     } catch (error) {
       logger.error("[SchedulingService] Error during scout processing:", error);
+    }
+  }
+
+  /**
+   * Check if the automatic scheduler is enabled in system settings
+   */
+  private static async isSchedulerEnabled(): Promise<boolean> {
+    try {
+      const setting = await prisma.systemSetting.findUnique({
+        where: { key: "AUTO_SCHEDULER_ENABLED" },
+      });
+      return setting ? setting.value === "true" : false; // Default to false (manual) if not set
+    } catch (error) {
+      logger.error(
+        "[SchedulingService] Error checking scheduler setting:",
+        error,
+      );
+      return false; // Safe fallback to manual
     }
   }
 

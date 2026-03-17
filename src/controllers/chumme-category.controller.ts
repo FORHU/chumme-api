@@ -8,14 +8,14 @@ export default class ChummeCategoryCtrl {
    * Create a new chumme category
    */
   static async createCategory(req: Request, res: Response) {
-    if (!req.body.traits) {
+    if (!req.body.chummeTrait) {
       return res.status(400).json({ message: "Trait is required" });
     }
     const schema = Joi.object({
       name: Joi.string().min(1).max(100).required(),
       isAd: Joi.boolean().required(),
       keyPassword: Joi.string().allow(null, "").optional(), // Null/Empty = public, otherwise private
-      traits: Joi.string()
+      chummeTrait: Joi.string()
         .valid("NONE", "COMMUNITIES", "ENTERTAINMENT")
         .optional(),
       position: Joi.object().optional(),
@@ -63,11 +63,11 @@ export default class ChummeCategoryCtrl {
    */
   static async getCategoryById(req: Request, res: Response) {
     const { id } = req.params;
-    const { trait } = req.query;
+    const { chummeTrait } = req.query;
 
     const schema = Joi.object({
       id: Joi.string().required(),
-      trait: Joi.string()
+      chummeTrait: Joi.string()
         .valid("COMMUNITIES", "ENTERTAINMENT")
         .optional()
         .allow(null, ""),
@@ -75,7 +75,7 @@ export default class ChummeCategoryCtrl {
 
     const { error } = schema.validate({
       id,
-      trait: (trait as string) || undefined,
+      chummeTrait: (chummeTrait as string) || undefined,
     });
     if (error) {
       return res.status(400).json({ message: error.message });
@@ -84,7 +84,7 @@ export default class ChummeCategoryCtrl {
     try {
       const category = await ChummeCategorySvc.getCategoryById(
         id,
-        (trait as any) || undefined,
+        (chummeTrait as any) || undefined,
       );
       return res.json({ category });
     } catch (error: any) {
@@ -101,7 +101,7 @@ export default class ChummeCategoryCtrl {
       name: Joi.string().min(1).max(100).optional(),
       isAd: Joi.boolean().optional(),
       keyPassword: Joi.string().allow(null, "").optional(), // Null/Empty = public, otherwise private
-      traits: Joi.string()
+      chummeTrait: Joi.string()
         .valid("NONE", "COMMUNITIES", "ENTERTAINMENT")
         .optional(),
 
@@ -224,17 +224,17 @@ export default class ChummeCategoryCtrl {
    * Get specialized categories based on trait (COMMUNITIES or ENTERTAINMENT)
    */
   static async getSpecializedCategories(req: Request, res: Response) {
-    const { trait } = req.params;
+    const { chummeTrait } = req.params;
 
-    if (!ChummeCategoriesConsts.CHUMME_TRAITS.includes(trait)) {
+    if (!ChummeCategoriesConsts.CHUMME_TRAITS.includes(chummeTrait)) {
       return res.status(400).json({
-        message: `Invalid trait: ${trait}`,
+        message: `Invalid trait: ${chummeTrait}`,
       });
     }
 
     try {
       const categories = await ChummeCategorySvc.getSpecializedCategories(
-        trait as any,
+        chummeTrait as any,
       );
       return res.json({ categories });
     } catch (error: any) {

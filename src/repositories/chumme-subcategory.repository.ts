@@ -10,7 +10,7 @@ export default class ChummeSubCategoryRepo {
     ownerId: string;
     isAd: boolean;
     keyPassword?: string;
-    chummeTraits?: "NONE" | "COMMUNITIES" | "ENTERTAINMENT";
+    chummeTrait?: "NONE" | "COMMUNITIES" | "ENTERTAINMENT";
     note?: string;
     chummeVisualDesign?: {
       position?: any;
@@ -31,7 +31,7 @@ export default class ChummeSubCategoryRepo {
         name: data.name,
         isAd: data.isAd || false,
         keyPassword: data.keyPassword || null,
-        chummeTraits: (data.chummeTraits as any) || "NONE",
+        chummeTrait: (data.chummeTrait as any) || "NONE",
         note: data.note || null,
         chummeCategory: { connect: { id: data.chummeCategoryId } },
         owner: data.ownerId ? { connect: { id: data.ownerId } } : undefined,
@@ -158,7 +158,7 @@ export default class ChummeSubCategoryRepo {
       chummeCategoryId?: string;
       ownerId?: string;
       isAd?: boolean;
-      chummeTraits?: "NONE" | "COMMUNITIES" | "ENTERTAINMENT";
+      chummeTrait?: "NONE" | "COMMUNITIES" | "ENTERTAINMENT";
       keyPassword?: string;
       note?: string;
       chummeVisualDesign?: {
@@ -184,7 +184,7 @@ export default class ChummeSubCategoryRepo {
         name: data.name,
         isAd: data.isAd,
         keyPassword: data.keyPassword,
-        chummeTraits: data.chummeTraits,
+        chummeTrait: data.chummeTrait,
         note: data.note === undefined ? undefined : data.note || null,
         chummeCategory: data.chummeCategoryId
           ? { connect: { id: data.chummeCategoryId } }

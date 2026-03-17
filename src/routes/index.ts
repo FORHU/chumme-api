@@ -32,6 +32,7 @@ import musicLibraryRoute from "./music-library.route";
 import mediaRoute from "./media.route";
 
 import systemRoute from "./system.route";
+import systemSettingRoute from "./system-setting.route";
 import socialAccountRoute from "./net-communities/session-social-account.route";
 import youtubeRoute from "./net-communities/youtube.route";
 import monitoringRoute from "./monitoring.route";
@@ -42,6 +43,7 @@ const router = express.Router();
 // ... existing routes
 
 router.use("/v1/system", systemRoute);
+router.use("/v1/system-settings", systemSettingRoute);
 router.use("/v1/session-social-accounts", socialAccountRoute);
 router.use("/v1/youtube", youtubeRoute);
 router.use("/v1/monitoring", monitoringRoute);

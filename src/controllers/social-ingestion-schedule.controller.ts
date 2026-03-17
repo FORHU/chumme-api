@@ -1,6 +1,9 @@
 import { Request, Response } from "express";
 import Joi from "joi";
 import * as scheduleService from "../services/social-ingestion-schedule.service";
+import { rabbitMQService } from "../utils/rabbitmq";
+import { IngestionJobType, IngestionJob } from "../listeners/ingestion.listener";
+import SocialFeedSvc from "../services/social-feed.service";
 
 export const getSchedulesByTarget = async (req: Request, res: Response) => {
   try {
@@ -102,6 +105,78 @@ export const deleteSchedule = async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       message: error.message || "Failed to delete schedule",
+    });
+  }
+};
+
+export const triggerScheduleNow = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const schedule = await scheduleService.getScheduleById(id);
+
+    if (!schedule) {
+      return res.status(404).json({
+        success: false,
+        message: "Schedule not found",
+      });
+    }
+
+    const { target } = schedule as any; // Loaded via repository findById target: true
+
+    if (!target) {
+       return res.status(404).json({
+        success: false,
+        message: "Associated Ingestion Target not found",
+      });
+    }
+
+    const job: IngestionJob = {
+      type: IngestionJobType.DISCOVERY,
+      platform: target.platform,
+      targetId: target.externalHandle,
+      priority: 3, // High priority for manual actions
+      meta: {
+        artistId: target.chummeArtistId,
+        categoryId: target.chummeCategoryId,
+        subCategoryId: target.chummeSubCategoryId,
+        topicCategoryId: target.chummeTopicCategoryId,
+        pageToken: target.nextPageToken || undefined,
+      },
+    };
+
+    await rabbitMQService.publishMessage(
+      `ingestion.${IngestionJobType.DISCOVERY}`,
+      job,
+      { priority: job.priority }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Ingestion job triggered successfully to queue",
+    });
+  } catch (error: any) {
+    console.error("Error triggering schedule:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to trigger schedule",
+    });
+  }
+};
+
+export const getSnapshots = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const snapshots = await SocialFeedSvc.getSnapshots(id);
+
+    res.status(200).json({
+      success: true,
+      data: snapshots,
+    });
+  } catch (error) {
+    console.error("Error fetching snapshots:", error);
+    res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : "Failed to fetch snapshots",
     });
   }
 };

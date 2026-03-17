@@ -1,5 +1,6 @@
 import SocialFeedRepo from "../repositories/social-feed.repository";
 import CacheUtil from "../utils/cache.util";
+import { prisma } from "../utils/prisma";
 import {
   seededShuffle,
   shuffleArray,
@@ -246,6 +247,16 @@ export default class SocialFeedSvc {
         comments: data.comments,
       } as any,
     );
+    
+    // 📸 Take a historical snapshot on every crawl ingest (Backups for Charts!)
+    await prisma.socialFeedSnapshot.create({
+      data: {
+        socialFeedId: item.id,
+        views: data.views || 0,
+        likes: data.likes || 0,
+        comments: data.comments || 0,
+      }
+    });
 
     // Clear feed cache only for new items
     if (!isUpdate) {
@@ -323,6 +334,15 @@ export default class SocialFeedSvc {
     );
 
     return allComments;
+  }
+  /**
+   * Get historical snapshots for a feed item
+   */
+  static async getSnapshots(feedItemId: string) {
+    return prisma.socialFeedSnapshot.findMany({
+      where: { socialFeedId: feedItemId },
+      orderBy: { snapshotAt: "asc" },
+    });
   }
 }
 
