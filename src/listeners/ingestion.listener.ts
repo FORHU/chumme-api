@@ -114,10 +114,14 @@ export class IngestionWorker {
         if (isChainJob) {
           const key = `chain_pending_jobs:${message.platform.toLowerCase()}`;
           try {
+            const { SchedulingService } = require("../services/net-communities/ingestion/scheduling.service");
             const count = await RedisUtil.redisClient.decr(key);
+            
+            // 🔗 Live WebSocket Update for decrement
+            await SchedulingService.broadcastStatus();
+
             if (count === 0) {
               logger.info(`[IngestionWorker] Platform ${message.platform} sync completed. triggering next step in chain.`);
-              const { SchedulingService } = require("../services/net-communities/ingestion/scheduling.service");
               await SchedulingService.triggerNextStep();
             }
           } catch (err) {

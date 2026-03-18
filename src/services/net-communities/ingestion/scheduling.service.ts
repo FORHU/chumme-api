@@ -162,6 +162,7 @@ export class SchedulingService {
         } else {
           await RedisUtil.redisClient.set(`chain_pending_jobs:${platform.toLowerCase()}`, dueTargets.length.toString());
           logger.info(`[SchedulingService] Initialized Redis tracking counter for platform ${platform} to ${dueTargets.length}`);
+          await this.broadcastStatus();
         }
       }
 
@@ -314,6 +315,57 @@ export class SchedulingService {
   }
 
   /**
+   * Broadcast light-weight live status state to Socket.IO clients
+   */
+  static async broadcastStatus(): Promise<void> {
+    const { prisma } = require("../../../utils/prisma");
+    const RedisUtil = require("../../../utils/redis.util").default;
+
+    try {
+      const activeSetting = await prisma.systemSetting.findUnique({
+        where: { key: "CHAIN_ACTIVE" },
+      });
+      const isActive = activeSetting ? activeSetting.value === "true" : false;
+
+      const chainSetting = await prisma.systemSetting.findUnique({
+        where: { key: "CRAWL_CHAIN" },
+      });
+      const chain = chainSetting ? JSON.parse(chainSetting.value) : [];
+
+      const stepSetting = await prisma.systemSetting.findUnique({
+        where: { key: "CURRENT_CHAIN_STEP" },
+      });
+      const currentStep = stepSetting ? stepSetting.value : (chain[0] || "None");
+
+      let pendingJobs = 0;
+      if (currentStep && currentStep !== "None") {
+        const platform = currentStep.toLowerCase();
+        const count = await RedisUtil.redisClient.get(`chain_pending_jobs:${platform}`);
+        pendingJobs = count ? parseInt(count, 10) : 0;
+      }
+
+      const currentIndex = chain.indexOf(currentStep);
+      const nextIndex = currentIndex + 1 >= chain.length ? 0 : currentIndex + 1;
+      const nextStep = chain.length > 0 ? chain[nextIndex] : "None";
+
+      const status = {
+        isActive,
+        currentStep,
+        nextStep,
+        chain,
+        pendingJobs: Math.max(0, pendingJobs),
+        timestamp: new Date()
+      };
+
+      if ((global as any).io) {
+         (global as any).io.emit("chain:status", status);
+      }
+    } catch (error) {
+       logger.error("[SchedulingService] Failed to broadcast status:", error);
+    }
+  }
+
+  /**
    * Advance the sequential crawling chain step index and trigger the next platform
    */
   static async triggerNextStep(): Promise<void> {
@@ -359,6 +411,8 @@ export class SchedulingService {
         update: { value: nextStep },
         create: { key: "CURRENT_CHAIN_STEP", value: nextStep },
       });
+
+      await this.broadcastStatus();
 
       // Trigger next step execution
       await this.processScheduledTasks(false, nextStep);
