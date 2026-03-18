@@ -370,6 +370,7 @@ export class IngestionWorker {
           imageUrl: item.author?.avatarUrl,
           isDraft: true,
           discoveredAt: new Date(),
+          discoveryPlatform: job.platform,
           // Link to the primary category that triggered the discovery
           ...(job.meta?.categoryId && {
             chummeCategories: {

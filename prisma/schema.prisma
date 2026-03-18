@@ -203,6 +203,7 @@ model ChummeArtist {
   isDeleted            Boolean                 @default(false)
   isDraft              Boolean                 @default(false)
   discoveredAt         DateTime?
+  discoveryPlatform    SocialPlatform?
   instagramUsername    String?
   tiktokUsername       String?
   chummeArtistPersona  ChummeArtistPersona?
@@ -278,8 +279,8 @@ model SocialUserPost {
 
 model SocialUserComment {
   id                    String              @id @default(uuid())
-  socialUserPostId      String?             // Nullable for external media comments
-  socialFeedItemId      String?             // Link to external video
+  socialUserPostId      String? // Nullable for external media comments
+  socialFeedItemId      String? // Link to external video
   userId                String
   parentSocialCommentId String?
   content               String
@@ -344,17 +345,17 @@ model SocialFeedItem {
   post                  SocialUserPost?      @relation(fields: [postId], references: [id], onDelete: Cascade)
   views                 Int                  @default(0)
 
-  blockedCountries      String[]
-  allowedCountries      String[]
-  likes                 Int                  @default(0)
-  comments              Int                  @default(0)
-  bookmarks             Int                  @default(0)
-  score                 Float                @default(0)
-  socialUserBookmark    SocialUserBookmark[]
-  socialUserViews       SocialUserView[]
-  socialFeedSnapshots   SocialFeedSnapshot[]
-  socialFeedSignals     SocialFeedSignal[]
-  socialUserComments    SocialUserComment[]
+  blockedCountries       String[]
+  allowedCountries       String[]
+  likes                  Int                      @default(0)
+  comments               Int                      @default(0)
+  bookmarks              Int                      @default(0)
+  score                  Float                    @default(0)
+  socialUserBookmark     SocialUserBookmark[]
+  socialUserViews        SocialUserView[]
+  socialFeedSnapshots    SocialFeedSnapshot[]
+  socialFeedSignals      SocialFeedSignal[]
+  socialUserComments     SocialUserComment[]
   socialFeedItemComments SocialFeedItemComment[]
 
   @@index([createdAt])
@@ -364,6 +365,8 @@ model SocialFeedItem {
   @@index([chummeSubCategoryId])
   @@index([chummeTopicCategoryId])
 }
+
+
 
 model SocialFeedSnapshot {
   id             String         @id @default(uuid())
@@ -392,18 +395,18 @@ model SocialFeedSignal {
 }
 
 model SocialFeedItemComment {
-  id               String         @id @default(uuid())
+  id               String    @id @default(uuid())
   socialFeedItemId String
   content          String
   authorName       String?
   authorAvatarUrl  String?
   authorHandle     String?
-  externalId       String?        // Original YouTube comment ID
+  externalId       String? // Original YouTube comment ID
   publishedAt      DateTime?
-  createdAt        DateTime       @default(now())
-  
-  socialFeedItem   SocialFeedItem @relation(fields: [socialFeedItemId], references: [id], onDelete: Cascade)
-  
+  createdAt        DateTime  @default(now())
+
+  socialFeedItem SocialFeedItem @relation(fields: [socialFeedItemId], references: [id], onDelete: Cascade)
+
   @@index([socialFeedItemId])
 }
 
@@ -426,26 +429,26 @@ model SocialIngestionTarget {
   chummeSubCategory     ChummeSubCategory?   @relation(fields: [chummeSubCategoryId], references: [id])
   chummeTopicCategory   ChummeTopicCategory? @relation(fields: [chummeTopicCategoryId], references: [id])
 
-  quotaLimitHitAt       DateTime?
-  nextPageToken         String?
+  quotaLimitHitAt DateTime?
+  nextPageToken   String?
 
-  schedules             SocialIngestionSchedule[]
+  schedules SocialIngestionSchedule[]
 
   @@unique([platform, externalHandle])
   @@index([chummeArtistId])
 }
 
 model SocialIngestionSchedule {
-  id                    String                @id @default(uuid())
+  id                      String   @id @default(uuid())
   socialIngestionTargetId String
-  mode                  String                @default("AUTO") // "AUTO" or "MANUAL"
-  exactTime             String?                               // e.g., "03:00" (24h format)
-  intervalHours         Int?                  @default(24)     // Backwards fallback if interval needed
-  isActive              Boolean               @default(true)
-  createdAt             DateTime              @default(now())
-  updatedAt             DateTime              @updatedAt
+  mode                    String   @default("AUTO") // "AUTO" or "MANUAL"
+  exactTime               String? // e.g., "03:00" (24h format)
+  intervalHours           Int?     @default(24) // Backwards fallback if interval needed
+  isActive                Boolean  @default(true)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
 
-  target                SocialIngestionTarget @relation(fields: [socialIngestionTargetId], references: [id], onDelete: Cascade)
+  target SocialIngestionTarget @relation(fields: [socialIngestionTargetId], references: [id], onDelete: Cascade)
 
   @@index([socialIngestionTargetId])
 }
