@@ -32,6 +32,28 @@ router.post(
   scheduleController.triggerScheduleNow,
 );
 
+// --- SEQUENTIAL CHAIN CONTROL ---
+// Skip current chain step and move to next platform
+router.post(
+  "/chain/skip",
+  authenticate,
+  scheduleController.skipChainStep,
+);
+
+// Start/Resume chain sequence manually
+router.post(
+  "/chain/start",
+  authenticate,
+  scheduleController.startChain,
+);
+
+// Get current chain status (active step, pending count, etc.)
+router.get(
+  "/chain/status",
+  authenticate,
+  scheduleController.getChainStatus,
+);
+
 // --- ANALYTICS & SNAPSHOTS ---
 // Retrieve historical performance snapshots for a specific feed item
 router.get(

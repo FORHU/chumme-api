@@ -38,8 +38,11 @@ export class WorkerMetrics {
 
   getSnapshot() {
     const memUsage = process.memoryUsage();
+    const totalJobs = this.jobsProcessed + this.jobsFailed;
+    
     return {
       uptime: Math.round((Date.now() - this.startedAt) / 1000),
+      failureRate: totalJobs > 0 ? this.jobsFailed / totalJobs : 0,
       jobs: {
         processed: this.jobsProcessed,
         failed: this.jobsFailed,
@@ -49,6 +52,7 @@ export class WorkerMetrics {
             ? Math.round(this.totalDurationMs / this.jobsProcessed)
             : 0,
       },
+      recentJobs: this.recentJobs, // 🔗 For dashboard individual results history
       system: {
         cpus: os.cpus().length,
         loadAvg1m: os.loadavg()[0].toFixed(2),

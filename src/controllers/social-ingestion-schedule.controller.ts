@@ -180,3 +180,104 @@ export const getSnapshots = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const skipChainStep = async (req: Request, res: Response) => {
+  const { prisma } = require("../utils/prisma");
+  const { SchedulingService } = require("../services/net-communities/ingestion/scheduling.service");
+  const RedisUtil = require("../utils/redis.util").default;
+
+  try {
+     const stepSetting = await prisma.systemSetting.findUnique({
+       where: { key: "CURRENT_CHAIN_STEP" },
+     });
+     
+     if (stepSetting) {
+       const platform = stepSetting.value.toLowerCase();
+       // Force counter to 0
+       await RedisUtil.redisClient.set(`chain_pending_jobs:${platform}`, "0");
+     }
+
+     // Trigger advance
+     await SchedulingService.triggerNextStep();
+
+     res.status(200).json({
+       success: true,
+       message: "Skipped current chain step successfully.",
+     });
+  } catch (error: any) {
+    console.error("Error skipping chain step:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to skip chain step",
+    });
+  }
+};
+
+export const startChain = async (req: Request, res: Response) => {
+  const { SchedulingService } = require("../services/net-communities/ingestion/scheduling.service");
+
+  try {
+     await SchedulingService.startSequentialChain();
+
+     res.status(200).json({
+       success: true,
+       message: "Chain sequence started successfully.",
+     });
+  } catch (error: any) {
+    console.error("Error starting chain:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to start chain",
+    });
+  }
+};
+
+export const getChainStatus = async (req: Request, res: Response) => {
+  const { prisma } = require("../utils/prisma");
+  const RedisUtil = require("../utils/redis.util").default;
+
+  try {
+     const activeSetting = await prisma.systemSetting.findUnique({
+       where: { key: "CHAIN_ACTIVE" },
+     });
+     const isActive = activeSetting ? activeSetting.value === "true" : false;
+
+     const chainSetting = await prisma.systemSetting.findUnique({
+       where: { key: "CRAWL_CHAIN" },
+     });
+     const chain = chainSetting ? JSON.parse(chainSetting.value) : [];
+
+     const stepSetting = await prisma.systemSetting.findUnique({
+       where: { key: "CURRENT_CHAIN_STEP" },
+     });
+     const currentStep = stepSetting ? stepSetting.value : (chain[0] || "None");
+
+     let pendingJobs = 0;
+     if (currentStep && currentStep !== "None") {
+       const platform = currentStep.toLowerCase();
+       const count = await RedisUtil.redisClient.get(`chain_pending_jobs:${platform}`);
+       pendingJobs = count ? parseInt(count, 10) : 0;
+     }
+
+     const currentIndex = chain.indexOf(currentStep);
+     const nextIndex = currentIndex + 1 >= chain.length ? 0 : currentIndex + 1;
+     const nextStep = chain.length > 0 ? chain[nextIndex] : "None";
+
+     res.status(200).json({
+       success: true,
+       data: {
+         isActive,
+         currentStep,
+         nextStep,
+         chain,
+         pendingJobs: Math.max(0, pendingJobs), // Prevent negative counts from bugs
+       },
+     });
+  } catch (error: any) {
+    console.error("Error fetching chain status:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to fetch chain status",
+    });
+  }
+};

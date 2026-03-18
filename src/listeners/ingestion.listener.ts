@@ -108,6 +108,22 @@ export class IngestionWorker {
           durationMs,
           status,
         });
+
+        // 🔗 Sequential Chaining: Decrement Counter
+        const isChainJob = [IngestionJobType.DISCOVERY, IngestionJobType.SEARCH].includes(message.type);
+        if (isChainJob) {
+          const key = `chain_pending_jobs:${message.platform.toLowerCase()}`;
+          try {
+            const count = await RedisUtil.redisClient.decr(key);
+            if (count === 0) {
+              logger.info(`[IngestionWorker] Platform ${message.platform} sync completed. triggering next step in chain.`);
+              const { SchedulingService } = require("../services/net-communities/ingestion/scheduling.service");
+              await SchedulingService.triggerNextStep();
+            }
+          } catch (err) {
+            logger.error(`[IngestionWorker] Error processing chain decrement for ${message.platform}:`, err);
+          }
+        }
       }
     } catch (error) {
       logger.error(

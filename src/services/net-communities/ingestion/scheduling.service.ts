@@ -33,7 +33,7 @@ export class SchedulingService {
     }, this.CHECK_INTERVAL_MS);
   }
 
-  static async processScheduledTasks(force: boolean = false): Promise<void> {
+  static async processScheduledTasks(force: boolean = false, platform?: string): Promise<void> {
     if (!force && !(await this.isSchedulerEnabled())) {
       logger.info(
         "[SchedulingService] Automatic scheduler is disabled in settings. Skipping...",
@@ -50,6 +50,7 @@ export class SchedulingService {
 
       const where: any = {
         isActive: true,
+        ...(platform && { platform: platform.toUpperCase() as any }),
         OR: [
           { quotaLimitHitAt: null },
           {
@@ -151,6 +152,18 @@ export class SchedulingService {
       logger.info(
         `[SchedulingService] Found ${dueTargets.length} targets due for crawling`,
       );
+
+      // 🔗 Sequential Chaining: Advance step if zero items
+      if (platform) {
+        if (dueTargets.length === 0) {
+          logger.info(`[SchedulingService] No targets due for sequential sync on ${platform}. Skipping to next step.`);
+          await this.triggerNextStep();
+          return; // Exit early since we advanced
+        } else {
+          await RedisUtil.redisClient.set(`chain_pending_jobs:${platform.toLowerCase()}`, dueTargets.length.toString());
+          logger.info(`[SchedulingService] Initialized Redis tracking counter for platform ${platform} to ${dueTargets.length}`);
+        }
+      }
 
       for (const target of dueTargets) {
         await this.queueJobForTarget(target);
@@ -297,6 +310,93 @@ export class SchedulingService {
         error,
       );
       return false; // Safe fallback to manual
+    }
+  }
+
+  /**
+   * Advance the sequential crawling chain step index and trigger the next platform
+   */
+  static async triggerNextStep(): Promise<void> {
+    const { prisma } = require("../../../utils/prisma");
+    try {
+      const activeSetting = await prisma.systemSetting.findUnique({
+        where: { key: "CHAIN_ACTIVE" },
+      });
+      if (!activeSetting || activeSetting.value !== "true") {
+        logger.info("[SchedulingService] Sequential chain inactive or paused. Skipping advancing.");
+        return;
+      }
+
+      const chainSetting = await prisma.systemSetting.findUnique({
+        where: { key: "CRAWL_CHAIN" },
+      });
+      const chain: string[] = chainSetting ? JSON.parse(chainSetting.value) : [];
+
+      if (chain.length === 0) {
+        logger.warn("[SchedulingService] CRAWL_CHAIN is empty or not found in SystemSetting.");
+        return;
+      }
+
+      const stepSetting = await prisma.systemSetting.findUnique({
+        where: { key: "CURRENT_CHAIN_STEP" },
+      });
+      const currentStep = stepSetting ? stepSetting.value : chain[0];
+      
+      let currentIndex = chain.indexOf(currentStep);
+      let nextIndex = currentIndex + 1;
+
+      if (nextIndex >= chain.length) {
+        logger.info("[SchedulingService] Reached end of sequence chain. Resetting to 0.");
+        nextIndex = 0; // Continuous loop cycling
+      }
+
+      const nextStep = chain[nextIndex];
+
+      logger.info(`[SchedulingService] Advancing chain from ${currentStep} to ${nextStep}`);
+
+      await prisma.systemSetting.upsert({
+        where: { key: "CURRENT_CHAIN_STEP" },
+        update: { value: nextStep },
+        create: { key: "CURRENT_CHAIN_STEP", value: nextStep },
+      });
+
+      // Trigger next step execution
+      await this.processScheduledTasks(false, nextStep);
+
+    } catch (error) {
+      logger.error("[SchedulingService] Error triggering next step in chain:", error);
+    }
+  }
+
+  /**
+   * Manually kick off the sequential chain from step 0
+   */
+  static async startSequentialChain(): Promise<void> {
+    const { prisma } = require("../../../utils/prisma");
+    try {
+      const chainSetting = await prisma.systemSetting.findUnique({
+        where: { key: "CRAWL_CHAIN" },
+      });
+      const chain: string[] = chainSetting ? JSON.parse(chainSetting.value) : [];
+
+      if (chain.length > 0) {
+        await prisma.systemSetting.upsert({
+          where: { key: "CURRENT_CHAIN_STEP" },
+          update: { value: chain[0] },
+          create: { key: "CURRENT_CHAIN_STEP", value: chain[0] },
+        });
+
+        await prisma.systemSetting.upsert({
+          where: { key: "CHAIN_ACTIVE" },
+          update: { value: "true" },
+          create: { key: "CHAIN_ACTIVE", value: "true" },
+        });
+
+        logger.info(`[SchedulingService] Chain started manual trigger at platform: ${chain[0]}`);
+        await this.processScheduledTasks(false, chain[0]);
+      }
+    } catch (error) {
+      logger.error("[SchedulingService] Error starting sequential chain:", error);
     }
   }
 
