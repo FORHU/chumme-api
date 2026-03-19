@@ -8,7 +8,7 @@ import { seedChummeCategories } from "./seeders/chummeCategory.seeder";
 import { seedUsers } from "./seeders/users.seeder";
 import { seedChummeArtistPersonas } from "./seeders/chummeArtistPersona.seeder";
 import { seedSocialUserDiscovery } from "./seeders/socialUserDiscovery.seeder";
-
+import { seedSystemSettings } from "./seeders/systemSettings.seeder";
 const prisma = new PrismaClient();
 
 async function main() {
@@ -25,17 +25,7 @@ async function main() {
     await seedChummeCategories(prisma);
     await seedSocialUserDiscovery(prisma);
 
-    await prisma.systemSetting.upsert({
-      where: { key: "AUTO_SCHEDULER_ENABLED" },
-      update: {},
-      create: {
-        key: "AUTO_SCHEDULER_ENABLED",
-        value: "false",
-        name: "Automatic Ingestion Scheduler",
-        description: "Enables or disables the background ingestion and scouting cron loop interval",
-      },
-    });
-    console.log("✅ Seeded SystemSettings");
+    await seedSystemSettings(prisma);
 
     console.log("🎉 All seeder modules executed successfully!");
   } catch (error) {

@@ -34,10 +34,23 @@ export class SchedulingService {
   }
 
   static async processScheduledTasks(force: boolean = false, platform?: string): Promise<void> {
-    if (!force && !(await this.isSchedulerEnabled())) {
-      logger.info(
-        "[SchedulingService] Automatic scheduler is disabled in settings. Skipping...",
-      );
+    const activeSetting = await prisma.systemSetting.findUnique({
+      where: { key: "CHAIN_ACTIVE" },
+    });
+    const isChainActive = activeSetting ? activeSetting.value === "true" : false;
+
+    if (isChainActive && !force && !platform) {
+       logger.info("[SchedulingService] Sequential chain is active. Delegating automated cron run to chain execution.");
+       await this.startSequentialChain();
+       return;
+    }
+
+    const platformSettings = await prisma.systemSetting.findMany({
+      where: { key: { endsWith: "_SCHEDULER" }, isScheduled: true }
+    });
+
+    if (!force && platformSettings.length === 0) {
+      logger.info("[SchedulingService] No platform schedulers are enabled. Skipping...");
       return;
     }
 
@@ -47,10 +60,11 @@ export class SchedulingService {
 
     try {
       const now = new Date();
+      const enabledPlatforms = platformSettings.map(s => s.key.split('_')[0]);
 
       const where: any = {
         isActive: true,
-        ...(platform && { platform: platform.toUpperCase() as any }),
+        ...(platform ? { platform: platform.toUpperCase() as any } : (!force ? { platform: { in: enabledPlatforms as any[] } } : {})),
         OR: [
           { quotaLimitHitAt: null },
           {
@@ -108,8 +122,30 @@ export class SchedulingService {
         },
       });
 
-      // Filter for precise interval or exact time check
+      // Filter for precise interval or exact time check using Platform Settings
       const dueTargets = targetsToCrawl.filter((target: any) => {
+        const platformSetting = platformSettings.find(s => s.key === `${target.platform}_SCHEDULER`);
+        
+        // Use Platform Setting if available and active
+        if (platformSetting && !force) {
+          const settingValue = platformSetting.value || "24";
+          if (settingValue.includes(":")) {
+            const [hourStr] = settingValue.split(":");
+            const schedHour = parseInt(hourStr, 10);
+            if (now.getHours() === schedHour) {
+              if (target.lastCrawledAt && now.getTime() - target.lastCrawledAt.getTime() < 1000 * 60 * 45) {
+                return false; // Throttled
+              }
+              return true;
+            }
+            return false;
+          } else {
+            const intervalHours = parseInt(settingValue, 10) || 24;
+            if (!target.lastCrawledAt) return true;
+            return (now.getTime() - target.lastCrawledAt.getTime()) / (1000 * 60 * 60) >= intervalHours;
+          }
+        }
+
         // 1. Fallback to original interval if no active schedules exist
         if (!target.schedules || target.schedules.length === 0) {
           if (!target.lastCrawledAt) return true;
@@ -118,7 +154,7 @@ export class SchedulingService {
           return hoursSinceLastCrawl >= target.crawlIntervalHours;
         }
 
-        // 2. Evaluate schedules
+        // 2. Evaluate target-specific schedules (legacy)
         return target.schedules.some((schedule: any) => {
           if (schedule.mode === "MANUAL") return false; // Skip manual override schedules in auto-loop
 
@@ -222,9 +258,13 @@ export class SchedulingService {
    * Scan categories for discovery keywords and trigger scouting searches
    */
   static async processScoutTasks(): Promise<void> {
-    if (!(await this.isSchedulerEnabled())) {
+    const platformSettings = await prisma.systemSetting.findMany({
+      where: { key: { endsWith: "_SCHEDULER" }, isScheduled: true }
+    });
+
+    if (platformSettings.length === 0) {
       logger.info(
-        "[SchedulingService] Scout scheduler is disabled in settings. Skipping...",
+        "[SchedulingService] No platform schedulers are enabled. Skipping category-based talent scout...",
       );
       return;
     }
@@ -242,7 +282,7 @@ export class SchedulingService {
         include: { chummeSubCategory: { include: { chummeCategory: true } } }
       });
 
-      const allItems = [
+      let allItems = [
         ...subCategories.map((s) => ({
           id: s.id,
           keywords: s.discoveryKeywords,
@@ -257,20 +297,47 @@ export class SchedulingService {
         })),
       ];
 
-      for (const item of allItems) {
-        // Frequency control: Only scout each category level once every 24 hours
-        const scoutKey = `scout:${item.type}:${item.id}`;
-        if (await RedisUtil.isDuplicate("discovery", scoutKey, 24 * 60 * 60)) {
-          logger.info(
-            `[SchedulingService] Skipping scout for ${item.type} [${item.id}] (already scouted in the last 24h)`,
-          );
-          continue;
-        }
+      // 🛡️ API Quota Protection: Randomize and pick top 15 items per hour 
+      logger.info(`[SchedulingService] Found ${allItems.length} total scout items. Throttling to index random order for API Quota safety...`);
+      allItems = allItems.sort(() => Math.random() - 0.5).slice(0, 15);
 
+      for (const item of allItems) {
         for (const keyword of item.keywords) {
+          // 🛡️ API Quota Protection + History: Only scout this EXACT keyword once every 24 hours
+          const lastLog = await prisma.socialScoutLog.findFirst({
+            where: {
+              type: item.type,
+              targetId: item.id,
+              keyword: keyword,
+              createdAt: {
+                gte: new Date(Date.now() - 24 * 60 * 60 * 1000), // last 24h
+              },
+            },
+          });
+
+          if (lastLog) {
+            logger.info(
+              `[SchedulingService] Skipping scout for ${item.type} [${item.id}] keyword "${keyword}" (already searched in last 24h)`
+            );
+            continue;
+          }
+
           logger.info(
             `[SchedulingService] Scouting ${item.type} [${item.id}] with keyword: "${keyword}"`,
           );
+
+          // 📝 Create History Log Execution
+          await prisma.socialScoutLog.create({
+            data: {
+              type: item.type,
+              targetId: item.id,
+              keyword: keyword,
+              platform: SocialPlatform.YOUTUBE,
+              videosFound: 10, // Default limit constant
+              chummeSubCategoryId: item.type === "subCategory" ? item.id : undefined,
+              chummeTopicCategoryId: item.type === "topicCategory" ? item.id : undefined,
+            },
+          });
 
           const job: IngestionJob = {
             type: IngestionJobType.SEARCH,
@@ -296,23 +363,7 @@ export class SchedulingService {
     }
   }
 
-  /**
-   * Check if the automatic scheduler is enabled in system settings
-   */
-  private static async isSchedulerEnabled(): Promise<boolean> {
-    try {
-      const setting = await prisma.systemSetting.findUnique({
-        where: { key: "AUTO_SCHEDULER_ENABLED" },
-      });
-      return setting ? setting.value === "true" : false; // Default to false (manual) if not set
-    } catch (error) {
-      logger.error(
-        "[SchedulingService] Error checking scheduler setting:",
-        error,
-      );
-      return false; // Safe fallback to manual
-    }
-  }
+// Obsolete isSchedulerEnabled method removed in favor of platform scheduling
 
   /**
    * Broadcast light-weight live status state to Socket.IO clients
@@ -327,10 +378,11 @@ export class SchedulingService {
       });
       const isActive = activeSetting ? activeSetting.value === "true" : false;
 
-      const chainSetting = await prisma.systemSetting.findUnique({
-        where: { key: "CRAWL_CHAIN" },
+      const platformSettings = await prisma.systemSetting.findMany({
+        where: { key: { endsWith: "_SCHEDULER" }, isScheduled: true },
+        orderBy: { order: "asc" }
       });
-      const chain = chainSetting ? JSON.parse(chainSetting.value) : [];
+      const chain = platformSettings.map((s: any) => s.key.split("_")[0]);
 
       const stepSetting = await prisma.systemSetting.findUnique({
         where: { key: "CURRENT_CHAIN_STEP" },
@@ -379,13 +431,14 @@ export class SchedulingService {
         return;
       }
 
-      const chainSetting = await prisma.systemSetting.findUnique({
-        where: { key: "CRAWL_CHAIN" },
+      const platformSettings = await prisma.systemSetting.findMany({
+        where: { key: { endsWith: "_SCHEDULER" }, isScheduled: true },
+        orderBy: { order: "asc" }
       });
-      const chain: string[] = chainSetting ? JSON.parse(chainSetting.value) : [];
+      const chain = platformSettings.map((s: any) => s.key.split("_")[0]);
 
       if (chain.length === 0) {
-        logger.warn("[SchedulingService] CRAWL_CHAIN is empty or not found in SystemSetting.");
+        logger.warn("[SchedulingService] CRAWL_CHAIN is empty or no platforms are scheduled.");
         return;
       }
 
@@ -398,8 +451,16 @@ export class SchedulingService {
       let nextIndex = currentIndex + 1;
 
       if (nextIndex >= chain.length) {
-        logger.info("[SchedulingService] Reached end of sequence chain. Resetting to 0.");
-        nextIndex = 0; // Continuous loop cycling
+        logger.info("[SchedulingService] Reached end of sequence chain. Stopping until next scheduled cycle.");
+        
+        await prisma.systemSetting.upsert({
+          where: { key: "CURRENT_CHAIN_STEP" },
+          update: { value: "None" },
+          create: { key: "CURRENT_CHAIN_STEP", value: "None" },
+        });
+
+        await this.broadcastStatus();
+        return; 
       }
 
       const nextStep = chain[nextIndex];
@@ -428,10 +489,11 @@ export class SchedulingService {
   static async startSequentialChain(): Promise<void> {
     const { prisma } = require("../../../utils/prisma");
     try {
-      const chainSetting = await prisma.systemSetting.findUnique({
-        where: { key: "CRAWL_CHAIN" },
+      const platformSettings = await prisma.systemSetting.findMany({
+        where: { key: { endsWith: "_SCHEDULER" }, isScheduled: true },
+        orderBy: { order: "asc" }
       });
-      const chain: string[] = chainSetting ? JSON.parse(chainSetting.value) : [];
+      const chain = platformSettings.map((s: any) => s.key.split("_")[0]);
 
       if (chain.length > 0) {
         await prisma.systemSetting.upsert({

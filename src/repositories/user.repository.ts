@@ -17,11 +17,17 @@ export default class UserRepo {
       },
       select: {
         id: true,
+        name: true,
         email: true,
         username: true,
         role: true,
         isActive: true,
         isDeleted: true,
+        avatar: {
+          select: {
+            fileUrl: true,
+          },
+        },
       },
     });
   }

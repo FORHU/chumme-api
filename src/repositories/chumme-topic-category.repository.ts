@@ -11,6 +11,7 @@ export default class ChummeTopicCategoryRepo {
     keyPassword?: string;
     chummeTrait?: "NONE" | "COMMUNITIES" | "ENTERTAINMENT";
     note?: string;
+    discoveryKeywords?: string[];
     chummeVisualDesign?: {
       position?: any;
       colorSet?: any;
@@ -32,6 +33,7 @@ export default class ChummeTopicCategoryRepo {
         keyPassword: data.keyPassword || null,
         chummeTrait: (data.chummeTrait as any) || "NONE",
         note: data.note || null,
+        discoveryKeywords: data.discoveryKeywords || [],
         chummeSubCategory: { connect: { id: data.chummeSubCategoryId } },
         chummeVisualDesign: data.chummeVisualDesign
           ? {
@@ -101,6 +103,7 @@ export default class ChummeTopicCategoryRepo {
       keyPassword?: string;
       chummeTrait?: "NONE" | "COMMUNITIES" | "ENTERTAINMENT";
       note?: string;
+      discoveryKeywords?: string[];
       chummeVisualDesign?: {
         position?: any;
         colorSet?: any;
@@ -126,6 +129,7 @@ export default class ChummeTopicCategoryRepo {
         keyPassword: data.keyPassword,
         chummeTrait: data.chummeTrait,
         note: data.note === undefined ? undefined : data.note || null,
+        discoveryKeywords: data.discoveryKeywords,
         chummeSubCategory: data.chummeSubCategoryId
           ? { connect: { id: data.chummeSubCategoryId } }
           : undefined,

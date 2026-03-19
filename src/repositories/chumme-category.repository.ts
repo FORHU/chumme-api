@@ -10,6 +10,7 @@ export default class ChummeCategoryRepo {
     keyPassword?: string;
     chummeTrait?: "NONE" | "COMMUNITIES" | "ENTERTAINMENT";
     note?: string;
+    discoveryKeywords?: string[];
     chummeVisualDesign?: {
       position?: any;
       colorSet?: any;
@@ -31,6 +32,7 @@ export default class ChummeCategoryRepo {
         keyPassword: data.keyPassword || null,
         chummeTrait: data.chummeTrait,
         note: data.note || null,
+        discoveryKeywords: data.discoveryKeywords || [],
         chummeVisualDesign: data.chummeVisualDesign
           ? {
               create: {
@@ -52,6 +54,7 @@ export default class ChummeCategoryRepo {
     ownerId: string;
     isAd: boolean;
     keyPassword?: string;
+    discoveryKeywords?: string[];
     note?: string;
   }) {
     return prisma.chummeSubCategory.create({
@@ -60,6 +63,7 @@ export default class ChummeCategoryRepo {
         isAd: data.isAd || false,
         keyPassword: data.keyPassword || null,
         note: data.note || null,
+        discoveryKeywords: data.discoveryKeywords || [],
         chummeCategory: { connect: { id: data.chummeCategoryId } },
         owner: data.ownerId ? { connect: { id: data.ownerId } } : undefined,
       },
@@ -210,6 +214,7 @@ export default class ChummeCategoryRepo {
       keyPassword?: string;
       chummeTrait?: "NONE" | "COMMUNITIES" | "ENTERTAINMENT";
       note?: string;
+      discoveryKeywords?: string[];
       chummeVisualDesign?: {
         position?: any;
         colorSet?: any;
@@ -235,6 +240,7 @@ export default class ChummeCategoryRepo {
         keyPassword: data.keyPassword,
         chummeTrait: data.chummeTrait,
         note: data.note === undefined ? undefined : data.note || null,
+        discoveryKeywords: data.discoveryKeywords,
         chummeVisualDesign: data.chummeVisualDesign
           ? {
               upsert: {

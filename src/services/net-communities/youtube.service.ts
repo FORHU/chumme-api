@@ -145,6 +145,13 @@ export default class YouTubeService {
       auth: oauth2Client,
     });
 
+    // 🔒 Guard: Standard Google Access Tokens start with `ya29.`
+    // If it's a JWT (starts with `ey`), it's an idToken and will throw a 401 for `mine: true`.
+    if (!accessToken || accessToken.startsWith("ey")) {
+      console.warn("[YouTubeService] Skipping getMyChannel: Provided token is an idToken/JWT, not an OAuth Access Token.");
+      return null;
+    }
+
     try {
       const response = await youtube.channels.list({
         part: ["snippet", "contentDetails", "statistics", "brandingSettings"],

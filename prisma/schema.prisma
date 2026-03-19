@@ -146,6 +146,7 @@ model ChummeSubCategory {
   roomMessages          RoomMessage[]
   userChatRooms         RoomUserChat[]
   socialFeedItems       SocialFeedItem[]        @relation("SubCategoryFeed")
+  scoutLogs             SocialScoutLog[]
 }
 
 model ChummeTopicCategory {
@@ -167,6 +168,7 @@ model ChummeTopicCategory {
   chummeSubCategory     ChummeSubCategory       @relation(fields: [chummeSubCategoryId], references: [id])
   chummeVisualDesign    ChummeCategoryDesign?   @relation("TopicCategoryDesign", fields: [chummeVisualDesignId], references: [id])
   socialFeedItems       SocialFeedItem[]        @relation("TopicCategoryFeed")
+  scoutLogs             SocialScoutLog[]
 }
 
 model ChummeCategoryDesign {
@@ -900,6 +902,26 @@ model SystemSetting {
   value       String
   name        String?
   description String?
+  isScheduled Boolean  @default(false)
+  order       Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model SocialScoutLog {
+  id                    String               @id @default(uuid())
+  type                  String               // "subCategory" or "topicCategory"
+  targetId              String               // ID of the Sub/Topic
+  keyword               String               // The exact keyword searched
+  platform              SocialPlatform       // YOUTUBE, TIKTOK, etc.
+  videosFound           Int                  @default(0) // How many results returned
+  createdAt             DateTime             @default(now())
+  
+  chummeSubCategoryId   String?
+  chummeTopicCategoryId String?
+  chummeSubCategory     ChummeSubCategory?   @relation(fields: [chummeSubCategoryId], references: [id])
+  chummeTopicCategory   ChummeTopicCategory? @relation(fields: [chummeTopicCategoryId], references: [id])
+
+  @@index([createdAt])
+  @@index([keyword])
 }
