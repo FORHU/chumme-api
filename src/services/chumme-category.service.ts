@@ -23,6 +23,7 @@ export default class ChummeCategorySvc {
     metaData?: any;
     tags?: string[];
     emojiIcon?: string;
+    discoveryKeywords?: string[];
   }) {
     // Check if category with same name already exists (case-insensitive)
     const existingCategory = await ChummeCategoryRepo.findCategoryByName(
@@ -110,6 +111,7 @@ export default class ChummeCategorySvc {
       metaData?: any;
       tags?: string[];
       emojiIcon?: string;
+      discoveryKeywords?: string[];
     },
   ) {
     // Check if category exists

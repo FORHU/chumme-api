@@ -26,6 +26,7 @@ export default class ChummeSubCategorySvc {
     tags?: string[];
     emojiIcon?: string;
     note?: string;
+    discoveryKeywords?: string[];
   }) {
     // Verify parent category exists
     const categoryExists = await ChummeSubCategoryRepo.categoryExists(
@@ -141,6 +142,7 @@ export default class ChummeSubCategorySvc {
       ownerId?: string;
       emojiIcon?: string;
       note?: string;
+      discoveryKeywords?: string[];
     },
   ) {
     // Check if subcategory exists

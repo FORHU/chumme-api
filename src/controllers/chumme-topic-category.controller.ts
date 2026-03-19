@@ -12,7 +12,7 @@ export default class ChummeTopicCategoryCtrl {
       chummeSubCategoryId: Joi.string().uuid().required(),
       isAd: Joi.boolean().required(),
       keyPassword: Joi.string().allow(null, "").optional(),
-      traits: Joi.string().valid("NONE", "COMMUNITIES", "ENTERTAINMENT").optional(),
+      chummeTrait: Joi.string().valid("NONE", "COMMUNITIES", "ENTERTAINMENT").optional(),
       position: Joi.object().optional(),
       colorSet: Joi.object().optional(),
       sizeSet: Joi.object().optional(),
@@ -25,7 +25,9 @@ export default class ChummeTopicCategoryCtrl {
       tags: Joi.array().items(Joi.string()).optional(),
       emojiIcon: Joi.string().allow("").optional(),
       note: Joi.string().max(500).optional(),
+      discoveryKeywords: Joi.array().items(Joi.string()).optional(),
     });
+
 
     const { error, value } = schema.validate(req.body);
     if (error) {
@@ -84,7 +86,7 @@ export default class ChummeTopicCategoryCtrl {
       chummeSubCategoryId: Joi.string().uuid().optional(),
       isAd: Joi.boolean().optional(),
       keyPassword: Joi.string().allow(null, "").optional(),
-      traits: Joi.string().valid("NONE", "COMMUNITIES", "ENTERTAINMENT").optional(),
+      chummeTrait: Joi.string().valid("NONE", "COMMUNITIES", "ENTERTAINMENT").optional(),
       position: Joi.object().optional(),
       colorSet: Joi.object().optional(),
       sizeSet: Joi.object().optional(),
@@ -97,7 +99,9 @@ export default class ChummeTopicCategoryCtrl {
       tags: Joi.array().items(Joi.string()).optional(),
       emojiIcon: Joi.string().allow("").optional(),
       note: Joi.string().max(500).optional(),
+      discoveryKeywords: Joi.array().items(Joi.string()).optional(),
     }).min(1);
+
 
     const { error, value } = schema.validate(req.body);
     if (error) {

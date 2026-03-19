@@ -30,6 +30,7 @@ export default class ChummeCategoryCtrl {
       tags: Joi.array().items(Joi.string()).optional(),
       emojiIcon: Joi.string().allow("").optional(),
       note: Joi.string().max(500).optional(),
+      discoveryKeywords: Joi.array().items(Joi.string()).optional(),
     });
 
     const { error, value } = schema.validate(req.body);
@@ -117,6 +118,7 @@ export default class ChummeCategoryCtrl {
       tags: Joi.array().items(Joi.string()).optional(),
       emojiIcon: Joi.string().allow("").optional(),
       note: Joi.string().max(500).optional(),
+      discoveryKeywords: Joi.array().items(Joi.string()).optional(),
     }).min(1);
 
     const { error, value } = schema.validate(req.body);
