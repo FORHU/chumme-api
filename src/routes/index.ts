@@ -36,6 +36,7 @@ import socialAccountRoute from "./net-communities/session-social-account.route";
 import youtubeRoute from "./net-communities/youtube.route";
 import monitoringRoute from "./monitoring.route";
 import discoveryRoute from "./discovery.route";
+import onboardingRoute from "./onboarding.route";
 
 const router = express.Router();
 
@@ -46,6 +47,7 @@ router.use("/v1/session-social-accounts", socialAccountRoute);
 router.use("/v1/youtube", youtubeRoute);
 router.use("/v1/monitoring", monitoringRoute);
 router.use("/v1/discovery", discoveryRoute);
+router.use("/v1/onboarding", onboardingRoute);
 
 router.get("/v1", (_, res) => {
   res.json({

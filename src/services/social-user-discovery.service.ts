@@ -28,7 +28,8 @@ export default class SocialUserDiscoverySvc {
       subCategoryIds?: string[];
       topicCategoryIds?: string[];
     },
+    options?: { markOnboardingComplete?: boolean },
   ) {
-    return SocialUserDiscoveryRepo.upsertDiscovery(userId, data);
+    return SocialUserDiscoveryRepo.upsertDiscovery(userId, data, options);
   }
 }
