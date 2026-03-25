@@ -25,7 +25,9 @@ export default class SocialUserDiscoveryRepo {
       subCategoryIds?: string[];
       topicCategoryIds?: string[];
     },
+    options?: { markOnboardingComplete?: boolean },
   ) {
+    const markOnboardingComplete = options?.markOnboardingComplete !== false;
     // 1. Get existing to identify changes
     const existing = await this.getByUserId(userId);
     const existingCatIds = existing?.chummeCategories.map((c) => c.id) || [];
@@ -81,11 +83,12 @@ export default class SocialUserDiscoveryRepo {
         },
       });
 
-      // Mark user onboarding as complete
-      await tx.user.update({
-        where: { id: userId },
-        data: { onboardingCompleted: true },
-      });
+      if (markOnboardingComplete) {
+        await tx.user.update({
+          where: { id: userId },
+          data: { onboardingCompleted: true },
+        });
+      }
 
       return discovery;
     });

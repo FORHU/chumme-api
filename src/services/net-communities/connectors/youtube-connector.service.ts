@@ -7,6 +7,40 @@ import {
 } from "./platform.service";
 import YouTubeService from "../youtube.service";
 
+/** Narrow shapes for YouTube Data API list responses (avoids implicit any in .map callbacks) */
+type PlaylistItemRow = {
+  snippet?: {
+    title?: string | null;
+    description?: string | null;
+    publishedAt?: string | null;
+    channelId?: string | null;
+    channelTitle?: string | null;
+    thumbnails?: { high?: { url?: string }; default?: { url?: string } };
+  };
+  contentDetails?: { videoId?: string | null };
+};
+
+type SearchResultRow = {
+  id?: { videoId?: string | null };
+  snippet?: PlaylistItemRow["snippet"];
+};
+
+type CommentThreadRow = {
+  id?: string | null;
+  snippet?: {
+    topLevelComment?: {
+      snippet?: {
+        textDisplay?: string;
+        authorDisplayName?: string;
+        authorProfileImageUrl?: string;
+        authorChannelId?: { value?: string };
+        authorChannelUrl?: string;
+        publishedAt?: string;
+      };
+    };
+  };
+};
+
 export class YouTubeConnector implements PlatformConnector {
   platform: SocialPlatform = SocialPlatform.YOUTUBE;
 
@@ -36,7 +70,7 @@ export class YouTubeConnector implements PlatformConnector {
       pageToken,
     );
     return {
-      items: result.items.map((item) =>
+      items: (result.items as any[]).map((item) =>
         this.mapPlaylistVideoToGenericItem(item),
       ),
       nextPageToken: result.nextPageToken ?? undefined,
@@ -50,7 +84,9 @@ export class YouTubeConnector implements PlatformConnector {
   ): Promise<GenericContentItem[]> {
     const results = await YouTubeService.searchVideos(query, limit, regionCode);
     // Search results are snippets only, might need full details for stats
-    return results.map((item) => this.mapSearchToGenericItem(item));
+    return (results as any[]).map((item) =>
+      this.mapSearchToGenericItem(item),
+    );
   }
 
   async getChannelMetadata(channelId: string): Promise<any> {
@@ -89,48 +125,50 @@ export class YouTubeConnector implements PlatformConnector {
     };
   }
 
-  private mapPlaylistVideoToGenericItem(item: any): GenericContentItem {
-    const videoId = item.contentDetails?.videoId;
+  private mapPlaylistVideoToGenericItem(item: PlaylistItemRow): GenericContentItem {
+    const videoId = item.contentDetails?.videoId ?? "";
     return {
       id: videoId,
       platform: this.platform,
-      title: item.snippet?.title,
-      description: item.snippet?.description,
+      title: item.snippet?.title ?? undefined,
+      description: item.snippet?.description ?? undefined,
       url: `https://www.youtube.com/watch?v=${videoId}`,
       thumbnailUrl:
         item.snippet?.thumbnails?.high?.url ||
-        item.snippet?.thumbnails?.default?.url,
+        item.snippet?.thumbnails?.default?.url ||
+        undefined,
       crawledAt: new Date(),
       publishedAt: item.snippet?.publishedAt
         ? new Date(item.snippet.publishedAt)
         : undefined,
       author: {
-        id: item.snippet?.channelId,
-        name: item.snippet?.channelTitle,
+        id: item.snippet?.channelId ?? "",
+        name: item.snippet?.channelTitle ?? "",
       },
       stats: {}, // Playlist items don't include stats, need a separate job later
       metaData: item,
     };
   }
 
-  private mapSearchToGenericItem(item: any): GenericContentItem {
-    const videoId = item.id?.videoId;
+  private mapSearchToGenericItem(item: SearchResultRow): GenericContentItem {
+    const videoId = item.id?.videoId ?? "";
     return {
       id: videoId,
       platform: this.platform,
-      title: item.snippet?.title,
-      description: item.snippet?.description,
+      title: item.snippet?.title ?? undefined,
+      description: item.snippet?.description ?? undefined,
       url: `https://www.youtube.com/watch?v=${videoId}`,
       thumbnailUrl:
         item.snippet?.thumbnails?.high?.url ||
-        item.snippet?.thumbnails?.default?.url,
+        item.snippet?.thumbnails?.default?.url ||
+        undefined,
       crawledAt: new Date(),
       publishedAt: item.snippet?.publishedAt
         ? new Date(item.snippet.publishedAt)
         : undefined,
       author: {
-        id: item.snippet?.channelId,
-        name: item.snippet?.channelTitle,
+        id: item.snippet?.channelId ?? "",
+        name: item.snippet?.channelTitle ?? "",
       },
       stats: {},
       metaData: item,
@@ -139,13 +177,15 @@ export class YouTubeConnector implements PlatformConnector {
 
   async getComments(contentId: string): Promise<GenericCommentItem[]> {
     const rawComments = await YouTubeService.getCommentThreads(contentId);
-    return rawComments.map((item) => this.mapCommentToGenericItem(item));
+    return (rawComments as any[]).map((item) =>
+      this.mapCommentToGenericItem(item),
+    );
   }
 
-  private mapCommentToGenericItem(item: any): GenericCommentItem {
+  private mapCommentToGenericItem(item: CommentThreadRow): GenericCommentItem {
     const snippet = item.snippet?.topLevelComment?.snippet;
     return {
-      id: item.id,
+      id: item.id ?? "",
       content: snippet?.textDisplay || "",
       authorName: snippet?.authorDisplayName,
       authorAvatarUrl: snippet?.authorProfileImageUrl,

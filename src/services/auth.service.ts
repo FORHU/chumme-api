@@ -91,17 +91,8 @@ export default class AuthSvc {
             accessToken: data.idToken,
             avatarUrl: payload.picture,
           });
-          await SessionSessionSocialAccountRepo.upsertSocialAccount({
-            userId: user.id,
-            platform: "youtube",
-            providerUserId: payload.sub,
-            accessToken: data.idToken,
-            avatarUrl: payload.picture,
-          });
-          console.log(`[AuthSvc] Auto-linked Google/YouTube during registration for user ${user.id}`);
-          
-          // Trigger Auto-Sync (New)
-          AutoSyncSvc.syncLinkedAccount(user.id, SocialPlatform.YOUTUBE, data.idToken);
+          // YouTube platform is created only via onboarding connect-google / linkGoogleAccount (youtube.readonly), not here.
+          console.log(`[AuthSvc] Auto-linked Google during registration for user ${user.id}`);
         }
       } catch (err) {
         console.error("[AuthSvc] Failed to auto-link Google account during registration:", err);
@@ -253,7 +244,6 @@ export default class AuthSvc {
         });
         const payload = ticket.getPayload();
         if (payload && payload.email === user.email) {
-          // Link Google/YouTube
           await SessionSessionSocialAccountRepo.upsertSocialAccount({
             userId: user.id,
             platform: "google",
@@ -261,17 +251,8 @@ export default class AuthSvc {
             accessToken: idToken,
             avatarUrl: payload.picture,
           });
-          await SessionSessionSocialAccountRepo.upsertSocialAccount({
-            userId: user.id,
-            platform: "youtube",
-            providerUserId: payload.sub,
-            accessToken: idToken,
-            avatarUrl: payload.picture,
-          });
-          console.log(`[AuthSvc] Auto-linked Google/YouTube for user ${user.id}`);
-
-          // Trigger Auto-Sync (New)
-          AutoSyncSvc.syncLinkedAccount(user.id, SocialPlatform.YOUTUBE, idToken);
+          // YouTube platform is created only via onboarding connect-google / linkGoogleAccount.
+          console.log(`[AuthSvc] Auto-linked Google for user ${user.id}`);
         }
       } catch (err) {
         console.error("[AuthSvc] Failed to auto-link Google account during login:", err);
@@ -540,17 +521,9 @@ export default class AuthSvc {
         avatarUrl: payload.picture,
       });
 
-      // Also link as "youtube" context for discovery features
-      await SessionSessionSocialAccountRepo.upsertSocialAccount({
-        userId: user.id,
-        platform: "youtube",
-        providerUserId: payload.sub,
-        accessToken: idToken,
-        avatarUrl: payload.picture,
-      });
-
-      // Trigger Auto-Sync (New)
-      AutoSyncSvc.syncLinkedAccount(user.id, SocialPlatform.YOUTUBE, idToken);
+      // Do not create platform "youtube" here — that is reserved for onboarding connect-google /
+      // linkGoogleAccount (YouTube API scope + access token). Avoids showing "Google linked" on
+      // onboarding before the user completes the dedicated YouTube connect step.
 
       // Complete OAuth login flow with provider info
       return this.generateAuthResponse(

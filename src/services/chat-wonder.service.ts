@@ -8,6 +8,10 @@ import {
   getSessionId as getSessionIdWithChatWonder,
 } from "../utils/chat-wonder-api";
 import { parseChatWonderResponse } from "../utils/chat-wonder";
+import {
+  mergeYoutubeSearchFromSourceMetadata,
+  appendYouTubeSearchResultsFromSourceMetadata,
+} from "../utils/chat-wonder/source-metadata.util";
 import ChatSvc from "./chat.service";
 
 export default class ChatWonderSvc {
@@ -93,8 +97,18 @@ export default class ChatWonderSvc {
         });
         logger.info(`[CHAT.WONDER.SERVICE] ChatWonder response received`);
         finalChatResponse = chatWonderResObject?.response || "";
+        const sourceMetadata = Array.isArray(
+          chatWonderResObject?.source_metadata,
+        )
+          ? chatWonderResObject.source_metadata
+          : [];
         // Parse and normalize the response
         const parsedResponse = parseChatWonderResponse(finalChatResponse);
+        const mergedVideos =
+          await appendYouTubeSearchResultsFromSourceMetadata(
+            sourceMetadata,
+            parsedResponse.videos || [],
+          );
         // Save user message
         const chatMessage = await ChatSvc.saveUserMessage(
           inputText,
@@ -112,15 +126,16 @@ export default class ChatWonderSvc {
 
         await CacheUtil.delByPattern(`chat:list:${userId}:*`);
 
-        // Use AI-generated videos from parsed response
+        // Use AI-generated videos from parsed response + YouTube intent from source_metadata
         const { raw, ...cleanResponse } = parsedResponse;
 
         return {
           message: cleanResponse.message,
           emotion_data: cleanResponse.emotion_data,
-          videos: cleanResponse.videos || [],
+          videos: mergedVideos,
           artist: cleanResponse.artist || [],
           images: cleanResponse.images || [],
+          source_metadata: sourceMetadata,
           conversationId,
           chatMessageId: chatMessage.id,
           aiResponseId: aiResponse.id,
