@@ -6,6 +6,11 @@ import logger from "../utils/logger";
 import ChatSvc from "../services/chat.service";
 import { streamChat } from "../utils/chat-wonder-stream";
 import { parseChatWonderResponse } from "../utils/chat-wonder";
+import {
+  mergeYoutubeSearchFromSourceMetadata,
+  stripSourcesPrefix,
+  appendYouTubeSearchResultsFromSourceMetadata,
+} from "../utils/chat-wonder/source-metadata.util";
 import CacheUtil from "../utils/cache.util";
 
 export default class ChatWonderCtrl {
@@ -36,6 +41,12 @@ export default class ChatWonderCtrl {
         userId,
         conversationId,
       );
+      // Debug: see the final parsed response payload returned to the app
+      console.log("[ChatWonderCtrl.sendChat] response:", {
+        message: result?.message,
+        videosCount: result?.videos?.length ?? 0,
+        sourceMetadataCount: result?.source_metadata?.length ?? 0,
+      });
       return res.json(result);
     } catch (error) {
       next(error);
@@ -119,9 +130,38 @@ export default class ChatWonderCtrl {
                   "[CHAT-WONDER-STREAM] Stream completed, parsing and saving AI response",
                 );
 
-                // Parse the full response
-                const parsedResponse = parseChatWonderResponse(fullResponse);
+                // Strip Wonder [Sources] prefix before JSON parse; merge YouTube intent into videos
+                const { cleaned, sourceMetadata } =
+                  stripSourcesPrefix(fullResponse);
+                const parsedResponse = parseChatWonderResponse(cleaned);
+                const mergedVideos = await appendYouTubeSearchResultsFromSourceMetadata(
+                  sourceMetadata,
+                  parsedResponse.videos || [],
+                );
                 const { raw, ...cleanResponse } = parsedResponse;
+
+                // Debug: show final parsed payload (keep it lightweight)
+                console.log("[ChatWonderCtrl.streamChat.onComplete] parsed:", {
+                  message: cleanResponse?.message,
+                  videosCount: mergedVideos?.length ?? 0,
+                  sourceMetadataCount: Array.isArray(sourceMetadata)
+                    ? sourceMetadata.length
+                    : 0,
+                });
+
+                // Debug: show raw payload we received from ChatWonder (truncated)
+                const preview = (s: string | undefined, max = 1200) => {
+                  if (!s) return "";
+                  if (s.length <= max) return s;
+                  return `${s.slice(0, max)}...<truncated>`;
+                };
+                console.log("[ChatWonderCtrl.streamChat.onComplete] raw payload preview:", {
+                  fullResponseLength: typeof fullResponse === "string" ? fullResponse.length : 0,
+                  cleanedLength: typeof cleaned === "string" ? cleaned.length : 0,
+                  fullResponsePreview: preview(fullResponse),
+                  cleanedPreview: preview(cleaned),
+                  parsedRawPreview: preview(raw),
+                });
 
                 // Save AI response (parsed message)
                 const aiResponse = await ChatSvc.saveAIMessage(
@@ -139,6 +179,8 @@ export default class ChatWonderCtrl {
                   `data: ${JSON.stringify({
                     type: "complete",
                     ...cleanResponse,
+                    videos: mergedVideos,
+                    source_metadata: sourceMetadata,
                     metadata: {
                       conversationId,
                       chatMessageId: chatMessage.id,

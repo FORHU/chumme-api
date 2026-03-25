@@ -10,22 +10,61 @@ export default class SessionSocialAccountSvc {
   /**
    * Link a Google/YouTube account to an existing user
    */
-  static async linkGoogleAccount(userId: string, idToken: string, googleAccessToken?: string) {
+  static async linkGoogleAccount(
+    userId: string,
+    idToken?: string,
+    googleAccessToken?: string,
+  ) {
     const client = new OAuth2Client(GOOGLE_CLIENT_ID);
 
     try {
-      const ticket = await client.verifyIdToken({
-        idToken,
-        audience: GOOGLE_CLIENT_ID,
-      });
+      if (!idToken && !googleAccessToken) {
+        throw new Error("idToken or accessToken is required");
+      }
 
-      const payload = ticket.getPayload();
-      if (!payload || !payload.email) {
-        throw new Error("Invalid Google token payload");
+      let providerUserId = "";
+      let avatarUrl: string | undefined;
+      let email: string | undefined;
+
+      if (idToken) {
+        const ticket = await client.verifyIdToken({
+          idToken,
+          audience: GOOGLE_CLIENT_ID,
+        });
+        const payload = ticket.getPayload();
+        if (!payload || !payload.sub) {
+          throw new Error("Invalid Google token payload");
+        }
+        providerUserId = payload.sub;
+        avatarUrl = payload.picture || undefined;
+        email = payload.email || undefined;
+      } else {
+        const userInfoResponse = await axios.get(
+          "https://www.googleapis.com/oauth2/v3/userinfo",
+          {
+            headers: {
+              Authorization: `Bearer ${googleAccessToken}`,
+            },
+          },
+        );
+        const userInfo = userInfoResponse.data;
+        if (!userInfo?.sub) {
+          throw new Error("Invalid Google access token payload");
+        }
+        providerUserId = userInfo.sub;
+        avatarUrl = userInfo.picture;
+        email = userInfo.email;
+      }
+
+      if (!email) {
+        throw new Error("Email is required from Google account");
       }
 
       // Check if this social account is already linked to another user
-      const existingAccount = await SessionSocialAccountRepo.findByProviderId("google", payload.sub);
+      const existingAccount = await SessionSocialAccountRepo.findByProviderId(
+        "google",
+        providerUserId,
+      );
       if (existingAccount && existingAccount.userId !== userId) {
         throw new Error("This Google account is already linked to another user profile");
       }
@@ -34,22 +73,26 @@ export default class SessionSocialAccountSvc {
       await SessionSocialAccountRepo.upsertSocialAccount({
         userId,
         platform: "google",
-        providerUserId: payload.sub,
-        accessToken: idToken,
-        avatarUrl: payload.picture,
+        providerUserId,
+        accessToken: idToken || googleAccessToken || "",
+        avatarUrl,
       });
 
       // Upsert YouTube connection (sharable token context)
       await SessionSocialAccountRepo.upsertSocialAccount({
         userId,
         platform: "youtube",
-        providerUserId: payload.sub,
-        accessToken: googleAccessToken || idToken,
-        avatarUrl: payload.picture,
+        providerUserId,
+        accessToken: googleAccessToken || idToken || "",
+        avatarUrl,
       });
 
       // Trigger Auto-Sync (New)
-      AutoSyncSvc.syncLinkedAccount(userId, SocialPlatform.YOUTUBE, googleAccessToken || idToken);
+      AutoSyncSvc.syncLinkedAccount(
+        userId,
+        SocialPlatform.YOUTUBE,
+        googleAccessToken || idToken || "",
+      );
 
       return { message: "Google and YouTube accounts linked successfully" };
     } catch (error: any) {
