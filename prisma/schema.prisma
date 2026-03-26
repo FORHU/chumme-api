@@ -438,7 +438,7 @@ model SocialIngestionTarget {
 model SocialIngestionSchedule {
   id                    String                @id @default(uuid())
   socialIngestionTargetId String
-  mode                  String                @default("AUTO") // "AUTO" or "MANUAL"
+  mode                  String                @default("MANUAL") // "AUTO" or "MANUAL"
   exactTime             String?                               // e.g., "03:00" (24h format)
   intervalHours         Int?                  @default(24)     // Backwards fallback if interval needed
   isActive              Boolean               @default(true)
