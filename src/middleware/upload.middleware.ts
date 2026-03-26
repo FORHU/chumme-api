@@ -29,6 +29,7 @@ const fileFilter = (
     "audio/x-wav",
     "audio/mpeg3",
     "application/json",
+    "application/vnd.android.package-archive",
   ];
 
   if (allowedMimeTypes.includes(file.mimetype)) {
