@@ -257,13 +257,23 @@ export async function seedChummeCategories(prisma: PrismaClient) {
       name: "Music",
       chummeTraits: "ENTERTAINMENT",
       note: "Songs, artists, bands, albums, concerts, and music culture.",
-      discoveryKeywords: ["music trending", "new music releases", "billboard hot 100", "popular music videos"],
+      discoveryKeywords: [
+        "music trending",
+        "new music releases",
+        "billboard hot 100",
+        "popular music videos",
+      ],
       subcategories: [
         {
           id: "5e3f6d8b-21e1-4c79-91aa-0f1b23c3d4e5",
           name: "K-pop",
           note: "Popular music from South Korean artists and idol groups.",
-          discoveryKeywords: ["kpop trending", "new kpop groups", "kpop music show", "kpop debut"],
+          discoveryKeywords: [
+            "kpop trending",
+            "new kpop groups",
+            "kpop music show",
+            "kpop debut",
+          ],
           topiccategories: [
             {
               id: "0c2e1f4a-6e57-4a4e-9d1e-32e1d9f7a111",
@@ -411,7 +421,12 @@ export async function seedChummeCategories(prisma: PrismaClient) {
           id: "0d5f3c77-18c4-4f7c-8f9a-8a7d1b2c3d4e",
           name: "Rock",
           note: "Rock bands, guitar music, and live performances.",
-          discoveryKeywords: ["rock music", "rock bands", "live rock", "classic rock"],
+          discoveryKeywords: [
+            "rock music",
+            "rock bands",
+            "live rock",
+            "classic rock",
+          ],
           topiccategories: [
             {
               id: "8d94a5f1-6a22-4c8d-9b21-4c1f9d01c121",
@@ -492,13 +507,23 @@ export async function seedChummeCategories(prisma: PrismaClient) {
       name: "Basketball",
       chummeTraits: "ENTERTAINMENT",
       note: "Basketball games, leagues, players, highlights, and training.",
-      discoveryKeywords: ["basketball highlights", "nba news", "basketball training", "streetball"],
+      discoveryKeywords: [
+        "basketball highlights",
+        "nba news",
+        "basketball training",
+        "streetball",
+      ],
       subcategories: [
         {
           id: "3e5b8d1c-3d4e-49c8-bc19-2a1e4f6d7b8c",
           name: "NBA",
           note: "National Basketball Association league updates.",
-          discoveryKeywords: ["nba highlights", "lebron james", "stephen curry", "nba playoffs"],
+          discoveryKeywords: [
+            "nba highlights",
+            "lebron james",
+            "stephen curry",
+            "nba playoffs",
+          ],
           topiccategories: [
             {
               id: "4a8e9c77-64d2-4c1f-b4e1-29d5f9c3b301",
@@ -576,7 +601,11 @@ export async function seedChummeCategories(prisma: PrismaClient) {
           id: "7b2e3c4d-9f8e-41c1-bc2a-8e9d2a3f4b5c",
           name: "Street Basketball",
           note: "Pickup games and streetball culture.",
-          discoveryKeywords: ["streetball highlights", "and1 mixtape", "pickup basketball"],
+          discoveryKeywords: [
+            "streetball highlights",
+            "and1 mixtape",
+            "pickup basketball",
+          ],
           topiccategories: [
             {
               id: "f9c0b8c4-1f6c-48a2-a09b-73e4d2f8b311",
@@ -632,13 +661,22 @@ export async function seedChummeCategories(prisma: PrismaClient) {
       name: "Volleyball",
       chummeTraits: "ENTERTAINMENT",
       note: "Volleyball matches, teams, tournaments, and player skills.",
-      discoveryKeywords: ["volleyball match", "haikyuu", "volleyball highlights", "beach volleyball"],
+      discoveryKeywords: [
+        "volleyball match",
+        "haikyuu",
+        "volleyball highlights",
+        "beach volleyball",
+      ],
       subcategories: [
         {
           id: "ab7e1c2d-4f3a-49c8-bd6e-3e1c2b4f5a6d",
           name: "Indoor Volleyball",
           note: "Traditional indoor volleyball competitions.",
-          discoveryKeywords: ["indoor volleyball", "volleyball rotation", "volleyball serve"],
+          discoveryKeywords: [
+            "indoor volleyball",
+            "volleyball rotation",
+            "volleyball serve",
+          ],
           topiccategories: [
             {
               id: "ce4f2a98-5a33-4b3c-9c2a-4d9f1a7e4411",
@@ -681,7 +719,11 @@ export async function seedChummeCategories(prisma: PrismaClient) {
           id: "702b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d",
           name: "Beach Volleyball",
           note: "Volleyball played on sand courts.",
-          discoveryKeywords: ["beach volleyball", "beach volley", "sand volleyball"],
+          discoveryKeywords: [
+            "beach volleyball",
+            "beach volley",
+            "sand volleyball",
+          ],
           topiccategories: [
             {
               id: "c4a9f8c1-7a2e-4e52-b1c4-6c4d7b9a12f1",
@@ -737,7 +779,13 @@ export async function seedChummeCategories(prisma: PrismaClient) {
       name: "Gaming",
       chummeTraits: "ENTERTAINMENT",
       note: "Video games, streamers, esports tournaments, and gaming communities.",
-      discoveryKeywords: ["video games", "gaming", "esports", "twitch", "streamers"],
+      discoveryKeywords: [
+        "video games",
+        "gaming",
+        "esports",
+        "twitch",
+        "streamers",
+      ],
       subcategories: [
         {
           id: "e1f2a3b4-b5a6-4c7d-8e9f-a1b2c3d4e5f6",

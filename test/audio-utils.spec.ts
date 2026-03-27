@@ -3,6 +3,7 @@ import { describe, it } from "mocha";
 import { mixVocalsWithBacking } from "../src/utils/audio.utils";
 import logger from "../src/utils/logger";
 import fs from "fs";
+import { overlayAudioFiles } from "../src/utils/audio.utils";
 
 // Real remote audio files for testing (Crowdsinging simulation)
 const VOCALS = [
@@ -19,7 +20,6 @@ describe("Audio Mix Test", function () {
 
   it("should mix MULTIPLE vocals + backing track (Crowdsinging Simulator)", async () => {
     // 1. Download all vocal files
-    const axios = require("axios");
     logger.info(`📥 Downloading ${VOCALS.length} vocalists...`);
 
     // We pass the URLs directly to overlayAudioFiles or concatenateAudioFiles
@@ -27,7 +27,6 @@ describe("Audio Mix Test", function () {
     // However, mixVocalsWithBacking expects a BUFFER for the vocals.
 
     // So for multiple users, we first OVERLAY them into one buffer:
-    const { overlayAudioFiles } = require("../src/utils/audio.utils");
 
     logger.info("🎤 Merging vocalists into a single crowd buffer...");
     const crowdBuffer = await overlayAudioFiles(VOCALS);

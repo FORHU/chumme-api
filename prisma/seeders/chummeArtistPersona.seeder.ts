@@ -157,52 +157,62 @@ export async function seedChummeArtistPersonas(prisma: PrismaClient) {
     {
       id: "35a940e2-a66c-42c3-93c9-4345577754ee",
       filename: "blackpink-lisa.gif",
-      fileUrl: "https://d1lq91nbxprxl1.cloudfront.net/uploads/1773208184912-0d0be884409b8f53.gif",
+      fileUrl:
+        "https://d1lq91nbxprxl1.cloudfront.net/uploads/1773208184912-0d0be884409b8f53.gif",
     },
     {
       id: "1831150d-9aa1-4948-890e-5e7d3fa98d0f",
       filename: "blackpink-lisa-intro.mp3",
-      fileUrl: "https://d1lq91nbxprxl1.cloudfront.net/uploads/1773208238614-ef54338368b2f419.mp3",
+      fileUrl:
+        "https://d1lq91nbxprxl1.cloudfront.net/uploads/1773208238614-ef54338368b2f419.mp3",
     },
     {
       id: "1744a3af-6068-4544-9928-32a47e9d3eb5",
       filename: "blackpink-jennie.gif",
-      fileUrl: "https://d1lq91nbxprxl1.cloudfront.net/uploads/1773207896846-9d084f44d0ef7eed.gif",
+      fileUrl:
+        "https://d1lq91nbxprxl1.cloudfront.net/uploads/1773207896846-9d084f44d0ef7eed.gif",
     },
     {
       id: "0ad41eb8-139e-46aa-9f24-1b76fe9d6c88",
       filename: "blackpink-jennie-intro.mp3",
-      fileUrl: "https://d1lq91nbxprxl1.cloudfront.net/uploads/1773208015160-3ba6a93a668fb881.mp3",
+      fileUrl:
+        "https://d1lq91nbxprxl1.cloudfront.net/uploads/1773208015160-3ba6a93a668fb881.mp3",
     },
     {
       id: "f7255fda-46fd-4566-98f2-768f09fab84b",
       filename: "blackpink-rose.gif",
-      fileUrl: "https://d1lq91nbxprxl1.cloudfront.net/uploads/1773208309450-6f0050bd70a03fd3.gif",
+      fileUrl:
+        "https://d1lq91nbxprxl1.cloudfront.net/uploads/1773208309450-6f0050bd70a03fd3.gif",
     },
     {
       id: "37081a88-cfc7-4089-83c4-f1dbf48b980c",
       filename: "blackpink-rose-intro.mp3",
-      fileUrl: "https://d1lq91nbxprxl1.cloudfront.net/uploads/1773208404929-928bcbf471061227.mp3",
+      fileUrl:
+        "https://d1lq91nbxprxl1.cloudfront.net/uploads/1773208404929-928bcbf471061227.mp3",
     },
     {
       id: "dd84583a-212f-4ef4-b3e3-9bfb48c59b54",
       filename: "blackpink-rose.mp4",
-      fileUrl: "https://d1lq91nbxprxl1.cloudfront.net/uploads/1773208457346-cf7061b7fa1873b5.mp4",
+      fileUrl:
+        "https://d1lq91nbxprxl1.cloudfront.net/uploads/1773208457346-cf7061b7fa1873b5.mp4",
     },
     {
       id: "f11d3f7d-2f54-4767-9762-9ede453120a4",
       filename: "blackpink-jisoo.gif",
-      fileUrl: "https://d1lq91nbxprxl1.cloudfront.net/uploads/1773208592508-a4bcaf6b56001f65.gif",
+      fileUrl:
+        "https://d1lq91nbxprxl1.cloudfront.net/uploads/1773208592508-a4bcaf6b56001f65.gif",
     },
     {
       id: "89c35e65-1a2a-42ba-bac9-ee2576286570",
       filename: "blackpink-jisoo-intro.mp3",
-      fileUrl: "https://d1lq91nbxprxl1.cloudfront.net/uploads/1773208622663-5eed3392abc56a65.mp3",
+      fileUrl:
+        "https://d1lq91nbxprxl1.cloudfront.net/uploads/1773208622663-5eed3392abc56a65.mp3",
     },
     {
       id: "f93dad3b-01ae-47a1-b48f-1e4924008d36",
       filename: "5.gif",
-      fileUrl: "https://d1lq91nbxprxl1.cloudfront.net/uploads/1773208732885-0313f0312991789e.gif",
+      fileUrl:
+        "https://d1lq91nbxprxl1.cloudfront.net/uploads/1773208732885-0313f0312991789e.gif",
     },
   ];
 
@@ -239,7 +249,9 @@ export async function seedChummeArtistPersonas(prisma: PrismaClient) {
     });
 
     if (existingByArtist && existingByArtist.id !== item.id) {
-      console.log(`🧹 Removing legacy persona for ${item.name} to apply new ID...`);
+      console.log(
+        `🧹 Removing legacy persona for ${item.name} to apply new ID...`,
+      );
       await prisma.chummeArtistPersona.delete({
         where: { id: existingByArtist.id },
       });
@@ -271,5 +283,4 @@ export async function seedChummeArtistPersonas(prisma: PrismaClient) {
 
     console.log(`✅ Seeded Persona for: ${item.name}`);
   }
-
 }

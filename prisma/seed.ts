@@ -6,7 +6,6 @@ import { seedAlbums } from "./seeders/musicAlbums.seeder";
 import { seedChummeCategories } from "./seeders/chummeCategory.seeder";
 import { seedUsers } from "./seeders/users.seeder";
 import { seedChummeArtistPersonas } from "./seeders/chummeArtistPersona.seeder";
-import { seedSocialUserDiscovery } from "./seeders/socialUserDiscovery.seeder";
 import { seedSocialIngestionSchedules } from "./seeders/socialIngestionSchedule.seeder";
 
 const prisma = new PrismaClient();
@@ -22,7 +21,6 @@ async function main() {
     await seedAlbums(prisma);
     await seedChummeArtistPersonas(prisma);
     await seedChummeCategories(prisma);
-    await seedSocialUserDiscovery(prisma);
     await seedSocialIngestionSchedules(prisma);
 
     console.log("🎉 All seeder modules executed successfully!");
