@@ -226,6 +226,7 @@ export async function seedChummeArtistPersonas(prisma: PrismaClient) {
         data: {
           name: item.name,
           bio: `Official persona for ${item.name}`,
+          platform: "YOUTUBE", // Default for persona-linked artists
         },
       });
       console.log(`✅ Created Artist: ${item.name}`);

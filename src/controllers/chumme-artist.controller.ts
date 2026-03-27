@@ -54,8 +54,8 @@ export const createArtist = async (req: Request, res: Response) => {
       imageUrl: Joi.string().uri().allow(null, ""),
       nationality: Joi.string().allow(null, ""),
       genre: Joi.string().allow(null, ""),
-      instagramUsername: Joi.string().allow(null, ""),
-      tiktokUsername: Joi.string().allow(null, ""),
+      socialPlatformUsername: Joi.string().allow(null, ""),
+      platform: Joi.string().required(),
     });
 
     const { error, value } = schema.validate(req.body);
@@ -91,8 +91,8 @@ export const updateArtist = async (req: Request, res: Response) => {
       imageUrl: Joi.string().uri().allow(null, ""),
       nationality: Joi.string().allow(null, ""),
       genre: Joi.string().allow(null, ""),
-      instagramUsername: Joi.string().allow(null, ""),
-      tiktokUsername: Joi.string().allow(null, ""),
+      socialPlatformUsername: Joi.string().allow(null, ""),
+      platform: Joi.string(),
     }).min(1);
 
     const { error, value } = schema.validate(req.body);

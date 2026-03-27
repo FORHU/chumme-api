@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import SocialFeedRepo from "../repositories/social-feed.repository";
 import * as ArtistRepo from "../repositories/chumme-artist.repository";
 import RankingService from "../services/net-communities/ingestion/ranking.service";
+import { SchedulingService } from "../services/net-communities/ingestion/scheduling.service";
 import logger from "../utils/logger";
 
 export default class DiscoveryController {
@@ -54,6 +55,28 @@ export default class DiscoveryController {
         message: `Ranking calculation completed for ${count} items`,
       });
     } catch (error: any) {
+      return res.status(500).json({ message: error.message || "Internal server error" });
+    }
+  }
+
+  /**
+   * Manually trigger a full video crawl and scouting process (Admin only)
+   */
+  static async triggerCrawl(req: Request, res: Response) {
+    try {
+      logger.info("[DiscoveryController] Manually triggering full video crawl...");
+      
+      // 1. Process scheduled ingestion targets (forced)
+      await SchedulingService.processScheduledTasks(true);
+      
+      // 2. Process category scouting searches (forced)
+      await SchedulingService.processScoutTasks(true);
+
+      return res.json({
+        message: "Full video crawl and scouting process triggered successfully",
+      });
+    } catch (error: any) {
+      logger.error("[DiscoveryController] Error triggering manual crawl:", error);
       return res.status(500).json({ message: error.message || "Internal server error" });
     }
   }

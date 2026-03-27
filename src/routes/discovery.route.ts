@@ -19,6 +19,10 @@ router.get("/rising-stars", DiscoveryCtrl.getRisingStars);
  * @route POST /v1/discovery/calculate-scores
  * @desc Manually trigger growth score calculation
  */
-router.post("/calculate-scores", DiscoveryCtrl.triggerRankingCalculation);
+/**
+ * @route POST /v1/discovery/trigger-crawl
+ * @desc Manually trigger full video crawl and scouting
+ */
+router.post("/trigger-crawl", DiscoveryCtrl.triggerCrawl);
 
 export default router;

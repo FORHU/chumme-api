@@ -102,12 +102,12 @@ export class SchedulingService {
 
       // Filter for precise interval or exact time check
       const dueTargets = targetsToCrawl.filter((target: any) => {
+        // If force is true, bypass all timing/interval checks
+        if (force) return true;
+
         // 1. Fallback to original interval if no active schedules exist
         if (!target.schedules || target.schedules.length === 0) {
-          if (!target.lastCrawledAt) return true;
-          const hoursSinceLastCrawl =
-            (now.getTime() - target.lastCrawledAt.getTime()) / (1000 * 60 * 60);
-          return hoursSinceLastCrawl >= target.crawlIntervalHours;
+          return false; // Skip by default if no explicit schedule record exists
         }
 
         // 2. Evaluate schedules
@@ -200,7 +200,7 @@ export class SchedulingService {
   /**
    * Scan categories for discovery keywords and trigger scouting searches
    */
-  static async processScoutTasks(): Promise<void> {
+  static async processScoutTasks(force: boolean = false): Promise<void> {
     logger.info("[SchedulingService] Running category-based talent scout...");
 
     try {
@@ -237,8 +237,9 @@ export class SchedulingService {
 
       for (const item of allItems) {
         // Frequency control: Only scout each category level once every 24 hours
+        // If force is true, bypass this check
         const scoutKey = `scout:${item.type}:${item.id}`;
-        if (await RedisUtil.isDuplicate("discovery", scoutKey, 24 * 60 * 60)) {
+        if (!force && await RedisUtil.isDuplicate("discovery", scoutKey, 24 * 60 * 60)) {
           logger.info(
             `[SchedulingService] Skipping scout for ${item.type} [${item.id}] (already scouted in the last 24h)`,
           );
