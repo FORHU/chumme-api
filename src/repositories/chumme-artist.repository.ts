@@ -10,6 +10,8 @@ export const getAllArtists = async () => {
       name: true,
       bio: true,
       imageUrl: true,
+      socialPlatformUsername: true,
+      platform: true,
       chummeCategories: {
         select: {
           id: true,
@@ -63,6 +65,8 @@ export const findById = async (id: string) => {
       name: true,
       bio: true,
       imageUrl: true,
+      socialPlatformUsername: true,
+      platform: true,
       chummeCategories: {
         select: {
           id: true,
@@ -79,8 +83,8 @@ export const create = async (data: {
   imageUrl?: string | null;
   nationality?: string | null;
   genre?: string | null;
-  instagramUsername?: string | null;
-  tiktokUsername?: string | null;
+  socialPlatformUsername?: string | null;
+  platform: string;
 }) => {
   return prisma.chummeArtist.create({
     data,
@@ -95,8 +99,8 @@ export const update = async (
     imageUrl?: string | null;
     nationality?: string | null;
     genre?: string | null;
-    instagramUsername?: string | null;
-    tiktokUsername?: string | null;
+    socialPlatformUsername?: string | null;
+    platform?: string;
   },
 ) => {
   return prisma.chummeArtist.update({
@@ -117,6 +121,8 @@ export const upsertArtist = async (data: {
   bio?: string | null;
   imageUrl?: string | null;
   genre?: string | null;
+  socialPlatformUsername?: string | null;
+  platform?: string;
 }) => {
   // Use upsert to handle concurrent requests gracefully
   const artist = await prisma.chummeArtist.upsert({
@@ -128,12 +134,16 @@ export const upsertArtist = async (data: {
       ...(data.bio !== undefined && { bio: data.bio }),
       ...(data.imageUrl !== undefined && { imageUrl: data.imageUrl }),
       ...(data.genre !== undefined && { genre: data.genre }),
+      ...(data.socialPlatformUsername !== undefined && { socialPlatformUsername: data.socialPlatformUsername }),
+      ...(data.platform !== undefined && { platform: data.platform }),
     },
     create: {
       name: data.name,
       bio: data.bio ?? null,
       imageUrl: data.imageUrl ?? null,
       genre: data.genre ?? null,
+      socialPlatformUsername: data.socialPlatformUsername ?? null,
+      platform: data.platform ?? "YOUTUBE", // Default to YOUTUBE if not provided
     },
   });
 
