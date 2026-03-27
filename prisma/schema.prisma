@@ -99,6 +99,7 @@ model File {
   personaVideo  ChummeArtistPersona? @relation("PersonaVideoFile")
   voiceMessages RoomMessage[]        @relation("VoiceMessageFile")
   users         User[]               @relation("UserAvatar")
+  apkRelease    ApkRelease?
 }
 
 model ChummeCategory {
@@ -896,8 +897,8 @@ model ApkRelease {
   id            String   @id @default(uuid())
   versionName   String
   buildNumber   Int
-  fileUrl       String
-  fileSize      Float
+  fileId        String   @unique
+  file          File     @relation(fields: [fileId], references: [id])
   whatIsNew     String[]
   isLatest      Boolean  @default(false)
   isStable      Boolean  @default(false)
