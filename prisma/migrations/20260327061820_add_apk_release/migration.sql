@@ -3,8 +3,7 @@ CREATE TABLE "ApkRelease" (
     "id" TEXT NOT NULL,
     "versionName" TEXT NOT NULL,
     "buildNumber" INTEGER NOT NULL,
-    "fileUrl" TEXT NOT NULL,
-    "fileSize" DOUBLE PRECISION NOT NULL,
+    "fileId" TEXT NOT NULL,
     "whatIsNew" TEXT[],
     "isLatest" BOOLEAN NOT NULL DEFAULT false,
     "isStable" BOOLEAN NOT NULL DEFAULT false,
@@ -14,3 +13,9 @@ CREATE TABLE "ApkRelease" (
 
     CONSTRAINT "ApkRelease_pkey" PRIMARY KEY ("id")
 );
+
+-- CreateIndex
+CREATE UNIQUE INDEX "ApkRelease_fileId_key" ON "ApkRelease"("fileId");
+
+-- AddForeignKey
+ALTER TABLE "ApkRelease" ADD CONSTRAINT "ApkRelease_fileId_fkey" FOREIGN KEY ("fileId") REFERENCES "File"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
