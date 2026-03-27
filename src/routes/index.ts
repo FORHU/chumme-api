@@ -30,11 +30,12 @@ import musicRecordRoute from "./music-record.route";
 import musicStudioRoute from "./music-studio.route";
 import musicLibraryRoute from "./music-library.route";
 import mediaRoute from "./media.route";
+import apkRoute from "./web/apk.route";
 
 import systemRoute from "./system.route";
 import socialAccountRoute from "./net-communities/session-social-account.route";
 import youtubeRoute from "./net-communities/youtube.route";
-import monitoringRoute from "./monitoring.route";
+import monitoringRoute from "./web/monitoring.route";
 import discoveryRoute from "./discovery.route";
 import onboardingRoute from "./onboarding.route";
 
@@ -86,5 +87,6 @@ router.use("/v1/music-studios", musicStudioRoute);
 router.use("/v1/music-library", musicLibraryRoute);
 router.use("/v1/media", mediaRoute);
 router.use("/v1/ingestion-schedules", ingestionScheduleRoute);
+router.use("/v1/apk", apkRoute);
 
 export default router;

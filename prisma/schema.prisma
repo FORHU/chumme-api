@@ -99,6 +99,7 @@ model File {
   personaVideo  ChummeArtistPersona? @relation("PersonaVideoFile")
   voiceMessages RoomMessage[]        @relation("VoiceMessageFile")
   users         User[]               @relation("UserAvatar")
+  apkRelease    ApkRelease?
 }
 
 model ChummeCategory {
@@ -890,4 +891,18 @@ enum ChummeTraits {
   NONE
   COMMUNITIES
   ENTERTAINMENT
+}
+
+model ApkRelease {
+  id            String   @id @default(uuid())
+  versionName   String
+  buildNumber   Int
+  fileId        String   @unique
+  file          File     @relation(fields: [fileId], references: [id])
+  whatIsNew     String[]
+  isLatest      Boolean  @default(false)
+  isStable      Boolean  @default(false)
+  downloadCount Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }

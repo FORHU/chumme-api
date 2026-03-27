@@ -33,6 +33,11 @@ export default class FileRepo {
     const existing = await prisma.file.findUnique({ where: { id } });
     const isUpdate = !!existing;
 
+    // Delete old S3 file if the URL is being replaced
+    if (isUpdate && existing.fileUrl && existing.fileUrl !== data.fileUrl) {
+      await S3Util.deleteFile(existing.fileUrl);
+    }
+
     const file = await prisma.file.upsert({
       where: { id },
       create: {
