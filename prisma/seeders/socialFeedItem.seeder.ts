@@ -35,7 +35,6 @@ export async function seedFeedItems(prisma: PrismaClient) {
         data: {
           postId: p.id,
           createdAt: p.createdAt,
-          stats: { create: {} }
         }
       });
     }
@@ -63,7 +62,6 @@ export async function seedFeedItems(prisma: PrismaClient) {
       await prisma.socialFeedItem.create({
         data: {
           ...video,
-          stats: { create: {} }
         }
       });
     }
