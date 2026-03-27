@@ -28,27 +28,7 @@ export default class SocialUserDiscoveryRepo {
     options?: { markOnboardingComplete?: boolean },
   ) {
     const markOnboardingComplete = options?.markOnboardingComplete !== false;
-    // 1. Get existing to identify changes
-    const existing = await this.getByUserId(userId);
-    const existingCatIds = existing?.chummeCategories.map((c) => c.id) || [];
-    const newCatIds = data.categoryIds || [];
-
-    const existingSubCatIds =
-      existing?.chummeSubCategories.map((c) => c.id) || [];
-    const newSubCatIds = data.subCategoryIds || [];
-
-    // 2. Identify additions and removals
-    const addedCats = newCatIds.filter((id) => !existingCatIds.includes(id));
-    const removedCats = existingCatIds.filter((id) => !newCatIds.includes(id));
-
-    const addedSubCats = newSubCatIds.filter(
-      (id) => !existingSubCatIds.includes(id),
-    );
-    const removedSubCats = existingSubCatIds.filter(
-      (id) => !newSubCatIds.includes(id),
-    );
-
-    // 3. Perform upsert and mark onboarding as complete in a transaction
+    // 1. Perform upsert and mark onboarding as complete in a transaction
     return prisma.$transaction(async (tx) => {
       // Create or update discovery preferences
       const discovery = await tx.socialUserDiscovery.upsert({
@@ -114,16 +94,16 @@ export default class SocialUserDiscoveryRepo {
     });
 
     return {
-      categories: categories.map(c => ({
+      categories: categories.map((c) => ({
         id: c.id,
         discoveryKeywords: c.discoveryKeywords as string[],
       })),
-      subCategories: subCategories.map(s => ({
+      subCategories: subCategories.map((s) => ({
         id: s.id,
         discoveryKeywords: s.discoveryKeywords as string[],
         chummeCategoryId: s.chummeCategoryId,
       })),
-      topicCategories: topicCategories.map(t => ({
+      topicCategories: topicCategories.map((t) => ({
         id: t.id,
         discoveryKeywords: t.discoveryKeywords as string[],
         chummeSubCategoryId: t.chummeSubCategoryId,

@@ -2,7 +2,6 @@ import { Request, Response } from "express";
 import Joi from "joi";
 import * as artistPersonaService from "../services/artist-persona.service";
 
-
 export const getPersonaByArtistId = async (req: Request, res: Response) => {
   try {
     const { artistId } = req.params;
@@ -59,8 +58,6 @@ export const createPersona = async (req: Request, res: Response) => {
       imagePathId: Joi.string().uuid().allow(null),
     });
 
-
-
     const { error, value } = schema.validate(req.body);
     if (error) {
       return res.status(400).json({
@@ -97,8 +94,6 @@ export const updatePersona = async (req: Request, res: Response) => {
       videoPathId: Joi.string().uuid().allow(null),
       imagePathId: Joi.string().uuid().allow(null),
     });
-
-
 
     const { error, value } = schema.validate(req.body);
     if (error) {

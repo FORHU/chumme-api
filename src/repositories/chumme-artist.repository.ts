@@ -37,22 +37,19 @@ export const getRandomArtists = async (limit: number) => {
   return randomArtists as any[];
 };
 
-export const getUserArtists = async (userId: string) => {
+export const getUserArtists = async (_userId: string) => {
   // Relation chummeArtists was removed from SocialUserDiscovery
   return [];
 };
 
-
-export const addUserArtists = async (userId: string, artistIds: string[]) => {
+export const addUserArtists = async (_userId: string, _artistIds: string[]) => {
   // Relation chummeArtists was removed from SocialUserDiscovery
 };
 
-
-export const removeUserArtist = async (userId: string, artistId: string) => {
+export const removeUserArtist = async (_userId: string, _artistId: string) => {
   // Relation chummeArtists was removed from SocialUserDiscovery
   return null;
 };
-
 
 export const findById = async (id: string) => {
   return prisma.chummeArtist.findFirst({
@@ -134,7 +131,9 @@ export const upsertArtist = async (data: {
       ...(data.bio !== undefined && { bio: data.bio }),
       ...(data.imageUrl !== undefined && { imageUrl: data.imageUrl }),
       ...(data.genre !== undefined && { genre: data.genre }),
-      ...(data.socialPlatformUsername !== undefined && { socialPlatformUsername: data.socialPlatformUsername }),
+      ...(data.socialPlatformUsername !== undefined && {
+        socialPlatformUsername: data.socialPlatformUsername,
+      }),
       ...(data.platform !== undefined && { platform: data.platform }),
     },
     create: {
@@ -158,13 +157,13 @@ export const getRisingStars = async (limit: number = 10) => {
     },
     include: {
       chummeCategories: {
-        select: { id: true, name: true }
+        select: { id: true, name: true },
       },
       socialFeedItems: {
         where: { isDeleted: false },
         orderBy: { score: "desc" },
-        take: 3
-      }
+        take: 3,
+      },
     },
     take: limit,
   });

@@ -5,7 +5,7 @@ export function errorHandler(
   err: any,
   req: Request,
   res: Response,
-  next: NextFunction
+  _next: NextFunction,
 ) {
   const errorResponse = createErrorResponse(err);
   res.status(err.statusCode || 500).json(errorResponse);

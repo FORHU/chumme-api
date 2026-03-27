@@ -271,11 +271,7 @@ export async function fetchVideoRecommendation(
       logger.info(
         `[VIDEO-RECOMMENDATION] Priority 3: Searching by emotions only across all videos`,
       );
-      const rawVideos = await SocialFeedRepo.findExternalMedia(
-        undefined,
-        10,
-      );
-
+      const rawVideos = await SocialFeedRepo.findExternalMedia(undefined, 10);
 
       // Filter shown videos
       videos = await filterShownVideos(rawVideos, userId);
@@ -346,7 +342,7 @@ export async function fetchVideoRecommendation(
         title: selectedVideo.title,
         externalUrl: selectedVideo.externalUrl || null,
         // NOTE: file relation is removed in flat structure
-        file: null, 
+        file: null,
         artist: selectedVideo.artist
           ? {
               id: selectedVideo.artist.id,

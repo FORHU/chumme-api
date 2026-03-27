@@ -48,7 +48,6 @@ export default class ChummeSubCategoryRepo {
         chummeCategory: {
           include: {
             chummeArtists: { select: { id: true, name: true, imageUrl: true } },
-
           },
         },
         chummeVisualDesign: true,
@@ -74,7 +73,6 @@ export default class ChummeSubCategoryRepo {
         chummeCategory: {
           include: {
             chummeArtists: { select: { id: true, name: true, imageUrl: true } },
-
           },
         },
         chummeVisualDesign: true,
@@ -104,7 +102,6 @@ export default class ChummeSubCategoryRepo {
         chummeCategory: {
           include: {
             chummeArtists: { select: { id: true, name: true, imageUrl: true } },
-
           },
         },
         chummeVisualDesign: true,
@@ -209,7 +206,6 @@ export default class ChummeSubCategoryRepo {
         chummeCategory: {
           include: {
             chummeArtists: { select: { id: true, name: true, imageUrl: true } },
-
           },
         },
         chummeVisualDesign: true,

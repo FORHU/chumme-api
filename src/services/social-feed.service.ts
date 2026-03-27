@@ -1,10 +1,7 @@
 import SocialFeedRepo from "../repositories/social-feed.repository";
 import CacheUtil from "../utils/cache.util";
-import {
-  seededShuffle,
-  shuffleArray,
-  stringBacktickToArray,
-} from "../utils/helpers";
+import { stringBacktickToArray } from "../utils/helpers";
+import { prisma } from "../utils/prisma";
 export default class SocialFeedSvc {
   /**
    * Helper method to format feed items
@@ -32,7 +29,7 @@ export default class SocialFeedSvc {
             },
           };
         }
-        
+
         // If it has an externalUrl, it's a video or media post
         if (item.externalUrl) {
           return {
@@ -51,7 +48,7 @@ export default class SocialFeedSvc {
                 bookmarks: item.bookmarks,
               },
               createdAt: item.createdAt,
-            }
+            },
           };
         }
 
@@ -60,15 +57,12 @@ export default class SocialFeedSvc {
       .filter(Boolean);
   }
 
-
   /**
    * Get unified feed with pagination
    */
   static async getFeed(
     page: number = 0,
     limit: number = 20,
-    refresh: boolean = false,
-    seed: string = "",
     countryCode?: string,
   ) {
     if (page < 0) {
@@ -95,8 +89,6 @@ export default class SocialFeedSvc {
     page: number = 0,
     limit: number = 5,
     artistInUrlString: string,
-    refresh: boolean = false,
-    seed: string = "",
     countryCode?: string,
   ) {
     let artistStringToArray: Array<string> = [];
@@ -112,8 +104,6 @@ export default class SocialFeedSvc {
       throw new Error("Limit must be between 1 and 50");
     }
 
-    const { prisma } = require("../utils/prisma");
-
     // Fetch user's discovery preferences
     const discovery = await prisma.socialUserDiscovery.findUnique({
       where: { userId },
@@ -121,12 +111,14 @@ export default class SocialFeedSvc {
         chummeCategories: true,
         chummeSubCategories: true,
         chummeTopicCategories: true,
-      }
+      },
     });
 
     const categoryIds = discovery?.chummeCategories.map((c: any) => c.id) || [];
-    const subCategoryIds = discovery?.chummeSubCategories.map((c: any) => c.id) || [];
-    const topicCategoryIds = discovery?.chummeTopicCategories.map((c: any) => c.id) || [];
+    const subCategoryIds =
+      discovery?.chummeSubCategories.map((c: any) => c.id) || [];
+    const topicCategoryIds =
+      discovery?.chummeTopicCategories.map((c: any) => c.id) || [];
 
     // Fetch directly from Repo (Personalized for following + feed filters)
     const feedItems = await SocialFeedRepo.getPersonalizedFeed(
@@ -137,12 +129,15 @@ export default class SocialFeedSvc {
       countryCode,
       categoryIds,
       subCategoryIds,
-      topicCategoryIds
+      topicCategoryIds,
     );
 
     // Mix in random items for Discovery (e.g., up to 3 items)
     const excludeIds = feedItems.map((item: any) => item.id);
-    const randomIds = await SocialFeedRepo.getRandomExternalMedia(3, excludeIds);
+    const randomIds = await SocialFeedRepo.getRandomExternalMedia(
+      3,
+      excludeIds,
+    );
 
     if (randomIds.length > 0) {
       const randomItems = await prisma.socialFeedItem.findMany({
@@ -182,9 +177,12 @@ export default class SocialFeedSvc {
       });
 
       feedItems.push(...mappedRandomItems);
-      
+
       // Sort by date desc so random items blend organically into the stream
-      feedItems.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      feedItems.sort(
+        (a: any, b: any) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      );
     }
 
     return feedItems;
@@ -221,7 +219,9 @@ export default class SocialFeedSvc {
     // Extract videoId from metaData or url regex
     let videoId = data.metaData?.youtubeId || data.metaData?.id;
     if (!videoId && data.socialPlatform === "YOUTUBE" && data.externalUrl) {
-      const match = data.externalUrl.match(/(?:v=|\/embed\/|\/watch\?v=|\/v\/|youtu\.be\/|\/shorts\/)([^#&?]*)/);
+      const match = data.externalUrl.match(
+        /(?:v=|\/embed\/|\/watch\?v=|\/v\/|youtu\.be\/|\/shorts\/)([^#&?]*)/,
+      );
       if (match && match[1]) {
         videoId = match[1];
       }
@@ -267,8 +267,6 @@ export default class SocialFeedSvc {
    * Get merged comments for a feed item (scraped + local)
    */
   static async getFeedItemComments(feedItemId: string) {
-    const { prisma } = require("../utils/prisma");
-    
     // 1. Get scraped comments (read-only)
     const scraped = await (prisma as any).socialFeedItemComment.findMany({
       where: { socialFeedItemId: feedItemId },
@@ -285,8 +283,8 @@ export default class SocialFeedSvc {
             username: true,
             name: true,
             avatar: { select: { fileUrl: true } },
-          }
-        }
+          },
+        },
       },
       orderBy: { createdAt: "desc" },
     });
@@ -301,7 +299,7 @@ export default class SocialFeedSvc {
         avatarUrl: c.authorAvatarUrl || undefined,
         handle: c.authorHandle || undefined,
         type: "external",
-      }
+      },
     }));
 
     const unifiedLocal = local.map((c: any) => ({
@@ -314,15 +312,14 @@ export default class SocialFeedSvc {
         avatarUrl: c.user.avatar?.fileUrl || undefined,
         handle: c.user.username,
         type: "chumme",
-      }
+      },
     }));
 
     // 4. Merge and Sort by Date desc
     const allComments = [...unifiedScraped, ...unifiedLocal].sort(
-      (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
+      (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
     );
 
     return allComments;
   }
 }
-

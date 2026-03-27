@@ -1,5 +1,4 @@
 import { google, youtube_v3 } from "googleapis";
-import { GaxiosResponse } from "gaxios";
 
 export default class YouTubeService {
   private static youtube: youtube_v3.Youtube;

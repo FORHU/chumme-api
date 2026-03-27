@@ -42,22 +42,25 @@ export const createPersona = async (data: {
   videoPathId?: string | null;
   imagePathId?: string | null;
 }) => {
-
-
   // Check for existing personas with same media IDs if provided
   if (data.audioPathId) {
-    const existing = await artistPersonaRepo.findByAudioPathId(data.audioPathId);
+    const existing = await artistPersonaRepo.findByAudioPathId(
+      data.audioPathId,
+    );
     if (existing) throw new BadRequestError("Audio file already assigned");
   }
   if (data.videoPathId) {
-    const existing = await artistPersonaRepo.findByVideoPathId(data.videoPathId);
+    const existing = await artistPersonaRepo.findByVideoPathId(
+      data.videoPathId,
+    );
     if (existing) throw new BadRequestError("Video file already assigned");
   }
   if (data.imagePathId) {
-    const existing = await artistPersonaRepo.findByImagePathId(data.imagePathId);
+    const existing = await artistPersonaRepo.findByImagePathId(
+      data.imagePathId,
+    );
     if (existing) throw new BadRequestError("Image file already assigned");
   }
-
 
   const persona = await artistPersonaRepo.create({
     chummeArtistId: data.artistId ?? null,
@@ -68,7 +71,6 @@ export const createPersona = async (data: {
     videoPathId: data.videoPathId ?? null,
     imagePathId: data.imagePathId ?? null,
   });
-
 
   if (data.artistId) {
     await CacheUtil.del(`artist:${data.artistId}:persona`);
@@ -87,22 +89,28 @@ export const updatePersona = async (
     videoPathId?: string | null;
     imagePathId?: string | null;
   },
-
-
 ) => {
   if (data.audioPathId) {
-    const existing = await artistPersonaRepo.findByAudioPathId(data.audioPathId);
-    if (existing && existing.id !== id) throw new BadRequestError("Audio file already assigned");
+    const existing = await artistPersonaRepo.findByAudioPathId(
+      data.audioPathId,
+    );
+    if (existing && existing.id !== id)
+      throw new BadRequestError("Audio file already assigned");
   }
   if (data.videoPathId) {
-    const existing = await artistPersonaRepo.findByVideoPathId(data.videoPathId);
-    if (existing && existing.id !== id) throw new BadRequestError("Video file already assigned");
+    const existing = await artistPersonaRepo.findByVideoPathId(
+      data.videoPathId,
+    );
+    if (existing && existing.id !== id)
+      throw new BadRequestError("Video file already assigned");
   }
   if (data.imagePathId) {
-    const existing = await artistPersonaRepo.findByImagePathId(data.imagePathId);
-    if (existing && existing.id !== id) throw new BadRequestError("Image file already assigned");
+    const existing = await artistPersonaRepo.findByImagePathId(
+      data.imagePathId,
+    );
+    if (existing && existing.id !== id)
+      throw new BadRequestError("Image file already assigned");
   }
-
 
   const persona = await artistPersonaRepo.update(id, {
     chummeArtistId: data.artistId,
@@ -113,9 +121,6 @@ export const updatePersona = async (
     videoPathId: data.videoPathId,
     imagePathId: data.imagePathId,
   });
-
-
-
 
   if (persona.chummeArtistId) {
     await CacheUtil.del(`artist:${persona.chummeArtistId}:persona`);

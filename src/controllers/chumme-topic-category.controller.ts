@@ -12,7 +12,9 @@ export default class ChummeTopicCategoryCtrl {
       chummeSubCategoryId: Joi.string().uuid().required(),
       isAd: Joi.boolean().required(),
       keyPassword: Joi.string().allow(null, "").optional(),
-      traits: Joi.string().valid("NONE", "COMMUNITIES", "ENTERTAINMENT").optional(),
+      traits: Joi.string()
+        .valid("NONE", "COMMUNITIES", "ENTERTAINMENT")
+        .optional(),
       position: Joi.object().optional(),
       colorSet: Joi.object().optional(),
       sizeSet: Joi.object().optional(),
@@ -33,7 +35,8 @@ export default class ChummeTopicCategoryCtrl {
     }
 
     try {
-      const topicCategory = await ChummeTopicCategorySvc.createTopicCategory(value);
+      const topicCategory =
+        await ChummeTopicCategorySvc.createTopicCategory(value);
       return res.status(201).json({
         message: "Chumme topic category created successfully",
         topicCategory,
@@ -49,10 +52,11 @@ export default class ChummeTopicCategoryCtrl {
   static async getAllTopicCategories(req: Request, res: Response) {
     const { subCategoryId, publicOnly } = req.query as any;
     try {
-      const topicCategories = await ChummeTopicCategorySvc.getAllTopicCategories({
-        subCategoryId,
-        publicOnly: publicOnly === "true",
-      });
+      const topicCategories =
+        await ChummeTopicCategorySvc.getAllTopicCategories({
+          subCategoryId,
+          publicOnly: publicOnly === "true",
+        });
 
       return res.json({ topicCategories });
     } catch (error: any) {
@@ -67,7 +71,8 @@ export default class ChummeTopicCategoryCtrl {
     const { id } = req.params;
 
     try {
-      const topicCategory = await ChummeTopicCategorySvc.getTopicCategoryById(id);
+      const topicCategory =
+        await ChummeTopicCategorySvc.getTopicCategoryById(id);
       return res.json({ topicCategory });
     } catch (error: any) {
       return res.status(404).json({ message: error.message || error });
@@ -84,7 +89,9 @@ export default class ChummeTopicCategoryCtrl {
       chummeSubCategoryId: Joi.string().uuid().optional(),
       isAd: Joi.boolean().optional(),
       keyPassword: Joi.string().allow(null, "").optional(),
-      traits: Joi.string().valid("NONE", "COMMUNITIES", "ENTERTAINMENT").optional(),
+      traits: Joi.string()
+        .valid("NONE", "COMMUNITIES", "ENTERTAINMENT")
+        .optional(),
       position: Joi.object().optional(),
       colorSet: Joi.object().optional(),
       sizeSet: Joi.object().optional(),
@@ -105,7 +112,10 @@ export default class ChummeTopicCategoryCtrl {
     }
 
     try {
-      const topicCategory = await ChummeTopicCategorySvc.updateTopicCategory(id, value);
+      const topicCategory = await ChummeTopicCategorySvc.updateTopicCategory(
+        id,
+        value,
+      );
       return res.json({
         message: "Chumme topic category updated successfully",
         topicCategory,
@@ -123,7 +133,9 @@ export default class ChummeTopicCategoryCtrl {
 
     try {
       await ChummeTopicCategorySvc.deleteTopicCategory(id);
-      return res.json({ message: "Chumme topic category deleted successfully" });
+      return res.json({
+        message: "Chumme topic category deleted successfully",
+      });
     } catch (error: any) {
       return res.status(400).json({ message: error.message || error });
     }

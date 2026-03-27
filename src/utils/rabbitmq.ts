@@ -84,7 +84,11 @@ export class RabbitMQService {
     }
   }
 
-  async publishMessage(routingKey: string, message: any, options?: amqp.Options.Publish): Promise<void> {
+  async publishMessage(
+    routingKey: string,
+    message: any,
+    options?: amqp.Options.Publish,
+  ): Promise<void> {
     if (!this.isConnected || !this.channel) {
       throw new Error("RabbitMQ not connected");
     }
@@ -128,12 +132,14 @@ export class RabbitMQService {
       const dlqQueue = `${queueName}_failed`;
 
       // 1. Assert Dead Letter Exchange and Queue
-      await this.channel.assertExchange(dlxExchange, "topic", { durable: true });
+      await this.channel.assertExchange(dlxExchange, "topic", {
+        durable: true,
+      });
       await this.channel.assertQueue(dlqQueue, { durable: true });
       await this.channel.bindQueue(dlqQueue, dlxExchange, "#");
 
       // 2. Assert Main Queue with DLX configuration
-      const queue = await this.channel.assertQueue(queueName, {
+      await this.channel.assertQueue(queueName, {
         durable: true,
         arguments: {
           "x-dead-letter-exchange": dlxExchange,

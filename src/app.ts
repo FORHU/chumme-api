@@ -96,7 +96,6 @@ connectToPrisma()
     if (startWorkers) {
       // Audio Merge Worker (background FFmpeg processing)
       try {
-
         const audioMergeWorker = new AudioMergeWorker();
         await audioMergeWorker.start();
         console.log("Audio Merge RabbitMQ worker initialized successfully");
@@ -108,7 +107,6 @@ connectToPrisma()
       try {
         const ingestionWorker = new IngestionWorker();
         await ingestionWorker.start();
-
 
         await SchedulingService.start();
         console.log("Ingestion Pipeline & Scheduler initialized successfully");

@@ -61,10 +61,12 @@ export default class ChummeTopicCategorySvc {
   /**
    * Get all chumme topic categories
    */
-  static async getAllTopicCategories(params: {
-    subCategoryId?: string;
-    publicOnly?: boolean;
-  } = {}) {
+  static async getAllTopicCategories(
+    params: {
+      subCategoryId?: string;
+      publicOnly?: boolean;
+    } = {},
+  ) {
     return ChummeTopicCategoryRepo.getAllTopicCategories(params);
   }
 

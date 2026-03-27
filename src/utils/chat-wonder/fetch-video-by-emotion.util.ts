@@ -26,17 +26,12 @@ export async function fetchVideosByEmotion(
       limit,
     );
 
-
     // Fallback to neutral emotions if no results
     if (!videos || videos.length === 0) {
       logger.info(
         `[FETCH-VIDEO-BY-EMOTION] No videos for ${emotionArray.join(", ")}, trying neutral`,
       );
-      videos = await SocialFeedRepo.findExternalMedia(
-        undefined,
-        limit,
-      );
-
+      videos = await SocialFeedRepo.findExternalMedia(undefined, limit);
     }
 
     if (!videos || videos.length === 0) {

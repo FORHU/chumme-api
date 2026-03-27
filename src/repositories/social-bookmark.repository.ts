@@ -108,7 +108,9 @@ export default class SocialBookmarkRepo {
   }
 
   static async removeBookmarksInFeedItem(socialFeedItemId: string) {
-    return prisma.socialUserBookmark.deleteMany({ where: { socialFeedItemId } });
+    return prisma.socialUserBookmark.deleteMany({
+      where: { socialFeedItemId },
+    });
   }
 
   static async deleteUserBookmark(bookmarkId: string) {

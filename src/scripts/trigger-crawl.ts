@@ -8,22 +8,23 @@ import logger from "../utils/logger";
 
 async function triggerFullCrawl() {
   logger.info("🚀 Starting Forced Video Crawl & Scouting Trigger...");
-  
+
   try {
     // 1. Initialize Connections
     await connectToPrisma();
     await RedisUtil.initialize();
     await rabbitMQService.connect();
-    
+
     // 2. Trigger Tasks
-    logger.info("📦 Queuing forced discovery jobs for all ingestion targets...");
+    logger.info(
+      "📦 Queuing forced discovery jobs for all ingestion targets...",
+    );
     await SchedulingService.processScheduledTasks(true);
-    
+
     logger.info("🔍 Queuing forced search jobs for all category keywords...");
     await SchedulingService.processScoutTasks(true);
-    
+
     logger.info("✅ All jobs successfully queued in RabbitMQ!");
-    
   } catch (err) {
     logger.error("❌ Failed to trigger crawl:", err);
   } finally {

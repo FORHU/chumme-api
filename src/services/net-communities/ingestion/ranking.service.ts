@@ -19,7 +19,7 @@ export default class RankingService {
           likes: true,
           comments: true,
           bookmarks: true,
-        }
+        },
       });
 
       const now = new Date();
@@ -35,11 +35,11 @@ export default class RankingService {
             snapshotAt: {
               gte: yesterday,
               lte: now,
-            }
+            },
           },
           orderBy: {
-            snapshotAt: "asc" // Get the oldest one within the last 24h
-          }
+            snapshotAt: "asc", // Get the oldest one within the last 24h
+          },
         });
 
         let score = 0;
@@ -49,7 +49,10 @@ export default class RankingService {
           const deltaViews = Math.max(0, item.views - snapshot.views);
           const deltaLikes = Math.max(0, item.likes - snapshot.likes);
           const deltaComments = Math.max(0, item.comments - snapshot.comments);
-          const deltaBookmarks = Math.max(0, item.bookmarks - snapshot.bookmarks);
+          const deltaBookmarks = Math.max(
+            0,
+            item.bookmarks - snapshot.bookmarks,
+          );
 
           /**
            * Scoring Algorithm (Momentum-based)
@@ -58,22 +61,28 @@ export default class RankingService {
            * Comments: 10pts each
            * Bookmarks: 20pts each
            */
-          score = (deltaViews * 1) + (deltaLikes * 5) + (deltaComments * 10) + (deltaBookmarks * 20);
+          score =
+            deltaViews * 1 +
+            deltaLikes * 5 +
+            deltaComments * 10 +
+            deltaBookmarks * 20;
         } else {
           // If no snapshot yet (new item), use initial performance but weight it lower
-          score = (item.views * 0.1) + (item.likes * 1);
+          score = item.views * 0.1 + item.likes * 1;
         }
 
         // 3. Update the item's score
         await prisma.socialFeedItem.update({
           where: { id: item.id },
-          data: { score }
+          data: { score },
         });
 
         updatedCount++;
       }
 
-      logger.info(`[RankingService] Completed scoring for ${updatedCount} items.`);
+      logger.info(
+        `[RankingService] Completed scoring for ${updatedCount} items.`,
+      );
       return updatedCount;
     } catch (error) {
       logger.error("[RankingService] Error calculating growth scores:", error);

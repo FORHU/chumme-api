@@ -221,7 +221,7 @@ function extractVideosFromResponse(text: string): ParsedVideo[] {
  * Parse ChatWonder response (handles both JSON and markdown formats)
  */
 export function parseChatWonderResponse(
-  rawResponse: string
+  rawResponse: string,
 ): ChatWonderResponse {
   try {
     let trimmed = rawResponse.trim();
@@ -283,20 +283,20 @@ export function parseChatWonderResponse(
         }
 
         logger.info(
-          `[CHAT.WONDER.PARSER] Attempting to parse JSON: ${cleanedJson.substring(0, 100)}...`
+          `[CHAT.WONDER.PARSER] Attempting to parse JSON: ${cleanedJson.substring(0, 100)}...`,
         );
         const parsed = JSON.parse(cleanedJson);
 
         // Validate required fields
         if (!parsed.message) {
           logger.warn(
-            '[CHAT.WONDER.PARSER] Parsed JSON missing "message" field'
+            '[CHAT.WONDER.PARSER] Parsed JSON missing "message" field',
           );
           throw new Error("Invalid JSON: missing message field");
         }
 
         logger.info(
-          `[CHAT.WONDER.PARSER] Successfully parsed JSON with message: ${parsed.message?.substring(0, 50)}...`
+          `[CHAT.WONDER.PARSER] Successfully parsed JSON with message: ${parsed.message?.substring(0, 50)}...`,
         );
 
         // Return structured response
@@ -322,7 +322,7 @@ export function parseChatWonderResponse(
         };
       } catch (parseError: any) {
         logger.warn(
-          `[CHAT.WONDER.PARSER] JSON parse failed: ${parseError.message}`
+          `[CHAT.WONDER.PARSER] JSON parse failed: ${parseError.message}`,
         );
         // Fall through to markdown parsing
       }
@@ -334,7 +334,7 @@ export function parseChatWonderResponse(
     const { emotion, confidence } = detectEmotionFromMessage(message);
 
     logger.info(
-      `[CHAT.WONDER.PARSER] Parsed markdown response - emotion: ${emotion}, videos: ${videos.length}`
+      `[CHAT.WONDER.PARSER] Parsed markdown response - emotion: ${emotion}, videos: ${videos.length}`,
     );
 
     return {
@@ -351,7 +351,7 @@ export function parseChatWonderResponse(
     };
   } catch (error: any) {
     logger.error(
-      `[CHAT.WONDER.PARSER] Failed to parse response: ${error?.message}`
+      `[CHAT.WONDER.PARSER] Failed to parse response: ${error?.message}`,
     );
 
     // Fallback: return truncated raw response to avoid huge message

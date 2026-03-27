@@ -12,37 +12,37 @@ import logger from "../logger";
  * @returns string | null - Artist name if mentioned, null otherwise
  */
 export async function detectRequestedArtist(
-    userInput: string,
-    availableArtists: string[],
-    chatHistory: any[] = []
+  userInput: string,
+  availableArtists: string[],
+  chatHistory: any[] = [],
 ): Promise<string | null> {
-    try {
-        logger.info(`[ARTIST-DETECTION] Analyzing user input: "${userInput}"`);
-        logger.info(
-            `[ARTIST-DETECTION] Available artists: ${availableArtists.join(", ")}`
-        );
-        logger.info(
-            `[ARTIST-DETECTION] Chat history length: ${chatHistory.length}`
-        );
+  try {
+    logger.info(`[ARTIST-DETECTION] Analyzing user input: "${userInput}"`);
+    logger.info(
+      `[ARTIST-DETECTION] Available artists: ${availableArtists.join(", ")}`,
+    );
+    logger.info(
+      `[ARTIST-DETECTION] Chat history length: ${chatHistory.length}`,
+    );
 
-        const artistList = availableArtists.join(", ");
+    const artistList = availableArtists.join(", ");
 
-        // Build conversation context from chat history
-        let conversationContext = "";
-        if (chatHistory.length > 0) {
-            // Take last 3 messages for context
-            const recentMessages = chatHistory.slice(-3);
-            conversationContext =
-                "\n\nRecent conversation context:\n" +
-                recentMessages
-                    .map((msg) => {
-                        const role = msg.role === "USER" ? "User" : "Assistant";
-                        const content = msg.message || msg.content || ""; // Support both DB format (message) and plain format (content)
-                        return `${role}: "${content}"`;
-                    })
-                    .join("\n");
-        }
-        const prompt = `
+    // Build conversation context from chat history
+    let conversationContext = "";
+    if (chatHistory.length > 0) {
+      // Take last 3 messages for context
+      const recentMessages = chatHistory.slice(-3);
+      conversationContext =
+        "\n\nRecent conversation context:\n" +
+        recentMessages
+          .map((msg) => {
+            const role = msg.role === "USER" ? "User" : "Assistant";
+            const content = msg.message || msg.content || ""; // Support both DB format (message) and plain format (content)
+            return `${role}: "${content}"`;
+          })
+          .join("\n");
+    }
+    const prompt = `
 You are an artist name extractor.
 
 Here is the list of available artists in our database:
@@ -68,49 +68,47 @@ User: "I want a video" → null
 
 Response (exactly one word or null):`;
 
-        const response = await defaultOpenAIRequest(prompt, {
-            role: "system",
-            temperature: 0.3,
-            maxTokens: 50,
-        });
+    const response = await defaultOpenAIRequest(prompt, {
+      role: "system",
+      temperature: 0.3,
+      maxTokens: 50,
+    });
 
-        if (!response) {
-            logger.warn(`[ARTIST-DETECTION] AI returned no response`);
-            return null;
-        }
-
-        const normalized = response.trim().toLowerCase();
-        logger.info(
-            `[ARTIST-DETECTION] AI response: "${response}" → normalized: "${normalized}"`
-        );
-
-        // Check if response is "null" or empty
-        if (normalized === "null" || normalized === "") {
-            logger.info(`[ARTIST-DETECTION] No artist mentioned by user`);
-            return null;
-        }
-
-        // Find matching artist (case-insensitive)
-        const matchedArtist = availableArtists.find(
-            (artist) => artist.toLowerCase() === normalized
-        );
-
-        if (matchedArtist) {
-            logger.info(
-                `[ARTIST-DETECTION] ✓ Matched artist: "${matchedArtist}"`
-            );
-        } else {
-            logger.warn(
-                `[ARTIST-DETECTION] ⚠️ Artist "${response}" requested but not found in database. Available: ${availableArtists.join(", ")}`
-            );
-            logger.warn(
-                `[ARTIST-DETECTION] Will fallback to user's favorite artists or all videos`
-            );
-        }
-
-        return matchedArtist || null;
-    } catch (error: any) {
-        logger.error(`[ARTIST-DETECTION] error: ${error?.message || error}`);
-        return null;
+    if (!response) {
+      logger.warn(`[ARTIST-DETECTION] AI returned no response`);
+      return null;
     }
+
+    const normalized = response.trim().toLowerCase();
+    logger.info(
+      `[ARTIST-DETECTION] AI response: "${response}" → normalized: "${normalized}"`,
+    );
+
+    // Check if response is "null" or empty
+    if (normalized === "null" || normalized === "") {
+      logger.info(`[ARTIST-DETECTION] No artist mentioned by user`);
+      return null;
+    }
+
+    // Find matching artist (case-insensitive)
+    const matchedArtist = availableArtists.find(
+      (artist) => artist.toLowerCase() === normalized,
+    );
+
+    if (matchedArtist) {
+      logger.info(`[ARTIST-DETECTION] ✓ Matched artist: "${matchedArtist}"`);
+    } else {
+      logger.warn(
+        `[ARTIST-DETECTION] ⚠️ Artist "${response}" requested but not found in database. Available: ${availableArtists.join(", ")}`,
+      );
+      logger.warn(
+        `[ARTIST-DETECTION] Will fallback to user's favorite artists or all videos`,
+      );
+    }
+
+    return matchedArtist || null;
+  } catch (error: any) {
+    logger.error(`[ARTIST-DETECTION] error: ${error?.message || error}`);
+    return null;
+  }
 }

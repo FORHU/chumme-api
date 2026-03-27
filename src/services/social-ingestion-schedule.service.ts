@@ -23,13 +23,15 @@ export const updateSchedule = async (
     exactTime?: string | null;
     intervalHours?: number | null;
     isActive?: boolean;
-  }
+  },
 ) => {
   const schedule = await scheduleRepo.update(id, data);
   // Find target id to clear cache
   const fullSchedule = await scheduleRepo.findById(id);
   if (fullSchedule) {
-    await CacheUtil.del(`${CACHE_KEY_PREFIX}${fullSchedule.socialIngestionTargetId}`);
+    await CacheUtil.del(
+      `${CACHE_KEY_PREFIX}${fullSchedule.socialIngestionTargetId}`,
+    );
   }
   return schedule;
 };
@@ -40,7 +42,7 @@ export const getScheduleById = async (id: string) => {
 
 export const getSchedulesByTargetId = async (targetId: string) => {
   const cacheKey = `${CACHE_KEY_PREFIX}${targetId}`;
-  
+
   const cached = await CacheUtil.get(cacheKey);
   if (cached) {
     return JSON.parse(cached);
@@ -54,11 +56,13 @@ export const getSchedulesByTargetId = async (targetId: string) => {
 export const deleteSchedule = async (id: string) => {
   const fullSchedule = await scheduleRepo.findById(id);
   const result = await scheduleRepo.deleteSchedule(id);
-  
+
   if (fullSchedule) {
-    await CacheUtil.del(`${CACHE_KEY_PREFIX}${fullSchedule.socialIngestionTargetId}`);
+    await CacheUtil.del(
+      `${CACHE_KEY_PREFIX}${fullSchedule.socialIngestionTargetId}`,
+    );
   }
-  
+
   return result;
 };
 

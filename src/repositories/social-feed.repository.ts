@@ -13,12 +13,14 @@ export default class SocialFeedRepo {
     });
   }
 
-
-
   /**
    * Get paginated feed with all content
    */
-  static async getFeed(page: number = 0, limit: number = 20, countryCode?: string) {
+  static async getFeed(
+    page: number = 0,
+    limit: number = 20,
+    countryCode?: string,
+  ) {
     const where: any = { isDeleted: false };
 
     if (countryCode) {
@@ -27,9 +29,9 @@ export default class SocialFeedRepo {
         {
           OR: [
             { allowedCountries: { equals: [] } },
-            { allowedCountries: { has: countryCode } }
-          ]
-        }
+            { allowedCountries: { has: countryCode } },
+          ],
+        },
       ];
     }
 
@@ -78,9 +80,9 @@ export default class SocialFeedRepo {
    */
   static async getTrendingFeed(page: number = 0, limit: number = 20) {
     const items = await prisma.socialFeedItem.findMany({
-      where: { 
+      where: {
         isDeleted: false,
-        score: { gt: 0 } // Only show items with some momentum
+        score: { gt: 0 }, // Only show items with some momentum
       },
       include: {
         chummeArtist: true,
@@ -136,9 +138,9 @@ export default class SocialFeedRepo {
         {
           OR: [
             { allowedCountries: { equals: [] } },
-            { allowedCountries: { has: countryCode } }
-          ]
-        }
+            { allowedCountries: { has: countryCode } },
+          ],
+        },
       );
     }
 
@@ -155,7 +157,7 @@ export default class SocialFeedRepo {
    */
   static async getFeedItemsByIds(ids: string[]) {
     const items = await prisma.socialFeedItem.findMany({
-      where: { 
+      where: {
         id: { in: ids },
       },
       include: {
@@ -281,9 +283,9 @@ export default class SocialFeedRepo {
         {
           OR: [
             { allowedCountries: { equals: [] } },
-            { allowedCountries: { has: countryCode } }
-          ]
-        }
+            { allowedCountries: { has: countryCode } },
+          ],
+        },
       ];
     }
 
@@ -369,7 +371,6 @@ export default class SocialFeedRepo {
       orConditions.push({ chummeTopicCategoryId: { in: topicCategoryIds } });
     }
 
-
     const where: any = {
       isDeleted: false,
       OR: orConditions,
@@ -381,9 +382,9 @@ export default class SocialFeedRepo {
         {
           OR: [
             { allowedCountries: { equals: [] } },
-            { allowedCountries: { has: countryCode } }
-          ]
-        }
+            { allowedCountries: { has: countryCode } },
+          ],
+        },
       ];
     }
 
@@ -493,7 +494,9 @@ export default class SocialFeedRepo {
     if (!comments || comments.length === 0) return;
 
     await prisma.$transaction([
-      (prisma as any).socialFeedItemComment.deleteMany({ where: { socialFeedItemId: feedItemId } }),
+      (prisma as any).socialFeedItemComment.deleteMany({
+        where: { socialFeedItemId: feedItemId },
+      }),
       (prisma as any).socialFeedItemComment.createMany({
         data: comments.map((c: any) => ({
           socialFeedItemId: feedItemId,
@@ -505,16 +508,17 @@ export default class SocialFeedRepo {
           publishedAt: c.publishedAt || null,
         })),
         skipDuplicates: true,
-      })
+      }),
     ]);
   }
 
   /**
    * Get random external media IDs for discovery mixins
    */
-  static async getRandomExternalMedia(limit: number, excludeIds: string[] = []): Promise<string[]> {
-    const { prisma } = require("../utils/prisma");
-
+  static async getRandomExternalMedia(
+    limit: number,
+    excludeIds: string[] = [],
+  ): Promise<string[]> {
     if (excludeIds.length === 0) {
       const items: any[] = await prisma.$queryRaw`
         SELECT id FROM "SocialFeedItem" 
@@ -530,7 +534,7 @@ export default class SocialFeedRepo {
       SELECT id FROM "SocialFeedItem" 
       WHERE "isDeleted" = false 
       AND "externalUrl" IS NOT NULL 
-      AND id NOT IN (${excludeIds.map(id => `'${id}'`).join(',')})
+      AND id NOT IN (${excludeIds.map((id) => `'${id}'`).join(",")})
       ORDER BY RANDOM() 
       LIMIT ${limit}
     `);
@@ -538,4 +542,3 @@ export default class SocialFeedRepo {
     return items.map((item: any) => item.id);
   }
 }
-

@@ -7,7 +7,9 @@ export default class CacheUtil {
     try {
       const redis = RedisUtil.useConnection();
       if (!redis) {
-        logger.warn(`[CacheUtil:get] Redis connection not available for key: ${key}`);
+        logger.warn(
+          `[CacheUtil:get] Redis connection not available for key: ${key}`,
+        );
         return null;
       }
       const data = await redis.get(key);
@@ -31,7 +33,9 @@ export default class CacheUtil {
     try {
       const redis = RedisUtil.useConnection();
       if (!redis) {
-        logger.warn(`[CacheUtil:set] Redis connection not available for key: ${key}`);
+        logger.warn(
+          `[CacheUtil:set] Redis connection not available for key: ${key}`,
+        );
         return;
       }
       const serialized = JSON.stringify(value);
@@ -52,7 +56,9 @@ export default class CacheUtil {
     try {
       const redis = RedisUtil.useConnection();
       if (!redis) {
-        logger.warn(`[CacheUtil:del] Redis connection not available for key: ${key}`);
+        logger.warn(
+          `[CacheUtil:del] Redis connection not available for key: ${key}`,
+        );
         return;
       }
       await redis.del(key);
@@ -65,7 +71,9 @@ export default class CacheUtil {
     try {
       const redis = RedisUtil.useConnection();
       if (!redis) {
-        logger.warn(`[CacheUtil:delByPattern] Redis connection not available for pattern: ${pattern}`);
+        logger.warn(
+          `[CacheUtil:delByPattern] Redis connection not available for pattern: ${pattern}`,
+        );
         return;
       }
       const keys = await redis.keys(pattern);

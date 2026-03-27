@@ -62,7 +62,11 @@ export interface PlatformConnector {
   /**
    * Search for content based on a query
    */
-  searchContent(query: string, limit?: number, regionCode?: string): Promise<GenericContentItem[]>;
+  searchContent(
+    query: string,
+    limit?: number,
+    regionCode?: string,
+  ): Promise<GenericContentItem[]>;
 
   /**
    * Fetch channel/account metadata

@@ -175,7 +175,6 @@ export default class MusicStudioRepo {
     };
   }
 
-
   /**
    * Get studios owned by a user
    */

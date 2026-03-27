@@ -1,7 +1,5 @@
 import MusicRecordRepo from "../repositories/music-record.repository";
 import MusicLibraryRepo from "../repositories/music-library.repository";
-import S3Util from "../utils/s3.util";
-import logger from "../utils/logger";
 
 interface CreateMusicRecordInput {
   studioId: string;

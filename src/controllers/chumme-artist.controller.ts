@@ -241,7 +241,8 @@ export const skipOnboarding = async (req: Request, res: Response) => {
     const userId = req.user.id;
 
     // 1. Assign 4 random artists
-    const updatedArtists = await chummeArtistService.assignRandomArtists(userId);
+    const updatedArtists =
+      await chummeArtistService.assignRandomArtists(userId);
 
     // 2. Mark onboarding as complete using the User repository
     const UserRepo = (await import("../repositories/user.repository")).default;

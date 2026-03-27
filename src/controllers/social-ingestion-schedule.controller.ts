@@ -15,7 +15,8 @@ export const getSchedulesByTarget = async (req: Request, res: Response) => {
     console.error("Error fetching schedules:", error);
     res.status(500).json({
       success: false,
-      message: error instanceof Error ? error.message : "Failed to fetch schedules",
+      message:
+        error instanceof Error ? error.message : "Failed to fetch schedules",
     });
   }
 };
@@ -25,7 +26,9 @@ export const createSchedule = async (req: Request, res: Response) => {
     const schema = Joi.object({
       socialIngestionTargetId: Joi.string().uuid().required(),
       mode: Joi.string().valid("AUTO", "MANUAL"),
-      exactTime: Joi.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/).allow(null, ""), // HH:MM
+      exactTime: Joi.string()
+        .regex(/^([01]\d|2[0-3]):([0-5]\d)$/)
+        .allow(null, ""), // HH:MM
       intervalHours: Joi.number().integer().min(1).allow(null),
       isActive: Joi.boolean(),
     });
@@ -59,7 +62,9 @@ export const updateSchedule = async (req: Request, res: Response) => {
     const { id } = req.params;
     const schema = Joi.object({
       mode: Joi.string().valid("AUTO", "MANUAL"),
-      exactTime: Joi.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/).allow(null, ""),
+      exactTime: Joi.string()
+        .regex(/^([01]\d|2[0-3]):([0-5]\d)$/)
+        .allow(null, ""),
       intervalHours: Joi.number().integer().min(1).allow(null),
       isActive: Joi.boolean(),
     }).min(1);

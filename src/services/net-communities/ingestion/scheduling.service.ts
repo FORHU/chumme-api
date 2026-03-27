@@ -239,7 +239,10 @@ export class SchedulingService {
         // Frequency control: Only scout each category level once every 24 hours
         // If force is true, bypass this check
         const scoutKey = `scout:${item.type}:${item.id}`;
-        if (!force && await RedisUtil.isDuplicate("discovery", scoutKey, 24 * 60 * 60)) {
+        if (
+          !force &&
+          (await RedisUtil.isDuplicate("discovery", scoutKey, 24 * 60 * 60))
+        ) {
           logger.info(
             `[SchedulingService] Skipping scout for ${item.type} [${item.id}] (already scouted in the last 24h)`,
           );

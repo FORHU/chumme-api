@@ -6,21 +6,21 @@ import logger from "../logger";
  * Examples:
  * - "blackpink or twice" → OR (wants either)
  * - "bts and blackpink collab" → AND (wants collaboration)
- * 
+ *
  * @param userInput - The user's message
  * @param availableArtists - List of artist names in the database
  * @returns Object with artists array and intent ('or' | 'and' | null)
  */
 export async function detectMultipleArtists(
-    userInput: string,
-    availableArtists: string[]
-): Promise<{ artists: string[]; intent: 'or' | 'and' | null }> {
-    try {
-        logger.info(`[MULTI-ARTIST-DETECTION] Analyzing: "${userInput}"`);
+  userInput: string,
+  availableArtists: string[],
+): Promise<{ artists: string[]; intent: "or" | "and" | null }> {
+  try {
+    logger.info(`[MULTI-ARTIST-DETECTION] Analyzing: "${userInput}"`);
 
-        const artistList = availableArtists.join(", ");
+    const artistList = availableArtists.join(", ");
 
-        const prompt = `
+    const prompt = `
 You are a multi-artist detector.
 
 Artist name mappings (including variations):
@@ -65,33 +65,38 @@ OR for single / none:
 
         Response: `;
 
-        const response = await defaultOpenAIRequest(prompt, {
-            role: "system",
-            temperature: 0.3,
-            maxTokens: 100
-        });
+    const response = await defaultOpenAIRequest(prompt, {
+      role: "system",
+      temperature: 0.3,
+      maxTokens: 100,
+    });
 
-        if (!response) {
-            logger.warn(`[MULTI - ARTIST - DETECTION] No response from AI`);
-            return { artists: [], intent: null };
-        }
-
-        // Strip markdown code blocks if present
-        let cleanedResponse = response.trim();
-        if (cleanedResponse.includes("```")) {
-            cleanedResponse = cleanedResponse.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
-        }
-
-        const parsed = JSON.parse(cleanedResponse);
-
-        logger.info(`[MULTI-ARTIST-DETECTION] Result: ${parsed.artists.length} artists, intent: ${parsed.intent}`);
-
-        return {
-            artists: parsed.artists || [],
-            intent: parsed.intent || null
-        };
-    } catch (error: any) {
-        logger.error(`[MULTI-ARTIST-DETECTION] error: ${error?.message || error}`);
-        return { artists: [], intent: null };
+    if (!response) {
+      logger.warn(`[MULTI - ARTIST - DETECTION] No response from AI`);
+      return { artists: [], intent: null };
     }
+
+    // Strip markdown code blocks if present
+    let cleanedResponse = response.trim();
+    if (cleanedResponse.includes("```")) {
+      cleanedResponse = cleanedResponse
+        .replace(/```json\s*/g, "")
+        .replace(/```\s*/g, "")
+        .trim();
+    }
+
+    const parsed = JSON.parse(cleanedResponse);
+
+    logger.info(
+      `[MULTI-ARTIST-DETECTION] Result: ${parsed.artists.length} artists, intent: ${parsed.intent}`,
+    );
+
+    return {
+      artists: parsed.artists || [],
+      intent: parsed.intent || null,
+    };
+  } catch (error: any) {
+    logger.error(`[MULTI-ARTIST-DETECTION] error: ${error?.message || error}`);
+    return { artists: [], intent: null };
+  }
 }

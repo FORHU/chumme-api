@@ -24,8 +24,8 @@ export class TikTokConnector implements PlatformConnector {
 
   async getChannelContent(
     handle: string,
-    limit: number = 20,
-    pageToken?: string,
+    _limit: number = 20,
+    _pageToken?: string,
   ): Promise<{ items: GenericContentItem[]; nextPageToken?: string }> {
     logger.info(
       `[TikTokConnector] [PLACEHOLDER] Fetching content for user handle: ${handle}. Awaiting integration.`,
@@ -34,18 +34,18 @@ export class TikTokConnector implements PlatformConnector {
   }
 
   async searchContent(
-    query: string,
-    limit: number = 10,
-    regionCode?: string,
+    _query: string,
+    _limit: number = 10,
+    _regionCode?: string,
   ): Promise<GenericContentItem[]> {
     return [];
   }
 
-  async getChannelMetadata(channelId: string): Promise<any> {
+  async getChannelMetadata(_channelId: string): Promise<any> {
     return null;
   }
 
-  async discoverMyProfile(accessToken: string): Promise<string | null> {
+  async discoverMyProfile(_accessToken: string): Promise<string | null> {
     return null; // Placeholder for now
   }
 }

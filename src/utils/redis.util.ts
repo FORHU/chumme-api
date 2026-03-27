@@ -47,7 +47,11 @@ export default class RedisUtil {
   /**
    * Check if a job is already processed or currently in progress
    */
-  static async isDuplicate(type: string, id: string, ttl: number = 3600): Promise<boolean> {
+  static async isDuplicate(
+    type: string,
+    id: string,
+    ttl: number = 3600,
+  ): Promise<boolean> {
     const key = `job:dedup:${type}:${id}`;
     const result = await this.redisClient.set(key, "1", {
       NX: true,
@@ -59,14 +63,18 @@ export default class RedisUtil {
   /**
    * Simple fixed-window rate limiter
    */
-  static async isRateLimited(platform: string, limit: number, windowSeconds: number): Promise<boolean> {
+  static async isRateLimited(
+    platform: string,
+    limit: number,
+    windowSeconds: number,
+  ): Promise<boolean> {
     const key = `ratelimit:${platform}`;
     const count = await this.redisClient.incr(key);
-    
+
     if (count === 1) {
       await this.redisClient.expire(key, windowSeconds);
     }
-    
+
     return count > limit;
   }
 }

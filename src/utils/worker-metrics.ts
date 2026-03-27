@@ -69,9 +69,13 @@ export class WorkerMetrics {
       try {
         const RedisUtil = (await import("./redis.util")).default;
         if (RedisUtil.redisClient) {
-          await RedisUtil.redisClient.set("worker:metrics:snapshot", JSON.stringify(snapshot), {
-            EX: 300, // 5 mins TTL
-          });
+          await RedisUtil.redisClient.set(
+            "worker:metrics:snapshot",
+            JSON.stringify(snapshot),
+            {
+              EX: 300, // 5 mins TTL
+            },
+          );
         }
       } catch (err) {
         logger.error("[WorkerMetrics] Failed to save snapshot to Redis:", err);

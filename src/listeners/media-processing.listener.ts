@@ -1,5 +1,5 @@
 import { rabbitMQService } from "../utils/rabbitmq";
-import MediaQueueSvc, { MediaJob } from "../services/media-queue.service";
+import { MediaJob } from "../services/media-queue.service"; // MediaQueueSvc removed, MediaJob kept
 import * as MediaUtils from "../utils/media.utils";
 import S3Util from "../utils/s3.util";
 import fs from "fs";
@@ -61,7 +61,7 @@ export class MediaProcessingWorker {
 
     // Use stream for S3 upload
     const fileStream = fs.createReadStream(tempPath);
-    const optimizedUrl = await S3Util.uploadFileWithKey(
+    const _optimizedUrl = await S3Util.uploadFileWithKey(
       fileStream as any,
       s3Key,
       "video/mp4",
@@ -71,7 +71,9 @@ export class MediaProcessingWorker {
     // 3. Update File Record in DB
     // NOTE: This logic is temporarily disabled as we move to a flat SocialFeedItem structure.
     // External links (SocialFeedItem) do not have local file IDs.
-    logger.info(`[MediaWorker] Skipped DB update for SocialFeedItem ${mediaId} (no fileId)`);
+    logger.info(
+      `[MediaWorker] Skipped DB update for SocialFeedItem ${mediaId} (no fileId)`,
+    );
 
     // Cleanup
     // fs.unlinkSync(tempPath);
@@ -182,10 +184,12 @@ export class MediaProcessingWorker {
 
     // 4. Update DB
     // NOTE: This logic is temporarily disabled as we move to a flat SocialFeedItem structure.
-    logger.info(`[MediaWorker] Skipped DB update for SocialFeedItem ${job.mediaId} (no fileId)`);
+    logger.info(
+      `[MediaWorker] Skipped DB update for SocialFeedItem ${job.mediaId} (no fileId)`,
+    );
 
     // Cleanup
-    // fs.rmSync(hlsDir, { recursive: true, force: true });
+    await fs.promises.rm(hlsDir, { recursive: true, force: true });
     logger.info(
       `[MediaWorker] HLS Processing completed for ${outputKeyPrefix}`,
     );
