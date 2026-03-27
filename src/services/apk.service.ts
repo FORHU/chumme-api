@@ -1,4 +1,5 @@
 import ApkRepo from "../repositories/apk.repository";
+import FileRepo from "../repositories/file.repository";
 import S3Util from "../utils/s3.util";
 import S3PresignedUtil from "../utils/s3-presigned.util";
 import { prisma } from "../utils/prisma";
@@ -33,10 +34,17 @@ export default class ApkSvc {
       file.mimetype,
     );
 
-    const fileRecord = await prisma.file.create({
-      data: { filename: file.originalname, fileUrl },
+    // 1. Create File record
+    const fileRecord = await FileRepo.createFile({
+      filename: file.originalname,
+      fileUrl,
+      metaData: {
+        sizeBytes: file.size,
+        mimetype: file.mimetype,
+      },
     });
 
+    // 2. Create ApkRelease record
     const release = await ApkRepo.create({
       versionName: data.versionName,
       buildNumber: data.buildNumber,
@@ -67,8 +75,7 @@ export default class ApkSvc {
 
     await ApkRepo.incrementDownload(id);
 
-    if (!release.file?.fileUrl) throw new Error("APK file URL not found");
-    const key = extractS3Key(release.file.fileUrl);
+    const key = extractS3Key(release.file!.fileUrl!);
     const url = await S3PresignedUtil.getDownloadUrl(key);
 
     return { url };
@@ -108,8 +115,9 @@ export default class ApkSvc {
     const existing = await ApkRepo.findById(id);
     if (!existing) throw new Error("APK release not found");
 
-    if (!existing.file?.fileUrl) throw new Error("APK file URL not found");
-    await S3Util.deleteFile(existing.file.fileUrl);
+    if (existing.fileId) {
+      await FileRepo.deleteFile(existing.fileId);
+    }
     await ApkRepo.delete(id);
 
     return { message: "APK release deleted successfully" };
