@@ -99,6 +99,7 @@ model File {
   personaVideo  ChummeArtistPersona? @relation("PersonaVideoFile")
   voiceMessages RoomMessage[]        @relation("VoiceMessageFile")
   users         User[]               @relation("UserAvatar")
+  apkRelease    ApkRelease?
 }
 
 model ChummeCategory {
@@ -438,7 +439,7 @@ model SocialIngestionTarget {
 model SocialIngestionSchedule {
   id                      String   @id @default(uuid())
   socialIngestionTargetId String
-  mode                    String   @default("AUTO") // "AUTO" or "MANUAL"
+  mode                    String   @default("MANUAL") // "AUTO" or "MANUAL"
   exactTime               String? // e.g., "03:00" (24h format)
   intervalHours           Int?     @default(24) // Backwards fallback if interval needed
   isActive                Boolean  @default(true)
@@ -890,4 +891,18 @@ enum ChummeTraits {
   NONE
   COMMUNITIES
   ENTERTAINMENT
+}
+
+model ApkRelease {
+  id            String   @id @default(uuid())
+  versionName   String
+  buildNumber   Int
+  fileId        String   @unique
+  file          File     @relation(fields: [fileId], references: [id])
+  whatIsNew     String[]
+  isLatest      Boolean  @default(false)
+  isStable      Boolean  @default(false)
+  downloadCount Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }

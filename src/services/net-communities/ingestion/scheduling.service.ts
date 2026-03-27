@@ -107,10 +107,7 @@ export class SchedulingService {
 
         // 1. Fallback to original interval if no active schedules exist
         if (!target.schedules || target.schedules.length === 0) {
-          if (!target.lastCrawledAt) return true;
-          const hoursSinceLastCrawl =
-            (now.getTime() - target.lastCrawledAt.getTime()) / (1000 * 60 * 60);
-          return hoursSinceLastCrawl >= target.crawlIntervalHours;
+          return false; // Skip by default if no explicit schedule record exists
         }
 
         // 2. Evaluate schedules

@@ -140,7 +140,8 @@ export async function appendYouTubeSearchResultsFromSourceMetadata(
   const seen = new Set(
     existingVideos.map((v) => v.url).filter((u): u is string => Boolean(u)),
   );
-  const merged: ParsedVideo[] = [...existingVideos];
+  // Filter out placeholder videos (empty or missing URLs) — real results will replace them
+  const merged: ParsedVideo[] = existingVideos.filter((v) => Boolean(v.url));
 
   // Prefer queries that were already suggested in the parsed `videos` field.
   // In our current ChatWonder prompt, these often look like:

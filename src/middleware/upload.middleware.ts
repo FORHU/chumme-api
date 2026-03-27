@@ -29,6 +29,7 @@ const fileFilter = (
     "audio/x-wav",
     "audio/mpeg3",
     "application/json",
+    "application/vnd.android.package-archive",
   ];
 
   if (allowedMimeTypes.includes(file.mimetype)) {
@@ -43,6 +44,6 @@ export const upload = multer({
   storage: storage,
   fileFilter: fileFilter,
   limits: {
-    fileSize: 20 * 1024 * 1024, // 20MB max
+    fileSize: 200 * 1024 * 1024, // 200MB max
   },
 });

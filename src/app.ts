@@ -13,6 +13,10 @@ import { createAdapter } from "@socket.io/redis-adapter";
 import RedisUtil from "./utils/redis.util";
 import { errorHandler } from "./middleware/error-handler.middleware";
 
+import { SchedulingService } from "./services/net-communities/ingestion/scheduling.service";
+import { AudioMergeWorker } from "./listeners/audio-merge.listener";
+import { IngestionWorker } from "./listeners/ingestion.listener";
+
 const app = express();
 
 app.set("trust proxy", 1);
@@ -86,16 +90,13 @@ connectToPrisma()
       console.error("Failed to connect shared RabbitMQ service:", error);
     }
 
-
     // Initialize Workers (conditional)
     const startWorkers = process.env.START_WORKERS !== "false";
 
     if (startWorkers) {
       // Audio Merge Worker (background FFmpeg processing)
       try {
-        const { AudioMergeWorker } = await import(
-          "./listeners/audio-merge.listener"
-        );
+
         const audioMergeWorker = new AudioMergeWorker();
         await audioMergeWorker.start();
         console.log("Audio Merge RabbitMQ worker initialized successfully");
@@ -105,13 +106,10 @@ connectToPrisma()
 
       // Ingestion Worker & Scheduler
       try {
-        const { IngestionWorker } = await import("./listeners/ingestion.listener");
         const ingestionWorker = new IngestionWorker();
         await ingestionWorker.start();
 
-        const { SchedulingService } = await import(
-          "./services/net-communities/ingestion/scheduling.service"
-        );
+
         await SchedulingService.start();
         console.log("Ingestion Pipeline & Scheduler initialized successfully");
       } catch (error) {
