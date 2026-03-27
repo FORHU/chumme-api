@@ -4,19 +4,19 @@ export default class ApkRepo {
   static async create(data: {
     versionName: string;
     buildNumber: number;
-    fileUrl: string;
-    fileSize: number;
+    fileId: string;
     whatIsNew: string[];
     isLatest?: boolean;
     isStable?: boolean;
   }) {
-    return prisma.apkRelease.create({ data });
+    return prisma.apkRelease.create({ data, include: { file: true } });
   }
 
   static async findAll() {
     const [releases, aggregate] = await Promise.all([
       prisma.apkRelease.findMany({
         orderBy: { createdAt: "desc" },
+        include: { file: true },
       }),
       prisma.apkRelease.aggregate({
         _sum: { downloadCount: true },
@@ -34,7 +34,7 @@ export default class ApkRepo {
   }
 
   static async findById(id: string) {
-    return prisma.apkRelease.findUnique({ where: { id } });
+    return prisma.apkRelease.findUnique({ where: { id }, include: { file: true } });
   }
 
   static async update(
