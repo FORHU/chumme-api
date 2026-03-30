@@ -136,7 +136,7 @@ export default class ChatWonderCtrl {
                 const parsedResponse = parseChatWonderResponse(cleaned);
 
                 // Only fetch videos if the user actually wants media content
-                const wantsVideo = await detectVideoIntent(input);
+                const { wantsVideo, query: videoQuery } = await detectVideoIntent(input);
 
                 let mergedVideos: ParsedVideo[] = [];
                 if (wantsVideo) {
@@ -144,11 +144,12 @@ export default class ChatWonderCtrl {
                   const { dbVideos } = await searchDbVideosFromSourceMetadata(sourceMetadata, userId);
                   mergedVideos = dbVideos;
 
-                  // 2. If DB has nothing, search YouTube directly with the user's actual message
+                  // 2. If DB has nothing, search YouTube using extracted query (falls back to raw input)
                   if (mergedVideos.length === 0) {
-                    logger.info(`[CHAT-WONDER-STREAM] No DB videos found — searching YouTube directly for: "${input}"`);
+                    const ytQuery = videoQuery || input;
+                    logger.info(`[CHAT-WONDER-STREAM] No DB videos found — searching YouTube for: "${ytQuery}"`);
                     try {
-                      const results = await YouTubeService.searchVideos(input, 1);
+                      const results = await YouTubeService.searchVideos(ytQuery, 1);
                       const first = results[0];
                       const videoId = first?.id?.videoId;
                       if (videoId) {
