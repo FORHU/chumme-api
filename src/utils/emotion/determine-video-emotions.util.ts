@@ -4,13 +4,13 @@ import logger from "../logger";
 /**
  * Determines which emotion tags to search for based on user's emotional state.
  * Uses AI to intelligently map user emotions to multiple video emotion tags.
- * 
+ *
  * Strategies:
  * - BALANCE: Counter negative emotions with uplifting/soothing content
  * - AMPLIFY: Enhance positive emotions with matching energy
  * - ENERGIZE: Boost low-energy states with high-energy content
  * - VALIDATE: Honor explicit requests for specific emotions
- * 
+ *
  * @param userEmotion - Detected emotion from sentiment analysis
  * @param confidence - Confidence score (0-1)
  * @param availableEmotions - All emotion tags from database
@@ -18,19 +18,21 @@ import logger from "../logger";
  * @returns Primary emotions to search, fallback emotions, and strategy used
  */
 export async function determineVideoEmotions(
-    userEmotion: string,
-    confidence: number,
-    availableEmotions: string[],
-    userContext?: string
+  userEmotion: string,
+  confidence: number,
+  availableEmotions: string[],
+  userContext?: string,
 ): Promise<{
-    primaryEmotions: string[];
-    fallbackEmotions: string[];
-    strategy: string;
+  primaryEmotions: string[];
+  fallbackEmotions: string[];
+  strategy: string;
 }> {
-    try {
-        logger.info(`[EMOTION-DETERMINATION] Analyzing user emotion: ${userEmotion} (confidence: ${confidence})`);
+  try {
+    logger.info(
+      `[EMOTION-DETERMINATION] Analyzing user emotion: ${userEmotion} (confidence: ${confidence})`,
+    );
 
-        const prompt = `
+    const prompt = `
 You are a music recommendation AI. Based on user's emotional state, recommend which emotion tags to search for in our video database.
 
 Available emotion tags in database: ${availableEmotions.join(", ")}
@@ -90,64 +92,71 @@ Examples:
 - User angry but asks for chill → {"primary": ["peaceful", "acoustic"], "fallback": ["content", "neutral"], "strategy": "validate"}
 `;
 
-        const start = Date.now();
-        const result = await defaultOpenAIRequest(prompt, {
-            role: "system",
-            temperature: 0.3,
-            maxTokens: 150,
-        });
-        const duration = Date.now() - start;
+    const start = Date.now();
+    const result = await defaultOpenAIRequest(prompt, {
+      role: "system",
+      temperature: 0.3,
+      maxTokens: 150,
+    });
+    const duration = Date.now() - start;
 
-        logger.chat_response(`[EMOTION-DETERMINATION] Response time: ${duration}ms`);
+    logger.chat_response(
+      `[EMOTION-DETERMINATION] Response time: ${duration}ms`,
+    );
 
-        if (!result) {
-            throw new Error("Empty response from AI");
-        }
-
-        // Strip markdown code blocks if present
-        let cleanedResult = result.trim();
-        if (cleanedResult.includes("```")) {
-            cleanedResult = cleanedResult.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
-        }
-
-        // Parse AI response
-        const parsed = JSON.parse(cleanedResult);
-
-        // Validate emotions exist in database
-        const validPrimary = (parsed.primary || []).filter((e: string) =>
-            availableEmotions.map(ae => ae.toLowerCase()).includes(e.toLowerCase())
-        );
-
-        const validFallback = (parsed.fallback || []).filter((e: string) =>
-            availableEmotions.map(ae => ae.toLowerCase()).includes(e.toLowerCase())
-        );
-
-        // Ensure we have at least some emotions
-        if (validPrimary.length === 0) {
-            logger.warn(`[EMOTION-DETERMINATION] No valid primary emotions, using defaults`);
-            return {
-                primaryEmotions: ["happy", "content"],
-                fallbackEmotions: ["neutral", "peaceful"],
-                strategy: "default_fallback",
-            };
-        }
-
-        logger.info(
-            `[EMOTION-DETERMINATION] Strategy: ${parsed.strategy}, Primary: [${validPrimary.join(", ")}], Fallback: [${validFallback.join(", ")}]`
-        );
-
-        return {
-            primaryEmotions: validPrimary,
-            fallbackEmotions: validFallback,
-            strategy: parsed.strategy || "unknown",
-        };
-    } catch (error: any) {
-        logger.error(`[EMOTION-DETERMINATION] Error: ${error?.message || error}`);
-        // Safe fallback on error
-        return {
-            primaryEmotions: ["happy", "content"],
-            fallbackEmotions: ["neutral"],
-            strategy: "error_fallback",
-        };
+    if (!result) {
+      throw new Error("Empty response from AI");
     }
+
+    // Strip markdown code blocks if present
+    let cleanedResult = result.trim();
+    if (cleanedResult.includes("```")) {
+      cleanedResult = cleanedResult
+        .replace(/```json\s*/g, "")
+        .replace(/```\s*/g, "")
+        .trim();
+    }
+
+    // Parse AI response
+    const parsed = JSON.parse(cleanedResult);
+
+    // Validate emotions exist in database
+    const validPrimary = (parsed.primary || []).filter((e: string) =>
+      availableEmotions.map((ae) => ae.toLowerCase()).includes(e.toLowerCase()),
+    );
+
+    const validFallback = (parsed.fallback || []).filter((e: string) =>
+      availableEmotions.map((ae) => ae.toLowerCase()).includes(e.toLowerCase()),
+    );
+
+    // Ensure we have at least some emotions
+    if (validPrimary.length === 0) {
+      logger.warn(
+        `[EMOTION-DETERMINATION] No valid primary emotions, using defaults`,
+      );
+      return {
+        primaryEmotions: ["happy", "content"],
+        fallbackEmotions: ["neutral", "peaceful"],
+        strategy: "default_fallback",
+      };
+    }
+
+    logger.info(
+      `[EMOTION-DETERMINATION] Strategy: ${parsed.strategy}, Primary: [${validPrimary.join(", ")}], Fallback: [${validFallback.join(", ")}]`,
+    );
+
+    return {
+      primaryEmotions: validPrimary,
+      fallbackEmotions: validFallback,
+      strategy: parsed.strategy || "unknown",
+    };
+  } catch (error: any) {
+    logger.error(`[EMOTION-DETERMINATION] Error: ${error?.message || error}`);
+    // Safe fallback on error
+    return {
+      primaryEmotions: ["happy", "content"],
+      fallbackEmotions: ["neutral"],
+      strategy: "error_fallback",
+    };
+  }
 }

@@ -1,9 +1,4 @@
-import {
-  determineVideoEmotions,
-  mapEmotionToDatabase,
-  detectCrisis,
-  generateCrisisResponse,
-} from "../utils/emotion";
+import { detectCrisis, generateCrisisResponse } from "../utils/emotion";
 import {
   defaultOpenAIRequest,
   composePrompt,
@@ -26,7 +21,7 @@ import {
 import logger from "../utils/logger";
 import CacheUtil from "../utils/cache.util";
 import ConversationSvc from "./conversation.service";
-import { sendChat } from "../utils/chat-wonder-api";
+// import { sendChat } from "../utils/chat-wonder-api";
 
 // ========================================
 // INTERNAL TYPES FOR CHAT PROCESSING
@@ -56,7 +51,6 @@ interface AdditionalContext {
   shouldDetectSong: boolean;
 }
 
-
 export default class ChatSvc {
   /**
    * Helper to get conversation connect object for Prisma
@@ -65,7 +59,7 @@ export default class ChatSvc {
   private static getConversationConnect(
     inputText?: string,
     conversationId?: string,
-    userId?: string
+    userId?: string,
   ) {
     if (conversationId) {
       return { connect: { id: conversationId } };
@@ -92,7 +86,7 @@ export default class ChatSvc {
   static async ensureConversation(
     inputText: string,
     userId: string,
-    conversationId?: string
+    conversationId?: string,
   ): Promise<string> {
     if (conversationId) {
       await ConversationSvc.getConversationById(conversationId, userId);
@@ -101,7 +95,7 @@ export default class ChatSvc {
 
     const conversationData = await ConversationSvc.createConversation(
       userId,
-      inputText
+      inputText,
     );
     return conversationData.id;
   }
@@ -121,7 +115,7 @@ export default class ChatSvc {
   private static async detectChatContext(
     inputText: string,
     userId: string,
-    conversationId: string
+    conversationId: string,
   ): Promise<ChatContext> {
     // Execute all independent operations in parallel
     const [emotionResult, embedding, dbEmotions] = await Promise.all([
@@ -148,7 +142,7 @@ export default class ChatSvc {
       embedding,
       userId,
       5,
-      conversationId
+      conversationId,
     );
 
     return {
@@ -168,12 +162,13 @@ export default class ChatSvc {
    * Only runs when needed based on input characteristics
    */
   private static async detectAdditionalContext(
-    inputText: string
+    inputText: string,
   ): Promise<AdditionalContext> {
+    // eslint-disable-next-line no-control-regex
     const hasNonEnglishChars = /[^\x00-\x7F]/.test(inputText);
     const shouldDetectLanguage = hasNonEnglishChars || inputText.length > 200;
     const shouldDetectSong = /song|music|track|play|send|show|video/i.test(
-      inputText
+      inputText,
     );
 
     const [detectedLanguage, specificSong] = await Promise.all([
@@ -185,13 +180,13 @@ export default class ChatSvc {
 
     if (detectedLanguage) {
       logger.info(
-        `[CHAT-SERVICE] Non-English language detected: ${detectedLanguage}`
+        `[CHAT-SERVICE] Non-English language detected: ${detectedLanguage}`,
       );
     }
 
     if (specificSong.songTitle) {
       logger.info(
-        `[CHAT-SERVICE] Specific song requested: "${specificSong.songTitle}"${specificSong.artist ? ` by ${specificSong.artist}` : ""}`
+        `[CHAT-SERVICE] Specific song requested: "${specificSong.songTitle}"${specificSong.artist ? ` by ${specificSong.artist}` : ""}`,
       );
     }
 
@@ -202,7 +197,6 @@ export default class ChatSvc {
       shouldDetectSong,
     };
   }
-
 
   // ========================================
   // PRIVATE HELPERS - AI RESPONSE
@@ -216,11 +210,11 @@ export default class ChatSvc {
    */
   private static async generateAIResponse(
     inputText: string,
-    context: ChatContext
+    context: ChatContext,
   ): Promise<string> {
     // Filter out duplicate messages from RAG
     const recentMessageIds = new Set(
-      context.chatHistoryArray.map((m: any) => m.id)
+      context.chatHistoryArray.map((m: any) => m.id),
     );
     const relevantHistory = context.similarMessages
       .filter((item) => !recentMessageIds.has(item.chatMessageId))
@@ -229,7 +223,7 @@ export default class ChatSvc {
 
     if (relevantHistory.length > 0) {
       logger.info(
-        `[RAG] Found ${relevantHistory.length} relevant past messages for context.`
+        `[RAG] Found ${relevantHistory.length} relevant past messages for context.`,
       );
     }
 
@@ -240,7 +234,7 @@ export default class ChatSvc {
       context.chatHistoryArray,
       relevantHistory as any[],
       null,
-      undefined
+      undefined,
     );
 
     const start = Date.now();
@@ -255,10 +249,10 @@ export default class ChatSvc {
 
     if (!finalChatResponse || typeof finalChatResponse !== "string") {
       logger.chat_error(
-        `[OPENAI-InputResponse], Error: Invalid response from AI, expecting a string`
+        `[OPENAI-InputResponse], Error: Invalid response from AI, expecting a string`,
       );
       throw new InternalServerError(
-        "[ChatSvc.sendChat], Invalid response from AI, expecting a string"
+        "[ChatSvc.sendChat], Invalid response from AI, expecting a string",
       );
     }
 
@@ -275,7 +269,7 @@ export default class ChatSvc {
   static async saveUserMessage(
     inputText: string,
     userId: string,
-    conversationId: string
+    conversationId: string,
   ) {
     return ChatRepo.createChatMessage({
       message: inputText,
@@ -284,7 +278,7 @@ export default class ChatSvc {
       conversation: this.getConversationConnect(
         inputText,
         conversationId,
-        userId
+        userId,
       ),
     });
   }
@@ -296,7 +290,7 @@ export default class ChatSvc {
     inputText: string,
     response: string,
     userId: string,
-    conversationId: string
+    conversationId: string,
   ) {
     return ChatRepo.createChatMessage({
       message: response,
@@ -305,7 +299,7 @@ export default class ChatSvc {
       conversation: this.getConversationConnect(
         inputText,
         conversationId,
-        userId
+        userId,
       ),
     });
   }
@@ -324,10 +318,10 @@ export default class ChatSvc {
     inputText: string,
     userId: string,
     conversationId: string,
-    context: ChatContext
+    context: ChatContext,
   ) {
     logger.warn(
-      `[CHAT-SERVICE] ⚠️ CRISIS DETECTED - Providing emergency resources`
+      `[CHAT-SERVICE] ⚠️ CRISIS DETECTED - Providing emergency resources`,
     );
 
     const crisisResponse = generateCrisisResponse("US");
@@ -336,14 +330,14 @@ export default class ChatSvc {
     const chatMessage = await this.saveUserMessage(
       inputText,
       userId,
-      conversationId
+      conversationId,
     );
 
     // Save embedding for crisis message
     await EmbeddingSvc.createEmbedding(
       "text-embedding-3-small",
       context.embedding,
-      chatMessage.id
+      chatMessage.id,
     );
 
     // Save AI crisis response
@@ -351,7 +345,7 @@ export default class ChatSvc {
       inputText,
       crisisResponse,
       userId,
-      conversationId
+      conversationId,
     );
 
     await CacheUtil.delByPattern(`chat:list:${userId}:*`);
@@ -383,22 +377,19 @@ export default class ChatSvc {
     inputText: string,
     userId: string,
     conversationId: string,
-    context: ChatContext
+    context: ChatContext,
   ) {
     // Detect language and song intent
-    const additionalContext = await this.detectAdditionalContext(inputText);
+    await this.detectAdditionalContext(inputText);
 
     // Generate AI response with full context
-    const finalChatResponse = await this.generateAIResponse(
-      inputText,
-      context
-    );
+    const finalChatResponse = await this.generateAIResponse(inputText, context);
 
     // Save user message
     const chatMessage = await this.saveUserMessage(
       inputText,
       userId,
-      conversationId
+      conversationId,
     );
 
     // Save AI response
@@ -406,14 +397,14 @@ export default class ChatSvc {
       inputText,
       finalChatResponse,
       userId,
-      conversationId
+      conversationId,
     );
 
     // Save user message embedding
     await EmbeddingSvc.createEmbedding(
       "text-embedding-3-small",
       context.embedding,
-      chatMessage.id
+      chatMessage.id,
     );
 
     // Create emotion memory
@@ -450,7 +441,7 @@ export default class ChatSvc {
   static async sendChat(
     inputText: string,
     userId: string,
-    conversationId?: string
+    conversationId?: string,
   ) {
     // Validation
     if (!inputText || !inputText.trim()) {
@@ -465,20 +456,20 @@ export default class ChatSvc {
       conversationId = await this.ensureConversation(
         inputText,
         userId,
-        conversationId
+        conversationId,
       );
       // 2. Detect all context in parallel
       const context = await this.detectChatContext(
         inputText,
         userId,
-        conversationId
+        conversationId,
       );
 
       // 3. Check for crisis
       const isCrisis = detectCrisis(
         context.emotion,
         inputText,
-        context.confidence
+        context.confidence,
       );
 
       // 4. Route to appropriate handler
@@ -487,7 +478,7 @@ export default class ChatSvc {
           inputText,
           userId,
           conversationId,
-          context
+          context,
         );
       }
 
@@ -504,7 +495,7 @@ export default class ChatSvc {
 
   static async getChatMessageById(
     chatMessageId: string,
-    currentUserId: string
+    currentUserId: string,
   ) {
     const cachedKey = `chat:message:${currentUserId}`;
     const cache = await CacheUtil.get(cachedKey);
@@ -519,7 +510,7 @@ export default class ChatSvc {
     try {
       const chatMessage = await ChatRepo.getChatMessageById(
         chatMessageId,
-        currentUserId
+        currentUserId,
       );
       if (!chatMessage) {
         throw new NotFoundError("Chat message not found");
@@ -536,7 +527,7 @@ export default class ChatSvc {
 
   static async getChatListByUserId(
     currentUserId: string,
-    options: TGetChatMessagesByUserIdOptions
+    options: TGetChatMessagesByUserIdOptions,
   ) {
     const cachedKey = `chat:list:${currentUserId}:role:${options.role || "ALL"}:page:${options.page || 1}`;
 
@@ -561,7 +552,7 @@ export default class ChatSvc {
     page: number,
     limit: number,
     search_conversation: string,
-    search_message: string
+    search_message: string,
   ) {
     if (page < 0) {
       throw new Error("Page must be non-negative");
@@ -574,7 +565,7 @@ export default class ChatSvc {
       page,
       limit,
       search_conversation,
-      search_message
+      search_message,
     );
   }
 }

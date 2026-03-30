@@ -66,7 +66,9 @@ export default class SessionSocialAccountSvc {
         providerUserId,
       );
       if (existingAccount && existingAccount.userId !== userId) {
-        throw new Error("This Google account is already linked to another user profile");
+        throw new Error(
+          "This Google account is already linked to another user profile",
+        );
       }
 
       // Upsert Google connection
@@ -117,9 +119,14 @@ export default class SessionSocialAccountSvc {
       }
 
       // Check if this social account is already linked to another user
-      const existingAccount = await SessionSocialAccountRepo.findByProviderId("facebook", userData.id);
+      const existingAccount = await SessionSocialAccountRepo.findByProviderId(
+        "facebook",
+        userData.id,
+      );
       if (existingAccount && existingAccount.userId !== userId) {
-        throw new Error("This Facebook account is already linked to another user profile");
+        throw new Error(
+          "This Facebook account is already linked to another user profile",
+        );
       }
 
       // Upsert Facebook connection
@@ -141,11 +148,18 @@ export default class SessionSocialAccountSvc {
       });
 
       // Trigger Auto-Sync (New)
-      AutoSyncSvc.syncLinkedAccount(userId, SocialPlatform.FACEBOOK, accessToken);
+      AutoSyncSvc.syncLinkedAccount(
+        userId,
+        SocialPlatform.FACEBOOK,
+        accessToken,
+      );
 
       return { message: "Facebook and Instagram accounts linked successfully" };
     } catch (error: any) {
-      console.error("SessionSocialAccountSvc.linkFacebookAccount Error:", error);
+      console.error(
+        "SessionSocialAccountSvc.linkFacebookAccount Error:",
+        error,
+      );
       throw new Error(error.message || "Failed to link Facebook account");
     }
   }

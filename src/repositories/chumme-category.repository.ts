@@ -73,7 +73,6 @@ export default class ChummeCategoryRepo {
     });
   }
 
-
   /**
    * Get all non-deleted categories with subcategory counts
    */

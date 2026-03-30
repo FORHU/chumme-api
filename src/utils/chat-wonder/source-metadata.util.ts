@@ -42,9 +42,7 @@ export function isYoutubeSearchIntentItem(item: unknown): item is YoutubeSearchI
   const action = o.action;
   const intent = o.intent as Record<string, unknown> | undefined;
   const intentAction = intent?.action;
-  return (
-    action === "youtube_search" || intentAction === "youtube_search"
-  );
+  return action === "youtube_search" || intentAction === "youtube_search";
 }
 
 /**
@@ -172,9 +170,8 @@ export async function appendYouTubeSearchResultsFromSourceMetadata(
     return out;
   };
 
-  const preferredQueries = extractPreferredQueriesFromExistingVideos(
-    existingVideos,
-  );
+  const preferredQueries =
+    extractPreferredQueriesFromExistingVideos(existingVideos);
 
   // Extract unique queries from `[Sources]` metadata while keeping order
   const queriesFromMetadata: string[] = [];
@@ -191,7 +188,8 @@ export async function appendYouTubeSearchResultsFromSourceMetadata(
     }
   }
 
-  const queries = preferredQueries.length > 0 ? preferredQueries : queriesFromMetadata;
+  const queries =
+    preferredQueries.length > 0 ? preferredQueries : queriesFromMetadata;
 
   for (const query of queries) {
     try {

@@ -314,147 +314,6 @@ export type VoiceEffect =
   | "RADIO"
   | "CHIPMUNK";
 
-function getVocalFilterChain(effect: VoiceEffect = "STUDIO"): any[] {
-  const chain: any[] = [];
-
-  // 1. Basic cleanup for all presets (Highpass)
-  chain.push({
-    filter: "highpass",
-    options: { f: 80 },
-    inputs: "1:a",
-    outputs: "v_clean",
-  });
-
-  const lastOutput = "v_clean";
-
-  // 2. Normalize levels BEFORE effects (Auto-Leveling)
-  // This ensures quiet mics are boosted and loud mics are tamed
-  chain.push({
-    filter: "dynaudnorm",
-    options: { f: 50, g: 31, p: 0.95, m: 10.0, r: 0.9, s: 0 },
-    inputs: "v_clean",
-    outputs: "v_norm",
-  });
-
-  const effectInput = "v_norm";
-
-  // 3. Effect-specific processing
-  switch (effect) {
-    case "CLEAN":
-      // Minimal processing: just light compression
-      chain.push({
-        filter: "acompressor",
-        options: { threshold: 0.1, ratio: 2, attack: 20, release: 100 },
-        inputs: effectInput,
-        outputs: "v_processed",
-      });
-      break;
-
-    case "STUDIO":
-      // Standard polished sound: Compression + Slight Echo
-      // (Volume boost removed in favor of dynaudnorm)
-      chain.push(
-        {
-          filter: "acompressor",
-          options: { threshold: 0.3, ratio: 3, attack: 50, release: 100 },
-          inputs: effectInput,
-          outputs: "v_comp",
-        },
-        {
-          filter: "aecho",
-          options: { in_gain: 0.6, out_gain: 0.3, delays: 250, decays: 0.3 },
-          inputs: "v_comp",
-          outputs: "v_processed",
-        },
-      );
-      break;
-
-    case "KTV":
-      // Karaoke: Heavier Reverb/Echo
-      chain.push(
-        {
-          filter: "acompressor",
-          options: { threshold: 0.25, ratio: 4, attack: 50, release: 100 },
-          inputs: effectInput,
-          outputs: "v_comp",
-        },
-        {
-          filter: "aecho",
-          options: { in_gain: 0.6, out_gain: 0.3, delays: 250, decays: 0.4 },
-          inputs: "v_comp",
-          outputs: "v_processed",
-        },
-      );
-      break;
-
-    case "CONCERT":
-      // Large Hall Reverb
-      chain.push(
-        {
-          filter: "acompressor",
-          options: { threshold: 0.25, ratio: 4 },
-          inputs: effectInput,
-          outputs: "v_comp",
-        },
-        {
-          filter: "aecho",
-          options: { in_gain: 0.6, out_gain: 0.4, delays: 500, decays: 0.5 },
-          inputs: "v_comp",
-          outputs: "v_processed",
-        },
-      );
-      break;
-
-    case "RADIO":
-      // AM Radio: Bandpass + Distortion (using acrusher or distortion if available, here simple EQ+Comp)
-      chain.push(
-        {
-          filter: "highpass",
-          options: { f: 500 },
-          inputs: effectInput,
-          outputs: "v_hp",
-        },
-        {
-          filter: "lowpass",
-          options: { f: 3500 },
-          inputs: "v_hp",
-          outputs: "v_lp",
-        },
-        {
-          filter: "acompressor", // Heavy compression
-          options: { threshold: 0.05, ratio: 20, attack: 5, release: 50 },
-          inputs: "v_lp",
-          outputs: "v_processed",
-        },
-      );
-      break;
-
-    case "CHIPMUNK":
-      // Pitch shift up
-      chain.push(
-        {
-          filter: "asetrate",
-          options: 44100 * 1.5, // 1.5x pitch
-          inputs: effectInput,
-          outputs: "v_pitched",
-        },
-        {
-          filter: "atempo",
-          options: 1 / 1.5, // Fix speed to match original duration
-          inputs: "v_pitched",
-          outputs: "v_processed",
-        },
-      );
-      break;
-
-    default:
-      // Fallback to Studio
-      return getVocalFilterChain("STUDIO");
-  }
-
-  return chain;
-}
-
 /**
  * Mixes a vocal buffer with a backing track.
  * Applies EBU R128 loudness normalization and injects ID3 metadata.
@@ -489,137 +348,131 @@ export const mixVocalsWithBacking = async (
   // Download backing track to temp file to avoid FFmpeg 403 errors with remote URLs
   let localBackingPath: string | null = null;
 
-  try {
-    localBackingPath = await downloadSingle(backingTrackUrl);
+  localBackingPath = await downloadSingle(backingTrackUrl);
 
-    await new Promise<void>((resolve, reject) => {
-      const command = ffmpeg();
-      command.input(localBackingPath!);
-      command.input(tempVocalsPath);
+  await new Promise<void>((resolve, reject) => {
+    const command = ffmpeg();
+    command.input(localBackingPath!);
+    command.input(tempVocalsPath);
 
-      // No filters — simple direct mix of backing track + raw vocals
-      // const filterChain: any[] = [
-      //   // Boost vocals so they sit above the backing track
-      /**
-       * 1.0 = original volume (no boost)
-       * 1.5 = 50% louder
-       * 1.8 = 80% louder ← current
-       * 2.0 = double volume
-       */
-      //   {
-      //     filter: "volume",
-      //     options: { volume: 1.8 },
-      //     inputs: "1:a",
-      //     outputs: "v_loud",
-      //   },
-      /**
-       * inputs: 2 = mix 2 streams
-       * duration: "shortest" = mix until the shorter stream ends
-       */
-      //   {
-      //     filter: "amix",
-      //     options: { inputs: 2, duration: "shortest" },
-      //     inputs: ["0:a", "v_loud"],
-      //     outputs: "mixed",
-      //   },
-      // ];
+    // No filters — simple direct mix of backing track + raw vocals
+    // const filterChain: any[] = [
+    //   // Boost vocals so they sit above the backing track
+    /**
+     * 1.0 = original volume (no boost)
+     * 1.5 = 50% louder
+     * 1.8 = 80% louder ← current
+     * 2.0 = double volume
+     */
+    //   {
+    //     filter: "volume",
+    //     options: { volume: 1.8 },
+    //     inputs: "1:a",
+    //     outputs: "v_loud",
+    //   },
+    /**
+     * inputs: 2 = mix 2 streams
+     * duration: "shortest" = mix until the shorter stream ends
+     */
+    //   {
+    //     filter: "amix",
+    //     options: { inputs: 2, duration: "shortest" },
+    //     inputs: ["0:a", "v_loud"],
+    //     outputs: "mixed",
+    //   },
+    // ];
 
-      const filterChain: any[] = [
-        {
-          filter: "highpass",
-          options: { f: 80 },
-          inputs: "1:a",
-          outputs: "v_hp",
+    const filterChain: any[] = [
+      {
+        filter: "highpass",
+        options: { f: 80 },
+        inputs: "1:a",
+        outputs: "v_hp",
+      },
+      // Bass boost — adds warmth to vocals
+      {
+        filter: "equalizer",
+        options: { f: 150, width_type: "h", width: 100, g: 4 },
+        inputs: "v_hp",
+        outputs: "v_clean",
+      },
+      {
+        filter: "acompressor",
+        options: {
+          threshold: 0.125,
+          ratio: 3,
+          attack: 15,
+          release: 200,
+          makeup: 3,
         },
-        // Bass boost — adds warmth to vocals
-        {
-          filter: "equalizer",
-          options: { f: 150, width_type: "h", width: 100, g: 4 },
-          inputs: "v_hp",
-          outputs: "v_clean",
+        inputs: "v_clean",
+        outputs: "v_comp",
+      },
+      {
+        filter: "volume",
+        options: { volume: 1.4 },
+        inputs: "v_comp",
+        outputs: "v_loud",
+      },
+      {
+        filter: "amix",
+        options: {
+          inputs: 2,
+          weights: "3 1",
+          duration: "shortest",
         },
-        {
-          filter: "acompressor",
-          options: {
-            threshold: 0.125,
-            ratio: 3,
-            attack: 15,
-            release: 200,
-            makeup: 3,
-          },
-          inputs: "v_clean",
-          outputs: "v_comp",
-        },
-        {
-          filter: "volume",
-          options: { volume: 1.4 },
-          inputs: "v_comp",
-          outputs: "v_loud",
-        },
-        {
-          filter: "amix",
-          options: {
-            inputs: 2,
-            weights: "3 1",
-            duration: "shortest",
-          },
-          inputs: ["v_loud", "0:a"],
-          outputs: "mixed",
-        },
-        {
-          filter: "alimiter",
-          options: { limit: 0.95 },
-          inputs: "mixed",
-          outputs: "final",
-        },
-      ];
+        inputs: ["v_loud", "0:a"],
+        outputs: "mixed",
+      },
+      {
+        filter: "alimiter",
+        options: { limit: 0.95 },
+        inputs: "mixed",
+        outputs: "final",
+      },
+    ];
 
-      let finalOutput = "final";
+    let finalOutput = "final";
 
-      // Trim to duration if specified
-      if (maxDuration && maxDuration > 0) {
-        finalOutput = "trimmed";
-        filterChain.push({
-          filter: "atrim",
-          options: { duration: maxDuration },
-          inputs: "final",
-          outputs: finalOutput,
-        });
-      }
-
-      command.complexFilter(filterChain);
-      command.map(finalOutput);
-
-      // 5. Inject Metadata
-      command.outputOptions("-metadata", `title="${title}"`);
-      command.outputOptions("-metadata", `artist="${artist}"`);
-      command.outputOptions("-metadata", 'comment="Powered by Chumme AI"');
-
-      command
-        .on("start", (cmd) =>
-          logger.info(`[FFmpeg] Mix+Loudnorm (${voiceEffect}): ${cmd}`),
-        )
-        .on("error", (err) => {
-          logger.error("[FFmpeg] Mix error:", err);
-          reject(err);
-        })
-        .on("end", () => resolve())
-        .format("mp3")
-        .audioBitrate("320k")
-        .save(outputPath);
-    });
-
-    // DO NOT Read and Cleanup yet. Return the path so worker can stream it.
-    cleanupTempFiles([tempVocalsPath]);
-    if (localBackingPath && !isLocalPath(backingTrackUrl)) {
-      cleanupTempFiles([localBackingPath]);
+    // Trim to duration if specified
+    if (maxDuration && maxDuration > 0) {
+      finalOutput = "trimmed";
+      filterChain.push({
+        filter: "atrim",
+        options: { duration: maxDuration },
+        inputs: "final",
+        outputs: finalOutput,
+      });
     }
-    return outputPath;
-  } catch (err) {
-    // Cleanup if something failed
-    // if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
-    throw err;
+
+    command.complexFilter(filterChain);
+    command.map(finalOutput);
+
+    // 5. Inject Metadata
+    command.outputOptions("-metadata", `title="${title}"`);
+    command.outputOptions("-metadata", `artist="${artist}"`);
+    command.outputOptions("-metadata", 'comment="Powered by Chumme AI"');
+
+    command
+      .on("start", (cmd) =>
+        logger.info(`[FFmpeg] Mix+Loudnorm (${voiceEffect}): ${cmd}`),
+      )
+      .on("error", (err) => {
+        logger.error("[FFmpeg] Mix error:", err);
+        reject(err);
+      })
+      .on("end", () => resolve())
+      .format("mp3")
+      .audioBitrate("320k")
+      .save(outputPath);
+  });
+
+  // DO NOT Read and Cleanup yet. Return the path so worker can stream it.
+  cleanupTempFiles([tempVocalsPath]);
+  if (localBackingPath && !isLocalPath(backingTrackUrl)) {
+    cleanupTempFiles([localBackingPath]);
   }
+  return outputPath;
 };
 
 // ---------------------------------------------------------------------------

@@ -10,8 +10,12 @@ export default class MonitoringSvc {
   static async getPipelineStatus() {
     try {
       // 1. Get worker metrics from Redis
-      const workerMetricsRaw = await RedisUtil.redisClient.get("worker:metrics:snapshot");
-      const workerMetrics = workerMetricsRaw ? JSON.parse(workerMetricsRaw) : null;
+      const workerMetricsRaw = await RedisUtil.redisClient.get(
+        "worker:metrics:snapshot",
+      );
+      const workerMetrics = workerMetricsRaw
+        ? JSON.parse(workerMetricsRaw)
+        : null;
 
       // 2. Get RabbitMQ status
       const rabbitStatus = {
@@ -71,51 +75,56 @@ export default class MonitoringSvc {
 
       // 1. Ingestions by Platform (Last 7 days)
       const platformBreakdown = await prisma.socialFeedItem.groupBy({
-        by: ['socialPlatform'],
+        by: ["socialPlatform"],
         where: {
-          createdAt: { gte: sevenDaysAgo }
+          createdAt: { gte: sevenDaysAgo },
         },
-        _count: { _all: true }
+        _count: { _all: true },
       });
 
       // 2. 7-Day Ingestion Trend (Daily totals)
       // Note: Grouping by date in Prisma can be tricky depending on DB; using a simple approach here.
       const rawTrend = await prisma.socialFeedItem.findMany({
         where: { createdAt: { gte: sevenDaysAgo } },
-        select: { createdAt: true }
+        select: { createdAt: true },
       });
 
       const trendMap: Record<string, number> = {};
-      rawTrend.forEach(item => {
-        const dateStr = item.createdAt.toISOString().split('T')[0];
+      rawTrend.forEach((item) => {
+        const dateStr = item.createdAt.toISOString().split("T")[0];
         trendMap[dateStr] = (trendMap[dateStr] || 0) + 1;
       });
 
-      const trend = Object.keys(trendMap).sort().map(date => ({
-        date,
-        count: trendMap[date]
-      }));
+      const trend = Object.keys(trendMap)
+        .sort()
+        .map((date) => ({
+          date,
+          count: trendMap[date],
+        }));
 
       // 3. Talent Scout Success (Draft artists created)
       const draftArtistCount = await prisma.chummeArtist.count({
         where: {
           isDraft: true,
-          discoveredAt: { gte: sevenDaysAgo }
-        }
+          discoveredAt: { gte: sevenDaysAgo },
+        },
       });
 
       return {
-        platforms: platformBreakdown.map(p => ({
+        platforms: platformBreakdown.map((p) => ({
           platform: p.socialPlatform,
-          count: p._count._all
+          count: p._count._all,
         })),
         trend,
         scoutSuccess: {
-          discoveredTalents7d: draftArtistCount
-        }
+          discoveredTalents7d: draftArtistCount,
+        },
       };
     } catch (error) {
-      logger.error("[MonitoringSvc] Error fetching ingestion analytics:", error);
+      logger.error(
+        "[MonitoringSvc] Error fetching ingestion analytics:",
+        error,
+      );
       throw error;
     }
   }
@@ -124,14 +133,16 @@ export default class MonitoringSvc {
    * Get low-level worker health (Throughput / Latency from Redis)
    */
   static async getWorkerHealthDetails() {
-    const metricsRaw = await RedisUtil.redisClient.get("worker:metrics:snapshot");
+    const metricsRaw = await RedisUtil.redisClient.get(
+      "worker:metrics:snapshot",
+    );
     if (!metricsRaw) return null;
 
     const metrics = JSON.parse(metricsRaw);
     return {
       ...metrics,
       healthStatus: metrics.failureRate < 0.1 ? "healthy" : "warning",
-      lastUpdated: new Date()
+      lastUpdated: new Date(),
     };
   }
 }

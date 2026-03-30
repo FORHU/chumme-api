@@ -10,11 +10,9 @@ export default class SocialFeedCtrl {
     try {
       const page = parseInt(req.query.page as string) || 0;
       const limit = parseInt(req.query.limit as string) || 5;
-      const refresh = req.query.refresh === "true";
-      const seed = req.query.seed as string;
 
       const countryCode = req.headers["x-country-code"] as string | undefined;
-      const feed = await SocialFeedSvc.getFeed(page, limit, refresh, seed, countryCode);
+      const feed = await SocialFeedSvc.getFeed(page, limit, countryCode);
 
       res.json({
         success: true,
@@ -50,10 +48,7 @@ export default class SocialFeedCtrl {
 
       const page = parseInt(req.query.page as string) || 0;
       const limit = parseInt(req.query.limit as string) || 20;
-      const refresh = req.query.refresh === "true";
-
       const artist = req.query.artist as string;
-      const seed = (req.query.seed || req.query.seed_id) as string;
 
       const countryCode = req.headers["x-country-code"] as string | undefined;
       const feed = await SocialFeedSvc.getPersonalizedFeed(
@@ -61,8 +56,6 @@ export default class SocialFeedCtrl {
         page,
         limit,
         artist,
-        refresh,
-        seed,
         countryCode,
       );
 

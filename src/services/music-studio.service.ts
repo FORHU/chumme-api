@@ -1,6 +1,5 @@
 import { prisma } from "../utils/prisma";
 import path from "path";
-import os from "os";
 import fs from "fs";
 import {
   MusicStudioRole,
@@ -15,13 +14,7 @@ import MusicLibraryRepo from "../repositories/music-library.repository";
 import MusicStudioCacheSvc from "./music-studio-cache.service";
 import logger from "../utils/logger";
 import S3Util from "../utils/s3.util";
-import {
-  overlayAudioFiles,
-  batchOverlayAudioFiles,
-  concatenateAudioFiles,
-  mixVocalsWithBacking,
-  removeVocals,
-} from "../utils/audio.utils";
+import { removeVocals } from "../utils/audio.utils";
 import { publishMergeJob } from "../listeners/audio-merge.listener";
 import type { AudioMergeJob } from "../listeners/audio-merge.listener";
 import { S3_CDN_URL } from "../config";

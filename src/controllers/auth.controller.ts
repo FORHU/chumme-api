@@ -78,7 +78,12 @@ export default class AuthCtrl {
     }
 
     try {
-      const data = await AuthSvc.login({ email, password, idToken: req.body.idToken, accessToken: req.body.accessToken });
+      const data = await AuthSvc.login({
+        email,
+        password,
+        idToken: req.body.idToken,
+        accessToken: req.body.accessToken,
+      });
       return res.json({ message: "Login successful", data });
     } catch (error: any) {
       console.error("Login error:", error);

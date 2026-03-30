@@ -15,7 +15,6 @@ export const sendTemplatedEmail = ({
   template_name,
   subject,
   email_data,
-  attachments = [],
   cc = null,
 }: any) => {
   const html = getHTMLContents({ template_name, email_data });
@@ -24,12 +23,11 @@ export const sendTemplatedEmail = ({
     to: email_data.email,
     subject,
     html,
-    attachments,
     cc,
   });
 };
 
-export const handleSendEmail = ({ to, subject, html, attachments }: any) => {
+export const handleSendEmail = ({ to, subject, html }: any) => {
   /**
      
   Adds a job to the email queue to send an email verification email to the user.
@@ -41,7 +39,6 @@ export const handleSendEmail = ({ to, subject, html, attachments }: any) => {
     to,
     subject,
     html,
-    attachments,
   });
 };
 

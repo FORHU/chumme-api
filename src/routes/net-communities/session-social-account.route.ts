@@ -23,6 +23,10 @@ router.get("/me", authenticate, SessionSessionSocialAccountCtrl.getMyAccounts);
  * @desc    Unlink a specific social platform
  * @access  Private
  */
-router.delete("/:platform", authenticate, SessionSessionSocialAccountCtrl.unlinkAccount);
+router.delete(
+  "/:platform",
+  authenticate,
+  SessionSessionSocialAccountCtrl.unlinkAccount,
+);
 
 export default router;

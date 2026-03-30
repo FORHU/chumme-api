@@ -13,7 +13,9 @@ export default class ChummeSubCategoryCtrl {
       ownerId: Joi.string().uuid().optional(),
       isAd: Joi.boolean().required(),
       keyPassword: Joi.string().allow(null, "").optional(), // Null/Empty = public, otherwise private
-      traits: Joi.string().valid("NONE", "COMMUNITIES", "ENTERTAINMENT").optional(),
+      traits: Joi.string()
+        .valid("NONE", "COMMUNITIES", "ENTERTAINMENT")
+        .optional(),
       position: Joi.object().optional(),
       colorSet: Joi.object().optional(),
       sizeSet: Joi.object().optional(),
@@ -136,7 +138,9 @@ export default class ChummeSubCategoryCtrl {
       ownerId: Joi.string().uuid().optional(),
       isAd: Joi.boolean().optional(),
       keyPassword: Joi.string().allow(null, "").optional(), // Null/Empty = public, otherwise private
-      traits: Joi.string().valid("NONE", "COMMUNITIES", "ENTERTAINMENT").optional(),
+      traits: Joi.string()
+        .valid("NONE", "COMMUNITIES", "ENTERTAINMENT")
+        .optional(),
       position: Joi.object().optional(),
       colorSet: Joi.object().optional(),
       sizeSet: Joi.object().optional(),

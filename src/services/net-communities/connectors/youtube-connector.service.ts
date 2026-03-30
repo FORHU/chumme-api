@@ -84,9 +84,7 @@ export class YouTubeConnector implements PlatformConnector {
   ): Promise<GenericContentItem[]> {
     const results = await YouTubeService.searchVideos(query, limit, regionCode);
     // Search results are snippets only, might need full details for stats
-    return (results as any[]).map((item) =>
-      this.mapSearchToGenericItem(item),
-    );
+    return (results as any[]).map((item) => this.mapSearchToGenericItem(item));
   }
 
   async getChannelMetadata(channelId: string): Promise<any> {
@@ -125,7 +123,9 @@ export class YouTubeConnector implements PlatformConnector {
     };
   }
 
-  private mapPlaylistVideoToGenericItem(item: PlaylistItemRow): GenericContentItem {
+  private mapPlaylistVideoToGenericItem(
+    item: PlaylistItemRow,
+  ): GenericContentItem {
     const videoId = item.contentDetails?.videoId ?? "";
     return {
       id: videoId,

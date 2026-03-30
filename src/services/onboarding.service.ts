@@ -14,7 +14,11 @@ export default class OnboardingSvc {
     idToken?: string,
     accessToken?: string,
   ) {
-    return SessionSocialAccountSvc.linkGoogleAccount(userId, idToken, accessToken);
+    return SessionSocialAccountSvc.linkGoogleAccount(
+      userId,
+      idToken,
+      accessToken,
+    );
   }
 
   /**
@@ -65,8 +69,7 @@ export default class OnboardingSvc {
       nextSteps.push("connect_google_youtube");
     }
 
-    const allRequiredStepsDone =
-      discoveryCategoriesDone && connectYoutubeDone;
+    const allRequiredStepsDone = discoveryCategoriesDone && connectYoutubeDone;
 
     return {
       onboardingCompleted: user?.onboardingCompleted ?? false,

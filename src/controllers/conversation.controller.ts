@@ -12,14 +12,14 @@ export default class ConversationCtrl {
   static async createConversation(
     req: Request,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
   ) {
     const { title } = req.body;
     const { id: userId } = req.user;
 
     if (!userId) {
       return next(
-        new InternalServerError("Authenticated user not found in request")
+        new InternalServerError("Authenticated user not found in request"),
       );
     }
 
@@ -36,7 +36,7 @@ export default class ConversationCtrl {
       logger.info("[CONVERSATION.CONTROLLER] - Creating new conversation");
       const conversation = await ConversationSvc.createConversation(
         userId,
-        title
+        title,
       );
       return res.status(201).json(conversation);
     } catch (error) {
@@ -51,13 +51,13 @@ export default class ConversationCtrl {
   static async getConversations(
     req: Request,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
   ) {
     const { id: userId } = req.user;
 
     if (!userId) {
       return next(
-        new InternalServerError("Authenticated user not found in request")
+        new InternalServerError("Authenticated user not found in request"),
       );
     }
 
@@ -94,14 +94,14 @@ export default class ConversationCtrl {
   static async getConversationById(
     req: Request,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
   ) {
     const { id: conversationId } = req.params;
     const { id: userId } = req.user;
 
     if (!userId) {
       return next(
-        new InternalServerError("Authenticated user not found in request")
+        new InternalServerError("Authenticated user not found in request"),
       );
     }
 
@@ -116,11 +116,11 @@ export default class ConversationCtrl {
 
     try {
       logger.info(
-        `[CONVERSATION.CONTROLLER] - Fetching conversation ${conversationId}`
+        `[CONVERSATION.CONTROLLER] - Fetching conversation ${conversationId}`,
       );
       const conversation = await ConversationSvc.getConversationById(
         conversationId,
-        userId
+        userId,
       );
       return res.json(conversation);
     } catch (error) {
@@ -139,7 +139,7 @@ export default class ConversationCtrl {
 
     if (!userId) {
       return next(
-        new InternalServerError("Authenticated user not found in request")
+        new InternalServerError("Authenticated user not found in request"),
       );
     }
 
@@ -155,12 +155,12 @@ export default class ConversationCtrl {
 
     try {
       logger.info(
-        `[CONVERSATION.CONTROLLER] - Updating conversation ${conversationId} title`
+        `[CONVERSATION.CONTROLLER] - Updating conversation ${conversationId} title`,
       );
       const updatedConversation = await ConversationSvc.updateConversationTitle(
         conversationId,
         userId,
-        title
+        title,
       );
       return res.json(updatedConversation);
     } catch (error) {
@@ -175,14 +175,14 @@ export default class ConversationCtrl {
   static async deleteConversation(
     req: Request,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
   ) {
     const { id: conversationId } = req.params;
     const { id: userId } = req.user;
 
     if (!userId) {
       return next(
-        new InternalServerError("Authenticated user not found in request")
+        new InternalServerError("Authenticated user not found in request"),
       );
     }
 
@@ -197,7 +197,7 @@ export default class ConversationCtrl {
 
     try {
       logger.info(
-        `[CONVERSATION.CONTROLLER] - Deleting conversation ${conversationId}`
+        `[CONVERSATION.CONTROLLER] - Deleting conversation ${conversationId}`,
       );
       await ConversationSvc.deleteConversation(conversationId, userId);
       return res.json({
@@ -215,14 +215,14 @@ export default class ConversationCtrl {
   static async getConversationMessages(
     req: Request,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
   ) {
     const { id: conversationId } = req.params;
     const { id: userId } = req.user;
 
     if (!userId) {
       return next(
-        new InternalServerError("Authenticated user not found in request")
+        new InternalServerError("Authenticated user not found in request"),
       );
     }
 
@@ -244,7 +244,7 @@ export default class ConversationCtrl {
 
     try {
       logger.info(
-        `[CONVERSATION.CONTROLLER] - Fetching messages for conversation ${conversationId}`
+        `[CONVERSATION.CONTROLLER] - Fetching messages for conversation ${conversationId}`,
       );
 
       // First verify conversation ownership
@@ -262,7 +262,7 @@ export default class ConversationCtrl {
           limit: value.limit,
           role: value.role,
           sortOrder: value.sortOrder,
-        }
+        },
       );
       return res.json(messages);
     } catch (error) {

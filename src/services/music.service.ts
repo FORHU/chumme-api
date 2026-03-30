@@ -17,14 +17,6 @@ interface CreateMusicInput {
   isKaraoke?: boolean;
   vocalRolesCount?: number;
 }
-
-interface FileUpload {
-  buffer: Buffer;
-  originalname: string;
-  mimetype: string;
-  size: number;
-}
-
 export default class MusicSvc {
   /**
    * Remove audio file extensions from a string
@@ -67,7 +59,7 @@ export default class MusicSvc {
           const headerMatch = trimmedSection.match(
             /^\[([\w\s]+)\]|^([\w\s]+):|^\(([\w\s]+)\)/,
           );
-          let partName = headerMatch
+          const partName = headerMatch
             ? (headerMatch[1] || headerMatch[2] || headerMatch[3]).trim()
             : `Part ${index + 1}`;
 

@@ -1,6 +1,5 @@
 import PlaylistRepo from "../repositories/playlist.repository";
 import CacheUtil from "../utils/cache.util";
-import { Prisma } from "@prisma/client";
 
 export default class PlaylistSvc {
   static async createPlaylist(data: any) {

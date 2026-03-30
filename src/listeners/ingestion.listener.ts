@@ -6,7 +6,7 @@ import { prisma } from "../utils/prisma";
 import { IngestionManager } from "../services/net-communities/connectors/platform.service";
 import SocialFeedSvc from "../services/social-feed.service";
 import RedisUtil from "../utils/redis.util";
-import SocialUserDiscoverySvc from "../services/social-user-discovery.service";
+// import SocialUserDiscoverySvc from "../services/social-user-discovery.service";
 
 // Ensure connectors are registered
 import "../services/net-communities/connectors/youtube-connector.service";
@@ -45,7 +45,7 @@ export class IngestionWorker {
 
   private handleMessage: MessageHandler = async (
     message: IngestionJob,
-    originalMsg: amqp.ConsumeMessage,
+    _originalMsg: amqp.ConsumeMessage,
   ) => {
     logger.info(
       `[IngestionWorker] Processing ${message.type} job for ${message.platform}:${message.targetId}`,
@@ -101,7 +101,7 @@ export class IngestionWorker {
         throw error;
       } finally {
         const durationMs = Date.now() - startTime;
-        const { workerMetrics } = require("../utils/worker-metrics");
+        const { workerMetrics } = await import("../utils/worker-metrics");
         workerMetrics.recordJob({
           jobId: `${message.platform}:${message.targetId}`,
           jobType: `ingestion:${message.type}`,

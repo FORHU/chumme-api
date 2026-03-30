@@ -8,11 +8,19 @@ const router = express.Router();
 router.get("/", authenticate, chummeArtistController.getAllArtists);
 
 // Skip onboarding by selecting random artists
-router.post("/skip-onboarding", authenticate, chummeArtistController.skipOnboarding);
+router.post(
+  "/skip-onboarding",
+  authenticate,
+  chummeArtistController.skipOnboarding,
+);
 
 router.get("/me", authenticate, chummeArtistController.getUserArtists);
 router.post("/me", authenticate, chummeArtistController.addUserArtists);
-router.delete("/me/:artistId", authenticate, chummeArtistController.removeUserArtist);
+router.delete(
+  "/me/:artistId",
+  authenticate,
+  chummeArtistController.removeUserArtist,
+);
 
 // CRUD routes for Artist entity
 router.get("/:id", authenticate, chummeArtistController.getArtistById);

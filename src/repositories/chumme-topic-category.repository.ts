@@ -58,7 +58,9 @@ export default class ChummeTopicCategoryRepo {
     return prisma.chummeTopicCategory.findMany({
       where: {
         deletedAt: null,
-        ...(params.subCategoryId && { chummeSubCategoryId: params.subCategoryId }),
+        ...(params.subCategoryId && {
+          chummeSubCategoryId: params.subCategoryId,
+        }),
         ...(params.publicOnly && {
           OR: [{ keyPassword: null }, { keyPassword: "" }],
         }),

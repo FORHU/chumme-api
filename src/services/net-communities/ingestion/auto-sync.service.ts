@@ -37,7 +37,7 @@ export class AutoSyncSvc {
       );
 
       // 1. Create Ingestion Target for this user
-      const target = await prisma.socialIngestionTarget.upsert({
+      await prisma.socialIngestionTarget.upsert({
         where: {
           platform_externalHandle: {
             platform,

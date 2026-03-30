@@ -11,8 +11,7 @@ const apkFileFilter = (
   file: Express.Multer.File,
   cb: FileFilterCallback,
 ) => {
-  const isApkMime =
-    file.mimetype === "application/vnd.android.package-archive";
+  const isApkMime = file.mimetype === "application/vnd.android.package-archive";
   const isApkExt = file.originalname.toLowerCase().endsWith(".apk");
 
   if (isApkMime || isApkExt) {

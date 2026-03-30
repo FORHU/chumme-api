@@ -10,7 +10,6 @@ export const findByArtistId = async (artistId: string) => {
       audioPath: { select: { id: true, fileUrl: true } },
       videoPath: { select: { id: true, fileUrl: true } },
       imagePath: { select: { id: true, fileUrl: true } },
-
     },
   });
 };
@@ -33,7 +32,6 @@ export const findByImagePathId = async (imagePathId: string) => {
   });
 };
 
-
 export const create = async (data: {
   chummeArtistId?: string | null;
   name: string;
@@ -43,8 +41,6 @@ export const create = async (data: {
   videoPathId?: string | null;
   imagePathId?: string | null;
 }) => {
-
-
   return prisma.chummeArtistPersona.create({
     data: {
       ...data,
@@ -58,10 +54,8 @@ export const create = async (data: {
       videoPath: { select: { id: true, fileUrl: true } },
       imagePath: { select: { id: true, fileUrl: true } },
     },
-
   });
 };
-
 
 export const update = async (
   id: string,
@@ -74,9 +68,6 @@ export const update = async (
     videoPathId?: string | null;
     imagePathId?: string | null;
   },
-
-
-
 ) => {
   return prisma.chummeArtistPersona.update({
     where: { id },
@@ -85,10 +76,16 @@ export const update = async (
       name: data.name ?? undefined,
       voiceKey: data.voiceKey ?? undefined,
       persona: data.persona ?? undefined,
-      chummeArtistId: data.chummeArtistId === null ? null : (data.chummeArtistId ?? undefined),
-      audioPathId: data.audioPathId === null ? null : (data.audioPathId ?? undefined),
-      videoPathId: data.videoPathId === null ? null : (data.videoPathId ?? undefined),
-      imagePathId: data.imagePathId === null ? null : (data.imagePathId ?? undefined),
+      chummeArtistId:
+        data.chummeArtistId === null
+          ? null
+          : (data.chummeArtistId ?? undefined),
+      audioPathId:
+        data.audioPathId === null ? null : (data.audioPathId ?? undefined),
+      videoPathId:
+        data.videoPathId === null ? null : (data.videoPathId ?? undefined),
+      imagePathId:
+        data.imagePathId === null ? null : (data.imagePathId ?? undefined),
     },
 
     include: {
@@ -96,10 +93,8 @@ export const update = async (
       videoPath: { select: { id: true, fileUrl: true } },
       imagePath: { select: { id: true, fileUrl: true } },
     },
-
   });
 };
-
 
 export const getAll = async () => {
   return prisma.chummeArtistPersona.findMany({

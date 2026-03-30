@@ -25,7 +25,7 @@ export const update = async (
     exactTime?: string | null;
     intervalHours?: number | null;
     isActive?: boolean;
-  }
+  },
 ) => {
   return prisma.socialIngestionSchedule.update({
     where: { id },

@@ -92,10 +92,15 @@ export default class AuthSvc {
             avatarUrl: payload.picture,
           });
           // YouTube platform is created only via onboarding connect-google / linkGoogleAccount (youtube.readonly), not here.
-          console.log(`[AuthSvc] Auto-linked Google during registration for user ${user.id}`);
+          console.log(
+            `[AuthSvc] Auto-linked Google during registration for user ${user.id}`,
+          );
         }
       } catch (err) {
-        console.error("[AuthSvc] Failed to auto-link Google account during registration:", err);
+        console.error(
+          "[AuthSvc] Failed to auto-link Google account during registration:",
+          err,
+        );
       }
     }
 
@@ -121,14 +126,23 @@ export default class AuthSvc {
               accessToken: data.accessToken,
               avatarUrl: userData.picture?.data?.url,
             });
-            console.log(`[AuthSvc] Auto-linked Facebook/Instagram during registration for user ${user.id}`);
+            console.log(
+              `[AuthSvc] Auto-linked Facebook/Instagram during registration for user ${user.id}`,
+            );
 
             // Trigger Auto-Sync (New)
-            AutoSyncSvc.syncLinkedAccount(user.id, SocialPlatform.INSTAGRAM, data.accessToken);
+            AutoSyncSvc.syncLinkedAccount(
+              user.id,
+              SocialPlatform.INSTAGRAM,
+              data.accessToken,
+            );
           }
         }
       } catch (err) {
-        console.error("[AuthSvc] Failed to auto-link Facebook account during registration:", err);
+        console.error(
+          "[AuthSvc] Failed to auto-link Facebook account during registration:",
+          err,
+        );
       }
     }
 
@@ -255,7 +269,10 @@ export default class AuthSvc {
           console.log(`[AuthSvc] Auto-linked Google for user ${user.id}`);
         }
       } catch (err) {
-        console.error("[AuthSvc] Failed to auto-link Google account during login:", err);
+        console.error(
+          "[AuthSvc] Failed to auto-link Google account during login:",
+          err,
+        );
       }
     }
 
@@ -281,14 +298,23 @@ export default class AuthSvc {
               accessToken,
               avatarUrl: userData.picture?.data?.url,
             });
-            console.log(`[AuthSvc] Auto-linked Facebook/Instagram for user ${user.id}`);
+            console.log(
+              `[AuthSvc] Auto-linked Facebook/Instagram for user ${user.id}`,
+            );
 
             // Trigger Auto-Sync (New)
-            AutoSyncSvc.syncLinkedAccount(user.id, SocialPlatform.INSTAGRAM, accessToken);
+            AutoSyncSvc.syncLinkedAccount(
+              user.id,
+              SocialPlatform.INSTAGRAM,
+              accessToken,
+            );
           }
         }
       } catch (err) {
-        console.error("[AuthSvc] Failed to auto-link Facebook account during login:", err);
+        console.error(
+          "[AuthSvc] Failed to auto-link Facebook account during login:",
+          err,
+        );
       }
     }
 
@@ -333,11 +359,11 @@ export default class AuthSvc {
           username: user.username,
           name: user.name,
           role: user.role,
-            avatar: user.avatar?.fileUrl,
-            onboardingCompleted: user.onboardingCompleted,
-            artistCount: user.socialUserDiscoveries ? 1 : 0,
-          },
-        };
+          avatar: user.avatar?.fileUrl,
+          onboardingCompleted: user.onboardingCompleted,
+          artistCount: user.socialUserDiscoveries ? 1 : 0,
+        },
+      };
     } catch (error) {
       throw "Invalid refresh token";
     }
@@ -585,8 +611,16 @@ export default class AuthSvc {
       });
 
       // Trigger Auto-Sync (New)
-      AutoSyncSvc.syncLinkedAccount(user.id, SocialPlatform.FACEBOOK, accessToken);
-      AutoSyncSvc.syncLinkedAccount(user.id, SocialPlatform.INSTAGRAM, accessToken);
+      AutoSyncSvc.syncLinkedAccount(
+        user.id,
+        SocialPlatform.FACEBOOK,
+        accessToken,
+      );
+      AutoSyncSvc.syncLinkedAccount(
+        user.id,
+        SocialPlatform.INSTAGRAM,
+        accessToken,
+      );
 
       // Complete OAuth login flow with provider info
       return this.generateAuthResponse(

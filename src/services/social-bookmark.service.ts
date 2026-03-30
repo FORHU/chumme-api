@@ -1,9 +1,6 @@
-import { SocialUserBookmark } from "@prisma/client";
 import UserRepo from "../repositories/user.repository";
-import { prisma } from "../utils/prisma";
 import SocialBookmarkRepo from "../repositories/social-bookmark.repository";
 import CacheUtil from "../utils/cache.util";
-import SocialFeedRepo from "../repositories/social-feed.repository";
 export default class SocialBookmarkSvc {
   static async fetchAllUserBookmarks(
     userId: string,

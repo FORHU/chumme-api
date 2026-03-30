@@ -1,6 +1,5 @@
 import MusicAlbumRepo from "../repositories/music-album.repository";
 import CacheUtil from "../utils/cache.util";
-import { Prisma } from "@prisma/client";
 
 export default class MusicAlbumSvc {
   static async createAlbum(data: any) {

@@ -2,7 +2,6 @@ import MusicRepo from "../repositories/music.repository";
 import MusicStudioCacheSvc from "./music-studio-cache.service";
 import RelayManager from "../utils/relay-manager";
 import { MusicStudioRole } from "@prisma/client";
-import MusicStudioRepo from "../repositories/music-studio.repository";
 
 /**
  * Music Queue Service

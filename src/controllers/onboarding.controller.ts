@@ -29,17 +29,12 @@ export default class OnboardingCtrl {
         return res.status(401).json({ message: "Unauthorized" });
       }
       const schema = Joi.object({
-        categoryIds: Joi.array()
-          .items(Joi.string().uuid())
-          .required()
-          .min(2),
+        categoryIds: Joi.array().items(Joi.string().uuid()).required().min(2),
         subCategoryIds: Joi.array()
           .items(Joi.string().uuid())
           .required()
           .min(3),
-        topicCategoryIds: Joi.array()
-          .items(Joi.string().uuid())
-          .optional(),
+        topicCategoryIds: Joi.array().items(Joi.string().uuid()).optional(),
       });
 
       const { error, value } = schema.validate(req.body);

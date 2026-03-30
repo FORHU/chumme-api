@@ -84,7 +84,7 @@ export default class ChatWonderSvc {
   ) {
     let finalChatResponse = "";
     let currentSessionId = chatSessionId;
-    let maxRetries = 2;
+    const maxRetries = 2;
     let retryCount = 0;
 
     while (retryCount < maxRetries) {
@@ -153,7 +153,7 @@ export default class ChatWonderSvc {
         await CacheUtil.delByPattern(`chat:list:${userId}:*`);
 
         // Use AI-generated videos from parsed response + YouTube intent from source_metadata
-        const { raw, ...cleanResponse } = parsedResponse;
+        const { ...cleanResponse } = parsedResponse;
 
         return {
           message: cleanResponse.message,

@@ -6,7 +6,7 @@ import fs from "fs";
 import os from "os";
 import axios from "axios";
 import logger from "./logger";
-import { Readable, PassThrough, Writable } from "stream";
+import { PassThrough } from "stream";
 
 import S3Util from "./s3.util";
 
@@ -74,13 +74,13 @@ export function readAndCleanup(filePath: string): Buffer {
 /**
  * Delete temp files. Skips paths that are not in os.tmpdir() (original local files).
  */
-export function cleanupTempFiles(paths: string[]): void {
-  const tmpDir = os.tmpdir();
-  for (const p of paths) {
-    // try {
-    //   if (p.startsWith(tmpDir)) fs.unlinkSync(p);
-    // } catch (_) {}
-  }
+export function cleanupTempFiles(_paths: string[]): void {
+  // const tmpDir = os.tmpdir();
+  // for (const p of paths) {
+  //   try {
+  //     if (p.startsWith(tmpDir)) fs.unlinkSync(p);
+  //   } catch (_) {}
+  // }
 }
 
 /**

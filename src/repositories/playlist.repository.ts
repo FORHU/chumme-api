@@ -45,7 +45,10 @@ export default class PlaylistRepo {
     });
   }
 
-  static async update(id: string, data: Prisma.MusicPlaylistUncheckedUpdateInput) {
+  static async update(
+    id: string,
+    data: Prisma.MusicPlaylistUncheckedUpdateInput,
+  ) {
     return prisma.musicPlaylist.update({
       where: { id },
       data,

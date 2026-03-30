@@ -165,7 +165,7 @@ export default class S3Util {
       key = fileUrl.split(".net/")[1];
     } else {
       // Try to find the first single slash after http(s)://
-      const matches = fileUrl.match(/^https?:\/\/[^\/]+\/(.+)$/);
+      const matches = fileUrl.match(/^https?:\/\/[^/]+\/(.+)$/);
       if (matches) {
         key = matches[1];
       }

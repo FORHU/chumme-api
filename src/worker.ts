@@ -64,7 +64,7 @@ async function main() {
   }
 
   try {
-    const { IngestionWorker } = require("./listeners/ingestion.listener");
+    const { IngestionWorker } = await import("./listeners/ingestion.listener");
     const ingestionWorker = new IngestionWorker();
     await ingestionWorker.start();
     logger.info("[Worker] IngestionWorker started");
@@ -73,7 +73,8 @@ async function main() {
   }
 
   try {
-    const { SchedulingService } = require("./services/net-communities/ingestion/scheduling.service");
+    const { SchedulingService } =
+      await import("./services/net-communities/ingestion/scheduling.service");
     await SchedulingService.start();
     logger.info("[Worker] SchedulingService started");
   } catch (error) {

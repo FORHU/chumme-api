@@ -19,11 +19,16 @@ export default class DiscoveryController {
       return res.json({
         message: "Trending content fetched successfully",
         data: items,
-        pagination: { page, limit, hasMore: items.length === limit }
+        pagination: { page, limit, hasMore: items.length === limit },
       });
     } catch (error: any) {
-      logger.error("[DiscoveryController] Error fetching trending content:", error);
-      return res.status(500).json({ message: error.message || "Internal server error" });
+      logger.error(
+        "[DiscoveryController] Error fetching trending content:",
+        error,
+      );
+      return res
+        .status(500)
+        .json({ message: error.message || "Internal server error" });
     }
   }
 
@@ -37,11 +42,13 @@ export default class DiscoveryController {
 
       return res.json({
         message: "Rising stars fetched successfully",
-        data: stars
+        data: stars,
       });
     } catch (error: any) {
       logger.error("[DiscoveryController] Error fetching rising stars:", error);
-      return res.status(500).json({ message: error.message || "Internal server error" });
+      return res
+        .status(500)
+        .json({ message: error.message || "Internal server error" });
     }
   }
 
@@ -55,7 +62,9 @@ export default class DiscoveryController {
         message: `Ranking calculation completed for ${count} items`,
       });
     } catch (error: any) {
-      return res.status(500).json({ message: error.message || "Internal server error" });
+      return res
+        .status(500)
+        .json({ message: error.message || "Internal server error" });
     }
   }
 
@@ -64,11 +73,13 @@ export default class DiscoveryController {
    */
   static async triggerCrawl(req: Request, res: Response) {
     try {
-      logger.info("[DiscoveryController] Manually triggering full video crawl...");
-      
+      logger.info(
+        "[DiscoveryController] Manually triggering full video crawl...",
+      );
+
       // 1. Process scheduled ingestion targets (forced)
       await SchedulingService.processScheduledTasks(true);
-      
+
       // 2. Process category scouting searches (forced)
       await SchedulingService.processScoutTasks(true);
 
@@ -76,8 +87,13 @@ export default class DiscoveryController {
         message: "Full video crawl and scouting process triggered successfully",
       });
     } catch (error: any) {
-      logger.error("[DiscoveryController] Error triggering manual crawl:", error);
-      return res.status(500).json({ message: error.message || "Internal server error" });
+      logger.error(
+        "[DiscoveryController] Error triggering manual crawl:",
+        error,
+      );
+      return res
+        .status(500)
+        .json({ message: error.message || "Internal server error" });
     }
   }
 }

@@ -106,7 +106,7 @@ export default class ChatWonderCtrl {
       let fullResponse = "";
 
       let currentSessionId = chatSessionId;
-      let maxRetries = 2;
+      const maxRetries = 2;
       let retryCount = 0;
 
       while (retryCount < maxRetries) {
@@ -182,13 +182,20 @@ export default class ChatWonderCtrl {
                   if (s.length <= max) return s;
                   return `${s.slice(0, max)}...<truncated>`;
                 };
-                console.log("[ChatWonderCtrl.streamChat.onComplete] raw payload preview:", {
-                  fullResponseLength: typeof fullResponse === "string" ? fullResponse.length : 0,
-                  cleanedLength: typeof cleaned === "string" ? cleaned.length : 0,
-                  fullResponsePreview: preview(fullResponse),
-                  cleanedPreview: preview(cleaned),
-                  parsedRawPreview: preview(raw),
-                });
+                console.log(
+                  "[ChatWonderCtrl.streamChat.onComplete] raw payload preview:",
+                  {
+                    fullResponseLength:
+                      typeof fullResponse === "string"
+                        ? fullResponse.length
+                        : 0,
+                    cleanedLength:
+                      typeof cleaned === "string" ? cleaned.length : 0,
+                    fullResponsePreview: preview(fullResponse),
+                    cleanedPreview: preview(cleaned),
+                    parsedRawPreview: preview(raw),
+                  },
+                );
 
                 // Save AI response (parsed message)
                 const aiResponse = await ChatSvc.saveAIMessage(
