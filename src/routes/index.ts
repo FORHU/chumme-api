@@ -89,4 +89,7 @@ router.use("/v1/media", mediaRoute);
 router.use("/v1/ingestion-schedules", ingestionScheduleRoute);
 router.use("/v1/apk", apkRoute);
 
+import socialWebhookRoute from "./social-webhook.route";
+router.use("/v1/social/webhook", socialWebhookRoute);
+
 export default router;

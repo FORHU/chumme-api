@@ -15,7 +15,6 @@ import MusicLibraryRepo from "../repositories/music-library.repository";
 import MusicRecordRepo from "../repositories/music-record.repository";
 import MusicTempRecordRepo from "../repositories/music-temp-record.repository";
 import { prisma } from "../utils/prisma";
-import { S3_CDN_URL } from "../config";
 
 // ---------------------------------------------------------------------------
 // Types

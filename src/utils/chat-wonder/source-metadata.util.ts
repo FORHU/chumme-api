@@ -82,40 +82,6 @@ export function stripSourcesPrefix(raw: string): {
 }
 
 /**
- * Append YouTube search intent rows as ParsedVideo entries (results URL from query).
- * Dedupes by URL against existing videos.
- */
-export function mergeYoutubeSearchFromSourceMetadata(
-  sourceMetadata: unknown[],
-  existingVideos: ParsedVideo[],
-): ParsedVideo[] {
-  const seen = new Set(
-    existingVideos.map((v) => v.url).filter((u): u is string => Boolean(u)),
-  );
-  const merged: ParsedVideo[] = [...existingVideos];
-
-  for (const item of sourceMetadata) {
-    if (!isYoutubeSearchIntentItem(item)) continue;
-    const query = item.intent?.query?.trim();
-    if (!query) continue;
-    const url = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
-    if (seen.has(url)) continue;
-    seen.add(url);
-    const title =
-      (typeof item.title === "string" && item.title.trim()) ||
-      (typeof item.intent?.suggestion === "string" &&
-        item.intent.suggestion.trim()) ||
-      `YouTube: ${query}`;
-    merged.push({
-      title,
-      artist: null,
-      url,
-    });
-  }
-  return merged;
-}
-
-/**
  * Use the YouTube search intent from ChatWonder `source_metadata` and call
  * YouTube Data API to fetch actual video details (instead of only building
  * `youtube.com/results?search_query=...` links).

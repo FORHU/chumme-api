@@ -3,6 +3,7 @@ import { MessageHandler, rabbitMQService } from "../utils/rabbitmq";
 import logger from "../utils/logger";
 import { SocialPlatform } from "@prisma/client";
 import { prisma } from "../utils/prisma";
+import { workerMetrics } from "../utils/worker-metrics";
 import { IngestionManager } from "../services/net-communities/connectors/platform.service";
 import SocialFeedSvc from "../services/social-feed.service";
 import RedisUtil from "../utils/redis.util";
@@ -19,6 +20,8 @@ export enum IngestionJobType {
   STATS = "stats",
   ENRICHMENT = "enrichment",
   SEARCH = "search",
+  WEBSUB_VALIDATION = "websub_validation",
+  HEARTBEAT = "heartbeat",
 }
 
 export interface IngestionJob {
@@ -91,6 +94,12 @@ export class IngestionWorker {
             break;
           case IngestionJobType.SEARCH:
             await this.handleSearchJob(message);
+            break;
+          case IngestionJobType.WEBSUB_VALIDATION:
+            await this.handleWebSubValidationJob(message);
+            break;
+          case IngestionJobType.HEARTBEAT:
+            await this.handleHeartbeatJob(message);
             break;
           default:
             logger.warn(`[IngestionWorker] Unknown job type: ${message.type}`);
@@ -382,6 +391,146 @@ export class IngestionWorker {
           crawlPriority: 1,
         },
       });
+    }
+  }
+
+  private async handleWebSubValidationJob(job: IngestionJob) {
+    const connector = IngestionManager.getConnector(job.platform);
+
+    // 1. Get detailed content info (costs 1 quota unit)
+    const details = await connector.getContentDetails(job.targetId);
+
+    if (!details) {
+      logger.warn(
+        `[IngestionWorker] WebSub validation failed: Content ${job.targetId} not found`,
+      );
+      return;
+    }
+
+    const isLive = details.metaData?.snippet?.liveBroadcastContent === "live";
+
+    if (isLive) {
+      logger.info(
+        `[IngestionWorker] 🔥 LIVE STREAM DETECTED: ${details.title} (ID: ${job.targetId})`,
+      );
+
+      // 2. Upsert to ensure it's in the DB
+      const { item } = await SocialFeedSvc.upsertExternalMedia({
+        externalUrl: details.url,
+        title: details.title || "Live Stream",
+        socialPlatform: details.platform,
+        metaData: details.metaData,
+        chummeArtistId: job.meta?.artistId,
+        chummeCategoryId: job.meta?.categoryId,
+        chummeSubCategoryId: job.meta?.subCategoryId,
+        chummeTopicCategoryId: job.meta?.topicCategoryId,
+        views: details.stats?.views,
+        likes: details.stats?.likes,
+        comments: details.stats?.comments,
+      } as any);
+
+      // Update isLive status
+      await prisma.socialFeedItem.update({
+        where: { id: item.id },
+        data: { isLive: true },
+      });
+
+      // 3. Prevent duplicate notifications in a short window (1 hour)
+      const notifyLockKey = `notify:live:${job.targetId}`;
+      const alreadyNotified = await RedisUtil.redisClient.get(notifyLockKey);
+
+      if (!alreadyNotified) {
+        // 4. Emit Real-time Socket.io Notification
+        const io = (global as any).io;
+        if (io) {
+          io.emit("SOCIAL_STREAM_LIVE", {
+            id: item.id,
+            platform: details.platform,
+            videoId: details.id,
+            title: details.title,
+            url: details.url,
+            artistName: details.author.name,
+          });
+          logger.info(
+            `[IngestionWorker] Socket.io event SOCIAL_STREAM_LIVE emitted for ${job.targetId}`,
+          );
+        }
+
+        workerMetrics.recordWebSubEvent("validation");
+
+        // Set lock for 1 hour
+        await RedisUtil.redisClient.set(notifyLockKey, "true", { EX: 3600 });
+      }
+    } else {
+      logger.info(
+        `[IngestionWorker] WebSub update received for ${job.targetId} but content is not LIVE. Type: ${details.metaData?.snippet?.liveBroadcastContent}`,
+      );
+
+      // Update isLive status to false
+      await prisma.socialFeedItem.updateMany({
+        where: { videoId: job.targetId, socialPlatform: job.platform },
+        data: { isLive: false },
+      });
+
+      // Still upsert metadata if it's a regular upload
+      await SocialFeedSvc.upsertExternalMedia({
+        externalUrl: details.url,
+        title: details.title || "New Video",
+        socialPlatform: details.platform,
+        metaData: details.metaData,
+        chummeArtistId: job.meta?.artistId,
+        chummeCategoryId: job.meta?.categoryId,
+        chummeSubCategoryId: job.meta?.subCategoryId,
+        chummeTopicCategoryId: job.meta?.topicCategoryId,
+      } as any);
+    }
+  }
+
+  private async handleHeartbeatJob(job: IngestionJob) {
+    const connector = IngestionManager.getConnector(job.platform);
+
+    // 1. Get current status
+    const details = await connector.getContentDetails(job.targetId);
+
+    if (!details) {
+      logger.warn(
+        `[IngestionWorker] Heartbeat failed: Content ${job.targetId} not found`,
+      );
+      return;
+    }
+
+    const isLive = details.metaData?.snippet?.liveBroadcastContent === "live";
+
+    if (!isLive) {
+      logger.info(
+        `[IngestionWorker] 🏁 Stream Ended: ${details.title} (ID: ${job.targetId})`,
+      );
+
+      // 2. Update DB
+      await prisma.socialFeedItem.updateMany({
+        where: { videoId: job.targetId, socialPlatform: job.platform },
+        data: { isLive: false },
+      });
+
+      // 3. Emit Socket.io notification
+      const io = (global as any).io;
+      if (io) {
+        io.emit("SOCIAL_STREAM_END", {
+          platform: job.platform,
+          videoId: job.targetId,
+        });
+      }
+    } else {
+      // Still live, update stats
+      await SocialFeedSvc.upsertExternalMedia({
+        externalUrl: details.url,
+        title: details.title,
+        socialPlatform: details.platform,
+        metaData: details.metaData,
+        views: details.stats?.views,
+        likes: details.stats?.likes,
+        comments: details.stats?.comments,
+      } as any);
     }
   }
 }

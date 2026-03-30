@@ -2,8 +2,6 @@ import { Request, Response } from "express";
 import YouTubeService from "../../services/net-communities/youtube.service";
 import SocialFeedSvc from "../../services/social-feed.service";
 
-import FileRepo from "../../repositories/file.repository";
-
 export default class YouTubeCtrl {
   /**
    * Get metadata for a YouTube video via URL or ID
@@ -193,9 +191,6 @@ export default class YouTubeCtrl {
         const videoId = item.contentDetails?.videoId;
         const title = item.snippet?.title || "YouTube Video";
         const externalUrl = `https://www.youtube.com/watch?v=${videoId}`;
-        const thumbnail =
-          item.snippet?.thumbnails?.high?.url ||
-          item.snippet?.thumbnails?.default?.url;
 
         if (!videoId) continue;
 
@@ -235,7 +230,7 @@ export default class YouTubeCtrl {
    */
   static async importChannelVideos(req: Request, res: Response) {
     try {
-      const { handle, channelId, maxResults, artistId } = req.body;
+      const { handle, channelId } = req.body;
 
       if (!handle && !channelId) {
         return res.status(400).json({

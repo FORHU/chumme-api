@@ -2,7 +2,6 @@ import SocialFeedSvc from "./social-feed.service";
 
 import FileRepo from "../repositories/file.repository";
 import { upsertArtist } from "../repositories/chumme-artist.repository";
-import EmotionRepo from "../repositories/emotion.repository";
 import { InstagramPostEvent } from "../listeners/instagram-post.listener";
 
 /**
@@ -32,7 +31,6 @@ export async function processInstagramCrawlerData(
   let updatedVideos = 0;
   let skippedVideos = 0;
   let updatedPosts = 0;
-  const skippedPosts = 0;
 
   for (const post of data.posts) {
     // Skip posts without video files or not downloaded
@@ -44,7 +42,7 @@ export async function processInstagramCrawlerData(
 
     try {
       // Step 2a: Create file record - File ID = post.id
-      const fileResult = await FileRepo.upsertFile(
+      await FileRepo.upsertFile(
         post.id, // File ID = post.id
         {
           filename: post.mediaSrc?.filename,
@@ -154,5 +152,4 @@ export async function processInstagramCrawlerData(
 
   console.log(`  - New mediaPosts: ${newPosts}`);
   console.log(`  - Updated mediaPosts: ${updatedPosts}`);
-  console.log(`  - Skipped mediaPosts: ${skippedPosts}`);
 }

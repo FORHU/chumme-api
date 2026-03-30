@@ -1,17 +1,13 @@
 import { Server } from "socket.io";
-import { MusicStudioRole, MusicStudioType } from "@prisma/client";
-import MusicRepo from "../../repositories/music.repository";
-import MusicStudioSvc from "../../services/music-studio.service";
+import { MusicStudioRole } from "@prisma/client";
 import MusicStudioRepo from "../../repositories/music-studio.repository";
+import MusicStudioSvc from "../../services/music-studio.service";
 import MusicStudioCacheSvc from "../../services/music-studio-cache.service";
 import RelayManager from "../../utils/relay-manager";
 import MusicQueueSvc from "../../services/music-queue.service";
 import {
   AuthenticatedSocket,
   PassMicrophonePayload,
-  SaveRecordingPayload,
-  StudioActionPayload,
-  UpdateRolePayload,
   UpdateVocalRolePayload,
   SetRelayModePayload,
 } from "./types";
@@ -37,15 +33,14 @@ export const registerProductionHandlers = (
           });
         }
 
-        const isOwner = await MusicStudioSvc.isOwner(studioId, socket.user.id);
         const membership = await MusicStudioRepo.getMembership(
           studioId,
           socket.user.id,
         );
 
-        if (!isOwner && membership?.role !== MusicStudioRole.PRODUCER) {
+        if (membership?.role !== MusicStudioRole.PRODUCER) {
           return socket.emit("recording_countdown_failed", {
-            message: "Only owner or producers can start countdown",
+            message: "Only producers can start countdown",
           });
         }
 

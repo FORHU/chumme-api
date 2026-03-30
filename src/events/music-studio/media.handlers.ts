@@ -37,7 +37,7 @@ export const registerMediaHandlers = (
       },
       callback?: (response: any) => void,
     ) => {
-      const { studioId, chunk, userId, musicId, timestamp, order } = data;
+      const { studioId, chunk, musicId, timestamp, order } = data;
 
       // 1. Validation
       if (!studioId || !chunk?.fileId) {

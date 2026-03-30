@@ -8,6 +8,7 @@ import logger from "../../../utils/logger";
 import { SocialPlatform } from "@prisma/client";
 import RedisUtil from "../../../utils/redis.util";
 import RankingService from "./ranking.service";
+import WebSubService from "../../websub.service";
 
 export class SchedulingService {
   private static intervalHandle: NodeJS.Timeout | null = null;
@@ -25,12 +26,54 @@ export class SchedulingService {
     await this.processScheduledTasks();
     await this.processScoutTasks();
     await RankingService.calculateGrowthScores();
+    await WebSubService.renewExpiringSubscriptions();
 
     this.intervalHandle = setInterval(async () => {
       await this.processScheduledTasks();
       await this.processScoutTasks();
       await RankingService.calculateGrowthScores();
+      await WebSubService.renewExpiringSubscriptions();
+      await this.processLiveHeartbeats();
     }, this.CHECK_INTERVAL_MS);
+  }
+
+  static async processLiveHeartbeats(): Promise<void> {
+    logger.info(
+      "[SchedulingService] Checking active live streams for heartbeats...",
+    );
+
+    try {
+      const liveItems = await prisma.socialFeedItem.findMany({
+        where: { isLive: true, socialPlatform: "YOUTUBE" },
+      });
+
+      if (liveItems.length === 0) return;
+
+      logger.info(
+        `[SchedulingService] Queuing heartbeats for ${liveItems.length} active streams`,
+      );
+
+      for (const item of liveItems) {
+        if (!item.videoId) continue;
+
+        const job: IngestionJob = {
+          type: IngestionJobType.HEARTBEAT,
+          platform: item.socialPlatform!,
+          targetId: item.videoId,
+          priority: 5,
+        };
+
+        await rabbitMQService.publishMessage(
+          `ingestion.${IngestionJobType.HEARTBEAT}`,
+          job,
+        );
+      }
+    } catch (error) {
+      logger.error(
+        "[SchedulingService] Error during heartbeat processing:",
+        error,
+      );
+    }
   }
 
   static async processScheduledTasks(force: boolean = false): Promise<void> {

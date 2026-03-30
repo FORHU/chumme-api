@@ -186,7 +186,7 @@ export default class MusicRepo {
   }
 
   static async update(id: string, data: any) {
-    const { playlistId, order, metaData, ...musicData } = data;
+    const { playlistId, order, ...musicData } = data;
     return prisma.music.update({
       where: { id },
       data: {

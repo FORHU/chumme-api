@@ -20,6 +20,11 @@ export class WorkerMetrics {
   private startedAt = Date.now();
   private intervalHandle: ReturnType<typeof setInterval> | null = null;
 
+  // WebSub Specific Counters
+  private websubNotifications = 0;
+  private websubValidations = 0;
+  private websubSecurityFailures = 0;
+
   recordJob(metric: Omit<JobMetric, "timestamp">) {
     const entry: JobMetric = { ...metric, timestamp: Date.now() };
     this.recentJobs.push(entry);
@@ -36,6 +41,12 @@ export class WorkerMetrics {
       this.recentJobs = this.recentJobs.slice(-100);
   }
 
+  recordWebSubEvent(type: "notification" | "validation" | "security_failure") {
+    if (type === "notification") this.websubNotifications++;
+    else if (type === "validation") this.websubValidations++;
+    else if (type === "security_failure") this.websubSecurityFailures++;
+  }
+
   getSnapshot() {
     const memUsage = process.memoryUsage();
     return {
@@ -48,6 +59,11 @@ export class WorkerMetrics {
           this.jobsProcessed > 0
             ? Math.round(this.totalDurationMs / this.jobsProcessed)
             : 0,
+      },
+      websub: {
+        notifications: this.websubNotifications,
+        validations: this.websubValidations,
+        securityFailures: this.websubSecurityFailures,
       },
       system: {
         cpus: os.cpus().length,

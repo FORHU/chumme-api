@@ -7,7 +7,6 @@ import ChatSvc from "../services/chat.service";
 import { streamChat } from "../utils/chat-wonder-stream";
 import { parseChatWonderResponse } from "../utils/chat-wonder";
 import {
-  mergeYoutubeSearchFromSourceMetadata,
   stripSourcesPrefix,
   appendYouTubeSearchResultsFromSourceMetadata,
 } from "../utils/chat-wonder/source-metadata.util";
