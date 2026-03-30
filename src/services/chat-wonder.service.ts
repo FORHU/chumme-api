@@ -8,10 +8,10 @@ import {
   getSessionId as getSessionIdWithChatWonder,
 } from "../utils/chat-wonder-api";
 import { parseChatWonderResponse } from "../utils/chat-wonder";
-import {
-  mergeYoutubeSearchFromSourceMetadata,
-  appendYouTubeSearchResultsFromSourceMetadata,
-} from "../utils/chat-wonder/source-metadata.util";
+import { searchDbVideosFromSourceMetadata } from "../utils/chat-wonder/db-video-lookup.util";
+import { detectVideoIntent } from "../utils/openai/detect-video-intent.util";
+import { ParsedVideo } from "../utils/chat-wonder/parse-response.util";
+import YouTubeService from "./net-communities/youtube.service";
 import ChatSvc from "./chat.service";
 
 export default class ChatWonderSvc {
@@ -104,11 +104,37 @@ export default class ChatWonderSvc {
           : [];
         // Parse and normalize the response
         const parsedResponse = parseChatWonderResponse(finalChatResponse);
-        const mergedVideos =
-          await appendYouTubeSearchResultsFromSourceMetadata(
-            sourceMetadata,
-            parsedResponse.videos || [],
-          );
+
+        // Only fetch videos if the user actually wants media content
+        const wantsVideo = await detectVideoIntent(inputText);
+
+        let mergedVideos: ParsedVideo[] = [];
+        if (wantsVideo) {
+          // 1. Check internal DB first using source_metadata
+          const { dbVideos } = await searchDbVideosFromSourceMetadata(sourceMetadata, userId);
+          mergedVideos = dbVideos;
+
+          // 2. If DB has nothing, search YouTube directly with the user's actual message
+          if (mergedVideos.length === 0) {
+            logger.info(`[CHAT.WONDER.SERVICE] No DB videos found — searching YouTube directly for: "${inputText}"`);
+            try {
+              const results = await YouTubeService.searchVideos(inputText, 1);
+              const first = results[0];
+              const videoId = first?.id?.videoId;
+              if (videoId) {
+                mergedVideos = [{
+                  title: first.snippet?.title ?? "YouTube Video",
+                  artist: first.snippet?.channelTitle ?? null,
+                  url: `https://www.youtube.com/watch?v=${videoId}`,
+                }];
+              }
+            } catch (ytErr: any) {
+              logger.warn(`[CHAT.WONDER.SERVICE] Direct YouTube search failed: ${ytErr?.message}`);
+            }
+          }
+        } else {
+          logger.info(`[CHAT.WONDER.SERVICE] No video intent detected for: "${inputText}" — skipping video fetch`);
+        }
         // Save user message
         const chatMessage = await ChatSvc.saveUserMessage(
           inputText,
@@ -170,20 +196,24 @@ export default class ChatWonderSvc {
   }
 
   public static async additionalPrompt(userMessage: string) {
-    return `
-    ⚠️ IMPORTANT
-    OUTPUT FORMAT - RESPOND IN JSON ONLY:
-    {
-      "message": "Your casual message here with natural emojis ( NO OTHER TEXT )",
-      "videos": [
-        { "title": "Video title", "artist": "Artist name", "url": "video URL" }
-      ],
-      "artist": [
-        { "name": "Artist name", "image": null }
-      ],
-      "images": []
-    }
-    USER: ${userMessage}
-    `;
+    return `RESPOND WITH ONLY VALID JSON. NO text before or after. NO markdown code fences. NO explanation.
+{
+  "message": "Your casual reply here with natural emojis",
+  "videos": [
+    { "title": "Video title", "artist": "Artist name", "url": "" }
+  ],
+  "artist": [
+    { "name": "Artist name", "image": null }
+  ],
+  "images": []
+}
+Leave "url" as empty string — video URLs will be resolved separately.
+
+IMPORTANT RULES FOR "videos":
+- Only include videos if the user is EXPLICITLY asking for music, videos, songs, or entertainment content (e.g. "play me a song", "show me a video", "recommend something to watch", "give me hype music").
+- For ALL other messages — greetings, questions about you, venting, general chat, emotional support, etc. — set "videos": [] and "artist": [].
+- When in doubt, return "videos": [].
+
+USER: ${userMessage}`;
   }
 }
