@@ -9,14 +9,14 @@ export default class ApkRepo {
     isLatest?: boolean;
     isStable?: boolean;
   }) {
-    return prisma.apkRelease.create({ data });
+    return prisma.apkRelease.create({ data, include: { file: true } });
   }
 
   static async findAll() {
     const [releases, aggregate] = await Promise.all([
       prisma.apkRelease.findMany({
         include: { file: true },
-        orderBy: { createdAt: "desc" },
+        orderBy: { createdAt: "desc" }
       }),
       prisma.apkRelease.aggregate({
         _sum: { downloadCount: true },

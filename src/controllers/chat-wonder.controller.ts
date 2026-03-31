@@ -6,11 +6,11 @@ import logger from "../utils/logger";
 import ChatSvc from "../services/chat.service";
 import { streamChat } from "../utils/chat-wonder-stream";
 import { parseChatWonderResponse } from "../utils/chat-wonder";
-import {
-  mergeYoutubeSearchFromSourceMetadata,
-  stripSourcesPrefix,
-  appendYouTubeSearchResultsFromSourceMetadata,
-} from "../utils/chat-wonder/source-metadata.util";
+import { stripSourcesPrefix } from "../utils/chat-wonder/source-metadata.util";
+import { searchDbVideosFromSourceMetadata } from "../utils/chat-wonder/db-video-lookup.util";
+import { detectVideoIntent } from "../utils/openai/detect-video-intent.util";
+import { ParsedVideo } from "../utils/chat-wonder/parse-response.util";
+import YouTubeService from "../services/net-communities/youtube.service";
 import CacheUtil from "../utils/cache.util";
 
 export default class ChatWonderCtrl {
@@ -130,15 +130,42 @@ export default class ChatWonderCtrl {
                   "[CHAT-WONDER-STREAM] Stream completed, parsing and saving AI response",
                 );
 
-                // Strip Wonder [Sources] prefix before JSON parse; merge YouTube intent into videos
+                // Strip Wonder [Sources] prefix before JSON parse
                 const { cleaned, sourceMetadata } =
                   stripSourcesPrefix(fullResponse);
                 const parsedResponse = parseChatWonderResponse(cleaned);
-                const mergedVideos =
-                  await appendYouTubeSearchResultsFromSourceMetadata(
-                    sourceMetadata,
-                    parsedResponse.videos || [],
-                  );
+
+                // Only fetch videos if the user actually wants media content
+                const { wantsVideo, query: videoQuery } = await detectVideoIntent(input);
+
+                let mergedVideos: ParsedVideo[] = [];
+                if (wantsVideo) {
+                  // 1. Check internal DB first using source_metadata
+                  const { dbVideos } = await searchDbVideosFromSourceMetadata(sourceMetadata, userId);
+                  mergedVideos = dbVideos;
+
+                  // 2. If DB has nothing, search YouTube using extracted query (falls back to raw input)
+                  if (mergedVideos.length === 0) {
+                    const ytQuery = videoQuery || input;
+                    logger.info(`[CHAT-WONDER-STREAM] No DB videos found — searching YouTube for: "${ytQuery}"`);
+                    try {
+                      const results = await YouTubeService.searchVideos(ytQuery, 1);
+                      const first = results[0];
+                      const videoId = first?.id?.videoId;
+                      if (videoId) {
+                        mergedVideos = [{
+                          title: first.snippet?.title ?? "YouTube Video",
+                          artist: first.snippet?.channelTitle ?? null,
+                          url: `https://www.youtube.com/watch?v=${videoId}`,
+                        }];
+                      }
+                    } catch (ytErr: any) {
+                      logger.warn(`[CHAT-WONDER-STREAM] Direct YouTube search failed: ${ytErr?.message}`);
+                    }
+                  }
+                } else {
+                  logger.info(`[CHAT-WONDER-STREAM] No video intent for: "${input}" — skipping video fetch`);
+                }
                 const { raw, ...cleanResponse } = parsedResponse;
 
                 // Debug: show final parsed payload (keep it lightweight)
