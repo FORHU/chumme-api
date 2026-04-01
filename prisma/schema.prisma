@@ -431,11 +431,6 @@ model SocialIngestionTarget {
   quotaLimitHitAt DateTime?
   nextPageToken   String?
 
-  // WebSub State
-  webSubLeaseExpiresAt DateTime?
-  webSubSubscribedAt   DateTime?
-  webSubSecret         String?
-
   schedules SocialIngestionSchedule[]
 
   @@unique([platform, externalHandle])
