@@ -156,6 +156,32 @@ export default class AuthSvc {
     };
   }
 
+  /**
+   * Verify OTP only — does NOT mark email as verified or clear the code.
+   * Used by forgot-password flow to validate the code before allowing reset.
+   */
+  static async verifyOtp(email: string, otpCode: string) {
+    const user = await AuthRepo.findUserByEmail(email);
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    if (!user.otpCode || !user.otpExpiry) {
+      throw new Error("No verification code found. Please request a new one.");
+    }
+
+    if (user.otpCode !== otpCode) {
+      throw new Error("Invalid verification code");
+    }
+
+    if (isOTPExpired(user.otpExpiry)) {
+      throw new Error("Verification code expired. Please request a new one.");
+    }
+
+    return { message: "OTP verified" };
+  }
+
   static async verifyEmail(email: string, otpCode: string) {
     const user = await AuthRepo.findUserByEmail(email);
 
