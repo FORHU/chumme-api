@@ -38,7 +38,12 @@ export default class ChummeCategoryCtrl {
     }
 
     try {
-      const category = await ChummeCategorySvc.createCategory(value);
+      // Map `traits` (API field) → `chummeTraits` (service/DB field)
+      const { traits, ...rest } = value;
+      const category = await ChummeCategorySvc.createCategory({
+        ...rest,
+        chummeTraits: traits,
+      });
       return res.status(201).json({
         message: "Chumme category created successfully",
         category,
@@ -125,7 +130,12 @@ export default class ChummeCategoryCtrl {
     }
 
     try {
-      const category = await ChummeCategorySvc.updateCategory(id, value);
+      // Map `traits` (API field) → `chummeTraits` (service/DB field)
+      const { traits, ...rest } = value;
+      const category = await ChummeCategorySvc.updateCategory(id, {
+        ...rest,
+        ...(traits && { chummeTraits: traits }),
+      });
       return res.json({
         message: "Chumme category updated successfully",
         category,
