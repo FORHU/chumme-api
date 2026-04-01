@@ -13,7 +13,6 @@ model User {
   password               String?
   name                   String?
   username               String                  @unique
-  role                   UserRole                @default(USER)
   isActive               Boolean                 @default(true)
   lastLoginAt            DateTime?
   createdAt              DateTime                @default(now())
@@ -27,6 +26,7 @@ model User {
   onboardingCompleted    Boolean                 @default(false)
   nationality            String?
   chatSessionId          String?
+  role                   UserRole                @default(USER)
   chatMessages           ChatMessage[]
   roomsOwned             ChummeSubCategory[]     @relation("ChummeSubCategoryOwner")
   conversations          Conversation[]
@@ -94,12 +94,12 @@ model File {
   updatedAt     DateTime             @updatedAt
   deletedAt     DateTime?
   metaData      Json?
+  apkRelease    ApkRelease?
   personaAudio  ChummeArtistPersona? @relation("PersonaAudioFile")
   personaImage  ChummeArtistPersona? @relation("PersonaImageFile")
   personaVideo  ChummeArtistPersona? @relation("PersonaVideoFile")
   voiceMessages RoomMessage[]        @relation("VoiceMessageFile")
   users         User[]               @relation("UserAvatar")
-  apkRelease    ApkRelease?
 }
 
 model ChummeCategory {
@@ -112,15 +112,15 @@ model ChummeCategory {
   isAd                  Boolean                 @default(false)
   chummeVisualDesignId  String?                 @unique
   keyPassword           String?
-  populationCount       Int                     @default(0)
   chummeTraits          ChummeTraits            @default(NONE)
-  socialUserDiscoveries SocialUserDiscovery[]
-  ingestionTargets      SocialIngestionTarget[]
+  populationCount       Int                     @default(0)
   discoveryKeywords     String[]
   chummeVisualDesign    ChummeCategoryDesign?   @relation("CategoryDesign", fields: [chummeVisualDesignId], references: [id])
   chummeSubCategories   ChummeSubCategory[]
-  chummeArtists         ChummeArtist[]          @relation("ChummeArtistToChummeCategory")
   socialFeedItems       SocialFeedItem[]        @relation("CategoryFeed")
+  ingestionTargets      SocialIngestionTarget[]
+  chummeArtists         ChummeArtist[]          @relation("ChummeArtistToChummeCategory")
+  socialUserDiscoveries SocialUserDiscovery[]   @relation("ChummeCategoryToSocialUserDiscovery")
 }
 
 model ChummeSubCategory {
@@ -135,10 +135,8 @@ model ChummeSubCategory {
   chummeVisualDesignId  String?                 @unique
   isAd                  Boolean                 @default(false)
   keyPassword           String?
-  populationCount       Int                     @default(0)
   chummeTraits          ChummeTraits            @default(NONE)
-  socialUserDiscoveries SocialUserDiscovery[]
-  ingestionTargets      SocialIngestionTarget[]
+  populationCount       Int                     @default(0)
   discoveryKeywords     String[]
   chummeCategory        ChummeCategory          @relation(fields: [chummeCategoryId], references: [id])
   chummeVisualDesign    ChummeCategoryDesign?   @relation("SubCategoryDesign", fields: [chummeVisualDesignId], references: [id])
@@ -147,6 +145,8 @@ model ChummeSubCategory {
   roomMessages          RoomMessage[]
   userChatRooms         RoomUserChat[]
   socialFeedItems       SocialFeedItem[]        @relation("SubCategoryFeed")
+  ingestionTargets      SocialIngestionTarget[]
+  socialUserDiscoveries SocialUserDiscovery[]   @relation("ChummeSubCategoryToSocialUserDiscovery")
 }
 
 model ChummeTopicCategory {
@@ -156,18 +156,18 @@ model ChummeTopicCategory {
   keyPassword           String?
   isAd                  Boolean                 @default(false)
   chummeTraits          ChummeTraits            @default(NONE)
-  populationCount       Int                     @default(0)
   createdAt             DateTime                @default(now())
   updatedAt             DateTime                @updatedAt
   deletedAt             DateTime?
   chummeSubCategoryId   String
   chummeVisualDesignId  String?                 @unique
-  socialUserDiscoveries SocialUserDiscovery[]
-  ingestionTargets      SocialIngestionTarget[]
+  populationCount       Int                     @default(0)
   discoveryKeywords     String[]
   chummeSubCategory     ChummeSubCategory       @relation(fields: [chummeSubCategoryId], references: [id])
   chummeVisualDesign    ChummeCategoryDesign?   @relation("TopicCategoryDesign", fields: [chummeVisualDesignId], references: [id])
   socialFeedItems       SocialFeedItem[]        @relation("TopicCategoryFeed")
+  ingestionTargets      SocialIngestionTarget[]
+  socialUserDiscoveries SocialUserDiscovery[]   @relation("ChummeTopicCategoryToSocialUserDiscovery")
 }
 
 model ChummeCategoryDesign {
@@ -202,16 +202,16 @@ model ChummeArtist {
   createdAt              DateTime                @default(now())
   updatedAt              DateTime                @updatedAt
   isDeleted              Boolean                 @default(false)
-  isDraft                Boolean                 @default(false)
   discoveredAt           DateTime?
+  isDraft                Boolean                 @default(false)
+  platform               String                  @default("YOUTUBE")
   socialPlatformUsername String?
   chummeArtistPersona    ChummeArtistPersona?
-  platform               String                  @default("YOUTUBE")
-  ingestionTargets       SocialIngestionTarget[]
   music                  Music[]                 @relation("MainArtist")
   musicAlbum             MusicAlbum[]            @relation("MainArtist")
   musicFeaturedArtists   MusicFeaturedArtist[]
   socialFeedItems        SocialFeedItem[]
+  ingestionTargets       SocialIngestionTarget[]
   chummeCategories       ChummeCategory[]        @relation("ChummeArtistToChummeCategory")
 }
 
@@ -239,10 +239,10 @@ model SocialUserDiscovery {
   id                    String                @id @default(uuid())
   userId                String                @unique
   createdAt             DateTime              @default(now())
-  chummeCategories      ChummeCategory[]
-  chummeSubCategories   ChummeSubCategory[]
-  chummeTopicCategories ChummeTopicCategory[]
   user                  User                  @relation(fields: [userId], references: [id])
+  chummeCategories      ChummeCategory[]      @relation("ChummeCategoryToSocialUserDiscovery")
+  chummeSubCategories   ChummeSubCategory[]   @relation("ChummeSubCategoryToSocialUserDiscovery")
+  chummeTopicCategories ChummeTopicCategory[] @relation("ChummeTopicCategoryToSocialUserDiscovery")
 
   @@index([userId])
 }
@@ -279,18 +279,18 @@ model SocialUserPost {
 
 model SocialUserComment {
   id                    String              @id @default(uuid())
-  socialUserPostId      String? // Nullable for external media comments
-  socialFeedItemId      String? // Link to external video
+  socialUserPostId      String?
   userId                String
   parentSocialCommentId String?
   content               String
   createdAt             DateTime            @default(now())
   updatedAt             DateTime            @updatedAt
   isDeleted             Boolean             @default(false)
+  socialFeedItemId      String?
   parentSocialComment   SocialUserComment?  @relation("ThreadedComments", fields: [parentSocialCommentId], references: [id])
   replies               SocialUserComment[] @relation("ThreadedComments")
-  socialUserPost        SocialUserPost?     @relation(fields: [socialUserPostId], references: [id])
   socialFeedItem        SocialFeedItem?     @relation(fields: [socialFeedItemId], references: [id])
+  socialUserPost        SocialUserPost?     @relation(fields: [socialUserPostId], references: [id])
   user                  User                @relation(fields: [userId], references: [id])
 
   @@index([socialUserPostId])
@@ -325,38 +325,38 @@ model SocialUserView {
 }
 
 model SocialFeedItem {
-  id                    String               @id @default(uuid())
-  postId                String?              @unique
-  createdAt             DateTime             @default(now())
-  isDeleted             Boolean              @default(false)
-  externalUrl           String?              @unique
-  videoId               String?
-  metaData              Json?
-  title                 String?
-  chummeArtistId        String?
-  chummeCategoryId      String?
-  chummeSubCategoryId   String?
-  chummeTopicCategoryId String?
-  socialPlatform        SocialPlatform?
-  chummeArtist          ChummeArtist?        @relation(fields: [chummeArtistId], references: [id])
-  chummeCategory        ChummeCategory?      @relation("CategoryFeed", fields: [chummeCategoryId], references: [id])
-  chummeSubCategory     ChummeSubCategory?   @relation("SubCategoryFeed", fields: [chummeSubCategoryId], references: [id])
-  chummeTopicCategory   ChummeTopicCategory? @relation("TopicCategoryFeed", fields: [chummeTopicCategoryId], references: [id])
-  post                  SocialUserPost?      @relation(fields: [postId], references: [id], onDelete: Cascade)
-  views                 Int                  @default(0)
-
-  blockedCountries       String[]
+  id                     String                  @id @default(uuid())
+  postId                 String?                 @unique
+  createdAt              DateTime                @default(now())
+  isDeleted              Boolean                 @default(false)
+  externalUrl            String?                 @unique
+  metaData               Json?
+  title                  String?
+  chummeArtistId         String?
+  socialPlatform         SocialPlatform?
   allowedCountries       String[]
-  likes                  Int                     @default(0)
-  comments               Int                     @default(0)
+  blockedCountries       String[]
   bookmarks              Int                     @default(0)
+  chummeCategoryId       String?
+  chummeSubCategoryId    String?
+  chummeTopicCategoryId  String?
+  comments               Int                     @default(0)
+  likes                  Int                     @default(0)
   score                  Float                   @default(0)
-  socialUserBookmark     SocialUserBookmark[]
-  socialUserViews        SocialUserView[]
-  socialFeedSnapshots    SocialFeedSnapshot[]
-  socialFeedSignals      SocialFeedSignal[]
-  socialUserComments     SocialUserComment[]
+  videoId                String?
+  views                  Int                     @default(0)
+  isLive                 Boolean                 @default(false)
+  chummeArtist           ChummeArtist?           @relation(fields: [chummeArtistId], references: [id])
+  chummeCategory         ChummeCategory?         @relation("CategoryFeed", fields: [chummeCategoryId], references: [id])
+  chummeSubCategory      ChummeSubCategory?      @relation("SubCategoryFeed", fields: [chummeSubCategoryId], references: [id])
+  chummeTopicCategory    ChummeTopicCategory?    @relation("TopicCategoryFeed", fields: [chummeTopicCategoryId], references: [id])
+  post                   SocialUserPost?         @relation(fields: [postId], references: [id], onDelete: Cascade)
   socialFeedItemComments SocialFeedItemComment[]
+  socialFeedSignals      SocialFeedSignal[]
+  socialFeedSnapshots    SocialFeedSnapshot[]
+  socialUserBookmark     SocialUserBookmark[]
+  socialUserComments     SocialUserComment[]
+  socialUserViews        SocialUserView[]
 
   @@index([createdAt])
   @@index([chummeArtistId])
@@ -382,8 +382,8 @@ model SocialFeedSnapshot {
 model SocialFeedSignal {
   id             String         @id @default(uuid())
   socialFeedId   String
-  type           String // e.g., SENTIMENT, KEYWORDS, MOOD
-  value          String // analysis result
+  type           String
+  value          String
   confidence     Float?
   createdAt      DateTime       @default(now())
   socialFeedItem SocialFeedItem @relation(fields: [socialFeedId], references: [id], onDelete: Cascade)
@@ -393,23 +393,22 @@ model SocialFeedSignal {
 }
 
 model SocialFeedItemComment {
-  id               String    @id @default(uuid())
+  id               String         @id @default(uuid())
   socialFeedItemId String
   content          String
   authorName       String?
   authorAvatarUrl  String?
   authorHandle     String?
-  externalId       String? // Original YouTube comment ID
+  externalId       String?
   publishedAt      DateTime?
-  createdAt        DateTime  @default(now())
-
-  socialFeedItem SocialFeedItem @relation(fields: [socialFeedItemId], references: [id], onDelete: Cascade)
+  createdAt        DateTime       @default(now())
+  socialFeedItem   SocialFeedItem @relation(fields: [socialFeedItemId], references: [id], onDelete: Cascade)
 
   @@index([socialFeedItemId])
 }
 
 model SocialIngestionTarget {
-  id                    String               @id @default(uuid())
+  id                    String                    @id @default(uuid())
   chummeArtistId        String?
   chummeCategoryId      String?
   chummeSubCategoryId   String?
@@ -417,36 +416,36 @@ model SocialIngestionTarget {
   platform              SocialPlatform
   externalHandle        String
   lastCrawledAt         DateTime?
-  crawlIntervalHours    Int                  @default(24)
-  crawlPriority         Int                  @default(1)
-  isActive              Boolean              @default(true)
-  createdAt             DateTime             @default(now())
-  updatedAt             DateTime             @updatedAt
-  chummeArtist          ChummeArtist?        @relation(fields: [chummeArtistId], references: [id])
-  chummeCategory        ChummeCategory?      @relation(fields: [chummeCategoryId], references: [id])
-  chummeSubCategory     ChummeSubCategory?   @relation(fields: [chummeSubCategoryId], references: [id])
-  chummeTopicCategory   ChummeTopicCategory? @relation(fields: [chummeTopicCategoryId], references: [id])
-
-  quotaLimitHitAt DateTime?
-  nextPageToken   String?
-
-  schedules SocialIngestionSchedule[]
+  crawlIntervalHours    Int                       @default(24)
+  crawlPriority         Int                       @default(1)
+  isActive              Boolean                   @default(true)
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @updatedAt
+  quotaLimitHitAt       DateTime?
+  nextPageToken         String?
+  webSubExpiresAt       DateTime?
+  webSubState           String?
+  webSubSubscribedAt    DateTime?
+  schedules             SocialIngestionSchedule[]
+  chummeArtist          ChummeArtist?             @relation(fields: [chummeArtistId], references: [id])
+  chummeCategory        ChummeCategory?           @relation(fields: [chummeCategoryId], references: [id])
+  chummeSubCategory     ChummeSubCategory?        @relation(fields: [chummeSubCategoryId], references: [id])
+  chummeTopicCategory   ChummeTopicCategory?      @relation(fields: [chummeTopicCategoryId], references: [id])
 
   @@unique([platform, externalHandle])
   @@index([chummeArtistId])
 }
 
 model SocialIngestionSchedule {
-  id                      String   @id @default(uuid())
+  id                      String                @id @default(uuid())
   socialIngestionTargetId String
-  mode                    String   @default("MANUAL") // "AUTO" or "MANUAL"
-  exactTime               String? // e.g., "03:00" (24h format)
-  intervalHours           Int?     @default(24) // Backwards fallback if interval needed
-  isActive                Boolean  @default(true)
-  createdAt               DateTime @default(now())
-  updatedAt               DateTime @updatedAt
-
-  target SocialIngestionTarget @relation(fields: [socialIngestionTargetId], references: [id], onDelete: Cascade)
+  mode                    String                @default("MANUAL")
+  exactTime               String?
+  intervalHours           Int?                  @default(24)
+  isActive                Boolean               @default(true)
+  createdAt               DateTime              @default(now())
+  updatedAt               DateTime              @updatedAt
+  target                  SocialIngestionTarget @relation(fields: [socialIngestionTargetId], references: [id], onDelete: Cascade)
 
   @@index([socialIngestionTargetId])
 }
@@ -832,6 +831,20 @@ model MusicTempRecord {
   @@index([studioId])
 }
 
+model ApkRelease {
+  id            String   @id @default(uuid())
+  versionName   String
+  buildNumber   Int
+  fileId        String   @unique
+  whatIsNew     String[]
+  isLatest      Boolean  @default(false)
+  isStable      Boolean  @default(false)
+  downloadCount Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  file          File     @relation(fields: [fileId], references: [id])
+}
+
 enum UserRole {
   USER
   ADMIN
@@ -891,18 +904,4 @@ enum ChummeTraits {
   NONE
   COMMUNITIES
   ENTERTAINMENT
-}
-
-model ApkRelease {
-  id            String   @id @default(uuid())
-  versionName   String
-  buildNumber   Int
-  fileId        String   @unique
-  file          File     @relation(fields: [fileId], references: [id])
-  whatIsNew     String[]
-  isLatest      Boolean  @default(false)
-  isStable      Boolean  @default(false)
-  downloadCount Int      @default(0)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
 }

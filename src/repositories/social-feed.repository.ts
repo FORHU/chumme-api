@@ -417,6 +417,7 @@ export default class SocialFeedRepo {
       views?: number;
       likes?: number;
       comments?: number;
+      isLive?: boolean;
     },
   ) {
     const existing = await prisma.socialFeedItem.findUnique({
@@ -432,6 +433,7 @@ export default class SocialFeedRepo {
         socialPlatform: data.socialPlatform,
         externalUrl: data.externalUrl,
         videoId: data.videoId ?? null,
+        isLive: data.isLive ?? false,
         chummeArtistId: data.chummeArtistId ?? null,
         chummeCategoryId: data.chummeCategoryId ?? null,
         chummeSubCategoryId: data.chummeSubCategoryId ?? null,
@@ -448,6 +450,7 @@ export default class SocialFeedRepo {
         socialPlatform: data.socialPlatform,
         externalUrl: data.externalUrl,
         videoId: data.videoId ?? null,
+        isLive: data.isLive !== undefined ? data.isLive : undefined,
         chummeArtistId: data.chummeArtistId ?? null,
         chummeCategoryId: data.chummeCategoryId ?? null,
         chummeSubCategoryId: data.chummeSubCategoryId ?? null,

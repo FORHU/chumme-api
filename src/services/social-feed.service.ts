@@ -203,6 +203,7 @@ export default class SocialFeedSvc {
     views?: number;
     likes?: number;
     comments?: number;
+    isLive?: boolean;
   }) {
     if (!data.externalUrl) {
       throw new Error("externalUrl is required to upsert external media");
@@ -244,6 +245,7 @@ export default class SocialFeedSvc {
         views: data.views,
         likes: data.likes,
         comments: data.comments,
+        isLive: data.isLive,
       } as any,
     );
 

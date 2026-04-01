@@ -34,7 +34,7 @@ export class IngestionWorker {
   private readonly routingKeys = ["ingestion.*"];
 
   async start(): Promise<void> {
-    logger.info("[IngestionWorker] Starting...");
+    logger.info("[IngestionWorker] Starting... [v2: isLive restored]");
     await rabbitMQService.subscribeToMessages(
       this.queueName,
       this.routingKeys,
@@ -159,6 +159,7 @@ export class IngestionWorker {
         title: item.title || "Social Media Content",
         socialPlatform: item.platform,
         metaData: item.metaData,
+        isLive: item.isLive,
         chummeArtistId: job.meta?.artistId,
         chummeCategoryId: job.meta?.categoryId,
         chummeSubCategoryId: job.meta?.subCategoryId,

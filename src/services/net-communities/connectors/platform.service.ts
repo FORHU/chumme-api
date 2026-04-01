@@ -11,6 +11,7 @@ export interface GenericContentItem {
   url: string;
   thumbnailUrl?: string;
   crawledAt: Date;
+  isLive?: boolean;
   publishedAt?: Date;
   author: {
     id: string;

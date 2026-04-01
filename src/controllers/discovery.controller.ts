@@ -3,6 +3,7 @@ import SocialFeedRepo from "../repositories/social-feed.repository";
 import * as ArtistRepo from "../repositories/chumme-artist.repository";
 import RankingService from "../services/net-communities/ingestion/ranking.service";
 import { SchedulingService } from "../services/net-communities/ingestion/scheduling.service";
+import { QuotaService } from "../services/net-communities/ingestion/quota.service";
 import logger from "../utils/logger";
 
 export default class DiscoveryController {
@@ -83,8 +84,14 @@ export default class DiscoveryController {
       // 2. Process category scouting searches (forced)
       await SchedulingService.processScoutTasks(true);
 
+      // 3. Get current quota usage for the response
+      const quotaUsedToday = await QuotaService.getUsage();
+
       return res.json({
         message: "Full video crawl and scouting process triggered successfully",
+        data: {
+          quotaUsedToday,
+        },
       });
     } catch (error: any) {
       logger.error(

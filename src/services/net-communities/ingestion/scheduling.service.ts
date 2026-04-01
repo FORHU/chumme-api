@@ -43,6 +43,7 @@ export class SchedulingService {
 
       const where: any = {
         isActive: true,
+        AND: [],
         OR: [
           { quotaLimitHitAt: null },
           {
@@ -68,24 +69,27 @@ export class SchedulingService {
         ];
       }
 
-      // 4. Restrict to ENTERTAINMENT traits on subcategory and topic levels
-      if (!where.AND) where.AND = [];
-      where.AND.push({
-        OR: [
-          {
-            chummeSubCategory: {
+      if (!force) {
+        where.AND.push({
+          OR: [
+            {
               chummeCategory: { chummeTraits: "ENTERTAINMENT" },
             },
-          },
-          {
-            chummeTopicCategory: {
+            {
               chummeSubCategory: {
                 chummeCategory: { chummeTraits: "ENTERTAINMENT" },
               },
             },
-          },
-        ],
-      });
+            {
+              chummeTopicCategory: {
+                chummeSubCategory: {
+                  chummeCategory: { chummeTraits: "ENTERTAINMENT" },
+                },
+              },
+            },
+          ],
+        });
+      }
 
       const targetsToCrawl = await prisma.socialIngestionTarget.findMany({
         where,
@@ -107,7 +111,11 @@ export class SchedulingService {
 
         // 1. Fallback to original interval if no active schedules exist
         if (!target.schedules || target.schedules.length === 0) {
-          return false; // Skip by default if no explicit schedule record exists
+          // If no schedules, check if the fallback interval has passed
+          if (!target.lastCrawledAt) return true;
+          const hoursSinceLastCrawl =
+            (now.getTime() - target.lastCrawledAt.getTime()) / (1000 * 60 * 60);
+          return hoursSinceLastCrawl >= target.crawlIntervalHours;
         }
 
         // 2. Evaluate schedules

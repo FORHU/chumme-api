@@ -1,4 +1,5 @@
 import { google, youtube_v3 } from "googleapis";
+import { QuotaService } from "./ingestion/quota.service";
 
 export default class YouTubeService {
   private static youtube: youtube_v3.Youtube;
@@ -42,6 +43,7 @@ export default class YouTubeService {
         part: ["snippet", "contentDetails", "statistics"],
         id: [videoId],
       });
+      await QuotaService.increment(1);
 
       const video = response.data.items?.[0];
       return video || null;
@@ -69,6 +71,7 @@ export default class YouTubeService {
         maxResults,
         regionCode,
       });
+      await QuotaService.increment(100);
 
       return response.data.items || [];
     } catch (error) {
@@ -92,6 +95,7 @@ export default class YouTubeService {
         id: params.channelId ? [params.channelId] : undefined,
         forHandle: params.handle,
       });
+      await QuotaService.increment(1);
 
       return response.data.items?.[0] || null;
     } catch (error) {
@@ -117,6 +121,7 @@ export default class YouTubeService {
         maxResults,
         pageToken,
       });
+      await QuotaService.increment(1);
 
       return {
         items: response.data.items || [],
@@ -149,6 +154,7 @@ export default class YouTubeService {
         part: ["snippet", "contentDetails", "statistics", "brandingSettings"],
         mine: true,
       });
+      await QuotaService.increment(1);
 
       return response.data.items?.[0] || null;
     } catch (error) {
@@ -173,6 +179,7 @@ export default class YouTubeService {
         maxResults,
         order: "relevance", // Get top comments
       });
+      await QuotaService.increment(1);
 
       return response.data.items || [];
     } catch (error) {

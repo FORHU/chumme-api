@@ -15,6 +15,7 @@ type PlaylistItemRow = {
     publishedAt?: string | null;
     channelId?: string | null;
     channelTitle?: string | null;
+    liveBroadcastContent?: string | null;
     thumbnails?: { high?: { url?: string }; default?: { url?: string } };
   };
   contentDetails?: { videoId?: string | null };
@@ -107,6 +108,7 @@ export class YouTubeConnector implements PlatformConnector {
         video.snippet?.thumbnails?.high?.url ||
         video.snippet?.thumbnails?.default?.url,
       crawledAt: new Date(),
+      isLive: video.snippet?.liveBroadcastContent === "live",
       publishedAt: video.snippet?.publishedAt
         ? new Date(video.snippet.publishedAt)
         : undefined,
@@ -138,6 +140,7 @@ export class YouTubeConnector implements PlatformConnector {
         item.snippet?.thumbnails?.default?.url ||
         undefined,
       crawledAt: new Date(),
+      isLive: item.snippet?.liveBroadcastContent === "live",
       publishedAt: item.snippet?.publishedAt
         ? new Date(item.snippet.publishedAt)
         : undefined,
@@ -163,6 +166,7 @@ export class YouTubeConnector implements PlatformConnector {
         item.snippet?.thumbnails?.default?.url ||
         undefined,
       crawledAt: new Date(),
+      isLive: item.snippet?.liveBroadcastContent === "live",
       publishedAt: item.snippet?.publishedAt
         ? new Date(item.snippet.publishedAt)
         : undefined,
