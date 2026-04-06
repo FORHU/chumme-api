@@ -376,11 +376,21 @@ export const registerSessionHandlers = (
           `[MusicStudio] 🔒 Studio auto-closed (owner left): ${studioId}`,
         );
       } else {
-        // Room Cleanup: If this was the last person, clear the session
+        // Auto-close studio if no members remain
         const remainingMembers = await MusicStudioCacheSvc.getMembers(studioId);
         if (remainingMembers.length === 0) {
-          await MusicStudioCacheSvc.clearStudioSession(studioId);
-          console.log(`[MusicStudio] 🧹 Cleaned up empty studio: ${studioId}`);
+          io.to(studioId).emit("studio_closed", {
+            studioId,
+            message: "Studio closed — no members remaining",
+          });
+          const socketsInRoom = await io.in(studioId).fetchSockets();
+          socketsInRoom.forEach((s) => s.leave(studioId));
+
+          await MusicStudioSvc.closeStudio(studioId, socket.user.id, true);
+
+          console.log(
+            `[MusicStudio] 🔒 Studio auto-closed (0 members): ${studioId}`,
+          );
         }
       }
 
@@ -490,13 +500,22 @@ export const registerSessionHandlers = (
                   `[MusicStudio] 🔒 Studio auto-closed (owner disconnected): ${studioId}`,
                 );
               } else {
-                // Room Cleanup after disconnect grace period
+                // Auto-close studio if no members remain after disconnect
                 const remainingMembers =
                   await MusicStudioCacheSvc.getMembers(studioId);
                 if (remainingMembers.length === 0) {
-                  await MusicStudioCacheSvc.clearStudioSession(studioId);
+                  io.to(studioId).emit("studio_closed", {
+                    studioId,
+                    message: "Studio closed — no members remaining",
+                  });
+                  const socketsInRoom =
+                    await io.in(studioId).fetchSockets();
+                  socketsInRoom.forEach((s) => s.leave(studioId));
+
+                  await MusicStudioSvc.closeStudio(studioId, userId, true);
+
                   console.log(
-                    `[MusicStudio] 🧹 Cleaned up empty studio after disconnect: ${studioId}`,
+                    `[MusicStudio] 🔒 Studio auto-closed (0 members after disconnect): ${studioId}`,
                   );
                 }
               }
