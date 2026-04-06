@@ -78,7 +78,7 @@ export const registerRoomHandlers = (
    */
   socket.on("send_message_to_room", async (data: any) => {
     try {
-      const { room_id, message, roomName, voiceMessageId, parentMessageId } =
+      const { room_id, message, roomName, voiceMessageId, parentMessageId, duration, waveform } =
         data;
       if (!room_id || !message || message.trim() === "") {
         return socket.emit("not_allowed", {
@@ -99,7 +99,13 @@ export const registerRoomHandlers = (
       const mappedMessage =
         await ChummeSubCategorySvc.mapMessageWithSignedUrl(newMessage);
 
-      // 3. Broadcast
+      // 3. If client sent duration/waveform, enrich the voiceNote
+      if (mappedMessage.voiceNote && (duration || waveform)) {
+        mappedMessage.voiceNote.duration = duration || mappedMessage.voiceNote.duration;
+        mappedMessage.voiceNote.waveform = waveform || mappedMessage.voiceNote.waveform;
+      }
+
+      // 4. Broadcast
       io.to(room_id).emit("send_message_to_room", {
         ...mappedMessage,
         room_id,
