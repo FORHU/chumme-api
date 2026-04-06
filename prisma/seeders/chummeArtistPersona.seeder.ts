@@ -226,37 +226,6 @@ export async function seedChummeArtistPersonas(prisma: PrismaClient) {
   }
 
   for (const item of personaData) {
-    // 1. Find or create the Artist
-    let artist = await prisma.chummeArtist.findUnique({
-      where: { name: item.name },
-    });
-
-    if (!artist) {
-      artist = await prisma.chummeArtist.create({
-        data: {
-          name: item.name,
-          bio: `Official persona for ${item.name}`,
-          platform: "YOUTUBE", // Default for persona-linked artists
-        },
-      });
-      console.log(`✅ Created Artist: ${item.name}`);
-    }
-
-    // 2. Clear Existing Persona for this artist if ID mismatch
-    // This allows forcing the user-provided IDs
-    const existingByArtist = await prisma.chummeArtistPersona.findFirst({
-      where: { chummeArtistId: artist.id },
-    });
-
-    if (existingByArtist && existingByArtist.id !== item.id) {
-      console.log(
-        `🧹 Removing legacy persona for ${item.name} to apply new ID...`,
-      );
-      await prisma.chummeArtistPersona.delete({
-        where: { id: existingByArtist.id },
-      });
-    }
-
     // 3. Upsert Persona using user-provided IDs
     await prisma.chummeArtistPersona.upsert({
       where: { id: item.id },
@@ -267,7 +236,6 @@ export async function seedChummeArtistPersonas(prisma: PrismaClient) {
         imagePathId: item.imagePathId,
         audioPathId: item.audioPathId,
         videoPathId: item.videoPathId,
-        chummeArtistId: artist.id,
       },
       create: {
         id: item.id,
@@ -277,7 +245,6 @@ export async function seedChummeArtistPersonas(prisma: PrismaClient) {
         imagePathId: item.imagePathId,
         audioPathId: item.audioPathId,
         videoPathId: item.videoPathId,
-        chummeArtistId: artist.id,
       },
     });
 

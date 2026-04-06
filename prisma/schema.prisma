@@ -206,7 +206,7 @@ model ChummeArtist {
   isDraft                Boolean                 @default(false)
   platform               String                  @default("YOUTUBE")
   socialPlatformUsername String?
-  chummeArtistPersona    ChummeArtistPersona?
+
   music                  Music[]                 @relation("MainArtist")
   musicAlbum             MusicAlbum[]            @relation("MainArtist")
   musicFeaturedArtists   MusicFeaturedArtist[]
@@ -217,7 +217,7 @@ model ChummeArtist {
 
 model ChummeArtistPersona {
   id             String        @id @default(uuid())
-  chummeArtistId String?       @unique
+
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
   deletedAt      DateTime?
@@ -228,11 +228,10 @@ model ChummeArtistPersona {
   persona        String
   voiceKey       String
   audioPath      File?         @relation("PersonaAudioFile", fields: [audioPathId], references: [id])
-  chummeArtist   ChummeArtist? @relation(fields: [chummeArtistId], references: [id])
+
   imagePath      File?         @relation("PersonaImageFile", fields: [imagePathId], references: [id])
   videoPath      File?         @relation("PersonaVideoFile", fields: [videoPathId], references: [id])
 
-  @@index([chummeArtistId])
 }
 
 model SocialUserDiscovery {
