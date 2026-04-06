@@ -77,6 +77,33 @@ export default class SocialFeedCtrl {
   }
 
   /**
+   * Create a comment on a feed item
+   * POST /api/feed/:id/comment
+   */
+  static async createComment(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const userId = req.user.id;
+      const { content } = req.body;
+
+      if (!content || typeof content !== "string" || content.trim().length === 0) {
+        return res.status(400).json({ success: false, message: "Content is required" });
+      }
+      if (content.length > 1000) {
+        return res.status(400).json({ success: false, message: "Comment is too long (max 1000 characters)" });
+      }
+
+      const comment = await SocialFeedSvc.createFeedItemComment(id, userId, content);
+      return res.status(201).json({ success: true, data: comment });
+    } catch (error: any) {
+      if (error.message === "Feed item not found") {
+        return res.status(404).json({ success: false, message: error.message });
+      }
+      return res.status(500).json({ success: false, message: error.message || "Failed to create comment" });
+    }
+  }
+
+  /**
    * Get comments for a feed item (scraped + local)
    * GET /api/feed/:id/comments
    */
