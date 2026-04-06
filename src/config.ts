@@ -39,6 +39,9 @@ export const RABBITMQ_EXCHANGE =
   process.env.RABBITMQ_EXCHANGE || "chumme_exchange";
 export const RABBITMQ_QUEUE_PREFIX =
   process.env.RABBITMQ_QUEUE_PREFIX || "chumme";
+export const INGESTION_QUEUE_NAME =
+  process.env.INGESTION_QUEUE_NAME ||
+  (isDev ? "ingestion_jobs_local" : "ingestion_jobs");
 export const CHAT_WONDER_API_URL = process.env.CHAT_WONDER_API_URL as string;
 
 // Google OAuth Configuration

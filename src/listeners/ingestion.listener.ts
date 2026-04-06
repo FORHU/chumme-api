@@ -1,4 +1,5 @@
 import amqp from "amqplib";
+import { INGESTION_QUEUE_NAME } from "../config";
 import { MessageHandler, rabbitMQService } from "../utils/rabbitmq";
 import logger from "../utils/logger";
 import { SocialPlatform } from "@prisma/client";
@@ -30,7 +31,7 @@ export interface IngestionJob {
 }
 
 export class IngestionWorker {
-  private readonly queueName = "ingestion_jobs";
+  private readonly queueName = INGESTION_QUEUE_NAME;
   private readonly routingKeys = ["ingestion.*"];
 
   async start(): Promise<void> {
@@ -40,7 +41,9 @@ export class IngestionWorker {
       this.routingKeys,
       this.handleMessage.bind(this),
     );
-    logger.info("[IngestionWorker] Subscribed to ingestion jobs");
+    logger.info(
+      `[IngestionWorker] Subscribed to ingestion queue: ${this.queueName}`,
+    );
   }
 
   private handleMessage: MessageHandler = async (
@@ -53,8 +56,12 @@ export class IngestionWorker {
 
     try {
       // 1. Deduplication check
-      const dedupKey = `${message.platform}:${message.targetId}`;
-      if (await RedisUtil.isDuplicate(message.type, dedupKey)) {
+      const dedupKey =
+        message.type === IngestionJobType.DISCOVERY
+          ? `${message.platform}:${message.targetId}:${message.meta?.pageToken || "first"}`
+          : `${message.platform}:${message.targetId}`;
+      const shouldBypassDedup = Boolean(message.meta?.force);
+      if (!shouldBypassDedup && (await RedisUtil.isDuplicate(message.type, dedupKey))) {
         logger.info(
           `[IngestionWorker] Skipping duplicate job: ${message.type} for ${dedupKey}`,
         );
@@ -120,12 +127,27 @@ export class IngestionWorker {
 
   private async handleDiscoveryJob(job: IngestionJob) {
     const connector = IngestionManager.getConnector(job.platform);
+    const maxItems =
+      typeof job.meta?.maxItems === "number" ? job.meta.maxItems : undefined;
+    const processedCount =
+      typeof job.meta?.processedCount === "number" ? job.meta.processedCount : 0;
+    const remainingItems =
+      typeof maxItems === "number"
+        ? Math.max(maxItems - processedCount, 0)
+        : undefined;
+
+    if (remainingItems === 0) {
+      logger.info(
+        `[IngestionWorker] Reached maxItems=${maxItems} for ${job.platform}:${job.targetId}`,
+      );
+      return;
+    }
 
     let result;
     try {
       result = await connector.getChannelContent(
         job.targetId,
-        20,
+        remainingItems ? Math.min(20, remainingItems) : 20,
         job.meta?.pageToken,
       );
     } catch (error: any) {
@@ -145,7 +167,10 @@ export class IngestionWorker {
       throw error;
     }
 
-    const items = result.items;
+    const items =
+      typeof remainingItems === "number"
+        ? result.items.slice(0, remainingItems)
+        : result.items;
     const nextPageToken = result.nextPageToken;
 
     logger.info(
@@ -183,8 +208,13 @@ export class IngestionWorker {
       );
     }
 
-    // 🆕 Recursive Pagination Loop
-    if (nextPageToken) {
+    const nextProcessedCount = processedCount + items.length;
+
+    // Recursive pagination loop
+    if (
+      nextPageToken &&
+      (typeof maxItems !== "number" || nextProcessedCount < maxItems)
+    ) {
       logger.info(
         `[IngestionWorker] Triggering next page sync for ${job.targetId}`,
       );
@@ -194,6 +224,7 @@ export class IngestionWorker {
         meta: {
           ...job.meta,
           pageToken: nextPageToken,
+          processedCount: nextProcessedCount,
         },
       });
     }
