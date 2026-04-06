@@ -266,6 +266,53 @@ export default class SocialFeedSvc {
   }
 
   /**
+   * Create a user comment on a feed item
+   */
+  static async createFeedItemComment(
+    feedItemId: string,
+    userId: string,
+    content: string,
+  ) {
+    if (!content || content.trim().length === 0) {
+      throw new Error("Comment content is required");
+    }
+    if (content.length > 1000) {
+      throw new Error("Comment is too long (max 1000 characters)");
+    }
+
+    // Verify feed item exists
+    const feedItem = await prisma.socialFeedItem.findUnique({
+      where: { id: feedItemId },
+    });
+    if (!feedItem) {
+      throw new Error("Feed item not found");
+    }
+
+    const comment = await prisma.socialUserComment.create({
+      data: {
+        socialFeedItemId: feedItemId,
+        userId,
+        content: content.trim(),
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            name: true,
+            avatar: { select: { fileUrl: true } },
+          },
+        },
+      },
+    });
+
+    await CacheUtil.delByPattern(`feed:page:*`);
+    await CacheUtil.delByPattern(`feed:personalized:*`);
+
+    return comment;
+  }
+
+  /**
    * Get merged comments for a feed item (scraped + local)
    */
   static async getFeedItemComments(feedItemId: string) {
