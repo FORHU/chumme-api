@@ -2,6 +2,7 @@ import express from "express";
 import { rabbitMQService } from "../utils/rabbitmq";
 import { prisma } from "../utils/prisma";
 import RedisUtil from "../utils/redis.util";
+import { QuotaService } from "../services/net-communities/ingestion/quota.service";
 
 const router = express.Router();
 
@@ -39,6 +40,18 @@ router.get("/health", async (req, res) => {
     dbStatus = "disconnected";
   }
 
+  // 4. Check Quota Usage
+  let quotaUsage = 0;
+  let quotaStatus = "ok";
+  try {
+    quotaUsage = await QuotaService.getUsage();
+    // Standard YouTube quota is 10,000 units
+    if (quotaUsage > 9000) quotaStatus = "critical";
+    else if (quotaUsage > 7000) quotaStatus = "warning";
+  } catch {
+    quotaStatus = "unknown";
+  }
+
   // 4. Derive overall status
   const allHealthy =
     rabbitmqStatus === "connected" &&
@@ -61,6 +74,9 @@ router.get("/health", async (req, res) => {
     ingestion: {
       totalActiveTargets: activeTargets,
       chummeCategoryTargets: chummeTargets,
+      dailyQuotaUsage: quotaUsage,
+      quotaStatus: quotaStatus,
+      quotaLimit: 10000,
     },
   };
 

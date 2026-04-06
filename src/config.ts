@@ -42,7 +42,10 @@ export const RABBITMQ_QUEUE_PREFIX =
 export const CHAT_WONDER_API_URL = process.env.CHAT_WONDER_API_URL as string;
 
 // Google OAuth Configuration
-export const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID as string;
+export const GOOGLE_CLIENT_ID = (process.env.GOOGLE_CLIENT_ID || "").trim();
+export const GOOGLE_ANDROID_CLIENT_ID = (
+  process.env.GOOGLE_ANDROID_CLIENT_ID || ""
+).trim();
 
 // Facebook OAuth Configuration
 export const FACEBOOK_APP_ID = process.env.FACEBOOK_APP_ID as string;
