@@ -11,6 +11,7 @@ import {
   REFRESH_TOKEN_SECRET,
   ACCESS_TOKEN_EXPIRY,
   GOOGLE_CLIENT_ID,
+  GOOGLE_ANDROID_CLIENT_ID,
 } from "../config";
 import { AutoSyncSvc } from "./net-communities/ingestion/auto-sync.service";
 import { SocialPlatform } from "@prisma/client";
@@ -80,7 +81,7 @@ export default class AuthSvc {
         const client = new OAuth2Client(GOOGLE_CLIENT_ID);
         const ticket = await client.verifyIdToken({
           idToken: data.idToken,
-          audience: GOOGLE_CLIENT_ID,
+          audience: [GOOGLE_CLIENT_ID, GOOGLE_ANDROID_CLIENT_ID],
         });
         const payload = ticket.getPayload();
         if (payload && payload.email === user.email) {
@@ -280,7 +281,7 @@ export default class AuthSvc {
         const client = new OAuth2Client(GOOGLE_CLIENT_ID);
         const ticket = await client.verifyIdToken({
           idToken,
-          audience: GOOGLE_CLIENT_ID,
+          audience: [GOOGLE_CLIENT_ID, GOOGLE_ANDROID_CLIENT_ID],
         });
         const payload = ticket.getPayload();
         if (payload && payload.email === user.email) {
@@ -543,11 +544,16 @@ export default class AuthSvc {
   static async googleAuthSSO(idToken: string) {
     const client = new OAuth2Client(GOOGLE_CLIENT_ID);
 
+    console.log("[AuthSvc] googleAuthSSO verifying token:", {
+      configuredWebId: GOOGLE_CLIENT_ID,
+      configuredAndroidId: GOOGLE_ANDROID_CLIENT_ID,
+      tokenPrefix: idToken?.substring(0, 30),
+    });
     try {
       // Verify the ID token with Google
       const ticket = await client.verifyIdToken({
         idToken,
-        audience: GOOGLE_CLIENT_ID,
+        audience: [GOOGLE_CLIENT_ID, GOOGLE_ANDROID_CLIENT_ID],
       });
 
       const payload = ticket.getPayload();
@@ -585,8 +591,9 @@ export default class AuthSvc {
         payload.picture, // Google profile picture
       );
     } catch (error: any) {
-      console.error("Google SSO error:", error);
-      throw new Error("Failed to verify Google token");
+      console.error("[AuthSvc] Google SSO verification failed. Raw Error:");
+      console.dir(error, { depth: null });
+      throw new Error("Failed to verify Google token: " + error.message);
     }
   }
 
