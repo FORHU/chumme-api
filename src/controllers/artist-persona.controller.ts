@@ -2,31 +2,7 @@ import { Request, Response } from "express";
 import Joi from "joi";
 import * as artistPersonaService from "../services/artist-persona.service";
 
-export const getPersonaByArtistId = async (req: Request, res: Response) => {
-  try {
-    const { artistId } = req.params;
-    const persona = await artistPersonaService.getPersonaByArtistId(artistId);
 
-    if (!persona) {
-      return res.status(404).json({
-        success: false,
-        message: "Persona not found for this artist",
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      data: persona,
-    });
-  } catch (error) {
-    console.error("Error fetching persona:", error);
-    res.status(500).json({
-      success: false,
-      message:
-        error instanceof Error ? error.message : "Failed to fetch persona",
-    });
-  }
-};
 
 export const getAllPersonas = async (req: Request, res: Response) => {
   try {
@@ -49,7 +25,6 @@ export const getAllPersonas = async (req: Request, res: Response) => {
 export const createPersona = async (req: Request, res: Response) => {
   try {
     const schema = Joi.object({
-      artistId: Joi.string().uuid().allow(null),
       name: Joi.string().allow(null),
       voiceKey: Joi.string().required(),
       persona: Joi.string().allow(null),
@@ -86,7 +61,6 @@ export const updatePersona = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const schema = Joi.object({
-      artistId: Joi.string().uuid().allow(null),
       name: Joi.string().allow(null),
       voiceKey: Joi.string(),
       persona: Joi.string().allow(null),

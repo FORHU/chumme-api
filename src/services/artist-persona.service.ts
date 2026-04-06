@@ -2,21 +2,7 @@ import * as artistPersonaRepo from "../repositories/artist-persona.repository";
 import CacheUtil from "../utils/cache.util";
 import { BadRequestError } from "../utils/error.util";
 
-export const getPersonaByArtistId = async (artistId: string) => {
-  const cacheKey = `artist:${artistId}:persona`;
 
-  const cached = await CacheUtil.get(cacheKey);
-  if (cached) {
-    return JSON.parse(cached);
-  }
-
-  const persona = await artistPersonaRepo.findByArtistId(artistId);
-
-  if (persona) {
-    await CacheUtil.set(cacheKey, JSON.stringify(persona), 3600);
-  }
-  return persona;
-};
 
 export const getAllPersonas = async () => {
   const cacheKey = "personas:all";
@@ -34,7 +20,6 @@ export const getAllPersonas = async () => {
 };
 
 export const createPersona = async (data: {
-  artistId?: string | null;
   name?: string | null;
   voiceKey?: string | null;
   persona?: string | null;
@@ -63,7 +48,6 @@ export const createPersona = async (data: {
   }
 
   const persona = await artistPersonaRepo.create({
-    chummeArtistId: data.artistId ?? null,
     name: data.name ?? "Unknown", // Fallback if name is missing
     voiceKey: data.voiceKey ?? "default", // Fallback if voiceKey is missing
     persona: data.persona ?? "default-persona",
@@ -72,16 +56,12 @@ export const createPersona = async (data: {
     imagePathId: data.imagePathId ?? null,
   });
 
-  if (data.artistId) {
-    await CacheUtil.del(`artist:${data.artistId}:persona`);
-  }
   return persona;
 };
 
 export const updatePersona = async (
   id: string,
   data: {
-    artistId?: string | null;
     name?: string | null;
     voiceKey?: string | null;
     persona?: string | null;
@@ -113,7 +93,6 @@ export const updatePersona = async (
   }
 
   const persona = await artistPersonaRepo.update(id, {
-    chummeArtistId: data.artistId,
     name: data.name,
     voiceKey: data.voiceKey,
     persona: data.persona,
@@ -122,18 +101,11 @@ export const updatePersona = async (
     imagePathId: data.imagePathId,
   });
 
-  if (persona.chummeArtistId) {
-    await CacheUtil.del(`artist:${persona.chummeArtistId}:persona`);
-  }
   return persona;
 };
 
-export const deletePersona = async (id: string, artistId?: string) => {
+export const deletePersona = async (id: string) => {
   const result = await artistPersonaRepo.deletePersona(id);
-
-  if (artistId) {
-    await CacheUtil.del(`artist:${artistId}:persona`);
-  }
 
   return result;
 };

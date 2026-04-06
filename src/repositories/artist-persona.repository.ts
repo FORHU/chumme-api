@@ -1,18 +1,6 @@
 import { prisma } from "../utils/prisma";
 
-export const findByArtistId = async (artistId: string) => {
-  return prisma.chummeArtistPersona.findFirst({
-    where: {
-      chummeArtistId: artistId,
-      deletedAt: null,
-    },
-    include: {
-      audioPath: { select: { id: true, fileUrl: true } },
-      videoPath: { select: { id: true, fileUrl: true } },
-      imagePath: { select: { id: true, fileUrl: true } },
-    },
-  });
-};
+
 
 export const findByAudioPathId = async (audioPathId: string) => {
   return prisma.chummeArtistPersona.findUnique({
@@ -33,7 +21,6 @@ export const findByImagePathId = async (imagePathId: string) => {
 };
 
 export const create = async (data: {
-  chummeArtistId?: string | null;
   name: string;
   voiceKey: string;
   persona: string;
@@ -44,7 +31,6 @@ export const create = async (data: {
   return prisma.chummeArtistPersona.create({
     data: {
       ...data,
-      chummeArtistId: data.chummeArtistId ?? undefined,
       audioPathId: data.audioPathId ?? undefined,
       videoPathId: data.videoPathId ?? undefined,
       imagePathId: data.imagePathId ?? undefined,
@@ -60,7 +46,6 @@ export const create = async (data: {
 export const update = async (
   id: string,
   data: {
-    chummeArtistId?: string | null;
     name?: string | null;
     voiceKey?: string | null;
     persona?: string | null;
@@ -76,10 +61,6 @@ export const update = async (
       name: data.name ?? undefined,
       voiceKey: data.voiceKey ?? undefined,
       persona: data.persona ?? undefined,
-      chummeArtistId:
-        data.chummeArtistId === null
-          ? null
-          : (data.chummeArtistId ?? undefined),
       audioPathId:
         data.audioPathId === null ? null : (data.audioPathId ?? undefined),
       videoPathId:
@@ -102,13 +83,6 @@ export const getAll = async () => {
       deletedAt: null,
     },
     include: {
-      chummeArtist: {
-        select: {
-          id: true,
-          name: true,
-          imageUrl: true,
-        },
-      },
       audioPath: { select: { id: true, fileUrl: true } },
       videoPath: { select: { id: true, fileUrl: true } },
       imagePath: { select: { id: true, fileUrl: true } },
