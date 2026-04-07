@@ -335,19 +335,6 @@ export default class SocialFeedRepo {
       */
     ];
 
-    /*
-    if (artistInArray.length > 0) {
-      orConditions.push({ chummeArtistId: { in: artistInArray } });
-    }
-    */
-    /*
-    if (categoryIds.length > 0) {
-      orConditions.push({ chummeCategoryId: { in: categoryIds } });
-    }
-    if (subCategoryIds.length > 0) {
-      orConditions.push({ chummeSubCategoryId: { in: subCategoryIds } });
-    }
-    */
     if (topicCategoryIds.length > 0) {
       orConditions.push({ chummeTopicCategoryId: { in: topicCategoryIds } });
     }
@@ -455,19 +442,6 @@ export default class SocialFeedRepo {
       */
     ];
 
-    /*
-    if (artistInArray.length > 0) {
-      orConditions.push({ chummeArtistId: { in: artistInArray } });
-    }
-    */
-    /*
-    if (categoryIds.length > 0) {
-      orConditions.push({ chummeCategoryId: { in: categoryIds } });
-    }
-    if (subCategoryIds.length > 0) {
-      orConditions.push({ chummeSubCategoryId: { in: subCategoryIds } });
-    }
-    */
     if (topicCategoryIds.length > 0) {
       orConditions.push({ chummeTopicCategoryId: { in: topicCategoryIds } });
     }
@@ -510,8 +484,6 @@ export default class SocialFeedRepo {
       socialPlatform: any;
       externalUrl: string;
       chummeArtistId?: string | null;
-      chummeCategoryId?: string | null;
-      chummeSubCategoryId?: string | null;
       chummeTopicCategoryId?: string | null;
       metaData?: any | null;
       blockedCountries?: string[];
@@ -528,7 +500,8 @@ export default class SocialFeedRepo {
     });
     const isUpdate = !!existing;
 
-    let artistId = data.chummeArtistId;
+    const { chummeTopicCategoryId } = data;
+    let { chummeArtistId: artistId } = data;
 
     // Infer artistId if missing
     if (!artistId) {
@@ -553,9 +526,9 @@ export default class SocialFeedRepo {
       }
 
       // 2. Try via Topic Category Name Match
-      if (!artistId && data.chummeTopicCategoryId) {
+      if (!artistId && chummeTopicCategoryId) {
         const topic = await prisma.chummeTopicCategory.findUnique({
-          where: { id: data.chummeTopicCategoryId },
+          where: { id: chummeTopicCategoryId },
           select: { name: true },
         });
         if (topic) {
@@ -597,9 +570,7 @@ export default class SocialFeedRepo {
         videoId: data.videoId ?? null,
         isLive: data.isLive ?? false,
         chummeArtistId: artistId ?? null,
-        chummeCategoryId: data.chummeCategoryId ?? null,
-        chummeSubCategoryId: data.chummeSubCategoryId ?? null,
-        chummeTopicCategoryId: data.chummeTopicCategoryId ?? null,
+        chummeTopicCategoryId: chummeTopicCategoryId ?? null,
         metaData: data.metaData ?? null,
         blockedCountries: data.blockedCountries || [],
         allowedCountries: data.allowedCountries || [],
@@ -614,9 +585,7 @@ export default class SocialFeedRepo {
         videoId: data.videoId ?? null,
         isLive: data.isLive !== undefined ? data.isLive : undefined,
         chummeArtistId: artistId ?? null,
-        chummeCategoryId: data.chummeCategoryId ?? null,
-        chummeSubCategoryId: data.chummeSubCategoryId ?? null,
-        chummeTopicCategoryId: data.chummeTopicCategoryId ?? null,
+        chummeTopicCategoryId: chummeTopicCategoryId ?? null,
         metaData: data.metaData ?? null,
         blockedCountries: data.blockedCountries || [],
         allowedCountries: data.allowedCountries || [],

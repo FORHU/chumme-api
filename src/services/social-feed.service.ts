@@ -189,8 +189,6 @@ export default class SocialFeedSvc {
     title: string;
     socialPlatform: any;
     chummeArtistId?: string;
-    chummeCategoryId?: string;
-    chummeSubCategoryId?: string;
     chummeTopicCategoryId?: string;
     metaData?: any;
     views?: number;
@@ -229,8 +227,6 @@ export default class SocialFeedSvc {
         externalUrl: data.externalUrl,
         videoId,
         chummeArtistId: data.chummeArtistId ?? null,
-        chummeCategoryId: data.chummeCategoryId ?? null,
-        chummeSubCategoryId: data.chummeSubCategoryId ?? null,
         chummeTopicCategoryId: data.chummeTopicCategoryId ?? null,
         metaData: data.metaData ?? null,
         blockedCountries,

@@ -79,9 +79,7 @@ export class SchedulingService {
 
       where.AND.push({
         chummeTopicCategory: {
-          chummeSubCategory: {
-            chummeCategory: { chummeTraits: "ENTERTAINMENT" },
-          },
+          chummeTraits: "ENTERTAINMENT",
         },
       });
 
@@ -174,9 +172,10 @@ export class SchedulingService {
       priority: target.crawlPriority,
       meta: {
         artistId: target.chummeArtistId,
+        topicCategoryId: target.chummeTopicCategoryId,
+        // Legacy support for higher levels if needed by platform connectors
         categoryId: target.chummeCategoryId,
         subCategoryId: target.chummeSubCategoryId,
-        topicCategoryId: target.chummeTopicCategoryId,
         pageToken: target.nextPageToken || undefined,
       },
     };
