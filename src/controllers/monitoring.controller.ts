@@ -94,4 +94,73 @@ export default class MonitoringCtrl {
         .json({ message: error.message || "Internal server error" });
     }
   }
+
+  /**
+   * Manually trigger ingestion for a specific target ID
+   */
+  static async triggerTargetIngestion(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      if (!id) {
+        return res.status(400).json({ message: "Target ID is required" });
+      }
+
+      await SchedulingService.triggerTargetIngestion(id);
+
+      return res.json({
+        success: true,
+        message: `Manual ingestion triggered for target: ${id}`,
+      });
+    } catch (error: any) {
+      return res.status(500).json({
+        message: error.message || "Internal server error",
+      });
+    }
+  }
+
+  /**
+   * Manually trigger refresh for a specific content item (video/post)
+   */
+  static async triggerContentRefresh(req: Request, res: Response) {
+    try {
+      const { platform, externalId } = req.params;
+      if (!platform || !externalId) {
+        return res
+          .status(400)
+          .json({ message: "Platform and External ID are required" });
+      }
+
+      await SchedulingService.triggerContentRefresh(
+        platform as any,
+        externalId,
+      );
+
+      return res.json({
+        success: true,
+        message: `Manual refresh triggered for ${platform}:${externalId}`,
+      });
+    } catch (error: any) {
+      return res.status(500).json({
+        message: error.message || "Internal server error",
+      });
+    }
+  }
+  /**
+   * Manually trigger category scouting (Topic Categories only)
+   */
+  static async triggerScout(req: Request, res: Response) {
+    try {
+      const force = req.query.force === "true";
+      await SchedulingService.processScoutTasks(force);
+
+      return res.json({
+        success: true,
+        message: `Manual topic scout triggered successfully (force=${force})`,
+      });
+    } catch (error: any) {
+      return res.status(500).json({
+        message: error.message || "Internal server error",
+      });
+    }
+  }
 }

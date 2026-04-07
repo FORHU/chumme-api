@@ -69,27 +69,13 @@ export class SchedulingService {
         ];
       }
 
-      if (!force) {
-        where.AND.push({
-          OR: [
-            {
-              chummeCategory: { chummeTraits: "ENTERTAINMENT" },
-            },
-            {
-              chummeSubCategory: {
-                chummeCategory: { chummeTraits: "ENTERTAINMENT" },
-              },
-            },
-            {
-              chummeTopicCategory: {
-                chummeSubCategory: {
-                  chummeCategory: { chummeTraits: "ENTERTAINMENT" },
-                },
-              },
-            },
-          ],
-        });
-      }
+      where.AND.push({
+        chummeTopicCategory: {
+          chummeSubCategory: {
+            chummeCategory: { chummeTraits: "ENTERTAINMENT" },
+          },
+        },
+      });
 
       const targetsToCrawl = await prisma.socialIngestionTarget.findMany({
         where,
@@ -212,78 +198,133 @@ export class SchedulingService {
     logger.info("[SchedulingService] Running category-based talent scout...");
 
     try {
-      // 1. Get all categories with keywords
-      const categories = await prisma.chummeCategory.findMany({
-        where: { discoveryKeywords: { isEmpty: false } },
-      });
-
-      const subCategories = await prisma.chummeSubCategory.findMany({
-        where: { discoveryKeywords: { isEmpty: false } },
-      });
-
       const topicCategories = await prisma.chummeTopicCategory.findMany({
-        where: { discoveryKeywords: { isEmpty: false } },
+        where: {
+          OR: [
+            { discoveryKeywords: { isEmpty: false } },
+            { channelId: { isEmpty: false } },
+          ],
+        },
+        select: { id: true },
       });
 
-      const allItems = [
-        ...categories.map((c) => ({
-          id: c.id,
-          keywords: c.discoveryKeywords,
-          type: "category",
-        })),
-        ...subCategories.map((s) => ({
-          id: s.id,
-          keywords: s.discoveryKeywords,
-          type: "subCategory",
-        })),
-        ...topicCategories.map((t) => ({
-          id: t.id,
-          keywords: t.discoveryKeywords,
-          type: "topicCategory",
-        })),
-      ];
-
-      for (const item of allItems) {
-        // Frequency control: Only scout each category level once every 24 hours
-        // If force is true, bypass this check
-        const scoutKey = `scout:${item.type}:${item.id}`;
-        if (
-          !force &&
-          (await RedisUtil.isDuplicate("discovery", scoutKey, 24 * 60 * 60))
-        ) {
-          logger.info(
-            `[SchedulingService] Skipping scout for ${item.type} [${item.id}] (already scouted in the last 24h)`,
-          );
-          continue;
-        }
-
-        for (const keyword of item.keywords) {
-          logger.info(
-            `[SchedulingService] Scouting ${item.type} [${item.id}] with keyword: "${keyword}"`,
-          );
-
-          const job: IngestionJob = {
-            type: IngestionJobType.SEARCH,
-            platform: SocialPlatform.YOUTUBE, // Start with YouTube scouting
-            targetId: keyword,
-            priority: 1,
-            meta: {
-              categoryId: item.type === "category" ? item.id : undefined,
-              subCategoryId: item.type === "subCategory" ? item.id : undefined,
-              topicCategoryId:
-                item.type === "topicCategory" ? item.id : undefined,
-            },
-          };
-
-          await rabbitMQService.publishMessage(
-            `ingestion.${IngestionJobType.SEARCH}`,
-            job,
-          );
-        }
+      // 2. Process each category level
+      for (const topic of topicCategories) {
+        await this.scoutTopicCategory(topic.id, force);
       }
     } catch (error) {
       logger.error("[SchedulingService] Error during scout processing:", error);
     }
+  }
+
+  static async scoutTopicCategory(
+    id: string,
+    force: boolean = false,
+  ): Promise<void> {
+    const item = await prisma.chummeTopicCategory.findUnique({ where: { id } });
+    if (!item) return;
+
+    // Frequency control: Only scout each level once every 24 hours
+    const scoutKey = `scout:topicCategory:${id}`;
+    if (
+      !force &&
+      (await RedisUtil.isDuplicate("discovery", scoutKey, 24 * 60 * 60))
+    ) {
+      logger.info(
+        `[SchedulingService] Skipping scout for topicCategory [${id}] (already scouted in the last 24h)`,
+      );
+      return;
+    }
+
+    const { channelId, discoveryKeywords } = item;
+
+    // 1. Direct Channel Discovery (Priority)
+    if (channelId && channelId.length > 0) {
+      for (const cid of channelId) {
+        logger.info(
+          `[SchedulingService] Direct discovery for topicCategory [${id}] with channelId: "${cid}"`,
+        );
+
+        const job: IngestionJob = {
+          type: IngestionJobType.DISCOVERY,
+          platform: SocialPlatform.YOUTUBE,
+          targetId: cid,
+          priority: 2,
+          meta: {
+            topicCategoryId: id,
+          },
+        };
+
+        await rabbitMQService.publishMessage(
+          `ingestion.${IngestionJobType.DISCOVERY}`,
+          job,
+        );
+      }
+    }
+
+    // 2. Keyword Search (Fallback if no channelId, or in addition if both present)
+    if (discoveryKeywords && discoveryKeywords.length > 0) {
+      for (const keyword of discoveryKeywords) {
+        logger.info(
+          `[SchedulingService] Scouting topicCategory [${id}] with keyword: "${keyword}"`,
+        );
+
+        const job: IngestionJob = {
+          type: IngestionJobType.SEARCH,
+          platform: SocialPlatform.YOUTUBE,
+          targetId: keyword,
+          priority: 1,
+          meta: {
+            topicCategoryId: id,
+          },
+        };
+
+        await rabbitMQService.publishMessage(
+          `ingestion.${IngestionJobType.SEARCH}`,
+          job,
+        );
+      }
+    }
+  }
+
+  static async triggerTargetIngestion(targetId: string): Promise<void> {
+    const target = await prisma.socialIngestionTarget.findUnique({
+      where: { id: targetId },
+      include: {
+        chummeArtist: true,
+        chummeCategory: true,
+        chummeSubCategory: true,
+        chummeTopicCategory: true,
+      },
+    });
+
+    if (!target) {
+      throw new Error(`SocialIngestionTarget with ID ${targetId} not found`);
+    }
+
+    await this.queueJobForTarget(target);
+  }
+
+  static async triggerContentRefresh(
+    platform: SocialPlatform,
+    externalId: string,
+  ): Promise<void> {
+    const job: IngestionJob = {
+      type: IngestionJobType.METADATA,
+      platform,
+      targetId: externalId,
+      priority: 5, // High priority for manual refresh
+    };
+
+    await rabbitMQService.publishMessage(
+      `ingestion.${IngestionJobType.METADATA}`,
+      job,
+      { priority: job.priority },
+    );
+
+    logger.info(
+      `[SchedulingService] Manually triggered METADATA refresh for ${platform}:${externalId}`,
+    );
   }
 
   static stop(): void {
