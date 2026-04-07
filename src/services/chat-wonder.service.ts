@@ -116,7 +116,11 @@ export default class ChatWonderSvc {
 
           // 2. If DB has nothing, search YouTube using extracted query (falls back to raw input)
           if (mergedVideos.length === 0) {
-            const ytQuery = videoQuery || inputText;
+            let ytQuery = videoQuery || inputText;
+            // Ensure K-pop context — this is a K-pop fandom app
+            if (!/kpop|k-pop|bts|blackpink|twice|stray\s*kids|enhypen|aespa|newjeans|itzy|txt|seventeen|nct|exo|red\s*velvet|ive|le\s*sserafim|gidle|\(g\)i-dle|mamamoo|ateez|monsta\s*x|got7/i.test(ytQuery)) {
+              ytQuery = `${ytQuery} kpop`;
+            }
             logger.info(`[CHAT.WONDER.SERVICE] No DB videos found — searching YouTube for: "${ytQuery}"`);
             try {
               const results = await YouTubeService.searchVideos(ytQuery, 1);
@@ -214,6 +218,8 @@ IMPORTANT RULES FOR "videos":
 - Only include videos if the user is EXPLICITLY asking for music, videos, songs, or entertainment content (e.g. "play me a song", "show me a video", "recommend something to watch", "give me hype music").
 - For ALL other messages — greetings, questions about you, venting, general chat, emotional support, etc. — set "videos": [] and "artist": [].
 - When in doubt, return "videos": [].
+
+IMPORTANT: This is a K-pop fandom app called Chumme. When recommending music, songs, or videos, ALWAYS recommend K-pop content (BTS, BLACKPINK, TWICE, Stray Kids, ENHYPEN, aespa, NewJeans, ITZY, TXT, SEVENTEEN, NCT, EXO, Red Velvet, IVE, LE SSERAFIM, (G)I-DLE, MAMAMOO, ATEEZ, etc.). Never recommend non-K-pop content unless the user specifically asks for it by name.
 
 USER: ${userMessage}`;
   }
