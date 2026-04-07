@@ -29,6 +29,7 @@ export default class ChummeSubCategoryCtrl {
       tags: Joi.array().items(Joi.string()).optional(),
       emojiIcon: Joi.string().allow("").optional(),
       note: Joi.string().max(500).optional(),
+      channelId: Joi.array().items(Joi.string()).optional(),
     });
 
     const { error, value } = schema.validate(req.body);
@@ -161,6 +162,7 @@ export default class ChummeSubCategoryCtrl {
       tags: Joi.array().items(Joi.string()).optional(),
       emojiIcon: Joi.string().allow("").optional(),
       note: Joi.string().max(500).optional(),
+      channelId: Joi.array().items(Joi.string()).optional(),
     }).min(1);
 
     const { error, value } = schema.validate(req.body);

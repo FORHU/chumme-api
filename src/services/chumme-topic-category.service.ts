@@ -22,6 +22,7 @@ export default class ChummeTopicCategorySvc {
     metaData?: any;
     tags?: string[];
     emojiIcon?: string;
+    channelId?: string[];
   }) {
     const {
       position,
@@ -105,6 +106,7 @@ export default class ChummeTopicCategorySvc {
       metaData?: any;
       tags?: string[];
       emojiIcon?: string;
+      channelId?: string[];
     },
   ) {
     await this.getTopicCategoryById(id);

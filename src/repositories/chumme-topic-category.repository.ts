@@ -24,6 +24,7 @@ export default class ChummeTopicCategoryRepo {
       tags?: string[];
       emojiIcon?: string;
     };
+    channelId?: string[];
   }) {
     return prisma.chummeTopicCategory.create({
       data: {
@@ -32,6 +33,7 @@ export default class ChummeTopicCategoryRepo {
         keyPassword: data.keyPassword || null,
         chummeTraits: (data.chummeTraits as any) || "NONE",
         note: data.note || null,
+        channelId: data.channelId || [],
         chummeSubCategory: { connect: { id: data.chummeSubCategoryId } },
         chummeVisualDesign: data.chummeVisualDesign
           ? {
@@ -116,6 +118,7 @@ export default class ChummeTopicCategoryRepo {
         tags?: string[];
         emojiIcon?: string;
       };
+      channelId?: string[];
     },
   ) {
     return prisma.chummeTopicCategory.update({
@@ -127,6 +130,7 @@ export default class ChummeTopicCategoryRepo {
         isAd: data.isAd,
         keyPassword: data.keyPassword,
         chummeTraits: data.chummeTraits,
+        channelId: data.channelId,
         note: data.note === undefined ? undefined : data.note || null,
         chummeSubCategory: data.chummeSubCategoryId
           ? { connect: { id: data.chummeSubCategoryId } }
