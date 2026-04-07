@@ -286,6 +286,46 @@ export class SchedulingService {
     }
   }
 
+  static async triggerTargetIngestion(targetId: string): Promise<void> {
+    const target = await prisma.socialIngestionTarget.findUnique({
+      where: { id: targetId },
+      include: {
+        chummeArtist: true,
+        chummeCategory: true,
+        chummeSubCategory: true,
+        chummeTopicCategory: true,
+      },
+    });
+
+    if (!target) {
+      throw new Error(`SocialIngestionTarget with ID ${targetId} not found`);
+    }
+
+    await this.queueJobForTarget(target);
+  }
+
+  static async triggerContentRefresh(
+    platform: SocialPlatform,
+    externalId: string,
+  ): Promise<void> {
+    const job: IngestionJob = {
+      type: IngestionJobType.METADATA,
+      platform,
+      targetId: externalId,
+      priority: 5, // High priority for manual refresh
+    };
+
+    await rabbitMQService.publishMessage(
+      `ingestion.${IngestionJobType.METADATA}`,
+      job,
+      { priority: job.priority },
+    );
+
+    logger.info(
+      `[SchedulingService] Manually triggered METADATA refresh for ${platform}:${externalId}`,
+    );
+  }
+
   static stop(): void {
     if (this.intervalHandle) {
       clearInterval(this.intervalHandle);

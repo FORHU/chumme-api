@@ -268,12 +268,14 @@ export default class SocialFeedRepo {
       orConditions.push({ chummeArtistId: { in: artistInArray } });
     }
     */
+    /*
     if (categoryIds.length > 0) {
       orConditions.push({ chummeCategoryId: { in: categoryIds } });
     }
     if (subCategoryIds.length > 0) {
       orConditions.push({ chummeSubCategoryId: { in: subCategoryIds } });
     }
+    */
     if (topicCategoryIds.length > 0) {
       orConditions.push({ chummeTopicCategoryId: { in: topicCategoryIds } });
     }
@@ -318,7 +320,7 @@ export default class SocialFeedRepo {
           },
         },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ score: "desc" }, { createdAt: "desc" }],
       skip: page * limit,
       take: limit,
     });
@@ -373,12 +375,14 @@ export default class SocialFeedRepo {
       orConditions.push({ chummeArtistId: { in: artistInArray } });
     }
     */
+    /*
     if (categoryIds.length > 0) {
       orConditions.push({ chummeCategoryId: { in: categoryIds } });
     }
     if (subCategoryIds.length > 0) {
       orConditions.push({ chummeSubCategoryId: { in: subCategoryIds } });
     }
+    */
     if (topicCategoryIds.length > 0) {
       orConditions.push({ chummeTopicCategoryId: { in: topicCategoryIds } });
     }

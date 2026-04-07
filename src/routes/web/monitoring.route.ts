@@ -5,6 +5,11 @@ const router = express.Router();
 
 router.get("/pipeline", MonitoringCtrl.getPipelineStatus);
 router.get("/trigger-crawl", MonitoringCtrl.triggerCrawl);
+router.get("/trigger-crawl/target/:id", MonitoringCtrl.triggerTargetIngestion);
+router.get(
+  "/trigger-crawl/content/:platform/:externalId",
+  MonitoringCtrl.triggerContentRefresh,
+);
 router.get("/content/:id/history", MonitoringCtrl.getContentHistory);
 
 // Web Dashboard Enpoints
