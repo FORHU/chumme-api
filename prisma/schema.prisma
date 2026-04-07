@@ -214,6 +214,7 @@ model ChummeArtist {
   subscriberCount        Int?
   totalViews             BigInt?
   channelId              String[]                @default([])
+  socialFeedItemCount    Int                     @default(0)
   music                  Music[]                 @relation("MainArtist")
   musicAlbum             MusicAlbum[]            @relation("MainArtist")
   musicFeaturedArtists   MusicFeaturedArtist[]

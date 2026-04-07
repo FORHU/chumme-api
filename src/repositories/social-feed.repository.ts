@@ -252,20 +252,44 @@ export default class SocialFeedRepo {
    * Soft delete feed item when post is deleted
    */
   static async softDeleteByPostId(postId: string) {
-    return await prisma.socialFeedItem.updateMany({
+    const items = await prisma.socialFeedItem.findMany({ where: { postId } });
+    
+    const result = await prisma.socialFeedItem.updateMany({
       where: { postId },
       data: { isDeleted: true },
     });
+
+    for (const item of items) {
+      if (item.chummeArtistId) {
+        await prisma.chummeArtist.update({
+          where: { id: item.chummeArtistId },
+          data: { socialFeedItemCount: { decrement: 1 } },
+        });
+      }
+    }
+
+    return result;
   }
 
   /**
    * Soft delete feed item when external content is removed (by URL)
    */
   static async softDeleteByUrl(externalUrl: string) {
-    return await prisma.socialFeedItem.updateMany({
+    const item = await prisma.socialFeedItem.findUnique({ where: { externalUrl } });
+    
+    const result = await prisma.socialFeedItem.updateMany({
       where: { externalUrl },
       data: { isDeleted: true },
     });
+
+    if (item && item.chummeArtistId) {
+      await prisma.chummeArtist.update({
+        where: { id: item.chummeArtistId },
+        data: { socialFeedItemCount: { decrement: 1 } },
+      });
+    }
+
+    return result;
   }
 
   /**
@@ -606,6 +630,29 @@ export default class SocialFeedRepo {
         comments: data.comments !== undefined ? data.comments : undefined,
       } as any,
     });
+
+    // Real-time counter logic for Discovery bar
+    if (!isUpdate && artistId) {
+      // New item ingested, increment counter
+      await prisma.chummeArtist.update({
+        where: { id: artistId },
+        data: { socialFeedItemCount: { increment: 1 } },
+      });
+    } else if (isUpdate && existing?.chummeArtistId !== artistId) {
+      // Artist changed during update, decrement old and increment new
+      if (existing?.chummeArtistId) {
+        await prisma.chummeArtist.update({
+          where: { id: existing.chummeArtistId },
+          data: { socialFeedItemCount: { decrement: 1 } },
+        });
+      }
+      if (artistId) {
+        await prisma.chummeArtist.update({
+          where: { id: artistId },
+          data: { socialFeedItemCount: { increment: 1 } },
+        });
+      }
+    }
 
     return { item, isUpdate };
   }
