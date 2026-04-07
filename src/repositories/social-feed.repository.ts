@@ -249,8 +249,10 @@ export default class SocialFeedRepo {
    * Soft delete feed item when post is deleted
    */
   static async softDeleteByPostId(postId: string) {
-    const items = await prisma.socialFeedItem.findMany({ where: { postId } });
-    
+    const items = await prisma.socialFeedItem.findMany({
+      where: { postId },
+    });
+
     const result = await prisma.socialFeedItem.updateMany({
       where: { postId },
       data: { isDeleted: true },
@@ -272,8 +274,10 @@ export default class SocialFeedRepo {
    * Soft delete feed item when external content is removed (by URL)
    */
   static async softDeleteByUrl(externalUrl: string) {
-    const item = await prisma.socialFeedItem.findUnique({ where: { externalUrl } });
-    
+    const item = await prisma.socialFeedItem.findUnique({
+      where: { externalUrl },
+    });
+
     const result = await prisma.socialFeedItem.updateMany({
       where: { externalUrl },
       data: { isDeleted: true },

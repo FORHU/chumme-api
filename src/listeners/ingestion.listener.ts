@@ -219,8 +219,6 @@ export class IngestionWorker {
         metaData: item.metaData,
         isLive: item.isLive,
         chummeArtistId: job.meta?.artistId,
-        chummeCategoryId: job.meta?.categoryId,
-        chummeSubCategoryId: job.meta?.subCategoryId,
         chummeTopicCategoryId: job.meta?.topicCategoryId,
       } as any);
 
@@ -274,8 +272,6 @@ export class IngestionWorker {
         socialPlatform: details.platform,
         metaData: details.metaData,
         chummeArtistId: job.meta?.artistId,
-        chummeCategoryId: job.meta?.categoryId,
-        chummeSubCategoryId: job.meta?.subCategoryId,
         chummeTopicCategoryId: job.meta?.topicCategoryId,
         views: details.stats?.views,
         likes: details.stats?.likes,
@@ -415,12 +411,6 @@ export class IngestionWorker {
           imageUrl: item.author?.avatarUrl,
           isDraft: true,
           discoveredAt: new Date(),
-          // Link to the primary category that triggered the discovery
-          ...(job.meta?.categoryId && {
-            chummeCategories: {
-              connect: { id: job.meta.categoryId },
-            },
-          }),
         },
       });
 
@@ -439,8 +429,6 @@ export class IngestionWorker {
           platform: item.platform,
           externalHandle: channelId,
           chummeArtistId: artist.id,
-          chummeCategoryId: job.meta?.categoryId,
-          chummeSubCategoryId: job.meta?.subCategoryId,
           chummeTopicCategoryId: job.meta?.topicCategoryId,
           isActive: true, // Auto-start crawling discovered talent
           crawlIntervalHours: 48, // New talent crawled less frequently initially

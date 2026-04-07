@@ -76,7 +76,7 @@ export default class SocialFeedSvc {
       countryCode,
       chummeArtistId,
     );
- 
+
     return feedItems;
   }
 

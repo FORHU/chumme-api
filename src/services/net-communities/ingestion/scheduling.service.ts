@@ -173,6 +173,7 @@ export class SchedulingService {
       meta: {
         artistId: target.chummeArtistId,
         topicCategoryId: target.chummeTopicCategoryId,
+        force: true, // Bypass worker-level deduplication for manual triggers
         // Legacy support for higher levels if needed by platform connectors
         categoryId: target.chummeCategoryId,
         subCategoryId: target.chummeSubCategoryId,
