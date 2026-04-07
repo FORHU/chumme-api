@@ -105,6 +105,30 @@ export default class YouTubeService {
   }
 
   /**
+   * Get multiple channel details by IDs (Batch)
+   */
+  static async getChannels(
+    channelIds: string[],
+  ): Promise<youtube_v3.Schema$Channel[]> {
+    if (!channelIds || channelIds.length === 0) return [];
+
+    const youtube = this.getYouTubeClient();
+
+    try {
+      const response = await youtube.channels.list({
+        part: ["snippet", "statistics"],
+        id: channelIds,
+      });
+      await QuotaService.increment(1); // 1 request = 1 unit
+
+      return response.data.items || [];
+    } catch (error) {
+      console.error("Error fetching YouTube channels batch:", error);
+      throw error;
+    }
+  }
+
+  /**
    * Get videos from a specific playlist
    */
   static async getPlaylistVideos(
@@ -159,6 +183,35 @@ export default class YouTubeService {
       return response.data.items?.[0] || null;
     } catch (error) {
       console.error("Error fetching YouTube 'mine' channel:", error);
+      return null;
+    }
+  }
+
+  /**
+   * Get the latest upload from a channel to check live status
+   */
+  static async getLatestChannelUpload(
+    channelId: string,
+  ): Promise<youtube_v3.Schema$PlaylistItem | null> {
+    const youtube = this.getYouTubeClient();
+
+    try {
+      // Derive uploads playlist ID (Replace 'UC' with 'UU')
+      const uploadsPlaylistId = channelId.replace(/^UC/, "UU");
+
+      const response = await youtube.playlistItems.list({
+        part: ["snippet", "contentDetails"],
+        playlistId: uploadsPlaylistId,
+        maxResults: 1,
+      });
+      await QuotaService.increment(1);
+
+      return response.data.items?.[0] || null;
+    } catch (error) {
+      console.error(
+        `Error fetching latest upload for channel ${channelId}:`,
+        error,
+      );
       return null;
     }
   }

@@ -61,7 +61,10 @@ export class IngestionWorker {
           ? `${message.platform}:${message.targetId}:${message.meta?.pageToken || "first"}`
           : `${message.platform}:${message.targetId}`;
       const shouldBypassDedup = Boolean(message.meta?.force);
-      if (!shouldBypassDedup && (await RedisUtil.isDuplicate(message.type, dedupKey))) {
+      if (
+        !shouldBypassDedup &&
+        (await RedisUtil.isDuplicate(message.type, dedupKey))
+      ) {
         logger.info(
           `[IngestionWorker] Skipping duplicate job: ${message.type} for ${dedupKey}`,
         );
@@ -130,7 +133,9 @@ export class IngestionWorker {
     const maxItems =
       typeof job.meta?.maxItems === "number" ? job.meta.maxItems : undefined;
     const processedCount =
-      typeof job.meta?.processedCount === "number" ? job.meta.processedCount : 0;
+      job.meta && typeof job.meta.processedCount === "number"
+        ? job.meta.processedCount
+        : 0;
     const remainingItems =
       typeof maxItems === "number"
         ? Math.max(maxItems - processedCount, 0)
@@ -176,6 +181,34 @@ export class IngestionWorker {
     logger.info(
       `[IngestionWorker] Discovered ${items.length} items for ${job.platform}:${job.targetId}`,
     );
+
+    // Sync Artist Stats during discovery if linked
+    if (job.meta?.artistId && job.platform === SocialPlatform.YOUTUBE) {
+      try {
+        const meta = await connector.getChannelMetadata(job.targetId);
+        if (meta) {
+          const stats = meta.statistics;
+          const isLive = await connector.getChannelLiveStatus!(job.targetId);
+
+          await prisma.chummeArtist.update({
+            where: { id: job.meta.artistId },
+            data: {
+              isLive,
+              subscriberCount: parseInt(stats?.subscriberCount || "0"),
+              totalViews: BigInt(stats?.viewCount || "0"),
+              lastLiveAt: isLive ? new Date() : undefined,
+            },
+          });
+          logger.info(
+            `[IngestionWorker] Updated artist stats for ${job.meta.artistId} during discovery`,
+          );
+        }
+      } catch (err) {
+        logger.warn(
+          `[IngestionWorker] Failed to sync artist stats during discovery: ${err}`,
+        );
+      }
+    }
 
     for (const item of items) {
       // 1. Initial upsert to register the content

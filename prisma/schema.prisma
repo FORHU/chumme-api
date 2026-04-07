@@ -209,6 +209,10 @@ model ChummeArtist {
   isDraft                Boolean                 @default(false)
   platform               String                  @default("YOUTUBE")
   socialPlatformUsername String?
+  isLive                 Boolean                 @default(false)
+  subscriberCount        Int?
+  totalViews            BigInt?
+  lastLiveAt             DateTime?
   music                  Music[]                 @relation("MainArtist")
   musicAlbum             MusicAlbum[]            @relation("MainArtist")
   musicFeaturedArtists   MusicFeaturedArtist[]

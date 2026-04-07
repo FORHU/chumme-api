@@ -10,6 +10,10 @@ export const getAllArtists = async () => {
       name: true,
       bio: true,
       imageUrl: true,
+      isLive: true,
+      subscriberCount: true,
+      totalViews: true,
+      lastLiveAt: true,
       socialPlatformUsername: true,
       platform: true,
       chummeCategories: {
@@ -62,6 +66,10 @@ export const findById = async (id: string) => {
       name: true,
       bio: true,
       imageUrl: true,
+      isLive: true,
+      subscriberCount: true,
+      totalViews: true,
+      lastLiveAt: true,
       socialPlatformUsername: true,
       platform: true,
       chummeCategories: {
@@ -82,9 +90,19 @@ export const create = async (data: {
   genre?: string | null;
   socialPlatformUsername?: string | null;
   platform: string;
+  isLive?: boolean;
+  subscriberCount?: number | null;
+  totalViews?: bigint | number | string | null;
+  lastLiveAt?: Date | null;
 }) => {
   return prisma.chummeArtist.create({
-    data,
+    data: {
+      ...data,
+      totalViews:
+        data.totalViews !== undefined && data.totalViews !== null
+          ? BigInt(data.totalViews)
+          : null,
+    },
   });
 };
 
@@ -98,11 +116,21 @@ export const update = async (
     genre?: string | null;
     socialPlatformUsername?: string | null;
     platform?: string;
+    isLive?: boolean;
+    subscriberCount?: number | null;
+    totalViews?: bigint | number | string | null;
+    lastLiveAt?: Date | null;
   },
 ) => {
   return prisma.chummeArtist.update({
     where: { id },
-    data,
+    data: {
+      ...data,
+      totalViews:
+        data.totalViews !== undefined && data.totalViews !== null
+          ? BigInt(data.totalViews)
+          : undefined,
+    } as any,
   });
 };
 
@@ -120,6 +148,10 @@ export const upsertArtist = async (data: {
   genre?: string | null;
   socialPlatformUsername?: string | null;
   platform?: string;
+  isLive?: boolean;
+  subscriberCount?: number | null;
+  totalViews?: bigint | number | string | null;
+  lastLiveAt?: Date | null;
 }) => {
   // Use upsert to handle concurrent requests gracefully
   const artist = await prisma.chummeArtist.upsert({
@@ -135,6 +167,14 @@ export const upsertArtist = async (data: {
         socialPlatformUsername: data.socialPlatformUsername,
       }),
       ...(data.platform !== undefined && { platform: data.platform }),
+      ...(data.isLive !== undefined && { isLive: data.isLive }),
+      ...(data.subscriberCount !== undefined && {
+        subscriberCount: data.subscriberCount,
+      }),
+      ...(data.totalViews !== undefined && {
+        totalViews: data.totalViews !== null ? BigInt(data.totalViews) : null,
+      }),
+      ...(data.lastLiveAt !== undefined && { lastLiveAt: data.lastLiveAt }),
     },
     create: {
       name: data.name,
@@ -143,6 +183,13 @@ export const upsertArtist = async (data: {
       genre: data.genre ?? null,
       socialPlatformUsername: data.socialPlatformUsername ?? null,
       platform: data.platform ?? "YOUTUBE", // Default to YOUTUBE if not provided
+      isLive: data.isLive ?? false,
+      subscriberCount: data.subscriberCount ?? 0,
+      totalViews:
+        data.totalViews !== undefined && data.totalViews !== null
+          ? BigInt(data.totalViews)
+          : BigInt(0),
+      lastLiveAt: data.lastLiveAt ?? null,
     },
   });
 

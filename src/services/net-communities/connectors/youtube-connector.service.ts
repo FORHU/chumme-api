@@ -92,6 +92,21 @@ export class YouTubeConnector implements PlatformConnector {
     return YouTubeService.getChannel({ channelId });
   }
 
+  async getChannelsMetadata(channelIds: string[]): Promise<any[]> {
+    return YouTubeService.getChannels(channelIds);
+  }
+
+  async getChannelLiveStatus(channelId: string): Promise<boolean> {
+    const latestUpload = await YouTubeService.getLatestChannelUpload(channelId);
+    if (!latestUpload || !latestUpload.contentDetails?.videoId) return false;
+
+    // Fetch full video details to get reliable liveBroadcastContent
+    const video = await YouTubeService.getVideoDetails(
+      latestUpload.contentDetails.videoId,
+    );
+    return video?.snippet?.liveBroadcastContent === "live";
+  }
+
   async discoverMyProfile(accessToken: string): Promise<string | null> {
     const channel = await YouTubeService.getMyChannel(accessToken);
     return channel?.id || null;

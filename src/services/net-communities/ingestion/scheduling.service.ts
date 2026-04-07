@@ -8,10 +8,12 @@ import logger from "../../../utils/logger";
 import { SocialPlatform } from "@prisma/client";
 import RedisUtil from "../../../utils/redis.util";
 import RankingService from "./ranking.service";
+import { IngestionManager } from "../connectors/platform.service";
 
 export class SchedulingService {
   private static intervalHandle: NodeJS.Timeout | null = null;
   private static readonly CHECK_INTERVAL_MS = 60 * 60 * 1000; // Check every hour
+  private static readonly HEARTBEAT_INTERVAL_MS = 15 * 60 * 1000; // Check every 15 minutes
 
   /**
    * Start the periodic scheduling loop
@@ -24,6 +26,7 @@ export class SchedulingService {
     // Initial run
     await this.processScheduledTasks();
     await this.processScoutTasks();
+    await this.processLiveHeartbeat();
     await RankingService.calculateGrowthScores();
 
     this.intervalHandle = setInterval(async () => {
@@ -31,6 +34,11 @@ export class SchedulingService {
       await this.processScoutTasks();
       await RankingService.calculateGrowthScores();
     }, this.CHECK_INTERVAL_MS);
+
+    // Dedicated Live Heartbeat (15 mins)
+    setInterval(async () => {
+      await this.processLiveHeartbeat();
+    }, this.HEARTBEAT_INTERVAL_MS);
   }
 
   static async processScheduledTasks(force: boolean = false): Promise<void> {
@@ -331,6 +339,72 @@ export class SchedulingService {
     if (this.intervalHandle) {
       clearInterval(this.intervalHandle);
       this.intervalHandle = null;
+    }
+  }
+
+  /**
+   * High-priority refresh for Artist live status and basic channel stats.
+   * Runs more frequently (15m) than full crawls (1h+).
+   */
+  static async processLiveHeartbeat(): Promise<void> {
+    logger.info("[SchedulingService] Running Live Heartbeat for artists...");
+
+    try {
+      // 1. Get all YouTube targets linked to an artist
+      const targets = await prisma.socialIngestionTarget.findMany({
+        where: {
+          platform: SocialPlatform.YOUTUBE,
+          chummeArtistId: { not: null },
+          isActive: true,
+        },
+        select: {
+          externalHandle: true,
+          chummeArtistId: true,
+        },
+      });
+
+      if (targets.length === 0) return;
+
+      // 2. Group into batches of 50 (YouTube API limit)
+      const batches: any[][] = [];
+      for (let i = 0; i < targets.length; i += 50) {
+        batches.push(targets.slice(i, i + 50));
+      }
+
+      const connector = IngestionManager.getConnector(SocialPlatform.YOUTUBE);
+      if (!connector.getChannelsMetadata) return;
+
+      for (const batch of batches) {
+        const channelIds = batch.map((t) => t.externalHandle);
+        const metadataList = await connector.getChannelsMetadata(channelIds);
+
+        // 3. Update each artist's stats and live status
+        for (const target of batch) {
+          const meta = metadataList.find((m) => m.id === target.externalHandle);
+          if (!meta) continue;
+
+          const stats = meta.statistics;
+          const isLive = await connector.getChannelLiveStatus!(
+            target.externalHandle,
+          );
+
+          await prisma.chummeArtist.update({
+            where: { id: target.chummeArtistId },
+            data: {
+              isLive,
+              subscriberCount: parseInt(stats?.subscriberCount || "0"),
+              totalViews: BigInt(stats?.viewCount || "0"),
+              lastLiveAt: isLive ? new Date() : undefined,
+            },
+          });
+        }
+      }
+
+      logger.info(
+        `[SchedulingService] Live Heartbeat sync complete for ${targets.length} artists.`,
+      );
+    } catch (error) {
+      logger.error("[SchedulingService] Error in Live Heartbeat:", error);
     }
   }
 }

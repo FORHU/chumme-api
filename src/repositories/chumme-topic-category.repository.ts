@@ -45,7 +45,25 @@ export default class ChummeTopicCategoryRepo {
           : undefined,
       },
       include: {
-        chummeSubCategory: true,
+        chummeSubCategory: {
+          include: {
+            chummeCategory: {
+              include: {
+                chummeArtists: {
+                  select: {
+                    id: true,
+                    name: true,
+                    imageUrl: true,
+                    isLive: true,
+                    subscriberCount: true,
+                    totalViews: true,
+                    lastLiveAt: true,
+                  },
+                },
+              },
+            },
+          },
+        },
         chummeVisualDesign: true,
       },
     });
@@ -68,7 +86,25 @@ export default class ChummeTopicCategoryRepo {
         }),
       },
       include: {
-        chummeSubCategory: true,
+        chummeSubCategory: {
+          include: {
+            chummeCategory: {
+              include: {
+                chummeArtists: {
+                  select: {
+                    id: true,
+                    name: true,
+                    imageUrl: true,
+                    isLive: true,
+                    subscriberCount: true,
+                    totalViews: true,
+                    lastLiveAt: true,
+                  },
+                },
+              },
+            },
+          },
+        },
         chummeVisualDesign: true,
       },
       orderBy: {
@@ -87,7 +123,25 @@ export default class ChummeTopicCategoryRepo {
         deletedAt: null,
       },
       include: {
-        chummeSubCategory: true,
+        chummeSubCategory: {
+          include: {
+            chummeCategory: {
+              include: {
+                chummeArtists: {
+                  select: {
+                    id: true,
+                    name: true,
+                    imageUrl: true,
+                    isLive: true,
+                    subscriberCount: true,
+                    totalViews: true,
+                    lastLiveAt: true,
+                  },
+                },
+              },
+            },
+          },
+        },
         chummeVisualDesign: true,
       },
     });
@@ -151,7 +205,25 @@ export default class ChummeTopicCategoryRepo {
         updatedAt: new Date(),
       },
       include: {
-        chummeSubCategory: true,
+        chummeSubCategory: {
+          include: {
+            chummeCategory: {
+              include: {
+                chummeArtists: {
+                  select: {
+                    id: true,
+                    name: true,
+                    imageUrl: true,
+                    isLive: true,
+                    subscriberCount: true,
+                    totalViews: true,
+                    lastLiveAt: true,
+                  },
+                },
+              },
+            },
+          },
+        },
         chummeVisualDesign: true,
       },
     });

@@ -56,6 +56,13 @@ export const createArtist = async (req: Request, res: Response) => {
       genre: Joi.string().allow(null, ""),
       socialPlatformUsername: Joi.string().allow(null, ""),
       platform: Joi.string().required(),
+      isLive: Joi.boolean().optional(),
+      subscriberCount: Joi.number().integer().allow(null).optional(),
+      totalViews: Joi.alternatives()
+        .try(Joi.number(), Joi.string().regex(/^\d+$/))
+        .allow(null)
+        .optional(),
+      lastLiveAt: Joi.date().allow(null).optional(),
     });
 
     const { error, value } = schema.validate(req.body);
@@ -93,6 +100,10 @@ export const updateArtist = async (req: Request, res: Response) => {
       genre: Joi.string().allow(null, ""),
       socialPlatformUsername: Joi.string().allow(null, ""),
       platform: Joi.string(),
+      isLive: Joi.boolean().optional(),
+      subscriberCount: Joi.number().integer().allow(null).optional(),
+      totalViews: Joi.number().integer().allow(null).optional(),
+      lastLiveAt: Joi.date().allow(null).optional(),
     }).min(1);
 
     const { error, value } = schema.validate(req.body);

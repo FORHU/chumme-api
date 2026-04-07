@@ -49,7 +49,17 @@ export default class ChummeSubCategoryRepo {
       include: {
         chummeCategory: {
           include: {
-            chummeArtists: { select: { id: true, name: true, imageUrl: true } },
+            chummeArtists: {
+              select: {
+                id: true,
+                name: true,
+                imageUrl: true,
+                isLive: true,
+                subscriberCount: true,
+                totalViews: true,
+                lastLiveAt: true,
+              },
+            },
           },
         },
         chummeVisualDesign: true,
@@ -74,7 +84,17 @@ export default class ChummeSubCategoryRepo {
       include: {
         chummeCategory: {
           include: {
-            chummeArtists: { select: { id: true, name: true, imageUrl: true } },
+            chummeArtists: {
+              select: {
+                id: true,
+                name: true,
+                imageUrl: true,
+                isLive: true,
+                subscriberCount: true,
+                totalViews: true,
+                lastLiveAt: true,
+              },
+            },
           },
         },
         chummeVisualDesign: true,
@@ -103,7 +123,17 @@ export default class ChummeSubCategoryRepo {
       include: {
         chummeCategory: {
           include: {
-            chummeArtists: { select: { id: true, name: true, imageUrl: true } },
+            chummeArtists: {
+              select: {
+                id: true,
+                name: true,
+                imageUrl: true,
+                isLive: true,
+                subscriberCount: true,
+                totalViews: true,
+                lastLiveAt: true,
+              },
+            },
           },
         },
         chummeVisualDesign: true,
@@ -133,6 +163,21 @@ export default class ChummeSubCategoryRepo {
         }),
       },
       include: {
+        chummeCategory: {
+          include: {
+            chummeArtists: {
+              select: {
+                id: true,
+                name: true,
+                imageUrl: true,
+                isLive: true,
+                subscriberCount: true,
+                totalViews: true,
+                lastLiveAt: true,
+              },
+            },
+          },
+        },
         chummeVisualDesign: true,
         _count: {
           select: {
@@ -209,7 +254,17 @@ export default class ChummeSubCategoryRepo {
       include: {
         chummeCategory: {
           include: {
-            chummeArtists: { select: { id: true, name: true, imageUrl: true } },
+            chummeArtists: {
+              select: {
+                id: true,
+                name: true,
+                imageUrl: true,
+                isLive: true,
+                subscriberCount: true,
+                totalViews: true,
+                lastLiveAt: true,
+              },
+            },
           },
         },
         chummeVisualDesign: true,

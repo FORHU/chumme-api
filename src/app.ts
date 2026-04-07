@@ -17,6 +17,11 @@ import { SchedulingService } from "./services/net-communities/ingestion/scheduli
 import { AudioMergeWorker } from "./listeners/audio-merge.listener";
 import { IngestionWorker } from "./listeners/ingestion.listener";
 
+// BigInt serialization fix for JSON responses
+(BigInt.prototype as any).toJSON = function () {
+  return this.toString();
+};
+
 const app = express();
 
 app.set("trust proxy", 1);

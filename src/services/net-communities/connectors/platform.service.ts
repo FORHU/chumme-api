@@ -75,6 +75,11 @@ export interface PlatformConnector {
   getChannelMetadata(channelId: string): Promise<any>;
 
   /**
+   * Fetch multiple channels/accounts metadata (Batch)
+   */
+  getChannelsMetadata?(channelIds: string[]): Promise<any[]>;
+
+  /**
    * Discover the primary profile ID (e.g. channelId) for an authenticated user
    */
   discoverMyProfile(accessToken: string): Promise<string | null>;
@@ -83,6 +88,11 @@ export interface PlatformConnector {
    * Fetch comments for a piece of content (Optional)
    */
   getComments?(contentId: string): Promise<GenericCommentItem[]>;
+
+  /**
+   * Fetch current live status of a channel/account (Optional)
+   */
+  getChannelLiveStatus?(channelId: string): Promise<boolean>;
 }
 
 /**

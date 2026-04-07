@@ -68,7 +68,17 @@ export default class ChummeCategoryRepo {
       include: {
         chummeCategory: {
           include: {
-            chummeArtists: { select: { id: true, name: true, imageUrl: true } },
+            chummeArtists: {
+              select: {
+                id: true,
+                name: true,
+                imageUrl: true,
+                isLive: true,
+                subscriberCount: true,
+                totalViews: true,
+                lastLiveAt: true,
+              },
+            },
           },
         },
       },
@@ -88,7 +98,15 @@ export default class ChummeCategoryRepo {
       },
       include: {
         chummeArtists: {
-          select: { id: true, name: true, imageUrl: true },
+          select: {
+            id: true,
+            name: true,
+            imageUrl: true,
+            isLive: true,
+            subscriberCount: true,
+            totalViews: true,
+            lastLiveAt: true,
+          },
         },
         chummeSubCategories: {
           where: { deletedAt: null },
@@ -156,7 +174,15 @@ export default class ChummeCategoryRepo {
       },
       include: {
         chummeArtists: {
-          select: { id: true, name: true, imageUrl: true },
+          select: {
+            id: true,
+            name: true,
+            imageUrl: true,
+            isLive: true,
+            subscriberCount: true,
+            totalViews: true,
+            lastLiveAt: true,
+          },
         },
         chummeSubCategories: {
           where: { deletedAt: null },
@@ -335,6 +361,10 @@ export default class ChummeCategoryRepo {
                 id: true,
                 name: true,
                 imageUrl: true,
+                isLive: true,
+                subscriberCount: true,
+                totalViews: true,
+                lastLiveAt: true,
               },
             },
           },
@@ -451,6 +481,17 @@ export default class ChummeCategoryRepo {
       },
       discoveryKeywords: true,
       channelId: true,
+      chummeArtists: {
+        select: {
+          id: true,
+          name: true,
+          imageUrl: true,
+          isLive: true,
+          subscriberCount: true,
+          totalViews: true,
+          lastLiveAt: true,
+        },
+      },
     };
   }
 }
