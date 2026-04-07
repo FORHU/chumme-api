@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import Joi from "joi";
 import ChummeSubCategorySvc from "../services/chumme-subcategory.service";
+import { io } from "../app";
 
 export default class ChummeSubCategoryCtrl {
   /**
@@ -37,6 +38,13 @@ export default class ChummeSubCategoryCtrl {
 
     try {
       const subCategory = await ChummeSubCategorySvc.createSubCategory(value);
+
+      // Broadcast to all connected clients so other users see the new room
+      io.emit("subcategory_created", {
+        categoryId: value.chummeCategoryId,
+        subCategory,
+      });
+
       return res.status(201).json({
         message: "Chumme subcategory created successfully",
         subCategory,
@@ -165,6 +173,9 @@ export default class ChummeSubCategoryCtrl {
         id,
         value,
       );
+
+      io.emit("subcategory_updated", { subCategory });
+
       return res.json({
         message: "Chumme subcategory updated successfully",
         subCategory,
@@ -191,6 +202,9 @@ export default class ChummeSubCategoryCtrl {
 
     try {
       await ChummeSubCategorySvc.deleteSubCategory(id);
+
+      io.emit("subcategory_deleted", { id });
+
       return res.json({ message: "Chumme subcategory deleted successfully" });
     } catch (error: any) {
       return res.status(400).json({ message: error.message || error });

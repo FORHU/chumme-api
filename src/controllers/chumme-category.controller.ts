@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import Joi from "joi";
 import ChummeCategorySvc from "../services/chumme-category.service";
 import ChummeCategoriesConsts from "../constants/chumme-categories.constants";
+import { io } from "../app";
 
 export default class ChummeCategoryCtrl {
   /**
@@ -44,6 +45,9 @@ export default class ChummeCategoryCtrl {
         ...rest,
         chummeTraits: traits,
       });
+
+      io.emit("category_created", { category });
+
       return res.status(201).json({
         message: "Chumme category created successfully",
         category,
@@ -136,6 +140,9 @@ export default class ChummeCategoryCtrl {
         ...rest,
         ...(traits && { chummeTraits: traits }),
       });
+
+      io.emit("category_updated", { category });
+
       return res.json({
         message: "Chumme category updated successfully",
         category,
@@ -162,6 +169,9 @@ export default class ChummeCategoryCtrl {
 
     try {
       await ChummeCategorySvc.deleteCategory(id);
+
+      io.emit("category_deleted", { id });
+
       return res.json({ message: "Chumme category deleted successfully" });
     } catch (error: any) {
       return res.status(400).json({ message: error.message || error });
