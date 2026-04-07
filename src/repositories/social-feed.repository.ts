@@ -24,7 +24,6 @@ export default class SocialFeedRepo {
   ) {
     const where: any = {
       isDeleted: false,
-      chummeTopicCategoryId: { not: null },
       chummeArtistId: chummeArtistId || undefined,
     };
 
@@ -104,7 +103,6 @@ export default class SocialFeedRepo {
     const items = await prisma.socialFeedItem.findMany({
       where: {
         isDeleted: false,
-        chummeTopicCategoryId: { not: null },
         score: { gt: 0 }, // Only show items with some momentum
         chummeArtistId: chummeArtistId || undefined,
       },
@@ -165,7 +163,6 @@ export default class SocialFeedRepo {
   static async getGlobalFeedIds(chummeArtistId?: string, countryCode?: string) {
     const where: any = {
       isDeleted: false,
-      chummeTopicCategoryId: { not: null },
     };
     if (chummeArtistId) {
       where.chummeArtistId = chummeArtistId;
@@ -357,7 +354,6 @@ export default class SocialFeedRepo {
 
     const where: any = {
       isDeleted: false,
-      chummeTopicCategoryId: { not: null },
       chummeArtistId: chummeArtistId || undefined,
 
       OR: orConditions.length > 0 ? orConditions : undefined,
@@ -478,7 +474,6 @@ export default class SocialFeedRepo {
 
     const where: any = {
       isDeleted: false,
-      chummeTopicCategoryId: { not: null },
       chummeArtistId: chummeArtistId || undefined,
 
       OR: orConditions.length > 0 ? orConditions : undefined,
