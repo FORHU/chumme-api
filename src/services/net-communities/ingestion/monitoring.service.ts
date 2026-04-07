@@ -40,6 +40,12 @@ export default class MonitoringSvc {
         },
       });
 
+      // 4. Scout Coverage (Topics vs Targets)
+      const totalTopics = await prisma.chummeTopicCategory.count();
+      const scoutedTopics = await prisma.socialIngestionTarget.count({
+        where: { chummeTopicCategoryId: { not: null } },
+      });
+
       return {
         status: workerMetrics ? "active" : "unknown",
         worker: workerMetrics,
@@ -47,6 +53,12 @@ export default class MonitoringSvc {
         database: {
           recentIngestions24h: recentJobs,
           recentSnapshots24h: snapshotCount,
+        },
+        scoutCoverage: {
+          totalTopics,
+          scoutedTopics,
+          coveragePercent:
+            totalTopics > 0 ? (scoutedTopics / totalTopics) * 100 : 0,
         },
         timestamp: new Date(),
       };
