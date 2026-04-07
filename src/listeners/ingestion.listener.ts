@@ -71,8 +71,8 @@ export class IngestionWorker {
         return;
       }
 
-      // 2. Rate limiting check (e.g., 50 requests per minute per platform)
-      if (await RedisUtil.isRateLimited(message.platform, 50, 60)) {
+      // 2. Rate limiting check (Bumbed to 500 requests per 60s for burst testing)
+      if (await RedisUtil.isRateLimited(message.platform, 500, 60)) {
         logger.warn(
           `[IngestionWorker] Rate limit exceeded for platform: ${message.platform}`,
         );
