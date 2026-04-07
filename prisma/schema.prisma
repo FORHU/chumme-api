@@ -23,7 +23,7 @@ model User {
   otpCode                String?
   otpExpiry              DateTime?
   isEmailVerified        Boolean                 @default(false)
-  onboardingCompleted    Boolean                 @default(false)
+  onboardingCompleted    Boolean                 @default(true)
   nationality            String?
   chatSessionId          String?
   role                   UserRole                @default(USER)
