@@ -145,4 +145,22 @@ export default class MonitoringCtrl {
       });
     }
   }
+  /**
+   * Manually trigger category scouting (Topic Categories only)
+   */
+  static async triggerScout(req: Request, res: Response) {
+    try {
+      const force = req.query.force === "true";
+      await SchedulingService.processScoutTasks(force);
+
+      return res.json({
+        success: true,
+        message: `Manual topic scout triggered successfully (force=${force})`,
+      });
+    } catch (error: any) {
+      return res.status(500).json({
+        message: error.message || "Internal server error",
+      });
+    }
+  }
 }

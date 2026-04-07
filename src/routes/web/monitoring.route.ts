@@ -10,6 +10,7 @@ router.get(
   "/trigger-crawl/content/:platform/:externalId",
   MonitoringCtrl.triggerContentRefresh,
 );
+router.get("/trigger-scout", MonitoringCtrl.triggerScout);
 router.get("/content/:id/history", MonitoringCtrl.getContentHistory);
 
 // Web Dashboard Enpoints

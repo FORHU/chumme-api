@@ -115,6 +115,7 @@ model ChummeCategory {
   chummeTraits          ChummeTraits            @default(NONE)
   populationCount       Int                     @default(0)
   discoveryKeywords     String[]
+  channelId             String[]
   chummeVisualDesign    ChummeCategoryDesign?   @relation("CategoryDesign", fields: [chummeVisualDesignId], references: [id])
   chummeSubCategories   ChummeSubCategory[]
   socialFeedItems       SocialFeedItem[]        @relation("CategoryFeed")
@@ -138,6 +139,7 @@ model ChummeSubCategory {
   chummeTraits          ChummeTraits            @default(NONE)
   populationCount       Int                     @default(0)
   discoveryKeywords     String[]
+  channelId             String[]
   chummeCategory        ChummeCategory          @relation(fields: [chummeCategoryId], references: [id])
   chummeVisualDesign    ChummeCategoryDesign?   @relation("SubCategoryDesign", fields: [chummeVisualDesignId], references: [id])
   owner                 User?                   @relation("ChummeSubCategoryOwner", fields: [ownerId], references: [id])
@@ -163,6 +165,7 @@ model ChummeTopicCategory {
   chummeVisualDesignId  String?                 @unique
   populationCount       Int                     @default(0)
   discoveryKeywords     String[]
+  channelId             String[]
   chummeSubCategory     ChummeSubCategory       @relation(fields: [chummeSubCategoryId], references: [id])
   chummeVisualDesign    ChummeCategoryDesign?   @relation("TopicCategoryDesign", fields: [chummeVisualDesignId], references: [id])
   socialFeedItems       SocialFeedItem[]        @relation("TopicCategoryFeed")

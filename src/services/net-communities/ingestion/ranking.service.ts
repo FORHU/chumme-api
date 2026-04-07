@@ -10,9 +10,12 @@ export default class RankingService {
     try {
       logger.info("[RankingService] Starting growth score calculation...");
 
-      // 1. Get all feed items that aren't deleted
+      // 1. Get all feed items that aren't deleted and belong to a Topic Category
       const items = await prisma.socialFeedItem.findMany({
-        where: { isDeleted: false },
+        where: {
+          isDeleted: false,
+          chummeTopicCategoryId: { not: null },
+        },
         select: {
           id: true,
           views: true,
