@@ -15,7 +15,7 @@ export async function seedUsers(prisma: PrismaClient) {
       role: UserRole.SUPER_ADMIN,
       password: "Forhu2026!",
       isEmailVerified: true,
-      onboardingCompleted: false,
+      onboardingCompleted: true,
     },
     {
       email: "melomaku01@gmail.com",
@@ -24,7 +24,7 @@ export async function seedUsers(prisma: PrismaClient) {
       role: UserRole.DEVELOPER,
       password: "Password123!",
       isEmailVerified: true,
-      onboardingCompleted: false,
+      onboardingCompleted: true,
     },
     {
       email: "sumoaccnt@gmail.com",
@@ -33,7 +33,7 @@ export async function seedUsers(prisma: PrismaClient) {
       role: UserRole.DEVELOPER,
       password: "@Password17",
       isEmailVerified: true,
-      onboardingCompleted: false,
+      onboardingCompleted: true,
     },
     {
       email: "euanthieu@yopmail.com",
@@ -42,7 +42,7 @@ export async function seedUsers(prisma: PrismaClient) {
       role: UserRole.DEVELOPER,
       password: "Abc12345",
       isEmailVerified: true,
-      onboardingCompleted: false,
+      onboardingCompleted: true,
     },
     {
       email: "userOne@test.com",
@@ -51,7 +51,7 @@ export async function seedUsers(prisma: PrismaClient) {
       role: UserRole.ADMIN,
       password: "Abc12345",
       isEmailVerified: true,
-      onboardingCompleted: false,
+      onboardingCompleted: true,
     },
     {
       email: "userTwo@test.com",
@@ -60,7 +60,7 @@ export async function seedUsers(prisma: PrismaClient) {
       role: UserRole.ADMIN,
       password: "Abc12345",
       isEmailVerified: true,
-      onboardingCompleted: false,
+      onboardingCompleted: true,
     },
     {
       email: "userThree@test.com",
@@ -69,7 +69,16 @@ export async function seedUsers(prisma: PrismaClient) {
       role: UserRole.ADMIN,
       password: "Abc12345",
       isEmailVerified: true,
-      onboardingCompleted: false,
+      onboardingCompleted: true,
+    },
+    {
+      email: "ibaloiakhehe@gmail.com",
+      username: "JUTS_CLYDE",
+      name: "JUTS_CLYDE ding ba",
+      role: UserRole.ADMIN,
+      password: "PogiJun123456",
+      isEmailVerified: true,
+      onboardingCompleted: true,
     },
   ];
 
