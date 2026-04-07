@@ -240,6 +240,7 @@ export default class SocialFeedRepo {
     subCategoryIds: string[] = [],
     topicCategoryIds: string[] = [],
   ) {
+    /*
     const following = await prisma.follow.findMany({
       where: { followerId: userId, isDeleted: false },
       select: { followingId: true },
@@ -247,8 +248,10 @@ export default class SocialFeedRepo {
 
     const followingIds = following.map((f) => f.followingId);
     followingIds.push(userId);
+    */
 
     const orConditions: Prisma.SocialFeedItemWhereInput[] = [
+      /*
       {
         post: {
           is: {
@@ -257,11 +260,14 @@ export default class SocialFeedRepo {
           },
         },
       },
+      */
     ];
 
+    /*
     if (artistInArray.length > 0) {
       orConditions.push({ chummeArtistId: { in: artistInArray } });
     }
+    */
     if (categoryIds.length > 0) {
       orConditions.push({ chummeCategoryId: { in: categoryIds } });
     }
@@ -339,6 +345,7 @@ export default class SocialFeedRepo {
     subCategoryIds: string[] = [],
     topicCategoryIds: string[] = [],
   ) {
+    /*
     const following = await prisma.follow.findMany({
       where: { followerId: userId, isDeleted: false },
       select: { followingId: true },
@@ -346,8 +353,10 @@ export default class SocialFeedRepo {
 
     const followingIds = following.map((f) => f.followingId);
     followingIds.push(userId);
+    */
 
     const orConditions: Prisma.SocialFeedItemWhereInput[] = [
+      /*
       {
         post: {
           is: {
@@ -356,11 +365,14 @@ export default class SocialFeedRepo {
           },
         },
       },
+      */
     ];
 
+    /*
     if (artistInArray.length > 0) {
       orConditions.push({ chummeArtistId: { in: artistInArray } });
     }
+    */
     if (categoryIds.length > 0) {
       orConditions.push({ chummeCategoryId: { in: categoryIds } });
     }

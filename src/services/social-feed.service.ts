@@ -132,6 +132,7 @@ export default class SocialFeedSvc {
       topicCategoryIds,
     );
 
+    /*
     // Mix in random items for Discovery (e.g., up to 3 items)
     const excludeIds = feedItems.map((item: any) => item.id);
     const randomIds = await SocialFeedRepo.getRandomExternalMedia(
@@ -184,6 +185,7 @@ export default class SocialFeedSvc {
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
       );
     }
+    */
 
     return feedItems;
   }
