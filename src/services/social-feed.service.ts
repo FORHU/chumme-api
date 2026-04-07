@@ -56,13 +56,11 @@ export default class SocialFeedSvc {
       .filter(Boolean);
   }
 
-  /**
-   * Get unified feed with pagination
-   */
   static async getFeed(
     page: number = 0,
     limit: number = 20,
     countryCode?: string,
+    chummeArtistId?: string,
   ) {
     if (page < 0) {
       throw new Error("Page must be non-negative");
@@ -70,10 +68,15 @@ export default class SocialFeedSvc {
     if (limit < 1 || limit > 50) {
       throw new Error("Limit must be between 1 and 50");
     }
-
+ 
     // Fetch directly from Repo (Sorted by latest createdAt)
-    const feedItems = await SocialFeedRepo.getFeed(page, limit, countryCode);
-
+    const feedItems = await SocialFeedRepo.getFeed(
+      page,
+      limit,
+      countryCode,
+      chummeArtistId,
+    );
+ 
     return feedItems;
   }
 
@@ -88,6 +91,7 @@ export default class SocialFeedSvc {
     page: number = 0,
     limit: number = 5,
     countryCode?: string,
+    chummeArtistId?: string,
   ) {
     if (page < 0) {
       throw new Error("Page must be non-negative");
@@ -116,6 +120,7 @@ export default class SocialFeedSvc {
       limit,
       countryCode,
       topicCategoryIds,
+      chummeArtistId,
     );
 
     /*
