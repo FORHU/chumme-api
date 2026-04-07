@@ -146,7 +146,11 @@ export default class ChatWonderCtrl {
 
                   // 2. If DB has nothing, search YouTube using extracted query (falls back to raw input)
                   if (mergedVideos.length === 0) {
-                    const ytQuery = videoQuery || input;
+                    let ytQuery = videoQuery || input;
+                    // Ensure K-pop context — this is a K-pop fandom app
+                    if (!/kpop|k-pop|bts|blackpink|twice|stray\s*kids|enhypen|aespa|newjeans|itzy|txt|seventeen|nct|exo|red\s*velvet|ive|le\s*sserafim|gidle|\(g\)i-dle|mamamoo|ateez|monsta\s*x|got7/i.test(ytQuery)) {
+                      ytQuery = `${ytQuery} kpop`;
+                    }
                     logger.info(`[CHAT-WONDER-STREAM] No DB videos found — searching YouTube for: "${ytQuery}"`);
                     try {
                       const results = await YouTubeService.searchVideos(ytQuery, 1);

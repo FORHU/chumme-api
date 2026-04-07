@@ -48,9 +48,11 @@ Set "wantsVideo" to false ONLY if:
   - Unless they explicitly ask for content AFTER mentioning these
 
 For "query": extract a short 2-5 word YouTube search query that captures the core intent.
-- "I've been feeling down lately, give me something chill" → "chill music"
-- "play butter by bts" → "Butter BTS"
-- "I want hype music for the gym" → "hype gym music"
+IMPORTANT: This is a K-pop fandom app. ALWAYS include "kpop" in the query unless the user already specified a K-pop artist (BTS, BLACKPINK, TWICE, STRAY KIDS, ENHYPEN, aespa, NewJeans, etc.).
+- "I've been feeling down lately, give me something chill" → "chill kpop music"
+- "play butter by bts" → "Butter BTS" (already K-pop, no need to add)
+- "I want hype music for the gym" → "hype kpop gym music"
+- "give me a happy song" → "happy kpop song"
 - "another one" or "one more" → "" (empty, no specific query)
 - If wantsVideo is false, set query to ""
 
