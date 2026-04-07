@@ -102,7 +102,10 @@ export const updateArtist = async (req: Request, res: Response) => {
       platform: Joi.string(),
       isLive: Joi.boolean().optional(),
       subscriberCount: Joi.number().integer().allow(null).optional(),
-      totalViews: Joi.number().integer().allow(null).optional(),
+      totalViews: Joi.alternatives()
+        .try(Joi.number(), Joi.string().regex(/^\d+$/))
+        .allow(null)
+        .optional(),
       lastLiveAt: Joi.date().allow(null).optional(),
     }).min(1);
 

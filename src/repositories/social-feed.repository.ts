@@ -41,10 +41,23 @@ export default class SocialFeedRepo {
     const items = await prisma.socialFeedItem.findMany({
       where,
       include: {
-        chummeArtist: true,
+        chummeArtist: {
+          select: {
+            id: true,
+            name: true,
+            imageUrl: true,
+            isLive: true,
+            subscriberCount: true,
+            totalViews: true,
+            lastLiveAt: true,
+          },
+        },
         post: {
           where: { isDeleted: false },
-          include: {
+          select: {
+            id: true,
+            content: true,
+            createdAt: true,
             user: {
               select: {
                 id: true,
@@ -89,10 +102,23 @@ export default class SocialFeedRepo {
         score: { gt: 0 }, // Only show items with some momentum
       },
       include: {
-        chummeArtist: true,
+        chummeArtist: {
+          select: {
+            id: true,
+            name: true,
+            imageUrl: true,
+            isLive: true,
+            subscriberCount: true,
+            totalViews: true,
+            lastLiveAt: true,
+          },
+        },
         post: {
           where: { isDeleted: false },
-          include: {
+          select: {
+            id: true,
+            content: true,
+            createdAt: true,
             user: {
               select: {
                 id: true,
@@ -168,10 +194,23 @@ export default class SocialFeedRepo {
         id: { in: ids },
       },
       include: {
-        chummeArtist: true,
+        chummeArtist: {
+          select: {
+            id: true,
+            name: true,
+            imageUrl: true,
+            isLive: true,
+            subscriberCount: true,
+            totalViews: true,
+            lastLiveAt: true,
+          },
+        },
         post: {
           where: { isDeleted: false },
-          include: {
+          select: {
+            id: true,
+            content: true,
+            createdAt: true,
             user: {
               select: {
                 id: true,
@@ -308,9 +347,22 @@ export default class SocialFeedRepo {
     const items = await prisma.socialFeedItem.findMany({
       where,
       include: {
-        chummeArtist: true,
+        chummeArtist: {
+          select: {
+            id: true,
+            name: true,
+            imageUrl: true,
+            isLive: true,
+            subscriberCount: true,
+            totalViews: true,
+            lastLiveAt: true,
+          },
+        },
         post: {
-          include: {
+          select: {
+            id: true,
+            content: true,
+            createdAt: true,
             user: {
               select: {
                 id: true,
