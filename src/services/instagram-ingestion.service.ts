@@ -2,7 +2,6 @@ import SocialFeedSvc from "./social-feed.service";
 
 import FileRepo from "../repositories/file.repository";
 import { upsertArtist } from "../repositories/chumme-artist.repository";
-import EmotionRepo from "../repositories/emotion.repository";
 import { InstagramPostEvent } from "../listeners/instagram-post.listener";
 
 /**
@@ -44,7 +43,7 @@ export async function processInstagramCrawlerData(
 
     try {
       // Step 2a: Create file record - File ID = post.id
-      const fileResult = await FileRepo.upsertFile(
+      await FileRepo.upsertFile(
         post.id, // File ID = post.id
         {
           filename: post.mediaSrc?.filename,

@@ -78,8 +78,15 @@ export const registerRoomHandlers = (
    */
   socket.on("send_message_to_room", async (data: any) => {
     try {
-      const { room_id, message, roomName, voiceMessageId, parentMessageId, duration, waveform } =
-        data;
+      const {
+        room_id,
+        message,
+        roomName,
+        voiceMessageId,
+        parentMessageId,
+        duration,
+        waveform,
+      } = data;
       if (!room_id || !message || message.trim() === "") {
         return socket.emit("not_allowed", {
           message: "Missing required fields",
@@ -101,8 +108,10 @@ export const registerRoomHandlers = (
 
       // 3. If client sent duration/waveform, enrich the voiceNote
       if (mappedMessage.voiceNote && (duration || waveform)) {
-        mappedMessage.voiceNote.duration = duration || mappedMessage.voiceNote.duration;
-        mappedMessage.voiceNote.waveform = waveform || mappedMessage.voiceNote.waveform;
+        mappedMessage.voiceNote.duration =
+          duration || mappedMessage.voiceNote.duration;
+        mappedMessage.voiceNote.waveform =
+          waveform || mappedMessage.voiceNote.waveform;
       }
 
       // 4. Broadcast

@@ -508,8 +508,7 @@ export const registerSessionHandlers = (
                     studioId,
                     message: "Studio closed — no members remaining",
                   });
-                  const socketsInRoom =
-                    await io.in(studioId).fetchSockets();
+                  const socketsInRoom = await io.in(studioId).fetchSockets();
                   socketsInRoom.forEach((s) => s.leave(studioId));
 
                   await MusicStudioSvc.closeStudio(studioId, userId, true);

@@ -61,11 +61,7 @@ export class MediaProcessingWorker {
 
     // Use stream for S3 upload
     const fileStream = fs.createReadStream(tempPath);
-    const _optimizedUrl = await S3Util.uploadFileWithKey(
-      fileStream as any,
-      s3Key,
-      "video/mp4",
-    );
+    await S3Util.uploadFileWithKey(fileStream as any, s3Key, "video/mp4");
     logger.info(`[MediaWorker] Uploaded optimized video to ${s3Key}`);
 
     // 3. Update File Record in DB
@@ -166,7 +162,6 @@ export class MediaProcessingWorker {
     await Promise.all(variants.map((f) => uploadFile(f)));
 
     // 3. Master Playlist LAST
-    let masterUrl = "";
     if (master.length > 0) {
       const file = master[0];
       const filePath = path.join(hlsDir, file);
@@ -175,11 +170,7 @@ export class MediaProcessingWorker {
       const contentType = "application/x-mpegURL";
 
       logger.info(`[MediaWorker] Uploading master playlist to ${s3Key}`);
-      masterUrl = await S3Util.uploadFileWithKey(
-        fileStream as any,
-        s3Key,
-        contentType,
-      );
+      await S3Util.uploadFileWithKey(fileStream as any, s3Key, contentType);
     }
 
     // 4. Update DB

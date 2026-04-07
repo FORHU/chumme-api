@@ -1,6 +1,5 @@
 import { Server } from "socket.io";
-import { MusicStudioRole, MusicStudioType } from "@prisma/client";
-import MusicRepo from "../../repositories/music.repository";
+import { MusicStudioRole } from "@prisma/client";
 import MusicStudioSvc from "../../services/music-studio.service";
 import MusicStudioRepo from "../../repositories/music-studio.repository";
 import MusicStudioCacheSvc from "../../services/music-studio-cache.service";
@@ -9,9 +8,6 @@ import MusicQueueSvc from "../../services/music-queue.service";
 import {
   AuthenticatedSocket,
   PassMicrophonePayload,
-  SaveRecordingPayload,
-  StudioActionPayload,
-  UpdateRolePayload,
   UpdateVocalRolePayload,
   SetRelayModePayload,
 } from "./types";

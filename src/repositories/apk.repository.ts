@@ -16,7 +16,7 @@ export default class ApkRepo {
     const [releases, aggregate] = await Promise.all([
       prisma.apkRelease.findMany({
         include: { file: true },
-        orderBy: { createdAt: "desc" }
+        orderBy: { createdAt: "desc" },
       }),
       prisma.apkRelease.aggregate({
         _sum: { downloadCount: true },

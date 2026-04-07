@@ -1,7 +1,5 @@
 import { prisma } from "../utils/prisma";
 
-
-
 export const findByAudioPathId = async (audioPathId: string) => {
   return prisma.chummeArtistPersona.findUnique({
     where: { audioPathId },

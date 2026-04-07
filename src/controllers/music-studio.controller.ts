@@ -1,7 +1,6 @@
 import { Request, Response } from "express";
 import Joi from "joi";
 import MusicStudioSvc from "../services/music-studio.service";
-import MusicRepo from "../repositories/music.repository";
 import logger from "../utils/logger";
 import { io } from "../app";
 

@@ -77,7 +77,8 @@ export async function searchDbVideosFromSourceMetadata(
 
     // Filter out videos already seen; fall back to pool if exhausted
     const freshVideos = await filterShownVideos(rawVideos, userId);
-    const videosToUse = freshVideos.length > 0 ? freshVideos : rawVideos.slice(0, 3);
+    const videosToUse =
+      freshVideos.length > 0 ? freshVideos : rawVideos.slice(0, 3);
 
     logger.info(
       `[DB-VIDEO-LOOKUP] Found ${videosToUse.length} DB video(s) for "${matchedArtist.name}" — skipping YouTube for this intent`,
@@ -93,5 +94,8 @@ export async function searchDbVideosFromSourceMetadata(
     }
   }
 
-  return { dbVideos, unmatchedMetadata: [...nonIntentItems, ...unmatchedMetadata] };
+  return {
+    dbVideos,
+    unmatchedMetadata: [...nonIntentItems, ...unmatchedMetadata],
+  };
 }

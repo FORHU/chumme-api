@@ -2,7 +2,6 @@ import ApkRepo from "../repositories/apk.repository";
 import FileRepo from "../repositories/file.repository";
 import S3Util from "../utils/s3.util";
 import S3PresignedUtil from "../utils/s3-presigned.util";
-import { prisma } from "../utils/prisma";
 
 function extractS3Key(fileUrl: string): string {
   if (fileUrl.includes(".com/")) {

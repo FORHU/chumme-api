@@ -48,14 +48,11 @@ export default class SocialFeedCtrl {
 
       const page = parseInt(req.query.page as string) || 0;
       const limit = parseInt(req.query.limit as string) || 20;
-      const artist = req.query.artist as string;
-
       const countryCode = req.headers["x-country-code"] as string | undefined;
       const feed = await SocialFeedSvc.getPersonalizedFeed(
         userId,
         page,
         limit,
-        artist,
         countryCode,
       );
 
@@ -86,20 +83,36 @@ export default class SocialFeedCtrl {
       const userId = req.user.id;
       const { content } = req.body;
 
-      if (!content || typeof content !== "string" || content.trim().length === 0) {
-        return res.status(400).json({ success: false, message: "Content is required" });
+      if (
+        !content ||
+        typeof content !== "string" ||
+        content.trim().length === 0
+      ) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Content is required" });
       }
       if (content.length > 1000) {
-        return res.status(400).json({ success: false, message: "Comment is too long (max 1000 characters)" });
+        return res.status(400).json({
+          success: false,
+          message: "Comment is too long (max 1000 characters)",
+        });
       }
 
-      const comment = await SocialFeedSvc.createFeedItemComment(id, userId, content);
+      const comment = await SocialFeedSvc.createFeedItemComment(
+        id,
+        userId,
+        content,
+      );
       return res.status(201).json({ success: true, data: comment });
     } catch (error: any) {
       if (error.message === "Feed item not found") {
         return res.status(404).json({ success: false, message: error.message });
       }
-      return res.status(500).json({ success: false, message: error.message || "Failed to create comment" });
+      return res.status(500).json({
+        success: false,
+        message: error.message || "Failed to create comment",
+      });
     }
   }
 

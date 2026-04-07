@@ -35,7 +35,9 @@ function tryParseLeadingJsonArray(
   return null;
 }
 
-export function isYoutubeSearchIntentItem(item: unknown): item is YoutubeSearchIntentItem {
+export function isYoutubeSearchIntentItem(
+  item: unknown,
+): item is YoutubeSearchIntentItem {
   if (item === null || typeof item !== "object") return false;
   const o = item as Record<string, unknown>;
   if (o.type !== "video_intent") return false;

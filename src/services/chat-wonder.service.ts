@@ -106,39 +106,55 @@ export default class ChatWonderSvc {
         const parsedResponse = parseChatWonderResponse(finalChatResponse);
 
         // Only fetch videos if the user actually wants media content
-        const { wantsVideo, query: videoQuery } = await detectVideoIntent(inputText);
+        const { wantsVideo, query: videoQuery } =
+          await detectVideoIntent(inputText);
 
         let mergedVideos: ParsedVideo[] = [];
         if (wantsVideo) {
           // 1. Check internal DB first using source_metadata
-          const { dbVideos } = await searchDbVideosFromSourceMetadata(sourceMetadata, userId);
+          const { dbVideos } = await searchDbVideosFromSourceMetadata(
+            sourceMetadata,
+            userId,
+          );
           mergedVideos = dbVideos;
 
           // 2. If DB has nothing, search YouTube using extracted query (falls back to raw input)
           if (mergedVideos.length === 0) {
             let ytQuery = videoQuery || inputText;
             // Ensure K-pop context — this is a K-pop fandom app
-            if (!/kpop|k-pop|bts|blackpink|twice|stray\s*kids|enhypen|aespa|newjeans|itzy|txt|seventeen|nct|exo|red\s*velvet|ive|le\s*sserafim|gidle|\(g\)i-dle|mamamoo|ateez|monsta\s*x|got7/i.test(ytQuery)) {
+            if (
+              !/kpop|k-pop|bts|blackpink|twice|stray\s*kids|enhypen|aespa|newjeans|itzy|txt|seventeen|nct|exo|red\s*velvet|ive|le\s*sserafim|gidle|\(g\)i-dle|mamamoo|ateez|monsta\s*x|got7/i.test(
+                ytQuery,
+              )
+            ) {
               ytQuery = `${ytQuery} kpop`;
             }
-            logger.info(`[CHAT.WONDER.SERVICE] No DB videos found — searching YouTube for: "${ytQuery}"`);
+            logger.info(
+              `[CHAT.WONDER.SERVICE] No DB videos found — searching YouTube for: "${ytQuery}"`,
+            );
             try {
               const results = await YouTubeService.searchVideos(ytQuery, 1);
               const first = results[0];
               const videoId = first?.id?.videoId;
               if (videoId) {
-                mergedVideos = [{
-                  title: first.snippet?.title ?? "YouTube Video",
-                  artist: first.snippet?.channelTitle ?? null,
-                  url: `https://www.youtube.com/watch?v=${videoId}`,
-                }];
+                mergedVideos = [
+                  {
+                    title: first.snippet?.title ?? "YouTube Video",
+                    artist: first.snippet?.channelTitle ?? null,
+                    url: `https://www.youtube.com/watch?v=${videoId}`,
+                  },
+                ];
               }
             } catch (ytErr: any) {
-              logger.warn(`[CHAT.WONDER.SERVICE] Direct YouTube search failed: ${ytErr?.message}`);
+              logger.warn(
+                `[CHAT.WONDER.SERVICE] Direct YouTube search failed: ${ytErr?.message}`,
+              );
             }
           }
         } else {
-          logger.info(`[CHAT.WONDER.SERVICE] No video intent detected for: "${inputText}" — skipping video fetch`);
+          logger.info(
+            `[CHAT.WONDER.SERVICE] No video intent detected for: "${inputText}" — skipping video fetch`,
+          );
         }
         // Save user message
         const chatMessage = await ChatSvc.saveUserMessage(

@@ -1,6 +1,5 @@
 import SocialFeedRepo from "../repositories/social-feed.repository";
 import CacheUtil from "../utils/cache.util";
-import { stringBacktickToArray } from "../utils/helpers";
 import { prisma } from "../utils/prisma";
 export default class SocialFeedSvc {
   /**
@@ -88,15 +87,8 @@ export default class SocialFeedSvc {
     userId: string,
     page: number = 0,
     limit: number = 5,
-    artistInUrlString: string,
     countryCode?: string,
   ) {
-    let artistStringToArray: Array<string> = [];
-
-    if (artistInUrlString) {
-      artistStringToArray = stringBacktickToArray(artistInUrlString);
-    }
-
     if (page < 0) {
       throw new Error("Page must be non-negative");
     }
@@ -114,9 +106,6 @@ export default class SocialFeedSvc {
       },
     });
 
-    const categoryIds = discovery?.chummeCategories.map((c: any) => c.id) || [];
-    const subCategoryIds =
-      discovery?.chummeSubCategories.map((c: any) => c.id) || [];
     const topicCategoryIds =
       discovery?.chummeTopicCategories.map((c: any) => c.id) || [];
 
@@ -125,10 +114,7 @@ export default class SocialFeedSvc {
       userId,
       page,
       limit,
-      artistStringToArray,
       countryCode,
-      categoryIds,
-      subCategoryIds,
       topicCategoryIds,
     );
 

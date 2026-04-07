@@ -269,7 +269,10 @@ export function parseChatWonderResponse(
     }
 
     // Pick the largest JSON object — more reliable than last when ChatWonder duplicates the response
-    const lastJson = jsonObjects.reduce((a, b) => (a.length >= b.length ? a : b), "");
+    const lastJson = jsonObjects.reduce(
+      (a, b) => (a.length >= b.length ? a : b),
+      "",
+    );
     if (lastJson) {
       try {
         let cleanedJson = lastJson;

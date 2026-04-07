@@ -6,7 +6,6 @@ const router = Router();
 
 // Public routes (if any)
 
-
 // Protected routes
 router.use(authenticate);
 

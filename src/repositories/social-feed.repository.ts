@@ -280,10 +280,7 @@ export default class SocialFeedRepo {
     userId: string,
     page: number = 0,
     limit: number = 20,
-    artistInArray: string[] = [],
     countryCode?: string,
-    categoryIds: string[] = [],
-    subCategoryIds: string[] = [],
     topicCategoryIds: string[] = [],
   ) {
     /*
@@ -401,10 +398,7 @@ export default class SocialFeedRepo {
    */
   static async getPersonalizedFeedIds(
     userId: string,
-    artistInArray: string[] = [],
     countryCode?: string,
-    categoryIds: string[] = [],
-    subCategoryIds: string[] = [],
     topicCategoryIds: string[] = [],
   ) {
     /*

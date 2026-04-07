@@ -13,7 +13,9 @@ export interface VideoIntentResult {
  * @param userInput - The user's message
  * @returns VideoIntentResult - wantsVideo flag + extracted search query
  */
-export async function detectVideoIntent(userInput: string): Promise<VideoIntentResult> {
+export async function detectVideoIntent(
+  userInput: string,
+): Promise<VideoIntentResult> {
   try {
     logger.info(
       `[VIDEO-INTENT-DETECTION] Analyzing user input: "${userInput}"`,

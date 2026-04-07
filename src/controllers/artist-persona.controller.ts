@@ -2,8 +2,6 @@ import { Request, Response } from "express";
 import Joi from "joi";
 import * as artistPersonaService from "../services/artist-persona.service";
 
-
-
 export const getAllPersonas = async (req: Request, res: Response) => {
   try {
     const personas = await artistPersonaService.getAllPersonas();

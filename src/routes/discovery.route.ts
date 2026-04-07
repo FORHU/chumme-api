@@ -25,6 +25,9 @@ router.get("/rising-stars", DiscoveryCtrl.getRisingStars);
  */
 router.post("/trigger-crawl", DiscoveryCtrl.triggerCrawl);
 
-router.post("/trigger-crawler/:targetId", DiscoveryCtrl.triggerCrawlerByTargetId);
+router.post(
+  "/trigger-crawler/:targetId",
+  DiscoveryCtrl.triggerCrawlerByTargetId,
+);
 
 export default router;

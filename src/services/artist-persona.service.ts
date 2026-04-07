@@ -2,8 +2,6 @@ import * as artistPersonaRepo from "../repositories/artist-persona.repository";
 import CacheUtil from "../utils/cache.util";
 import { BadRequestError } from "../utils/error.util";
 
-
-
 export const getAllPersonas = async () => {
   const cacheKey = "personas:all";
 
