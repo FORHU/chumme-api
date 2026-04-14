@@ -91,43 +91,6 @@ export default class FileCtrl {
     }
   }
 
-  static async viewFile(req: Request, res: Response) {
-    try {
-      const { id } = req.params;
-
-      const { buffer, metadata } = await FileSvc.viewFile(id);
-
-      // Try to determine content type from filename or metadata
-      const filename = metadata.filename || "file";
-      const extension = filename.split(".").pop()?.toLowerCase();
-      const mimeTypes: Record<string, string> = {
-        mp3: "audio/mpeg",
-        wav: "audio/wav",
-        ogg: "audio/ogg",
-        m4a: "audio/mp4",
-        aac: "audio/aac",
-        mp4: "video/mp4",
-        jpg: "image/jpeg",
-        jpeg: "image/jpeg",
-        png: "image/png",
-        pdf: "application/pdf",
-      };
-
-      const contentType = mimeTypes[extension || ""] || "application/octet-stream";
-
-      res.setHeader("Content-Type", contentType);
-      res.setHeader(
-        "Content-Disposition",
-        `inline; filename="${encodeURIComponent(filename)}"`
-      );
-
-      return res.status(200).send(buffer);
-    } catch (err: any) {
-      const statusCode = err.message === "File not found" ? 404 : 400;
-      return res.status(statusCode).json({ message: err.message || err });
-    }
-  }
-
   static async deleteFile(req: Request, res: Response) {
     try {
       const { id } = req.params;
@@ -174,5 +137,4 @@ export default class FileCtrl {
       return res.status(400).json({ message: err.message || err });
     }
   }
-
 }

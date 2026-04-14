@@ -9,7 +9,6 @@ import { SocialPlatform } from "@prisma/client";
 import RedisUtil from "../../../utils/redis.util";
 import RankingService from "./ranking.service";
 import { IngestionManager } from "../connectors/platform.service";
-import { isRateLimitError } from "../../../utils/error.util";
 
 export class SchedulingService {
   private static intervalHandle: NodeJS.Timeout | null = null;
@@ -359,7 +358,6 @@ export class SchedulingService {
           isActive: true,
         },
         select: {
-          id: true,
           externalHandle: true,
           chummeArtistId: true,
         },
@@ -377,45 +375,28 @@ export class SchedulingService {
       if (!connector.getChannelsMetadata) return;
 
       for (const batch of batches) {
-        try {
-          const channelIds = batch.map((t) => t.externalHandle);
-          const metadataList = await connector.getChannelsMetadata(channelIds);
+        const channelIds = batch.map((t) => t.externalHandle);
+        const metadataList = await connector.getChannelsMetadata(channelIds);
 
-          // 3. Update each artist's stats and live status
-          for (const target of batch) {
-            const meta = metadataList.find(
-              (m) => m.id === target.externalHandle,
-            );
-            if (!meta) continue;
+        // 3. Update each artist's stats and live status
+        for (const target of batch) {
+          const meta = metadataList.find((m) => m.id === target.externalHandle);
+          if (!meta) continue;
 
-            const stats = meta.statistics;
-            const isLive = await connector.getChannelLiveStatus!(
-              target.externalHandle,
-            );
+          const stats = meta.statistics;
+          const isLive = await connector.getChannelLiveStatus!(
+            target.externalHandle,
+          );
 
-            await prisma.chummeArtist.update({
-              where: { id: target.chummeArtistId },
-              data: {
-                isLive,
-                subscriberCount: parseInt(stats?.subscriberCount || "0"),
-                totalViews: BigInt(stats?.viewCount || "0"),
-                lastLiveAt: isLive ? new Date() : undefined,
-              },
-            });
-          }
-        } catch (error) {
-          if (isRateLimitError(error)) {
-            logger.warn(
-              `[SchedulingService] Rate limit hit during Heartbeat for batch. Marking targets as limited.`,
-            );
-            const targetIds = batch.map((t) => t.id);
-            await prisma.socialIngestionTarget.updateMany({
-              where: { id: { in: targetIds } },
-              data: { quotaLimitHitAt: new Date() },
-            });
-            continue; // Move to next batch, or stop if batch is platform-wide
-          }
-          throw error; // Let outer catch handle non-rate-limit errors
+          await prisma.chummeArtist.update({
+            where: { id: target.chummeArtistId },
+            data: {
+              isLive,
+              subscriberCount: parseInt(stats?.subscriberCount || "0"),
+              totalViews: BigInt(stats?.viewCount || "0"),
+              lastLiveAt: isLive ? new Date() : undefined,
+            },
+          });
         }
       }
 
