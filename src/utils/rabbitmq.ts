@@ -147,6 +147,9 @@ export class RabbitMQService {
         },
       });
 
+      // 3. Set Prefetch to limit concurrent processing and prevent RDS connection pool exhaustion
+      await this.channel.prefetch(5);
+
       // Bind the queue to the exchange with routing keys
       for (const routingKey of routingKeys) {
         await this.channel.bindQueue(queueName, "chumme_exchange", routingKey);

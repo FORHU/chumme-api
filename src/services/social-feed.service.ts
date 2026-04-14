@@ -56,13 +56,11 @@ export default class SocialFeedSvc {
       .filter(Boolean);
   }
 
-  /**
-   * Get unified feed with pagination
-   */
   static async getFeed(
     page: number = 0,
     limit: number = 20,
     countryCode?: string,
+    chummeArtistId?: string,
   ) {
     if (page < 0) {
       throw new Error("Page must be non-negative");
@@ -70,9 +68,14 @@ export default class SocialFeedSvc {
     if (limit < 1 || limit > 50) {
       throw new Error("Limit must be between 1 and 50");
     }
-
+ 
     // Fetch directly from Repo (Sorted by latest createdAt)
-    const feedItems = await SocialFeedRepo.getFeed(page, limit, countryCode);
+    const feedItems = await SocialFeedRepo.getFeed(
+      page,
+      limit,
+      countryCode,
+      chummeArtistId,
+    );
 
     return feedItems;
   }
@@ -88,6 +91,7 @@ export default class SocialFeedSvc {
     page: number = 0,
     limit: number = 5,
     countryCode?: string,
+    chummeArtistId?: string,
   ) {
     if (page < 0) {
       throw new Error("Page must be non-negative");
@@ -116,6 +120,7 @@ export default class SocialFeedSvc {
       limit,
       countryCode,
       topicCategoryIds,
+      chummeArtistId,
     );
 
     /*
@@ -184,8 +189,6 @@ export default class SocialFeedSvc {
     title: string;
     socialPlatform: any;
     chummeArtistId?: string;
-    chummeCategoryId?: string;
-    chummeSubCategoryId?: string;
     chummeTopicCategoryId?: string;
     metaData?: any;
     views?: number;
@@ -224,8 +227,6 @@ export default class SocialFeedSvc {
         externalUrl: data.externalUrl,
         videoId,
         chummeArtistId: data.chummeArtistId ?? null,
-        chummeCategoryId: data.chummeCategoryId ?? null,
-        chummeSubCategoryId: data.chummeSubCategoryId ?? null,
         chummeTopicCategoryId: data.chummeTopicCategoryId ?? null,
         metaData: data.metaData ?? null,
         blockedCountries,

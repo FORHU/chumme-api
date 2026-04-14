@@ -1,0 +1,11 @@
+-- AlterTable
+ALTER TABLE "ChummeCategory" ADD COLUMN IF NOT EXISTS "channelId" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[];
+
+-- AlterTable
+ALTER TABLE "ChummeSubCategory" ADD COLUMN IF NOT EXISTS "channelId" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[];
+
+-- AlterTable
+ALTER TABLE "ChummeTopicCategory" ADD COLUMN IF NOT EXISTS "channelId" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[];
+
+-- AlterTable
+ALTER TABLE "ChummeArtist" ADD COLUMN IF NOT EXISTS "channelId" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[];

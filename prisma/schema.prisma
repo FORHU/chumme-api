@@ -115,7 +115,7 @@ model ChummeCategory {
   chummeTraits          ChummeTraits            @default(NONE)
   populationCount       Int                     @default(0)
   discoveryKeywords     String[]
-  channelId             String[]
+  channelId             String[]                @default([])
   chummeVisualDesign    ChummeCategoryDesign?   @relation("CategoryDesign", fields: [chummeVisualDesignId], references: [id])
   chummeSubCategories   ChummeSubCategory[]
   socialFeedItems       SocialFeedItem[]        @relation("CategoryFeed")
@@ -139,7 +139,7 @@ model ChummeSubCategory {
   chummeTraits          ChummeTraits            @default(NONE)
   populationCount       Int                     @default(0)
   discoveryKeywords     String[]
-  channelId             String[]
+  channelId             String[]                @default([])
   chummeCategory        ChummeCategory          @relation(fields: [chummeCategoryId], references: [id])
   chummeVisualDesign    ChummeCategoryDesign?   @relation("SubCategoryDesign", fields: [chummeVisualDesignId], references: [id])
   owner                 User?                   @relation("ChummeSubCategoryOwner", fields: [ownerId], references: [id])
@@ -166,7 +166,7 @@ model ChummeTopicCategory {
   chummeVisualDesignId  String?                 @unique
   populationCount       Int                     @default(0)
   discoveryKeywords     String[]
-  channelId             String[]
+  channelId             String[]                @default([])
   chummeSubCategory     ChummeSubCategory       @relation(fields: [chummeSubCategoryId], references: [id])
   chummeVisualDesign    ChummeCategoryDesign?   @relation("TopicCategoryDesign", fields: [chummeVisualDesignId], references: [id])
   socialFeedItems       SocialFeedItem[]        @relation("TopicCategoryFeed")
@@ -212,9 +212,11 @@ model ChummeArtist {
   platform               String                  @default("YOUTUBE")
   socialPlatformUsername String?
   isLive                 Boolean                 @default(false)
-  subscriberCount        Int?
-  totalViews            BigInt?
   lastLiveAt             DateTime?
+  subscriberCount        Int?
+  totalViews             BigInt?
+  channelId              String[]                @default([])
+  socialFeedItemCount    Int                     @default(0)
   music                  Music[]                 @relation("MainArtist")
   musicAlbum             MusicAlbum[]            @relation("MainArtist")
   musicFeaturedArtists   MusicFeaturedArtist[]

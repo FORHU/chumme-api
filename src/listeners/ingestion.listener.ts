@@ -71,8 +71,8 @@ export class IngestionWorker {
         return;
       }
 
-      // 2. Rate limiting check (e.g., 50 requests per minute per platform)
-      if (await RedisUtil.isRateLimited(message.platform, 50, 60)) {
+      // 2. Rate limiting check (Bumbed to 500 requests per 60s for burst testing)
+      if (await RedisUtil.isRateLimited(message.platform, 500, 60)) {
         logger.warn(
           `[IngestionWorker] Rate limit exceeded for platform: ${message.platform}`,
         );
@@ -219,8 +219,6 @@ export class IngestionWorker {
         metaData: item.metaData,
         isLive: item.isLive,
         chummeArtistId: job.meta?.artistId,
-        chummeCategoryId: job.meta?.categoryId,
-        chummeSubCategoryId: job.meta?.subCategoryId,
         chummeTopicCategoryId: job.meta?.topicCategoryId,
       } as any);
 
@@ -274,8 +272,6 @@ export class IngestionWorker {
         socialPlatform: details.platform,
         metaData: details.metaData,
         chummeArtistId: job.meta?.artistId,
-        chummeCategoryId: job.meta?.categoryId,
-        chummeSubCategoryId: job.meta?.subCategoryId,
         chummeTopicCategoryId: job.meta?.topicCategoryId,
         views: details.stats?.views,
         likes: details.stats?.likes,
@@ -415,12 +411,6 @@ export class IngestionWorker {
           imageUrl: item.author?.avatarUrl,
           isDraft: true,
           discoveredAt: new Date(),
-          // Link to the primary category that triggered the discovery
-          ...(job.meta?.categoryId && {
-            chummeCategories: {
-              connect: { id: job.meta.categoryId },
-            },
-          }),
         },
       });
 
@@ -439,8 +429,6 @@ export class IngestionWorker {
           platform: item.platform,
           externalHandle: channelId,
           chummeArtistId: artist.id,
-          chummeCategoryId: job.meta?.categoryId,
-          chummeSubCategoryId: job.meta?.subCategoryId,
           chummeTopicCategoryId: job.meta?.topicCategoryId,
           isActive: true, // Auto-start crawling discovered talent
           crawlIntervalHours: 48, // New talent crawled less frequently initially

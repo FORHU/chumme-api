@@ -4,6 +4,9 @@ export const getAllArtists = async () => {
   return prisma.chummeArtist.findMany({
     where: {
       isDeleted: false,
+      socialFeedItemCount: {
+        gt: 0,
+      },
     },
     select: {
       id: true,
@@ -16,6 +19,7 @@ export const getAllArtists = async () => {
       lastLiveAt: true,
       socialPlatformUsername: true,
       platform: true,
+      channelId: true,
       chummeCategories: {
         select: {
           id: true,
@@ -72,6 +76,7 @@ export const findById = async (id: string) => {
       lastLiveAt: true,
       socialPlatformUsername: true,
       platform: true,
+      channelId: true,
       chummeCategories: {
         select: {
           id: true,
@@ -94,6 +99,7 @@ export const create = async (data: {
   subscriberCount?: number | null;
   totalViews?: bigint | number | string | null;
   lastLiveAt?: Date | null;
+  channelId?: string[];
 }) => {
   return prisma.chummeArtist.create({
     data: {
@@ -102,6 +108,7 @@ export const create = async (data: {
         data.totalViews !== undefined && data.totalViews !== null
           ? BigInt(data.totalViews)
           : null,
+      channelId: data.channelId ?? [],
     },
   });
 };
@@ -120,6 +127,7 @@ export const update = async (
     subscriberCount?: number | null;
     totalViews?: bigint | number | string | null;
     lastLiveAt?: Date | null;
+    channelId?: string[];
   },
 ) => {
   return prisma.chummeArtist.update({
@@ -152,6 +160,7 @@ export const upsertArtist = async (data: {
   subscriberCount?: number | null;
   totalViews?: bigint | number | string | null;
   lastLiveAt?: Date | null;
+  channelId?: string[];
 }) => {
   // Use upsert to handle concurrent requests gracefully
   const artist = await prisma.chummeArtist.upsert({
@@ -175,6 +184,7 @@ export const upsertArtist = async (data: {
         totalViews: data.totalViews !== null ? BigInt(data.totalViews) : null,
       }),
       ...(data.lastLiveAt !== undefined && { lastLiveAt: data.lastLiveAt }),
+      ...(data.channelId !== undefined && { channelId: data.channelId }),
     },
     create: {
       name: data.name,
@@ -190,6 +200,7 @@ export const upsertArtist = async (data: {
           ? BigInt(data.totalViews)
           : BigInt(0),
       lastLiveAt: data.lastLiveAt ?? null,
+      channelId: data.channelId ?? [],
     },
   });
 

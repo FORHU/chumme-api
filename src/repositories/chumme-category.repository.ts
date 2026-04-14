@@ -55,6 +55,7 @@ export default class ChummeCategoryRepo {
     isAd: boolean;
     keyPassword?: string;
     note?: string;
+    channelId?: string[];
   }) {
     return prisma.chummeSubCategory.create({
       data: {
@@ -62,6 +63,7 @@ export default class ChummeCategoryRepo {
         isAd: data.isAd || false,
         keyPassword: data.keyPassword || null,
         note: data.note || null,
+        channelId: data.channelId || [],
         chummeCategory: { connect: { id: data.chummeCategoryId } },
         owner: data.ownerId ? { connect: { id: data.ownerId } } : undefined,
       },
@@ -117,6 +119,7 @@ export default class ChummeCategoryRepo {
             isAd: true,
             populationCount: true,
             discoveryKeywords: true,
+            channelId: true,
             createdAt: true,
             updatedAt: true,
             chummeVisualDesign: {
@@ -142,6 +145,7 @@ export default class ChummeCategoryRepo {
                 isAd: true,
                 populationCount: true,
                 discoveryKeywords: true,
+                channelId: true,
               },
             },
           },
@@ -193,6 +197,7 @@ export default class ChummeCategoryRepo {
             isAd: true,
             populationCount: true,
             discoveryKeywords: true,
+            channelId: true,
             createdAt: true,
             updatedAt: true,
             chummeVisualDesign: {
@@ -218,6 +223,7 @@ export default class ChummeCategoryRepo {
                 isAd: true,
                 populationCount: true,
                 discoveryKeywords: true,
+                channelId: true,
               },
             },
           },
@@ -343,6 +349,7 @@ export default class ChummeCategoryRepo {
         populationCount: true,
         chummeTraits: true,
         discoveryKeywords: true,
+        channelId: true,
         createdAt: true,
         updatedAt: true,
         owner: {

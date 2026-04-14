@@ -63,6 +63,7 @@ export const createArtist = async (req: Request, res: Response) => {
         .allow(null)
         .optional(),
       lastLiveAt: Joi.date().allow(null).optional(),
+      channelId: Joi.array().items(Joi.string()).optional(),
     });
 
     const { error, value } = schema.validate(req.body);
@@ -107,6 +108,7 @@ export const updateArtist = async (req: Request, res: Response) => {
         .allow(null)
         .optional(),
       lastLiveAt: Joi.date().allow(null).optional(),
+      channelId: Joi.array().items(Joi.string()).optional(),
     }).min(1);
 
     const { error, value } = schema.validate(req.body);

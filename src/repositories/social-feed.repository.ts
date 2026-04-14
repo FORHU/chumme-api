@@ -20,10 +20,11 @@ export default class SocialFeedRepo {
     page: number = 0,
     limit: number = 20,
     countryCode?: string,
+    chummeArtistId?: string,
   ) {
     const where: any = {
       isDeleted: false,
-      chummeTopicCategoryId: { not: null },
+      chummeArtistId: chummeArtistId || undefined,
     };
 
     if (countryCode) {
@@ -94,12 +95,16 @@ export default class SocialFeedRepo {
   /**
    * Get trending feed ordered by growth score
    */
-  static async getTrendingFeed(page: number = 0, limit: number = 20) {
+  static async getTrendingFeed(
+    page: number = 0,
+    limit: number = 20,
+    chummeArtistId?: string,
+  ) {
     const items = await prisma.socialFeedItem.findMany({
       where: {
         isDeleted: false,
-        chummeTopicCategoryId: { not: null },
         score: { gt: 0 }, // Only show items with some momentum
+        chummeArtistId: chummeArtistId || undefined,
       },
       include: {
         chummeArtist: {
@@ -158,7 +163,6 @@ export default class SocialFeedRepo {
   static async getGlobalFeedIds(chummeArtistId?: string, countryCode?: string) {
     const where: any = {
       isDeleted: false,
-      chummeTopicCategoryId: { not: null },
     };
     if (chummeArtistId) {
       where.chummeArtistId = chummeArtistId;
@@ -245,20 +249,48 @@ export default class SocialFeedRepo {
    * Soft delete feed item when post is deleted
    */
   static async softDeleteByPostId(postId: string) {
-    return await prisma.socialFeedItem.updateMany({
+    const items = await prisma.socialFeedItem.findMany({
+      where: { postId },
+    });
+
+    const result = await prisma.socialFeedItem.updateMany({
       where: { postId },
       data: { isDeleted: true },
     });
+
+    for (const item of items) {
+      if (item.chummeArtistId) {
+        await prisma.chummeArtist.update({
+          where: { id: item.chummeArtistId },
+          data: { socialFeedItemCount: { decrement: 1 } },
+        });
+      }
+    }
+
+    return result;
   }
 
   /**
    * Soft delete feed item when external content is removed (by URL)
    */
   static async softDeleteByUrl(externalUrl: string) {
-    return await prisma.socialFeedItem.updateMany({
+    const item = await prisma.socialFeedItem.findUnique({
+      where: { externalUrl },
+    });
+
+    const result = await prisma.socialFeedItem.updateMany({
       where: { externalUrl },
       data: { isDeleted: true },
     });
+
+    if (item && item.chummeArtistId) {
+      await prisma.chummeArtist.update({
+        where: { id: item.chummeArtistId },
+        data: { socialFeedItemCount: { decrement: 1 } },
+      });
+    }
+
+    return result;
   }
 
   /**
@@ -282,6 +314,7 @@ export default class SocialFeedRepo {
     limit: number = 20,
     countryCode?: string,
     topicCategoryIds: string[] = [],
+    chummeArtistId?: string,
   ) {
     /*
     const following = await prisma.follow.findMany({
@@ -306,26 +339,14 @@ export default class SocialFeedRepo {
       */
     ];
 
-    /*
-    if (artistInArray.length > 0) {
-      orConditions.push({ chummeArtistId: { in: artistInArray } });
-    }
-    */
-    /*
-    if (categoryIds.length > 0) {
-      orConditions.push({ chummeCategoryId: { in: categoryIds } });
-    }
-    if (subCategoryIds.length > 0) {
-      orConditions.push({ chummeSubCategoryId: { in: subCategoryIds } });
-    }
-    */
     if (topicCategoryIds.length > 0) {
       orConditions.push({ chummeTopicCategoryId: { in: topicCategoryIds } });
     }
 
     const where: any = {
       isDeleted: false,
-      chummeTopicCategoryId: { not: null },
+      chummeArtistId: chummeArtistId || undefined,
+
       OR: orConditions.length > 0 ? orConditions : undefined,
     };
 
@@ -400,6 +421,7 @@ export default class SocialFeedRepo {
     userId: string,
     countryCode?: string,
     topicCategoryIds: string[] = [],
+    chummeArtistId?: string,
   ) {
     /*
     const following = await prisma.follow.findMany({
@@ -424,26 +446,14 @@ export default class SocialFeedRepo {
       */
     ];
 
-    /*
-    if (artistInArray.length > 0) {
-      orConditions.push({ chummeArtistId: { in: artistInArray } });
-    }
-    */
-    /*
-    if (categoryIds.length > 0) {
-      orConditions.push({ chummeCategoryId: { in: categoryIds } });
-    }
-    if (subCategoryIds.length > 0) {
-      orConditions.push({ chummeSubCategoryId: { in: subCategoryIds } });
-    }
-    */
     if (topicCategoryIds.length > 0) {
       orConditions.push({ chummeTopicCategoryId: { in: topicCategoryIds } });
     }
 
     const where: any = {
       isDeleted: false,
-      chummeTopicCategoryId: { not: null },
+      chummeArtistId: chummeArtistId || undefined,
+
       OR: orConditions.length > 0 ? orConditions : undefined,
     };
 
@@ -478,8 +488,6 @@ export default class SocialFeedRepo {
       socialPlatform: any;
       externalUrl: string;
       chummeArtistId?: string | null;
-      chummeCategoryId?: string | null;
-      chummeSubCategoryId?: string | null;
       chummeTopicCategoryId?: string | null;
       metaData?: any | null;
       blockedCountries?: string[];
@@ -496,6 +504,66 @@ export default class SocialFeedRepo {
     });
     const isUpdate = !!existing;
 
+    const { chummeTopicCategoryId } = data;
+    let { chummeArtistId: artistId } = data;
+
+    // Infer artistId if missing
+    if (!artistId) {
+      // 1. Try via Metadata (Channel ID Match) - NEW GROUND TRUTH
+      if (data.metaData) {
+        const meta = data.metaData as any;
+        const externalChannelId =
+          meta?.snippet?.channelId ||
+          meta?.channelId ||
+          meta?.snippet?.resourceId?.channelId;
+
+        if (externalChannelId) {
+          const artist = await prisma.chummeArtist.findFirst({
+            where: {
+              channelId: { has: externalChannelId },
+              isDeleted: false,
+            },
+            select: { id: true },
+          });
+          if (artist) artistId = artist.id;
+        }
+      }
+
+      // 2. Try via Topic Category Name Match
+      if (!artistId && chummeTopicCategoryId) {
+        const topic = await prisma.chummeTopicCategory.findUnique({
+          where: { id: chummeTopicCategoryId },
+          select: { name: true },
+        });
+        if (topic) {
+          const artist = await prisma.chummeArtist.findFirst({
+            where: {
+              name: { equals: topic.name, mode: "insensitive" },
+              isDeleted: false,
+            },
+            select: { id: true },
+          });
+          if (artist) artistId = artist.id;
+        }
+      }
+
+      // 3. Last Resort: Try via Metadata Channel Title (Fuzzy)
+      if (!artistId && data.metaData) {
+        const meta = data.metaData as any;
+        const channelTitle = meta?.snippet?.channelTitle || meta?.channelTitle;
+        if (channelTitle) {
+          const artist = await prisma.chummeArtist.findFirst({
+            where: {
+              name: { equals: channelTitle, mode: "insensitive" },
+              isDeleted: false,
+            },
+            select: { id: true },
+          });
+          if (artist) artistId = artist.id;
+        }
+      }
+    }
+
     const item = await prisma.socialFeedItem.upsert({
       where: { externalUrl: where.externalUrl },
       create: {
@@ -505,10 +573,8 @@ export default class SocialFeedRepo {
         externalUrl: data.externalUrl,
         videoId: data.videoId ?? null,
         isLive: data.isLive ?? false,
-        chummeArtistId: data.chummeArtistId ?? null,
-        chummeCategoryId: data.chummeCategoryId ?? null,
-        chummeSubCategoryId: data.chummeSubCategoryId ?? null,
-        chummeTopicCategoryId: data.chummeTopicCategoryId ?? null,
+        chummeArtistId: artistId ?? null,
+        chummeTopicCategoryId: chummeTopicCategoryId ?? null,
         metaData: data.metaData ?? null,
         blockedCountries: data.blockedCountries || [],
         allowedCountries: data.allowedCountries || [],
@@ -522,10 +588,8 @@ export default class SocialFeedRepo {
         externalUrl: data.externalUrl,
         videoId: data.videoId ?? null,
         isLive: data.isLive !== undefined ? data.isLive : undefined,
-        chummeArtistId: data.chummeArtistId ?? null,
-        chummeCategoryId: data.chummeCategoryId ?? null,
-        chummeSubCategoryId: data.chummeSubCategoryId ?? null,
-        chummeTopicCategoryId: data.chummeTopicCategoryId ?? null,
+        chummeArtistId: artistId ?? null,
+        chummeTopicCategoryId: chummeTopicCategoryId ?? null,
         metaData: data.metaData ?? null,
         blockedCountries: data.blockedCountries || [],
         allowedCountries: data.allowedCountries || [],
@@ -534,6 +598,29 @@ export default class SocialFeedRepo {
         comments: data.comments !== undefined ? data.comments : undefined,
       } as any,
     });
+
+    // Real-time counter logic for Discovery bar
+    if (!isUpdate && artistId) {
+      // New item ingested, increment counter
+      await prisma.chummeArtist.update({
+        where: { id: artistId },
+        data: { socialFeedItemCount: { increment: 1 } },
+      });
+    } else if (isUpdate && existing?.chummeArtistId !== artistId) {
+      // Artist changed during update, decrement old and increment new
+      if (existing?.chummeArtistId) {
+        await prisma.chummeArtist.update({
+          where: { id: existing.chummeArtistId },
+          data: { socialFeedItemCount: { decrement: 1 } },
+        });
+      }
+      if (artistId) {
+        await prisma.chummeArtist.update({
+          where: { id: artistId },
+          data: { socialFeedItemCount: { increment: 1 } },
+        });
+      }
+    }
 
     return { item, isUpdate };
   }

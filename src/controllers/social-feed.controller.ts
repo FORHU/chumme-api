@@ -10,9 +10,15 @@ export default class SocialFeedCtrl {
     try {
       const page = parseInt(req.query.page as string) || 0;
       const limit = parseInt(req.query.limit as string) || 5;
+      const chummeArtistId = req.query.chummeArtistId as string | undefined;
 
       const countryCode = req.headers["x-country-code"] as string | undefined;
-      const feed = await SocialFeedSvc.getFeed(page, limit, countryCode);
+      const feed = await SocialFeedSvc.getFeed(
+        page,
+        limit,
+        countryCode,
+        chummeArtistId,
+      );
 
       res.json({
         success: true,
@@ -48,12 +54,14 @@ export default class SocialFeedCtrl {
 
       const page = parseInt(req.query.page as string) || 0;
       const limit = parseInt(req.query.limit as string) || 20;
+      const chummeArtistId = req.query.chummeArtistId as string | undefined;
       const countryCode = req.headers["x-country-code"] as string | undefined;
       const feed = await SocialFeedSvc.getPersonalizedFeed(
         userId,
         page,
         limit,
         countryCode,
+        chummeArtistId,
       );
 
       res.json({
