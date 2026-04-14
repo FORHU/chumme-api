@@ -7,6 +7,7 @@ import { prisma } from "../utils/prisma";
 import { IngestionManager } from "../services/net-communities/connectors/platform.service";
 import SocialFeedSvc from "../services/social-feed.service";
 import RedisUtil from "../utils/redis.util";
+import { isRateLimitError as checkRateLimit } from "../utils/error.util";
 // import SocialUserDiscoverySvc from "../services/social-user-discovery.service";
 
 // Ensure connectors are registered
@@ -74,12 +75,9 @@ export class IngestionWorker {
       // 2. Rate limiting check (Bumbed to 500 requests per 60s for burst testing)
       if (await RedisUtil.isRateLimited(message.platform, 500, 60)) {
         logger.warn(
-          `[IngestionWorker] Rate limit exceeded for platform: ${message.platform}`,
+          `[IngestionWorker] Internal Rate Limit hit for platform: ${message.platform}. Stopping job gracefully.`,
         );
-        // Throw error to trigger Dead Letter Queue routing instead of dropping job
-        throw new Error(
-          `Rate limit exceeded for platform: ${message.platform}`,
-        );
+        return; // Graceful stop to avoid log flooding and DLQ noise
       }
 
       const startTime = Date.now();
@@ -107,6 +105,10 @@ export class IngestionWorker {
             status = "failed";
         }
       } catch (error) {
+        if (checkRateLimit(error)) {
+          await this.handleRateLimitHit(message, error);
+          return; // Graceful exit
+        }
         status = "failed";
         throw error;
       } finally {
@@ -120,6 +122,10 @@ export class IngestionWorker {
         });
       }
     } catch (error) {
+      if (checkRateLimit(error)) {
+        await this.handleRateLimitHit(message, error);
+        return;
+      }
       logger.error(
         `[IngestionWorker] Error processing job ${message.type} for ${message.platform}:${message.targetId}:`,
         error,
@@ -127,6 +133,27 @@ export class IngestionWorker {
       throw error;
     }
   };
+
+  private async handleRateLimitHit(job: IngestionJob, error: any) {
+    const isQuota =
+      error.message?.includes("quotaExceeded") || error.code === 403;
+    const logPrefix = isQuota ? "Quota Exceeded" : "Rate Limit Hit";
+
+    logger.warn(
+      `[IngestionWorker] ${logPrefix} for ${job.platform}:${job.targetId}. Stopping job gracefully.`,
+    );
+
+    // Only update DB for target-specific jobs (not search keywords)
+    if (job.type !== IngestionJobType.SEARCH) {
+      await prisma.socialIngestionTarget.updateMany({
+        where: { platform: job.platform, externalHandle: job.targetId },
+        data: {
+          nextPageToken: job.meta?.pageToken || null,
+          quotaLimitHitAt: new Date(),
+        },
+      });
+    }
+  }
 
   private async handleDiscoveryJob(job: IngestionJob) {
     const connector = IngestionManager.getConnector(job.platform);
@@ -156,18 +183,9 @@ export class IngestionWorker {
         job.meta?.pageToken,
       );
     } catch (error: any) {
-      if (error.message?.includes("quotaExceeded") || error.code === 403) {
-        logger.warn(
-          `[IngestionWorker] YouTube Daily Quota Exceeded for ${job.targetId}. Saving state in DB.`,
-        );
-        await prisma.socialIngestionTarget.updateMany({
-          where: { platform: job.platform, externalHandle: job.targetId },
-          data: {
-            nextPageToken: job.meta?.pageToken || null,
-            quotaLimitHitAt: new Date(),
-          },
-        });
-        return; // Graceful stop, do not throw as DLQ cannot solve quota waits
+      if (checkRateLimit(error)) {
+        await this.handleRateLimitHit(job, error);
+        return;
       }
       throw error;
     }

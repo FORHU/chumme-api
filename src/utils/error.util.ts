@@ -24,3 +24,16 @@ export class InternalServerError extends Error {
     this.statusCode = 500;
   }
 }
+
+export const isRateLimitError = (error: any): boolean => {
+  const msg = error.message?.toLowerCase() || "";
+  const code = error.code || error.statusCode || error.status;
+  return (
+    code === 429 ||
+    code === 403 ||
+    msg.includes("quotaexceeded") ||
+    msg.includes("ratelimitexceeded") ||
+    msg.includes("rate limit exceeded") ||
+    msg.includes("too many requests")
+  );
+};
