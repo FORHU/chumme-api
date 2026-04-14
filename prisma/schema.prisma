@@ -149,6 +149,7 @@ model ChummeSubCategory {
   socialFeedItems       SocialFeedItem[]        @relation("SubCategoryFeed")
   ingestionTargets      SocialIngestionTarget[]
   socialUserDiscoveries SocialUserDiscovery[]   @relation("ChummeSubCategoryToSocialUserDiscovery")
+  sportLeagues          SportLeague[]
 }
 
 model ChummeTopicCategory {
@@ -171,6 +172,7 @@ model ChummeTopicCategory {
   socialFeedItems       SocialFeedItem[]        @relation("TopicCategoryFeed")
   ingestionTargets      SocialIngestionTarget[]
   socialUserDiscoveries SocialUserDiscovery[]   @relation("ChummeTopicCategoryToSocialUserDiscovery")
+  sportTeams            SportTeam[]
 }
 
 model ChummeCategoryDesign {
@@ -849,6 +851,112 @@ model ApkRelease {
   file          File     @relation(fields: [fileId], references: [id])
 }
 
+model SportLeague {
+  id                  String             @id @default(uuid())
+  espnSlug            String
+  espnSport           String
+  name                String
+  abbreviation        String
+  logoUrl             String?
+  chummeSubCategoryId String?
+  isActive            Boolean            @default(true)
+  pollIntervalSeconds Int                @default(30)
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  chummeSubCategory   ChummeSubCategory? @relation(fields: [chummeSubCategoryId], references: [id])
+  teams               SportTeam[]
+  athletes            SportAthlete[]
+  events              SportEvent[]
+}
+
+model SportTeam {
+  id                    String               @id @default(uuid())
+  espnId                String               @unique
+  leagueId              String
+  name                  String
+  abbreviation          String
+  displayName           String
+  logoUrl               String?
+  color                 String?
+  alternateColor        String?
+  venue                 String?
+  chummeTopicCategoryId String?
+  isActive              Boolean              @default(true)
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+  league                SportLeague          @relation(fields: [leagueId], references: [id])
+  chummeTopicCategory   ChummeTopicCategory? @relation(fields: [chummeTopicCategoryId], references: [id])
+  athletes              SportAthlete[]
+  homeEvents            SportEvent[]         @relation("HomeTeam")
+  awayEvents            SportEvent[]         @relation("AwayTeam")
+  stats                 SportPlayerStat[]
+}
+
+model SportAthlete {
+  id            String            @id @default(uuid())
+  espnId        String            @unique
+  teamId        String?
+  leagueId      String
+  fullName      String
+  firstName     String?
+  lastName      String?
+  position      String?
+  jerseyNumber  String?
+  headshotUrl   String?
+  isActive      Boolean           @default(true)
+  metaData      Json?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  team          SportTeam?        @relation(fields: [teamId], references: [id])
+  league        SportLeague       @relation(fields: [leagueId], references: [id])
+  playerStats   SportPlayerStat[]
+}
+
+model SportEvent {
+  id             String           @id @default(uuid())
+  espnId         String           @unique
+  leagueId       String
+  homeTeamId     String
+  awayTeamId     String
+  homeScore      Int              @default(0)
+  awayScore      Int              @default(0)
+  status         SportEventStatus
+  statusDetail   String?
+  period         Int?
+  clock          String?
+  possession     String?
+  gameDate       DateTime
+  venue          String?
+  broadcast      String?
+  spread         String?
+  overUnder      String?
+  homeLineScores Json?
+  awayLineScores Json?
+  metaData       Json?
+  lastPolledAt   DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  league         SportLeague      @relation(fields: [leagueId], references: [id])
+  homeTeam       SportTeam        @relation("HomeTeam", fields: [homeTeamId], references: [id])
+  awayTeam       SportTeam        @relation("AwayTeam", fields: [awayTeamId], references: [id])
+  playerStats    SportPlayerStat[]
+}
+
+model SportPlayerStat {
+  id        String       @id @default(uuid())
+  eventId   String
+  athleteId String
+  teamId    String
+  stats     Json
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  event     SportEvent   @relation(fields: [eventId], references: [id])
+  athlete   SportAthlete @relation(fields: [athleteId], references: [id])
+  team      SportTeam    @relation(fields: [teamId], references: [id])
+
+  @@unique([eventId, athleteId])
+}
+
 enum UserRole {
   USER
   ADMIN
@@ -908,4 +1016,14 @@ enum ChummeTraits {
   NONE
   COMMUNITIES
   ENTERTAINMENT
+}
+
+enum SportEventStatus {
+  SCHEDULED
+  IN_PROGRESS
+  HALFTIME
+  FINAL
+  POSTPONED
+  CANCELLED
+  DELAYED
 }

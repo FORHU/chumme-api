@@ -460,6 +460,21 @@ export default class ChummeCategoryRepo {
       isAd: true,
       chummeTraits: true,
       populationCount: true,
+      chummeVisualDesign: {
+        select: {
+          id: true,
+          colorSet: true,
+          sizeSet: true,
+          position: true,
+          border: true,
+          shadow: true,
+          opacity: true,
+          capacity: true,
+          status: true,
+          tags: true,
+          emojiIcon: true,
+        },
+      },
       chummeSubCategories: {
         where: { deletedAt: null },
         select: {
@@ -470,6 +485,21 @@ export default class ChummeCategoryRepo {
           populationCount: true,
           discoveryKeywords: true,
           channelId: true,
+          chummeVisualDesign: {
+            select: {
+              id: true,
+              colorSet: true,
+              sizeSet: true,
+              position: true,
+              border: true,
+              shadow: true,
+              opacity: true,
+              capacity: true,
+              status: true,
+              tags: true,
+              emojiIcon: true,
+            },
+          },
           chummeTopicCategories: !isCommunities
             ? {
                 where: { deletedAt: null },
