@@ -12,6 +12,7 @@ export default class MusicRepo {
       musicAlbumId,
       musicArtistId,
       musicFileId,
+      fileType,
       ...musicData
     } = data;
 
