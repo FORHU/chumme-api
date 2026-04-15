@@ -41,13 +41,21 @@ const getUploadUrl = async (key: string, contentType: string) => {
  * Function to get a DOWNLOAD (GET) URL
  * @param key - The S3 object key (path)
  * @param bucket - Optional override for the bucket name
+ * @param contentDisposition - Optional Content-Disposition header value (e.g. `attachment; filename="foo.apk"`)
  * @returns A promise that resolves to the signed download URL
  */
 const getDownloadUrl = async (
   key: string,
   bucket: string = AWS_S3_BUCKET_NAME,
+  contentDisposition?: string,
 ) => {
-  const command = new GetObjectCommand({ Bucket: bucket, Key: key });
+  const command = new GetObjectCommand({
+    Bucket: bucket,
+    Key: key,
+    ...(contentDisposition && {
+      ResponseContentDisposition: contentDisposition,
+    }),
+  });
 
   // URL expires in 1 hour (3600 seconds)
   return await getSignedUrl(s3Client, command, { expiresIn: 3600 });
