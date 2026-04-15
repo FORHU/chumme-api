@@ -6,16 +6,21 @@ export default class PlaylistCtrl {
   static async createPlaylist(req: Request, res: Response) {
     const schema = Joi.object({
       name: Joi.string().required(),
-      description: Joi.string().required(),
-      imageUrl: Joi.string().required(),
+      description: Joi.string().default(""),
+      imageUrl: Joi.string().default(""),
+      coverImageUrl: Joi.string().optional(),
+      isPublic: Joi.boolean().default(true),
     });
 
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ message: error.message });
 
     try {
-      const playlist = await PlaylistSvc.createPlaylist(value);
-      return res.status(201).json(playlist);
+      const playlist = await PlaylistSvc.createPlaylist({
+        ...value,
+        userId: req.user.id,
+      });
+      return res.status(201).json({ message: "Playlist created", data: playlist });
     } catch (error: any) {
       return res.status(500).json({ message: error.message || error });
     }
@@ -33,8 +38,10 @@ export default class PlaylistCtrl {
 
   static async getAllPlaylists(req: Request, res: Response) {
     try {
-      const playlists = await PlaylistSvc.getAllPlaylists();
-      return res.json(playlists);
+      // If authenticated, return the user's own playlists; otherwise public only
+      const userId = req.user?.id;
+      const playlists = await PlaylistSvc.getAllPlaylists(userId);
+      return res.json({ data: playlists });
     } catch (error: any) {
       return res.status(500).json({ message: error.message || error });
     }
@@ -130,6 +137,37 @@ export default class PlaylistCtrl {
     } catch (error: any) {
       const status = error.message === "Track already in playlist" ? 409 : 500;
       return res.status(status).json({ message: error.message || error });
+    }
+  }
+
+  /** POST /v1/playlists/:id/cover — upload a cover image */
+  static async uploadCover(req: Request, res: Response) {
+    const { id } = req.params;
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).json({ message: "Image file is required (field: cover)" });
+    }
+
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    if (!allowedTypes.includes(file.mimetype)) {
+      return res.status(400).json({ message: "Only JPEG, PNG, WEBP, or GIF images are allowed" });
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      return res.status(400).json({ message: "Cover image must be under 5 MB" });
+    }
+
+    try {
+      const result = await PlaylistSvc.uploadCover(
+        id,
+        file.buffer,
+        file.originalname,
+        file.mimetype,
+      );
+      return res.json({ message: "Cover updated", data: { coverImageUrl: result.coverImageUrl } });
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message || error });
     }
   }
 

@@ -1,10 +1,12 @@
 import PlaylistRepo from "../repositories/playlist.repository";
 import CacheUtil from "../utils/cache.util";
+import S3Util from "../utils/s3.util";
 
 export default class PlaylistSvc {
   static async createPlaylist(data: any) {
     const playlist = await PlaylistRepo.create(data);
     await CacheUtil.del("playlists:all");
+    if (data.userId) await CacheUtil.del(`playlists:user:${data.userId}`);
     return playlist;
   }
 
@@ -28,12 +30,12 @@ export default class PlaylistSvc {
     return playlist;
   }
 
-  static async getAllPlaylists() {
-    const cachedKey = "playlists:all";
+  static async getAllPlaylists(userId?: string) {
+    const cachedKey = userId ? `playlists:user:${userId}` : "playlists:all";
     const cached = await CacheUtil.get(cachedKey);
     if (cached) return cached;
 
-    const playlists: any = await PlaylistRepo.findAll();
+    const playlists: any = await PlaylistRepo.findAll(userId);
     const formattedPlaylists = playlists.map((playlist: any) => {
       const music = playlist.tracks.map((t: any) => ({
         ...t.music,
@@ -59,6 +61,22 @@ export default class PlaylistSvc {
     await CacheUtil.del(`playlist:${id}`);
     await CacheUtil.del("playlists:all");
     return playlist;
+  }
+
+  static async uploadCover(
+    playlistId: string,
+    fileBuffer: Buffer,
+    filename: string,
+    mimeType: string,
+  ) {
+    const key = `playlists/${playlistId}/cover-${Date.now()}-${filename}`;
+    const coverImageUrl = await S3Util.uploadFileWithKey(fileBuffer, key, mimeType);
+
+    const playlist = await PlaylistRepo.update(playlistId, { coverImageUrl });
+    await CacheUtil.del(`playlist:${playlistId}`);
+    await CacheUtil.del("playlists:all");
+
+    return { coverImageUrl, playlist };
   }
 
   static async addTrack(

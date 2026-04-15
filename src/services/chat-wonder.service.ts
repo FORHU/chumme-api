@@ -10,7 +10,9 @@ import {
 import { parseChatWonderResponse } from "../utils/chat-wonder";
 import { searchDbVideosFromSourceMetadata } from "../utils/chat-wonder/db-video-lookup.util";
 import { detectVideoIntent } from "../utils/openai/detect-video-intent.util";
+import { detectCommunityIntent } from "../utils/openai/detect-community-intent.util";
 import { ParsedVideo } from "../utils/chat-wonder/parse-response.util";
+import { searchDbCommunities, RecommendedCommunity } from "../utils/chat-wonder/db-community-lookup.util";
 import YouTubeService from "./net-communities/youtube.service";
 import ChatSvc from "./chat.service";
 
@@ -156,6 +158,22 @@ export default class ChatWonderSvc {
             `[CHAT.WONDER.SERVICE] No video intent detected for: "${inputText}" — skipping video fetch`,
           );
         }
+
+        // Only fetch communities if the user is asking for one
+        let communities: RecommendedCommunity[] = [];
+        const { wantsCommunity, query: communityQuery } =
+          await detectCommunityIntent(inputText);
+        if (wantsCommunity) {
+          communities = await searchDbCommunities(communityQuery);
+          logger.info(
+            `[CHAT.WONDER.SERVICE] Community intent detected — found ${communities.length} match(es)`,
+          );
+        } else {
+          logger.info(
+            `[CHAT.WONDER.SERVICE] No community intent for: "${inputText}" — skipping community fetch`,
+          );
+        }
+
         // Save user message
         const chatMessage = await ChatSvc.saveUserMessage(
           inputText,
@@ -183,6 +201,7 @@ export default class ChatWonderSvc {
           artist: cleanResponse.artist || [],
           images: cleanResponse.images || [],
           source_metadata: sourceMetadata,
+          communities,
           conversationId,
           chatMessageId: chatMessage.id,
           aiResponseId: aiResponse.id,

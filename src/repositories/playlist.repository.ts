@@ -8,6 +8,13 @@ export default class PlaylistRepo {
     });
   }
 
+  static async findOwner(id: string) {
+    return prisma.musicPlaylist.findUnique({
+      where: { id },
+      select: { userId: true, deletedAt: true },
+    });
+  }
+
   static async findById(id: string) {
     return prisma.musicPlaylist.findUnique({
       where: { id },
@@ -24,10 +31,11 @@ export default class PlaylistRepo {
     });
   }
 
-  static async findAll() {
+  static async findAll(userId?: string) {
     return prisma.musicPlaylist.findMany({
       where: {
         deletedAt: null,
+        ...(userId ? { userId } : { isPublic: true }),
       },
       include: {
         tracks: {
