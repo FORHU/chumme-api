@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import Joi from "joi";
 import MusicSvc from "../services/music.service";
+import LikedSongSvc from "../services/liked-song.service";
 import MusicLibrarySvc from "../services/music-library.service";
 import MediaQueueSvc from "../services/media-queue.service";
 import logger from "../utils/logger";
@@ -51,7 +52,7 @@ export default class MusicCtrl {
   }
 
   static async getMusics(req: Request, res: Response) {
-    const { page, limit, albumId, artistId, playlistId, isKaraoke, search } =
+    const { page, limit, albumId, artistId, playlistId, isKaraoke, search, genre, sort } =
       req.query as any;
     logger.info(`[MusicCtrl] getMusics called`, {
       page,
@@ -70,6 +71,8 @@ export default class MusicCtrl {
         artistId,
         playlistId,
         search,
+        genre,
+        sort,
         isKaraoke:
           isKaraoke === "true"
             ? true
@@ -121,6 +124,73 @@ export default class MusicCtrl {
       return res.json({ message: "Music deleted successfully" });
     } catch (error: any) {
       return res.status(500).json({ message: error.message || error });
+    }
+  }
+
+  static async toggleLike(req: Request, res: Response) {
+    const { id } = req.params;
+    try {
+      const result = await LikedSongSvc.toggleLike(req.user.id, id);
+      return res.json({ data: result });
+    } catch (error: any) {
+      return res.status(404).json({ message: error.message || error });
+    }
+  }
+
+  static async getLikedSongs(req: Request, res: Response) {
+    const schema = Joi.object({
+      limit: Joi.number().integer().min(1).max(50).default(20),
+      cursor: Joi.string().optional(),
+    });
+    const { error, value } = schema.validate(req.query);
+    if (error) return res.status(400).json({ message: error.message });
+
+    try {
+      const result = await LikedSongSvc.getLikedSongs(req.user.id, value);
+      return res.json({ data: result });
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message || error });
+    }
+  }
+
+  static async getNewReleases(req: Request, res: Response) {
+    const schema = Joi.object({
+      limit: Joi.number().integer().min(1).max(50).default(20),
+      cursor: Joi.string().optional(),
+    });
+    const { error, value } = schema.validate(req.query);
+    if (error) return res.status(400).json({ message: error.message });
+
+    try {
+      const result = await MusicSvc.getNewReleases(value);
+      return res.json({ data: result });
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message || error });
+    }
+  }
+
+  static async getTrending(req: Request, res: Response) {
+    const schema = Joi.object({
+      limit: Joi.number().integer().min(1).max(50).default(20),
+    });
+    const { error, value } = schema.validate(req.query);
+    if (error) return res.status(400).json({ message: error.message });
+
+    try {
+      const result = await MusicSvc.getTrending(value.limit);
+      return res.json({ data: result });
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message || error });
+    }
+  }
+
+  static async streamMusic(req: Request, res: Response) {
+    const { id } = req.params;
+    try {
+      const result = await MusicSvc.getStreamInfo(id);
+      return res.json({ data: result });
+    } catch (error: any) {
+      return res.status(404).json({ message: error.message || error });
     }
   }
 

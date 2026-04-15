@@ -60,4 +60,45 @@ export default class PlaylistSvc {
     await CacheUtil.del("playlists:all");
     return playlist;
   }
+
+  static async addTrack(
+    playlistId: string,
+    musicId: string,
+    order: number,
+  ) {
+    const playlist = await PlaylistRepo.findById(playlistId);
+    if (!playlist) throw new Error("Playlist not found");
+
+    const existing = await PlaylistRepo.findTrack(playlistId, musicId);
+    if (existing) throw new Error("Track already in playlist");
+
+    const track = await PlaylistRepo.addTrack(playlistId, musicId, order);
+    await CacheUtil.del(`playlist:${playlistId}`);
+    await CacheUtil.del("playlists:all");
+    return track;
+  }
+
+  static async removeTrack(playlistId: string, musicId: string) {
+    const playlist = await PlaylistRepo.findById(playlistId);
+    if (!playlist) throw new Error("Playlist not found");
+
+    const existing = await PlaylistRepo.findTrack(playlistId, musicId);
+    if (!existing) throw new Error("Track not in playlist");
+
+    await PlaylistRepo.removeTrack(playlistId, musicId);
+    await CacheUtil.del(`playlist:${playlistId}`);
+    await CacheUtil.del("playlists:all");
+  }
+
+  static async reorderTracks(
+    playlistId: string,
+    trackOrder: { musicId: string; order: number }[],
+  ) {
+    const playlist = await PlaylistRepo.findById(playlistId);
+    if (!playlist) throw new Error("Playlist not found");
+
+    await PlaylistRepo.reorderTracks(playlistId, trackOrder);
+    await CacheUtil.del(`playlist:${playlistId}`);
+    await CacheUtil.del("playlists:all");
+  }
 }

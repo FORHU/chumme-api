@@ -113,6 +113,8 @@ export default class MusicRepo {
     playlistId?: string;
     isKaraoke?: boolean;
     search?: string;
+    genre?: string;
+    sort?: "popular" | "newest" | "oldest";
   }) {
     const {
       page = 1,
@@ -122,6 +124,8 @@ export default class MusicRepo {
       playlistId,
       isKaraoke,
       search,
+      genre,
+      sort,
     } = params;
     const skip = (page - 1) * limit;
 
@@ -141,6 +145,7 @@ export default class MusicRepo {
       ...(albumId && { musicAlbumId: albumId }),
       ...(artistId && { musicArtistId: artistId }),
       ...(isKaraoke !== undefined && { isKaraoke }),
+      ...(genre && { genre }),
       ...(playlistId && {
         musicSubPlaylists: {
           some: {
@@ -166,9 +171,12 @@ export default class MusicRepo {
           parts: true,
           musicAlbum: true,
         },
-        orderBy: {
-          createdAt: "desc",
-        },
+        orderBy:
+          sort === "popular"
+            ? { playCount: "desc" }
+            : sort === "oldest"
+              ? { createdAt: "asc" }
+              : { createdAt: "desc" },
       }),
       prisma.music.count({
         where: whereClause,
@@ -184,6 +192,56 @@ export default class MusicRepo {
         totalPages: Math.ceil(total / limit),
       },
     };
+  }
+
+  static async findNewReleases(params: {
+    limit: number;
+    cursor?: string;
+  }) {
+    const since = new Date();
+    since.setDate(since.getDate() - 30);
+
+    const rows = await prisma.music.findMany({
+      where: { deletedAt: null, createdAt: { gte: since } },
+      take: params.limit + 1,
+      ...(params.cursor && { cursor: { id: params.cursor }, skip: 1 }),
+      orderBy: { createdAt: "desc" },
+      include: {
+        musicArtist: true,
+        musicAlbum: true,
+        musicFile: true,
+        parts: true,
+      },
+    });
+
+    const hasNextPage = rows.length > params.limit;
+    const items = hasNextPage ? rows.slice(0, params.limit) : rows;
+    const nextCursor = hasNextPage ? items[items.length - 1].id : null;
+    return { items, nextCursor, hasNextPage };
+  }
+
+  static async findTrending(limit: number) {
+    const since = new Date();
+    since.setDate(since.getDate() - 7);
+
+    return prisma.music.findMany({
+      where: { deletedAt: null, updatedAt: { gte: since } },
+      take: limit,
+      orderBy: { playCount: "desc" },
+      include: {
+        musicArtist: true,
+        musicAlbum: true,
+        musicFile: true,
+        parts: true,
+      },
+    });
+  }
+
+  static async incrementPlayCount(id: string) {
+    return prisma.music.update({
+      where: { id },
+      data: { playCount: { increment: 1 } },
+    });
   }
 
   static async update(id: string, data: any) {

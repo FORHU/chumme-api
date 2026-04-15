@@ -4,9 +4,6 @@ export const getAllArtists = async () => {
   return prisma.chummeArtist.findMany({
     where: {
       isDeleted: false,
-      socialFeedItemCount: {
-        gt: 0,
-      },
     },
     select: {
       id: true,

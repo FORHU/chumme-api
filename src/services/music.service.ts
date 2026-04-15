@@ -146,6 +146,8 @@ export default class MusicSvc {
     playlistId?: string;
     isKaraoke?: boolean;
     search?: string;
+    genre?: string;
+    sort?: "popular" | "newest" | "oldest";
   }) {
     const cachedKey = `musics:${JSON.stringify(params)}`;
     const cached = await CacheUtil.get(cachedKey);
@@ -191,6 +193,45 @@ export default class MusicSvc {
     await CacheUtil.del(`music:${id}`);
     await CacheUtil.delByPattern("musics:*");
     return this.enrichMusicData(music);
+  }
+
+  static async getNewReleases(params: { limit?: number; cursor?: string }) {
+    const limit = Math.min(params.limit ?? 20, 50);
+    const result = await MusicRepo.findNewReleases({ limit, cursor: params.cursor });
+    result.items = result.items.map((m: any) => this.enrichMusicData(m));
+    return result;
+  }
+
+  static async getTrending(limit = 20) {
+    const cacheKey = `music:trending:${limit}`;
+    const cached = await CacheUtil.get(cacheKey);
+    if (cached) {
+      logger.info(`[MusicSvc] Cache HIT for getTrending`);
+      return (cached as any[]).map((m: any) => this.enrichMusicData(m));
+    }
+
+    const tracks = await MusicRepo.findTrending(Math.min(limit, 50));
+    const enriched = tracks.map((m: any) => this.enrichMusicData(m));
+    await CacheUtil.set(cacheKey, enriched, 300); // 5-min TTL for trending
+    return enriched;
+  }
+
+  static async getStreamInfo(id: string) {
+    const music = await this.getMusicById(id);
+    if (!music) throw new Error("Music not found");
+
+    const fileUrl = music.musicFile?.fileUrl;
+    if (!fileUrl) throw new Error("Audio file not found for this track");
+
+    // Fire-and-forget play count increment
+    MusicRepo.incrementPlayCount(id).catch((err) =>
+      logger.warn(`[MusicSvc] Failed to increment playCount for ${id}: ${err}`),
+    );
+
+    return {
+      hlsUrl: fileUrl, // Direct CDN URL; replace with HLS manifest when pipeline is enabled
+      duration: music.duration ?? null,
+    };
   }
 
   static async deleteMusic(id: string) {

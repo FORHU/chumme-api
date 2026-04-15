@@ -52,6 +52,7 @@ model User {
   userEmotionPreferences UserEmotionPreference[]
   userInterests          UserInterest[]
   musicRecords           MusicRecord[]           @relation("MusicRecordSingers")
+  likedSongs             UserLikedSong[]
 }
 
 model Session {
@@ -661,18 +662,20 @@ model MusicFeaturedArtist {
 }
 
 model MusicPlaylist {
-  id          String             @id @default(uuid())
-  musicId     String?
-  createdAt   DateTime           @default(now())
-  deletedAt   DateTime?
-  updatedAt   DateTime           @updatedAt
-  description String
-  imageUrl    String
-  name        String
-  userId      String
-  music       Music?             @relation(fields: [musicId], references: [id])
-  user        User               @relation(fields: [userId], references: [id])
-  tracks      MusicSubPlaylist[]
+  id            String             @id @default(uuid())
+  musicId       String?
+  createdAt     DateTime           @default(now())
+  deletedAt     DateTime?
+  updatedAt     DateTime           @updatedAt
+  description   String
+  imageUrl      String
+  coverImageUrl String?
+  isPublic      Boolean            @default(true)
+  name          String
+  userId        String
+  music         Music?             @relation(fields: [musicId], references: [id])
+  user          User               @relation(fields: [userId], references: [id])
+  tracks        MusicSubPlaylist[]
 }
 
 model MusicSubPlaylist {
@@ -740,10 +743,28 @@ model Music {
   records              MusicRecord[]
   parts                MusicSingerPart[]
   musicSubPlaylists    MusicSubPlaylist[]
+  likedBy              UserLikedSong[]
+  playCount            Int                   @default(0)
+  genre                String?
 
   @@index([musicArtistId])
   @@index([musicAlbumId])
   @@index([musicFileId])
+  @@index([playCount])
+  @@index([genre])
+}
+
+model UserLikedSong {
+  id        String   @id @default(uuid())
+  userId    String
+  musicId   String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+  music     Music    @relation(fields: [musicId], references: [id])
+
+  @@unique([userId, musicId])
+  @@index([userId])
+  @@index([musicId])
 }
 
 model MusicSingerPart {
