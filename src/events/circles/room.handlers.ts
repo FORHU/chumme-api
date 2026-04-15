@@ -4,6 +4,11 @@ import RoomUserChatSvc from "../../services/room-user-chat.service";
 import RoomMessageSvc from "../../services/room-message.service";
 import CircleCacheSvc from "../../services/circle-cache.service";
 import { PresenceBatcher } from "../../utils/presence-batcher";
+import ChatWonderSvc from "../../services/chat-wonder.service";
+import { sendChat } from "../../utils/chat-wonder-api";
+import { parseChatWonderResponse } from "../../utils/chat-wonder";
+import RoomMessageRepo from "../../repositories/room-message.repository";
+import CacheUtil from "../../utils/cache.util";
 
 export const registerRoomHandlers = (
   io: Server,
@@ -123,6 +128,53 @@ export const registerRoomHandlers = (
       console.log(
         `[Circles] 💬 ${socket.user.name} in ${roomName}: ${message.substring(0, 30)}${message.length > 30 ? "..." : ""}`,
       );
+
+      // 5. If message mentions @chumme, invoke AI and broadcast its reply
+      if (message.toLowerCase().includes("@chumme")) {
+        (async () => {
+          try {
+            const strippedInput = message.replace(/@chumme/gi, "").trim();
+            if (!strippedInput) return;
+
+            const sessionId = (await ChatWonderSvc.generateChatSessionId(socket.user.id)) ?? "";
+            const prompt = await ChatWonderSvc.additionalPrompt(strippedInput);
+
+            const result = await sendChat({
+              user_input: prompt,
+              user_history_select: "",
+              session_id: sessionId,
+            });
+
+            const parsed = parseChatWonderResponse(result?.response || "");
+
+            // Save AI reply directly (bypass membership check — isSystem message)
+            await CacheUtil.delByPattern(`messages:room:${room_id}:*`);
+            const aiRoomMessage = await RoomMessageRepo.createMessage({
+              chummeSubCategoryId: room_id,
+              authorId: socket.user.id,
+              content: parsed.message,
+              isSystem: true,
+            });
+
+            const mappedAiMessage =
+              await ChummeSubCategorySvc.mapMessageWithSignedUrl(aiRoomMessage);
+
+            io.to(room_id).emit("send_message_to_room", {
+              ...mappedAiMessage,
+              room_id,
+              isChumme: true,
+              videos: parsed.videos,
+            });
+
+            console.log(
+              `[Circles] 🤖 @chumme replied in ${roomName}: ${parsed.message.substring(0, 30)}...`,
+            );
+          } catch (err: any) {
+            console.error("[Circles] @chumme error:", err);
+            socket.emit("error", { message: "Chumme failed to respond" });
+          }
+        })();
+      }
     } catch (err: any) {
       console.error("[Circles] Send message error:", err);
       socket.emit("error", {
