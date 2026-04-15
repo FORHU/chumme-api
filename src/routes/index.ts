@@ -31,6 +31,7 @@ import musicStudioRoute from "./music-studio.route";
 import musicLibraryRoute from "./music-library.route";
 import mediaRoute from "./media.route";
 import apkRoute from "./web/apk.route";
+import searchRoute from "./search.route";
 
 import systemRoute from "./system.route";
 import socialAccountRoute from "./net-communities/session-social-account.route";
@@ -81,6 +82,7 @@ router.use("/v1/chat-wonder", chatWonderRoute);
 router.use("/v1/artist-persona", chummeArtistPersonaRoute);
 router.use("/v1/music-albums", musicAlbumRoute);
 router.use("/v1/music", musicRoute);
+router.use("/v1/search", searchRoute);
 router.use("/v1/playlists", playlistRoute);
 router.use("/v1/music-records", musicRecordRoute);
 router.use("/v1/music-studios", musicStudioRoute);

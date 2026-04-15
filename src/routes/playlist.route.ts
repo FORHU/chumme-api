@@ -10,6 +10,13 @@ router.get("/:id", PlaylistCtrl.getPlaylistById);
 router.use(authenticate);
 
 router.post("/create", PlaylistCtrl.createPlaylist);
+
+// New RESTful endpoints
+router.patch("/:id", PlaylistCtrl.patchPlaylist);
+router.post("/:id/tracks", PlaylistCtrl.addTrack);
+router.delete("/:id/tracks/:musicId", PlaylistCtrl.removeTrack);
+
+// Legacy aliases (kept for backward compatibility)
 router.patch("/update/:id", PlaylistCtrl.updatePlaylist);
 router.delete("/delete/:id", PlaylistCtrl.deletePlaylist);
 
