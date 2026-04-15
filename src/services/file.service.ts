@@ -95,22 +95,6 @@ export default class FileSvc {
     return file;
   }
 
-  static async viewFile(fileId: string) {
-    const file = await FileRepo.findFileById(fileId);
-
-    if (!file) {
-      throw new Error("File not found");
-    }
-
-    if (!file.fileUrl) {
-      throw new Error("File URL not found");
-    }
-
-    const buffer = await S3Util.getFile(file.fileUrl);
-
-    return { buffer, metadata: file };
-  }
-
   static async deleteFile(fileId: string) {
     const file = await FileRepo.findFileById(fileId);
 
@@ -136,5 +120,4 @@ export default class FileSvc {
     const response = await S3PresignedUtil.getDownloadUrl(key);
     return { message: "File Downloaded Successfully", data: response };
   }
-
 }
