@@ -193,7 +193,9 @@ export default class ChatWonderCtrl {
                 }
 
                 // Only fetch communities if the user is asking for one
-                let communities: Awaited<ReturnType<typeof searchDbCommunities>> = [];
+                let communities: Awaited<
+                  ReturnType<typeof searchDbCommunities>
+                > = [];
                 const { wantsCommunity, query: communityQuery } =
                   await detectCommunityIntent(input);
                 if (wantsCommunity) {

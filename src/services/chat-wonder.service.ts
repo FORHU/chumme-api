@@ -12,7 +12,10 @@ import { searchDbVideosFromSourceMetadata } from "../utils/chat-wonder/db-video-
 import { detectVideoIntent } from "../utils/openai/detect-video-intent.util";
 import { detectCommunityIntent } from "../utils/openai/detect-community-intent.util";
 import { ParsedVideo } from "../utils/chat-wonder/parse-response.util";
-import { searchDbCommunities, RecommendedCommunity } from "../utils/chat-wonder/db-community-lookup.util";
+import {
+  searchDbCommunities,
+  RecommendedCommunity,
+} from "../utils/chat-wonder/db-community-lookup.util";
 import YouTubeService from "./net-communities/youtube.service";
 import ChatSvc from "./chat.service";
 

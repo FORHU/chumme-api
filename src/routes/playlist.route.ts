@@ -20,13 +20,22 @@ router.use(authenticate);
 router.post("/create", PlaylistCtrl.createPlaylist);
 
 // Mutation routes — all guarded: must own the playlist
-router.patch("/:id",                  requirePlaylistOwner, PlaylistCtrl.patchPlaylist);
-router.post("/:id/cover",             requirePlaylistOwner, upload.single("cover"), PlaylistCtrl.uploadCover);
-router.post("/:id/tracks",            requirePlaylistOwner, PlaylistCtrl.addTrack);
-router.delete("/:id/tracks/:musicId", requirePlaylistOwner, PlaylistCtrl.removeTrack);
-router.delete("/delete/:id",          requirePlaylistOwner, PlaylistCtrl.deletePlaylist);
+router.patch("/:id", requirePlaylistOwner, PlaylistCtrl.patchPlaylist);
+router.post(
+  "/:id/cover",
+  requirePlaylistOwner,
+  upload.single("cover"),
+  PlaylistCtrl.uploadCover,
+);
+router.post("/:id/tracks", requirePlaylistOwner, PlaylistCtrl.addTrack);
+router.delete(
+  "/:id/tracks/:musicId",
+  requirePlaylistOwner,
+  PlaylistCtrl.removeTrack,
+);
+router.delete("/delete/:id", requirePlaylistOwner, PlaylistCtrl.deletePlaylist);
 
 // Legacy update alias
-router.patch("/update/:id",           requirePlaylistOwner, PlaylistCtrl.updatePlaylist);
+router.patch("/update/:id", requirePlaylistOwner, PlaylistCtrl.updatePlaylist);
 
 export default router;

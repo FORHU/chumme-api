@@ -20,7 +20,9 @@ export default class PlaylistCtrl {
         ...value,
         userId: req.user.id,
       });
-      return res.status(201).json({ message: "Playlist created", data: playlist });
+      return res
+        .status(201)
+        .json({ message: "Playlist created", data: playlist });
     } catch (error: any) {
       return res.status(500).json({ message: error.message || error });
     }
@@ -146,16 +148,22 @@ export default class PlaylistCtrl {
     const file = req.file;
 
     if (!file) {
-      return res.status(400).json({ message: "Image file is required (field: cover)" });
+      return res
+        .status(400)
+        .json({ message: "Image file is required (field: cover)" });
     }
 
     const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
     if (!allowedTypes.includes(file.mimetype)) {
-      return res.status(400).json({ message: "Only JPEG, PNG, WEBP, or GIF images are allowed" });
+      return res
+        .status(400)
+        .json({ message: "Only JPEG, PNG, WEBP, or GIF images are allowed" });
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      return res.status(400).json({ message: "Cover image must be under 5 MB" });
+      return res
+        .status(400)
+        .json({ message: "Cover image must be under 5 MB" });
     }
 
     try {
@@ -165,7 +173,10 @@ export default class PlaylistCtrl {
         file.originalname,
         file.mimetype,
       );
-      return res.json({ message: "Cover updated", data: { coverImageUrl: result.coverImageUrl } });
+      return res.json({
+        message: "Cover updated",
+        data: { coverImageUrl: result.coverImageUrl },
+      });
     } catch (error: any) {
       return res.status(500).json({ message: error.message || error });
     }

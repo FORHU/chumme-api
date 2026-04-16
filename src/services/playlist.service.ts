@@ -70,7 +70,11 @@ export default class PlaylistSvc {
     mimeType: string,
   ) {
     const key = `playlists/${playlistId}/cover-${Date.now()}-${filename}`;
-    const coverImageUrl = await S3Util.uploadFileWithKey(fileBuffer, key, mimeType);
+    const coverImageUrl = await S3Util.uploadFileWithKey(
+      fileBuffer,
+      key,
+      mimeType,
+    );
 
     const playlist = await PlaylistRepo.update(playlistId, { coverImageUrl });
     await CacheUtil.del(`playlist:${playlistId}`);
@@ -79,11 +83,7 @@ export default class PlaylistSvc {
     return { coverImageUrl, playlist };
   }
 
-  static async addTrack(
-    playlistId: string,
-    musicId: string,
-    order: number,
-  ) {
+  static async addTrack(playlistId: string, musicId: string, order: number) {
     const playlist = await PlaylistRepo.findById(playlistId);
     if (!playlist) throw new Error("Playlist not found");
 

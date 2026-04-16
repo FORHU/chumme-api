@@ -76,9 +76,8 @@ export async function searchDbCommunities(
           );
         });
 
-      matched = filtered.length > 0
-        ? filtered.map((s) => s.community)
-        : allCommunities;
+      matched =
+        filtered.length > 0 ? filtered.map((s) => s.community) : allCommunities;
     }
 
     // Sort by population when no query filtering was applied

@@ -20,6 +20,7 @@ export default class SocialFeedCtrl {
         chummeArtistId,
       );
 
+      res.setHeader("X-Cache", (feed as any)._cacheHit ? "HIT" : "MISS");
       res.json({
         success: true,
         data: feed,
@@ -63,6 +64,8 @@ export default class SocialFeedCtrl {
         countryCode,
         chummeArtistId,
       );
+
+      res.setHeader("X-Cache", (feed as any)._cacheHit ? "HIT" : "MISS");
 
       res.json({
         success: true,

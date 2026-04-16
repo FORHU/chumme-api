@@ -70,8 +70,7 @@ Respond with ONLY valid JSON, no extra text:
     try {
       const parsed = JSON.parse(response.trim());
       const wantsCommunity = parsed.wantsCommunity === true;
-      const query =
-        typeof parsed.query === "string" ? parsed.query.trim() : "";
+      const query = typeof parsed.query === "string" ? parsed.query.trim() : "";
 
       logger.info(
         `[COMMUNITY-INTENT-DETECTION] wantsCommunity: ${wantsCommunity}, query: "${query}"`,

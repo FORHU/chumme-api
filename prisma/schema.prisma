@@ -371,6 +371,7 @@ model SocialFeedItem {
   @@index([chummeCategoryId])
   @@index([chummeSubCategoryId])
   @@index([chummeTopicCategoryId])
+  @@index([isDeleted, score, createdAt])
 }
 
 model SocialFeedSnapshot {

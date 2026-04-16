@@ -76,7 +76,11 @@ export default class ApkSvc {
 
     const key = extractS3Key(release.file!.fileUrl!);
     const contentDisposition = `attachment; filename="chumme v${release.versionName}.apk"`;
-    const url = await S3PresignedUtil.getDownloadUrl(key, undefined, contentDisposition);
+    const url = await S3PresignedUtil.getDownloadUrl(
+      key,
+      undefined,
+      contentDisposition,
+    );
 
     return { url };
   }

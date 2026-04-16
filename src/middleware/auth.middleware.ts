@@ -44,7 +44,8 @@ export const requirePlaylistOwner = async (
   next: NextFunction,
 ) => {
   const playlistId = req.params.id;
-  if (!playlistId) return res.status(400).json({ message: "Playlist ID required" });
+  if (!playlistId)
+    return res.status(400).json({ message: "Playlist ID required" });
 
   const row = await PlaylistRepo.findOwner(playlistId);
   if (!row || row.deletedAt) {

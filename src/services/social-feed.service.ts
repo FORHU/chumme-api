@@ -1,81 +1,79 @@
 import SocialFeedRepo from "../repositories/social-feed.repository";
 import CacheUtil from "../utils/cache.util";
+import RedisUtil from "../utils/redis.util";
+import logger from "../utils/logger";
 import { prisma } from "../utils/prisma";
 export default class SocialFeedSvc {
-  /**
-   * Helper method to format feed items
-   */
-  private static formatFeedItems(feedItems: any[]) {
-    return feedItems
-      .map((item: any) => {
-        // If it has a post object, it's a social post
-        if (item.post) {
-          return {
-            id: item.id,
-            type: "post",
-            content: {
-              id: item.post.id,
-              text: item.post.content,
-              createdAt: item.post.createdAt,
-              user: {
-                id: item.post.user?.id,
-                username: item.post.user?.username,
-                name: item.post.user?.name,
-                avatar: item.post.user?.avatar?.fileUrl,
-              },
-              likesCount: item.post._count?.likes || 0,
-              commentsCount: item.post._count?.comments || 0,
-            },
-          };
-        }
-
-        // If it has an externalUrl, it's a video or media post
-        if (item.externalUrl) {
-          return {
-            id: item.id,
-            type: "video", // Or use a field to distinguish if relevant
-            content: {
-              title: item.title,
-              url: item.externalUrl,
-              platform: item.socialPlatform,
-              metaData: item.metaData,
-              artist: item.chummeArtist,
-              stats: {
-                views: item.views,
-                likes: item.likes,
-                comments: item.comments,
-                bookmarks: item.bookmarks,
-              },
-              createdAt: item.createdAt,
-            },
-          };
-        }
-
-        return null;
-      })
-      .filter(Boolean);
-  }
-
   static async getFeed(
     page: number = 0,
     limit: number = 20,
     countryCode?: string,
     chummeArtistId?: string,
   ) {
+    const startTime = Date.now();
     if (page < 0) {
       throw new Error("Page must be non-negative");
     }
     if (limit < 1 || limit > 50) {
       throw new Error("Limit must be between 1 and 50");
     }
- 
+    if (page > 100) {
+      throw new Error("Maximum page limit exceeded");
+    }
+
+    const cacheKey = `feed:page:${page}:limit:${limit}:country:${countryCode || "all"}:artist:${chummeArtistId || "all"}`;
+    let feedItems = await CacheUtil.get(cacheKey);
+
+    if (feedItems) {
+      (feedItems as any)._cacheHit = true;
+      logger.info("Feed latency", {
+        cacheHit: true,
+        responseTimeMs: Date.now() - startTime,
+        page,
+        limit,
+        cacheKey,
+      });
+      return feedItems;
+    }
+
+    const redis = RedisUtil.useConnection();
+    if (redis) {
+      const lockKey = `lock:${cacheKey}`;
+      const locked = await redis.set(lockKey, "1", { NX: true, EX: 5 });
+      if (!locked) {
+        await new Promise((res) => setTimeout(res, 200));
+        feedItems = await CacheUtil.get(cacheKey);
+        if (feedItems) {
+          (feedItems as any)._cacheHit = true;
+          logger.info("Feed latency", {
+            cacheHit: true,
+            responseTimeMs: Date.now() - startTime,
+            page,
+            limit,
+            cacheKey,
+          });
+          return feedItems;
+        }
+      }
+    }
+
     // Fetch directly from Repo (Sorted by latest createdAt)
-    const feedItems = await SocialFeedRepo.getFeed(
+    feedItems = await SocialFeedRepo.getFeed(
       page,
       limit,
       countryCode,
       chummeArtistId,
     );
+
+    (feedItems as any)._cacheHit = false;
+    await CacheUtil.set(cacheKey, feedItems, 300); // 5 minutes TTL
+    logger.info("Feed latency", {
+      cacheHit: false,
+      responseTimeMs: Date.now() - startTime,
+      page,
+      limit,
+      cacheKey,
+    });
 
     return feedItems;
   }
@@ -93,28 +91,75 @@ export default class SocialFeedSvc {
     countryCode?: string,
     chummeArtistId?: string,
   ) {
+    const startTime = Date.now();
     if (page < 0) {
       throw new Error("Page must be non-negative");
     }
     if (limit < 1 || limit > 50) {
       throw new Error("Limit must be between 1 and 50");
     }
+    if (page > 100) {
+      throw new Error("Maximum page limit exceeded");
+    }
 
-    // Fetch user's discovery preferences
-    const discovery = await prisma.socialUserDiscovery.findUnique({
-      where: { userId },
-      include: {
-        chummeCategories: true,
-        chummeSubCategories: true,
-        chummeTopicCategories: true,
-      },
-    });
+    const cacheKey = `feed:personalized:user:${userId}:page:${page}:limit:${limit}:artist:${chummeArtistId || "all"}`;
+    let feedItems = await CacheUtil.get(cacheKey);
 
-    const topicCategoryIds =
-      discovery?.chummeTopicCategories.map((c: any) => c.id) || [];
+    if (feedItems) {
+      (feedItems as any)._cacheHit = true;
+      logger.info("Personalized feed latency", {
+        cacheHit: true,
+        responseTimeMs: Date.now() - startTime,
+        page,
+        limit,
+        cacheKey,
+      });
+      return feedItems;
+    }
+
+    const redis = RedisUtil.useConnection();
+    if (redis) {
+      const lockKey = `lock:${cacheKey}`;
+      const locked = await redis.set(lockKey, "1", { NX: true, EX: 5 });
+      if (!locked) {
+        await new Promise((res) => setTimeout(res, 200));
+        feedItems = await CacheUtil.get(cacheKey);
+        if (feedItems) {
+          (feedItems as any)._cacheHit = true;
+          logger.info("Personalized feed latency", {
+            cacheHit: true,
+            responseTimeMs: Date.now() - startTime,
+            page,
+            limit,
+            cacheKey,
+          });
+          return feedItems;
+        }
+      }
+    }
+
+    // Cache user discovery preferences to avoid repeated DB hits
+    const discoveryCacheKey = `user:${userId}:discovery`;
+    let topicCategoryIds: string[] = [];
+    let discovery = await CacheUtil.get(discoveryCacheKey);
+
+    if (!discovery) {
+      discovery = await prisma.socialUserDiscovery.findUnique({
+        where: { userId },
+        include: {
+          chummeTopicCategories: { select: { id: true } },
+        },
+      });
+      if (discovery) {
+        await CacheUtil.set(discoveryCacheKey, discovery, 1800); // 30 minutes
+      }
+    }
+
+    topicCategoryIds =
+      discovery?.chummeTopicCategories?.map((c: any) => c.id) || [];
 
     // Fetch directly from Repo (Personalized for following + feed filters)
-    const feedItems = await SocialFeedRepo.getPersonalizedFeed(
+    feedItems = await SocialFeedRepo.getPersonalizedFeed(
       userId,
       page,
       limit,
@@ -123,60 +168,15 @@ export default class SocialFeedSvc {
       chummeArtistId,
     );
 
-    /*
-    // Mix in random items for Discovery (e.g., up to 3 items)
-    const excludeIds = feedItems.map((item: any) => item.id);
-    const randomIds = await SocialFeedRepo.getRandomExternalMedia(
-      3,
-      excludeIds,
-    );
-
-    if (randomIds.length > 0) {
-      const randomItems = await prisma.socialFeedItem.findMany({
-        where: { id: { in: randomIds } },
-        include: {
-          chummeArtist: true,
-          post: {
-            include: {
-              user: {
-                select: {
-                  id: true,
-                  username: true,
-                  name: true,
-                  avatar: { select: { fileUrl: true } },
-                },
-              },
-              _count: {
-                select: {
-                  socialUserLikes: { where: { isDeleted: false } },
-                  socialUserComments: { where: { isDeleted: false } },
-                },
-              },
-            },
-          },
-        },
-      });
-
-      // Map counts like Repo does for consistency
-      const mappedRandomItems = randomItems.map((item: any) => {
-        if (item.post) {
-          (item.post as any)._count = {
-            likes: (item.post as any)._count.socialUserLikes,
-            comments: (item.post as any)._count.socialUserComments,
-          };
-        }
-        return item;
-      });
-
-      feedItems.push(...mappedRandomItems);
-
-      // Sort by date desc so random items blend organically into the stream
-      feedItems.sort(
-        (a: any, b: any) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-      );
-    }
-    */
+    (feedItems as any)._cacheHit = false;
+    await CacheUtil.set(cacheKey, feedItems, 180); // 3 minutes TTL
+    logger.info("Personalized feed latency", {
+      cacheHit: false,
+      responseTimeMs: Date.now() - startTime,
+      page,
+      limit,
+      cacheKey,
+    });
 
     return feedItems;
   }

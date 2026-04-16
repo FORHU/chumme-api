@@ -52,8 +52,17 @@ export default class MusicCtrl {
   }
 
   static async getMusics(req: Request, res: Response) {
-    const { page, limit, albumId, artistId, playlistId, isKaraoke, search, genre, sort } =
-      req.query as any;
+    const {
+      page,
+      limit,
+      albumId,
+      artistId,
+      playlistId,
+      isKaraoke,
+      search,
+      genre,
+      sort,
+    } = req.query as any;
     logger.info(`[MusicCtrl] getMusics called`, {
       page,
       limit,
