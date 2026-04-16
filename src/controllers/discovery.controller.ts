@@ -180,7 +180,7 @@ export default class DiscoveryController {
           externalHandle: channelId,
           chummeArtistId: artist.id,
           isActive: true,
-          crawlIntervalHours: 48,
+          crawlIntervalHours: 1,
           crawlPriority: 1,
         },
       });

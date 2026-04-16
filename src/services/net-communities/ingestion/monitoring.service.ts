@@ -46,6 +46,24 @@ export default class MonitoringSvc {
         where: { chummeTopicCategoryId: { not: null } },
       });
 
+      // 5. Quota & Schedule Health
+      const quotaBlockedCount = await prisma.socialIngestionTarget.count({
+        where: {
+          quotaLimitHitAt: {
+            gte: new Date(Date.now() - 1000 * 60 * 60 * 6), // Within 6h backoff window
+          },
+        },
+      });
+
+      const scheduleModeCounts = await prisma.socialIngestionSchedule.groupBy({
+        by: ["mode"],
+        _count: { id: true },
+      });
+
+      const totalTargets = await prisma.socialIngestionTarget.count({
+        where: { isActive: true },
+      });
+
       return {
         status: workerMetrics ? "active" : "unknown",
         worker: workerMetrics,
@@ -53,6 +71,15 @@ export default class MonitoringSvc {
         database: {
           recentIngestions24h: recentJobs,
           recentSnapshots24h: snapshotCount,
+        },
+        ingestionHealth: {
+          totalActiveTargets: totalTargets,
+          quotaBlockedTargets: quotaBlockedCount,
+          healthyTargets: totalTargets - quotaBlockedCount,
+          schedulesByMode: scheduleModeCounts.map((s) => ({
+            mode: s.mode,
+            count: s._count.id,
+          })),
         },
         scoutCoverage: {
           totalTopics,
