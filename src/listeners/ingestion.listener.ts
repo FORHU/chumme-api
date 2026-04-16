@@ -156,9 +156,10 @@ export class IngestionWorker {
         job.meta?.pageToken,
       );
     } catch (error: any) {
-      if (error.message?.includes("quotaExceeded") || error.code === 403) {
+      const isQuotaError = error.message?.includes("quotaExceeded") || error.code === 403 || error.status === 403;
+      if (isQuotaError) {
         logger.warn(
-          `[IngestionWorker] YouTube Daily Quota Exceeded for ${job.targetId}. Saving state in DB.`,
+          `[IngestionWorker] ${job.platform} Quota/Forbidden error for ${job.targetId}. Applying 6h cooldown.`,
         );
         await prisma.socialIngestionTarget.updateMany({
           where: { platform: job.platform, externalHandle: job.targetId },
@@ -167,7 +168,7 @@ export class IngestionWorker {
             quotaLimitHitAt: new Date(),
           },
         });
-        return; // Graceful stop, do not throw as DLQ cannot solve quota waits
+        return; // Graceful stop
       }
       throw error;
     }

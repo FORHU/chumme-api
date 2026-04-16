@@ -80,7 +80,7 @@ export class SchedulingService {
           { quotaLimitHitAt: null },
           {
             quotaLimitHitAt: {
-              lt: new Date(now.getTime() - 1000 * 60 * 60 * 24), // 24h backoff
+              lt: new Date(now.getTime() - 1000 * 60 * 60 * 6), // 6h backoff (reduced from 24h)
             },
           },
         ],
@@ -101,17 +101,11 @@ export class SchedulingService {
         ];
       }
 
-      where.AND.push({
-        chummeTopicCategory: {
-          chummeTraits: "ENTERTAINMENT",
-        },
-      });
+      // Removed hardcoded ENTERTAINMENT trait filter to allow all categories
 
       const targetsToCrawl = await prisma.socialIngestionTarget.findMany({
         where,
         include: {
-          chummeArtist: true,
-          chummeCategory: true,
           chummeSubCategory: true,
           chummeTopicCategory: true,
           schedules: {
