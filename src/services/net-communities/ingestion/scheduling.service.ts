@@ -23,11 +23,35 @@ export class SchedulingService {
 
     logger.info("[SchedulingService] Starting periodic ingestion scheduler...");
 
-    // Initial run
-    await this.processScheduledTasks();
-    await this.processScoutTasks();
-    await this.processLiveHeartbeat();
-    await RankingService.calculateGrowthScores();
+    // Initial run - Each step isolated to prevent cascade failure if one API fails (e.g. 403)
+    try {
+      await this.processScheduledTasks();
+    } catch (err) {
+      logger.error("[SchedulingService] processScheduledTasks failed at startup", err);
+    }
+
+    try {
+      await this.processScoutTasks();
+    } catch (err) {
+      logger.error("[SchedulingService] processScoutTasks failed at startup", err);
+    }
+
+    try {
+      await this.processLiveHeartbeat();
+    } catch (err) {
+      const msg = (err as any).message || "";
+      if (msg.includes("403") || msg.includes("quota")) {
+        logger.warn("[SchedulingService] YouTube API Quota/Forbidden at startup. Skipping live heartbeat sync.");
+      } else {
+        logger.error("[SchedulingService] processLiveHeartbeat failed at startup", err);
+      }
+    }
+
+    try {
+      await RankingService.calculateGrowthScores();
+    } catch (err) {
+      logger.error("[SchedulingService] calculateGrowthScores failed at startup", err);
+    }
 
     this.intervalHandle = setInterval(async () => {
       await this.processScheduledTasks();
