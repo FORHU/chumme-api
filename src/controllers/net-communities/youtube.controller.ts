@@ -1,6 +1,5 @@
 import { Request, Response } from "express";
 import YouTubeService from "../../services/net-communities/youtube.service";
-import SocialFeedSvc from "../../services/social-feed.service";
 
 export default class YouTubeCtrl {
   /**
@@ -168,102 +167,4 @@ export default class YouTubeCtrl {
     }
   }
 
-  /**
-   * Import videos from a playlist into the database
-   */
-  static async importPlaylistVideos(req: Request, res: Response) {
-    try {
-      const { playlistId, maxResults, artistId } = req.body;
-
-      if (!playlistId) {
-        return res
-          .status(400)
-          .json({ message: "playlistId is required in request body" });
-      }
-
-      const results = await YouTubeService.getPlaylistVideos(
-        playlistId as string,
-        maxResults ? parseInt(maxResults as string) : 10,
-      );
-
-      const imported = [];
-      for (const item of results.items) {
-        const videoId = item.contentDetails?.videoId;
-        const title = item.snippet?.title || "YouTube Video";
-        const externalUrl = `https://www.youtube.com/watch?v=${videoId}`;
-
-        if (!videoId) continue;
-
-        const result = await SocialFeedSvc.upsertExternalMedia({
-          externalUrl,
-          title,
-          socialPlatform: "YOUTUBE",
-          chummeArtistId: artistId,
-          metaData: {
-            youtubeId: videoId,
-            snippet: item.snippet,
-            contentDetails: item.contentDetails,
-          },
-        });
-
-        imported.push({
-          videoId,
-          title,
-          status: result.isUpdate ? "updated" : "created",
-        });
-      }
-
-      return res.json({
-        message: `Imported ${imported.length} videos from playlist`,
-        data: imported,
-      });
-    } catch (error: any) {
-      console.error("YouTubeCtrl.importPlaylistVideos Error:", error);
-      return res
-        .status(500)
-        .json({ message: error.message || "Internal server error" });
-    }
-  }
-
-  /**
-   * Import latest videos from a channel into the database
-   */
-  static async importChannelVideos(req: Request, res: Response) {
-    try {
-      const { handle, channelId } = req.body;
-
-      if (!handle && !channelId) {
-        return res.status(400).json({
-          message: "Either 'handle' or 'channelId' is required in request body",
-        });
-      }
-
-      const channel = await YouTubeService.getChannel({
-        handle: handle as string,
-        channelId: channelId as string,
-      });
-
-      if (!channel) {
-        return res.status(404).json({ message: "Channel not found" });
-      }
-
-      const uploadsPlaylistId =
-        channel.contentDetails?.relatedPlaylists?.uploads;
-
-      if (!uploadsPlaylistId) {
-        return res.status(404).json({
-          message: "Could not find uploads playlist for this channel",
-        });
-      }
-
-      // Re-use logic for playlist import
-      req.body.playlistId = uploadsPlaylistId;
-      return await this.importPlaylistVideos(req, res);
-    } catch (error: any) {
-      console.error("YouTubeCtrl.importChannelVideos Error:", error);
-      return res
-        .status(500)
-        .json({ message: error.message || "Internal server error" });
-    }
-  }
 }

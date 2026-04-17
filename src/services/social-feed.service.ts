@@ -9,19 +9,20 @@ export default class SocialFeedSvc {
     limit: number = 20,
     countryCode?: string,
     chummeArtistId?: string,
+    cursor?: string,
   ) {
     const startTime = Date.now();
-    if (page < 0) {
-      throw new Error("Page must be non-negative");
-    }
     if (limit < 1 || limit > 50) {
       throw new Error("Limit must be between 1 and 50");
     }
-    if (page > 100) {
-      throw new Error("Maximum page limit exceeded");
+    if (!cursor) {
+      if (page < 0) throw new Error("Page must be non-negative");
+      if (page > 100) throw new Error("Maximum page limit exceeded");
     }
 
-    const cacheKey = `feed:page:${page}:limit:${limit}:country:${countryCode || "all"}:artist:${chummeArtistId || "all"}`;
+    const cacheKey = cursor
+      ? `feed:page:cursor:${cursor}:limit:${limit}:country:${countryCode || "all"}:artist:${chummeArtistId || "all"}`
+      : `feed:page:${page}:limit:${limit}:country:${countryCode || "all"}:artist:${chummeArtistId || "all"}`;
     let feedItems = await CacheUtil.get(cacheKey);
 
     if (feedItems) {
@@ -31,6 +32,7 @@ export default class SocialFeedSvc {
         responseTimeMs: Date.now() - startTime,
         page,
         limit,
+        cursor,
         cacheKey,
       });
       return feedItems;
@@ -50,6 +52,7 @@ export default class SocialFeedSvc {
             responseTimeMs: Date.now() - startTime,
             page,
             limit,
+            cursor,
             cacheKey,
           });
           return feedItems;
@@ -57,12 +60,12 @@ export default class SocialFeedSvc {
       }
     }
 
-    // Fetch directly from Repo (Sorted by latest createdAt)
     feedItems = await SocialFeedRepo.getFeed(
       page,
       limit,
       countryCode,
       chummeArtistId,
+      cursor,
     );
 
     (feedItems as any)._cacheHit = false;
@@ -72,6 +75,7 @@ export default class SocialFeedSvc {
       responseTimeMs: Date.now() - startTime,
       page,
       limit,
+      cursor,
       cacheKey,
     });
 
@@ -90,19 +94,21 @@ export default class SocialFeedSvc {
     limit: number = 5,
     countryCode?: string,
     chummeArtistId?: string,
+    cursor?: string,
   ) {
     const startTime = Date.now();
-    if (page < 0) {
-      throw new Error("Page must be non-negative");
-    }
     if (limit < 1 || limit > 50) {
       throw new Error("Limit must be between 1 and 50");
     }
-    if (page > 100) {
-      throw new Error("Maximum page limit exceeded");
+    if (!cursor) {
+      if (page < 0) throw new Error("Page must be non-negative");
+      if (page > 100) throw new Error("Maximum page limit exceeded");
     }
 
-    const cacheKey = `feed:personalized:user:${userId}:page:${page}:limit:${limit}:artist:${chummeArtistId || "all"}`;
+    const cacheKey = cursor
+      ? `feed:personalized:user:${userId}:cursor:${cursor}:limit:${limit}:artist:${chummeArtistId || "all"}`
+      : `feed:personalized:user:${userId}:page:${page}:limit:${limit}:artist:${chummeArtistId || "all"}`;
+    // Both key formats are covered by existing `feed:personalized:*` invalidation pattern
     let feedItems = await CacheUtil.get(cacheKey);
 
     if (feedItems) {
@@ -112,6 +118,7 @@ export default class SocialFeedSvc {
         responseTimeMs: Date.now() - startTime,
         page,
         limit,
+        cursor,
         cacheKey,
       });
       return feedItems;
@@ -131,6 +138,7 @@ export default class SocialFeedSvc {
             responseTimeMs: Date.now() - startTime,
             page,
             limit,
+            cursor,
             cacheKey,
           });
           return feedItems;
@@ -158,7 +166,6 @@ export default class SocialFeedSvc {
     topicCategoryIds =
       discovery?.chummeTopicCategories?.map((c: any) => c.id) || [];
 
-    // Fetch directly from Repo (Personalized for following + feed filters)
     feedItems = await SocialFeedRepo.getPersonalizedFeed(
       userId,
       page,
@@ -166,6 +173,7 @@ export default class SocialFeedSvc {
       countryCode,
       topicCategoryIds,
       chummeArtistId,
+      cursor,
     );
 
     (feedItems as any)._cacheHit = false;
@@ -175,6 +183,7 @@ export default class SocialFeedSvc {
       responseTimeMs: Date.now() - startTime,
       page,
       limit,
+      cursor,
       cacheKey,
     });
 

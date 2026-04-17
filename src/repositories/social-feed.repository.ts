@@ -13,74 +13,43 @@ export default class SocialFeedRepo {
     });
   }
 
-  /**
-   * Get paginated feed with all content
-   */
-  static async getFeed(
-    page: number = 0,
-    limit: number = 20,
-    countryCode?: string,
-    chummeArtistId?: string,
-  ) {
-    const where: any = {
-      isDeleted: false,
-      chummeArtistId: chummeArtistId || undefined,
-    };
-
-    if (countryCode) {
-      where.AND = [
-        { NOT: { blockedCountries: { has: countryCode } } },
-        {
-          OR: [
-            { allowedCountries: { equals: [] } },
-            { allowedCountries: { has: countryCode } },
-          ],
-        },
-      ];
-    }
-
-    const items = await prisma.socialFeedItem.findMany({
-      where,
-      include: {
-        chummeArtist: {
+  private static readonly FEED_INCLUDE = {
+    chummeArtist: {
+      select: {
+        id: true,
+        name: true,
+        imageUrl: true,
+        isLive: true,
+        subscriberCount: true,
+        totalViews: true,
+        lastLiveAt: true,
+      },
+    },
+    post: {
+      where: { isDeleted: false },
+      select: {
+        id: true,
+        content: true,
+        createdAt: true,
+        user: {
           select: {
             id: true,
+            username: true,
             name: true,
-            imageUrl: true,
-            isLive: true,
-            subscriberCount: true,
-            totalViews: true,
-            lastLiveAt: true,
+            avatar: { select: { fileUrl: true } },
           },
         },
-        post: {
-          where: { isDeleted: false },
+        _count: {
           select: {
-            id: true,
-            content: true,
-            createdAt: true,
-            user: {
-              select: {
-                id: true,
-                username: true,
-                name: true,
-                avatar: { select: { fileUrl: true } },
-              },
-            },
-            _count: {
-              select: {
-                socialUserLikes: { where: { isDeleted: false } },
-                socialUserComments: { where: { isDeleted: false } },
-              },
-            },
+            socialUserLikes: { where: { isDeleted: false } },
+            socialUserComments: { where: { isDeleted: false } },
           },
         },
       },
-      orderBy: { createdAt: "desc" },
-      skip: page * limit,
-      take: limit,
-    });
+    },
+  } as const;
 
+  private static normalizeFeedItems(items: any[]) {
     return items.map((item) => {
       if (item.post) {
         (item.post as any)._count = {
@@ -92,6 +61,56 @@ export default class SocialFeedRepo {
     });
   }
 
+  private static buildCountryFilter(countryCode?: string) {
+    if (!countryCode) return undefined;
+    return [
+      { NOT: { blockedCountries: { has: countryCode } } },
+      {
+        OR: [
+          { allowedCountries: { equals: [] } },
+          { allowedCountries: { has: countryCode } },
+        ],
+      },
+    ];
+  }
+
+  /**
+   * Get paginated feed with all content.
+   * Supports cursor-based pagination (preferred) or offset-based (legacy).
+   */
+  static async getFeed(
+    page: number = 0,
+    limit: number = 20,
+    countryCode?: string,
+    chummeArtistId?: string,
+    cursor?: string,
+  ) {
+    const where: any = {
+      isDeleted: false,
+      chummeArtistId: chummeArtistId || undefined,
+    };
+
+    const countryFilter = this.buildCountryFilter(countryCode);
+    if (countryFilter) where.AND = countryFilter;
+
+    const paginationArgs: any = { take: limit };
+    if (cursor) {
+      paginationArgs.cursor = { id: cursor };
+      paginationArgs.skip = 1; // skip the cursor item itself
+    } else {
+      paginationArgs.skip = page * limit;
+    }
+
+    const items = await prisma.socialFeedItem.findMany({
+      where,
+      include: this.FEED_INCLUDE,
+      orderBy: { createdAt: "desc" },
+      ...paginationArgs,
+    });
+
+    return this.normalizeFeedItems(items);
+  }
+
   /**
    * Get trending feed ordered by growth score
    */
@@ -99,62 +118,28 @@ export default class SocialFeedRepo {
     page: number = 0,
     limit: number = 20,
     chummeArtistId?: string,
+    cursor?: string,
   ) {
+    const paginationArgs: any = { take: limit };
+    if (cursor) {
+      paginationArgs.cursor = { id: cursor };
+      paginationArgs.skip = 1;
+    } else {
+      paginationArgs.skip = page * limit;
+    }
+
     const items = await prisma.socialFeedItem.findMany({
       where: {
         isDeleted: false,
-        score: { gt: 0 }, // Only show items with some momentum
+        score: { gt: 0 },
         chummeArtistId: chummeArtistId || undefined,
       },
-      include: {
-        chummeArtist: {
-          select: {
-            id: true,
-            name: true,
-            imageUrl: true,
-            isLive: true,
-            subscriberCount: true,
-            totalViews: true,
-            lastLiveAt: true,
-          },
-        },
-        post: {
-          where: { isDeleted: false },
-          select: {
-            id: true,
-            content: true,
-            createdAt: true,
-            user: {
-              select: {
-                id: true,
-                username: true,
-                name: true,
-                avatar: { select: { fileUrl: true } },
-              },
-            },
-            _count: {
-              select: {
-                socialUserLikes: { where: { isDeleted: false } },
-                socialUserComments: { where: { isDeleted: false } },
-              },
-            },
-          },
-        },
-      },
+      include: this.FEED_INCLUDE,
       orderBy: { score: "desc" },
-      skip: page * limit,
-      take: limit,
+      ...paginationArgs,
     });
 
-    return items.map((item) => {
-      if (item.post) {
-        (item.post as any)._count = {
-          likes: (item.post as any)._count.socialUserLikes,
-          comments: (item.post as any)._count.socialUserComments,
-        };
-      }
-      return item;
-    });
+    return this.normalizeFeedItems(items);
   }
 
   /**
@@ -170,6 +155,7 @@ export default class SocialFeedRepo {
     countryCode?: string,
     topicCategoryIds: string[] = [],
     chummeArtistId?: string,
+    cursor?: string,
   ) {
     const orConditions: Prisma.SocialFeedItemWhereInput[] = [];
 
@@ -180,72 +166,28 @@ export default class SocialFeedRepo {
     const where: any = {
       isDeleted: false,
       chummeArtistId: chummeArtistId || undefined,
-
       OR: orConditions.length > 0 ? orConditions : undefined,
     };
 
-    if (countryCode) {
-      where.AND = [
-        { NOT: { blockedCountries: { has: countryCode } } },
-        {
-          OR: [
-            { allowedCountries: { equals: [] } },
-            { allowedCountries: { has: countryCode } },
-          ],
-        },
-      ];
+    const countryFilter = this.buildCountryFilter(countryCode);
+    if (countryFilter) where.AND = countryFilter;
+
+    const paginationArgs: any = { take: limit };
+    if (cursor) {
+      paginationArgs.cursor = { id: cursor };
+      paginationArgs.skip = 1;
+    } else {
+      paginationArgs.skip = page * limit;
     }
 
     const items = await prisma.socialFeedItem.findMany({
       where,
-      include: {
-        chummeArtist: {
-          select: {
-            id: true,
-            name: true,
-            imageUrl: true,
-            isLive: true,
-            subscriberCount: true,
-            totalViews: true,
-            lastLiveAt: true,
-          },
-        },
-        post: {
-          select: {
-            id: true,
-            content: true,
-            createdAt: true,
-            user: {
-              select: {
-                id: true,
-                username: true,
-                name: true,
-                avatar: { select: { fileUrl: true } },
-              },
-            },
-            _count: {
-              select: {
-                socialUserLikes: { where: { isDeleted: false } },
-                socialUserComments: { where: { isDeleted: false } },
-              },
-            },
-          },
-        },
-      },
+      include: this.FEED_INCLUDE,
       orderBy: [{ score: "desc" }, { createdAt: "desc" }],
-      skip: page * limit,
-      take: limit,
+      ...paginationArgs,
     });
 
-    return items.map((item) => {
-      if (item.post) {
-        (item.post as any)._count = {
-          likes: (item.post as any)._count.socialUserLikes,
-          comments: (item.post as any)._count.socialUserComments,
-        };
-      }
-      return item;
-    });
+    return this.normalizeFeedItems(items);
   }
 
   /**
