@@ -11,6 +11,7 @@ export default class SocialFeedCtrl {
       const page = parseInt(req.query.page as string) || 0;
       const limit = parseInt(req.query.limit as string) || 5;
       const chummeArtistId = req.query.chummeArtistId as string | undefined;
+      const cursor = req.query.cursor as string | undefined;
 
       const countryCode = req.headers["x-country-code"] as string | undefined;
       const feed = await SocialFeedSvc.getFeed(
@@ -18,16 +19,21 @@ export default class SocialFeedCtrl {
         limit,
         countryCode,
         chummeArtistId,
+        cursor,
       );
+
+      const nextCursor =
+        feed.length === limit ? (feed[feed.length - 1] as any)?.id : undefined;
 
       res.setHeader("X-Cache", (feed as any)._cacheHit ? "HIT" : "MISS");
       res.json({
         success: true,
         data: feed,
         pagination: {
-          page,
+          page: cursor ? undefined : page,
           limit,
           hasMore: feed.length === limit,
+          nextCursor,
         },
       });
     } catch (error: any) {
@@ -56,6 +62,7 @@ export default class SocialFeedCtrl {
       const page = parseInt(req.query.page as string) || 0;
       const limit = parseInt(req.query.limit as string) || 20;
       const chummeArtistId = req.query.chummeArtistId as string | undefined;
+      const cursor = req.query.cursor as string | undefined;
       const countryCode = req.headers["x-country-code"] as string | undefined;
       const feed = await SocialFeedSvc.getPersonalizedFeed(
         userId,
@@ -63,7 +70,13 @@ export default class SocialFeedCtrl {
         limit,
         countryCode,
         chummeArtistId,
+        cursor,
       );
+
+      const nextCursor =
+        feed?.length === limit
+          ? (feed[feed.length - 1] as any)?.id
+          : undefined;
 
       res.setHeader("X-Cache", (feed as any)._cacheHit ? "HIT" : "MISS");
 
@@ -71,9 +84,10 @@ export default class SocialFeedCtrl {
         success: true,
         data: feed,
         pagination: {
-          page,
+          page: cursor ? undefined : page,
           limit,
           hasMore: feed?.length === limit,
+          nextCursor,
         },
       });
     } catch (error: any) {

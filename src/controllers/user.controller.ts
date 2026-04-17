@@ -30,18 +30,6 @@ export default class UserCtrl {
     }
   }
 
-  static async getAllUsers(req: Request, res: Response) {
-    try {
-      const users = await UserSvc.getAllUsers();
-      return res.json(users);
-    } catch (error) {
-      return res.status(500).json({
-        message:
-          error instanceof Error ? error.message : "Failed to fetch users",
-      });
-    }
-  }
-
   static async updateUser(req: Request, res: Response) {
     try {
       const schema = Joi.object({
