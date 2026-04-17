@@ -119,7 +119,7 @@ connectToPrisma()
         console.error("Failed to initialize Ingestion Pipeline:", error);
       }
 
-      /*
+      
       // Media Processing Worker (Video/HLS) - DISABLED (Stale)
       try {
         const { MediaProcessingWorker } = await import(
@@ -133,7 +133,7 @@ connectToPrisma()
       } catch (error) {
         console.error("Failed to initialize Media Processing worker:", error);
       }
-      */
+      
     } else {
       console.log("Workers disabled by START_WORKERS=false");
     }

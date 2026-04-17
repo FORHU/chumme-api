@@ -6,7 +6,6 @@ import {
 } from "../listeners/ingestion.listener";
 import SocialFeedRepo from "../repositories/social-feed.repository";
 import * as ArtistRepo from "../repositories/chumme-artist.repository";
-import RankingService from "../services/net-communities/ingestion/ranking.service";
 import { SchedulingService } from "../services/net-communities/ingestion/scheduling.service";
 import { QuotaService } from "../services/net-communities/ingestion/quota.service";
 import YouTubeService from "../services/net-communities/youtube.service";
@@ -55,22 +54,6 @@ export default class DiscoveryController {
       });
     } catch (error: any) {
       logger.error("[DiscoveryController] Error fetching rising stars:", error);
-      return res
-        .status(500)
-        .json({ message: error.message || "Internal server error" });
-    }
-  }
-
-  /**
-   * Manually trigger a ranking calculation (Admin only)
-   */
-  static async triggerRankingCalculation(req: Request, res: Response) {
-    try {
-      const count = await RankingService.calculateGrowthScores();
-      return res.json({
-        message: `Ranking calculation completed for ${count} items`,
-      });
-    } catch (error: any) {
       return res
         .status(500)
         .json({ message: error.message || "Internal server error" });

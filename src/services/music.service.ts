@@ -197,7 +197,10 @@ export default class MusicSvc {
 
   static async getNewReleases(params: { limit?: number; cursor?: string }) {
     const limit = Math.min(params.limit ?? 20, 50);
-    const result = await MusicRepo.findNewReleases({ limit, cursor: params.cursor });
+    const result = await MusicRepo.findNewReleases({
+      limit,
+      cursor: params.cursor,
+    });
     result.items = result.items.map((m: any) => this.enrichMusicData(m));
     return result;
   }

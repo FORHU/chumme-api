@@ -76,9 +76,11 @@ export default class CacheUtil {
         );
         return;
       }
-      const keys = await redis.keys(pattern);
-      if (keys.length) {
-        await redis.del(keys);
+      for await (const key of redis.scanIterator({
+        MATCH: pattern,
+        COUNT: 100,
+      })) {
+        await redis.del(key);
       }
     } catch (error) {
       logger.error(

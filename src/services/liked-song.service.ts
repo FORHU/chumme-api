@@ -34,7 +34,10 @@ export default class LikedSongSvc {
     params: { limit?: number; cursor?: string },
   ) {
     const limit = Math.min(params.limit ?? 20, 50);
-    return LikedSongRepo.findAllByUser(userId, { limit, cursor: params.cursor });
+    return LikedSongRepo.findAllByUser(userId, {
+      limit,
+      cursor: params.cursor,
+    });
   }
 
   static async isLiked(userId: string, musicId: string): Promise<boolean> {

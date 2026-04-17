@@ -12,7 +12,6 @@ export default class MusicRepo {
       musicAlbumId,
       musicArtistId,
       musicFileId,
-      fileType,
       ...musicData
     } = data;
 
@@ -194,10 +193,7 @@ export default class MusicRepo {
     };
   }
 
-  static async findNewReleases(params: {
-    limit: number;
-    cursor?: string;
-  }) {
+  static async findNewReleases(params: { limit: number; cursor?: string }) {
     const since = new Date();
     since.setDate(since.getDate() - 30);
 

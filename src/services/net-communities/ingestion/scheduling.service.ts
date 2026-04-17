@@ -27,13 +27,19 @@ export class SchedulingService {
     try {
       await this.processScheduledTasks();
     } catch (err) {
-      logger.error("[SchedulingService] processScheduledTasks failed at startup", err);
+      logger.error(
+        "[SchedulingService] processScheduledTasks failed at startup",
+        err,
+      );
     }
 
     try {
       await this.processScoutTasks();
     } catch (err) {
-      logger.error("[SchedulingService] processScoutTasks failed at startup", err);
+      logger.error(
+        "[SchedulingService] processScoutTasks failed at startup",
+        err,
+      );
     }
 
     try {
@@ -41,16 +47,24 @@ export class SchedulingService {
     } catch (err) {
       const msg = (err as any).message || "";
       if (msg.includes("403") || msg.includes("quota")) {
-        logger.warn("[SchedulingService] YouTube API Quota/Forbidden at startup. Skipping live heartbeat sync.");
+        logger.warn(
+          "[SchedulingService] YouTube API Quota/Forbidden at startup. Skipping live heartbeat sync.",
+        );
       } else {
-        logger.error("[SchedulingService] processLiveHeartbeat failed at startup", err);
+        logger.error(
+          "[SchedulingService] processLiveHeartbeat failed at startup",
+          err,
+        );
       }
     }
 
     try {
       await RankingService.calculateGrowthScores();
     } catch (err) {
-      logger.error("[SchedulingService] calculateGrowthScores failed at startup", err);
+      logger.error(
+        "[SchedulingService] calculateGrowthScores failed at startup",
+        err,
+      );
     }
 
     this.intervalHandle = setInterval(async () => {

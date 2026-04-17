@@ -136,7 +136,8 @@ export const registerRoomHandlers = (
             const strippedInput = message.replace(/@chumme/gi, "").trim();
             if (!strippedInput) return;
 
-            const sessionId = (await ChatWonderSvc.generateChatSessionId(socket.user.id)) ?? "";
+            const sessionId =
+              (await ChatWonderSvc.generateChatSessionId(socket.user.id)) ?? "";
             const prompt = await ChatWonderSvc.additionalPrompt(strippedInput);
 
             const result = await sendChat({
