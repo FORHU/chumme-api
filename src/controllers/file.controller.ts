@@ -78,6 +78,15 @@ export default class FileCtrl {
     }
   }
 
+  static async getAllFiles(req: Request, res: Response) {
+    try {
+      const files = await FileSvc.getAllFiles();
+      return res.status(200).json({ files });
+    } catch (err: any) {
+      return res.status(400).json({ message: err.message || err });
+    }
+  }
+
   static async getFile(req: Request, res: Response) {
     try {
       const { id } = req.params;
