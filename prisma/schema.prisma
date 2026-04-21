@@ -431,6 +431,8 @@ model SocialIngestionTarget {
   updatedAt             DateTime                  @updatedAt
   quotaLimitHitAt       DateTime?
   nextPageToken         String?
+  isHistoryCaughtUp     Boolean                   @default(false)
+  backfillToken         String?
   webSubExpiresAt       DateTime?
   webSubState           String?
   webSubSubscribedAt    DateTime?
