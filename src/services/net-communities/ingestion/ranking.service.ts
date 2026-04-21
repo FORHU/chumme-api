@@ -125,9 +125,7 @@ export default class RankingService {
 
       // 5. Cache top trending items in Redis for fast mobile API reads
       try {
-        const topItems = updates
-          .sort((a, b) => b.score - a.score)
-          .slice(0, 50);
+        const topItems = updates.sort((a, b) => b.score - a.score).slice(0, 50);
         await RedisUtil.redisClient.set(
           TRENDING_CACHE_KEY,
           JSON.stringify(topItems),

@@ -1,8 +1,9 @@
 import { prisma } from "../../../utils/prisma";
 import { rabbitMQService } from "../../../utils/rabbitmq";
 import {
-  IngestionJobType,
   IngestionJob,
+  IngestionJobType,
+  IngestionMode,
 } from "../../../listeners/ingestion.listener";
 import logger from "../../../utils/logger";
 import { SocialPlatform } from "@prisma/client";
@@ -193,33 +194,58 @@ export class SchedulingService {
       target.chummeTopicCategory?.name ||
       target.externalHandle;
 
-    logger.info(
-      `[SchedulingService] Queuing DISCOVERY job for ${targetName} on ${target.platform}`,
-    );
-
-    const job: IngestionJob = {
+    // 1. Sync Job (Priority: Higher)
+    const syncJob: IngestionJob = {
       type: IngestionJobType.DISCOVERY,
       platform: target.platform,
       targetId: target.externalHandle,
-      priority: target.crawlPriority,
+      priority: Math.min(target.crawlPriority + 2, 10), // Boost sync priority
       meta: {
+        mode: IngestionMode.SYNC,
         artistId: target.chummeArtistId,
         topicCategoryId: target.chummeTopicCategoryId,
-        force: true, // Bypass worker-level deduplication for manual triggers
-        // Legacy support for higher levels if needed by platform connectors
+        force: false, // Don't force, stop on duplicate
         categoryId: target.chummeCategoryId,
         subCategoryId: target.chummeSubCategoryId,
-        pageToken: target.nextPageToken || undefined,
       },
     };
 
     await rabbitMQService.publishMessage(
       `ingestion.${IngestionJobType.DISCOVERY}`,
-      job,
-      {
-        priority: job.priority,
-      },
+      syncJob,
+      { priority: syncJob.priority },
     );
+
+    // 2. Backfill Job (Only if not caught up, Priority: Lower)
+    if (!target.isHistoryCaughtUp) {
+      const backfillJob: IngestionJob = {
+        type: IngestionJobType.DISCOVERY,
+        platform: target.platform,
+        targetId: target.externalHandle,
+        priority: Math.max(target.crawlPriority - 1, 1), // Lower priority for history
+        meta: {
+          mode: IngestionMode.BACKFILL,
+          artistId: target.chummeArtistId,
+          topicCategoryId: target.chummeTopicCategoryId,
+          force: true, // Keep going until the end
+          backfillToken: target.backfillToken || undefined,
+          categoryId: target.chummeCategoryId,
+          subCategoryId: target.chummeSubCategoryId,
+        },
+      };
+
+      await rabbitMQService.publishMessage(
+        `ingestion.${IngestionJobType.DISCOVERY}`,
+        backfillJob,
+        { priority: backfillJob.priority },
+      );
+
+      logger.info(
+        `[SchedulingService] Queued SYNC & BACKFILL jobs for ${targetName}`,
+      );
+    } else {
+      logger.info(`[SchedulingService] Queued SYNC job for ${targetName}`);
+    }
 
     // Update lastCrawledAt
     await prisma.socialIngestionTarget.update({
