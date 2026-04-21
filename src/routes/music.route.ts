@@ -5,16 +5,17 @@ import { upload } from "../middleware/upload.middleware";
 
 const router = express.Router();
 
+router.use(authenticate);
+
 // Named routes — must come before /:id wildcard
 router.get("/list", MusicCtrl.getMusics);
 router.get("/new-releases", MusicCtrl.getNewReleases);
 router.get("/trending", MusicCtrl.getTrending);
 
-router.use(authenticate);
-
 router.get("/liked", MusicCtrl.getLikedSongs);
 router.post("/:id/like", MusicCtrl.toggleLike);
 router.get("/:id/stream", MusicCtrl.streamMusic);
+router.post("/:id/play", MusicCtrl.recordPlay);
 router.get("/:id", MusicCtrl.getMusicById);
 
 // Main creation endpoint (handles both JSON and Multipart)

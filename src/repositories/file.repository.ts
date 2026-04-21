@@ -25,6 +25,12 @@ export default class FileRepo {
     return prisma.file.findUnique({ where: { id: fileId } });
   }
 
+  static async findAll() {
+    return prisma.file.findMany({
+      orderBy: { createdAt: "desc" },
+    });
+  }
+
   static async upsertFile(
     id: string, // Required: caller must provide ID
     data: { filename?: string | null; fileUrl?: string | null; metaData?: any },

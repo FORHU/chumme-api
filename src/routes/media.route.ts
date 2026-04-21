@@ -1,7 +1,10 @@
 import express from "express";
 import MediaCtrl from "../controllers/media.controller";
+import { authenticate } from "../middleware/auth.middleware";
 
 const router = express.Router();
+
+router.use(authenticate);
 
 /**
  * @route   POST /api/v1/media/process

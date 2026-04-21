@@ -13,6 +13,7 @@ router.get("/get-download-url", FileCtrl.getDownloadUrl);
 /*
  * file routes
  */
+router.get("/", FileCtrl.getAllFiles);
 router.post("/", FileCtrl.saveFile);
 router.post("/upload", upload.single("file"), FileCtrl.uploadFile);
 router.put("/upsert", FileCtrl.upsertFile);

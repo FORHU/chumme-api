@@ -39,6 +39,7 @@ import youtubeRoute from "./net-communities/youtube.route";
 import monitoringRoute from "./web/monitoring.route";
 import discoveryRoute from "./discovery.route";
 import onboardingRoute from "./onboarding.route";
+import systemAssetRoute from "./system-asset.route";
 
 const router = express.Router();
 
@@ -69,6 +70,7 @@ router.use("/v1/chumme-topic-categories", chummeTopicCategoryRoute);
 
 router.use("/v1/interests", userInterestRoute);
 router.use("/v1/emotions", userEmotionRoute);
+router.use("/v1/system-assets", systemAssetRoute);
 router.use("/v1/social-discovery", socialUserDiscoveryRoute);
 router.use("/v1/artists", chummeArtistRoute);
 router.use("/v1/files", fileRoute);
