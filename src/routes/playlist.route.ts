@@ -9,12 +9,11 @@ import { upload } from "../middleware/upload.middleware";
 
 const router = express.Router();
 
-// Public / optional-auth reads
-router.get("/list", optionalAuthenticate, PlaylistCtrl.getAllPlaylists);
-router.get("/:id", PlaylistCtrl.getPlaylistById);
-
-// All routes below require a valid token
 router.use(authenticate);
+
+// List and single item access
+router.get("/list", PlaylistCtrl.getAllPlaylists);
+router.get("/:id", PlaylistCtrl.getPlaylistById);
 
 // Create — ownership of new playlist belongs to requester, no guard needed
 router.post("/create", PlaylistCtrl.createPlaylist);

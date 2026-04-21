@@ -31,22 +31,18 @@ router.patch(
 // Recording flow via HTTP
 router.post(
   "/:studioId/start-recording",
-  authenticate,
   MusicStudioCtrl.startRecording,
 );
 router.post(
   "/:studioId/stop-recording",
-  authenticate,
   MusicStudioCtrl.stopRecording,
 );
 router.post(
   "/:studioId/save-recording",
-  authenticate,
   MusicStudioCtrl.saveRecording,
 );
 router.post(
   "/:studioId/preview-recording",
-  authenticate,
   MusicStudioCtrl.previewRecording,
 );
 

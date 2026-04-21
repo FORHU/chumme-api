@@ -1,9 +1,12 @@
 import { Router } from "express";
 import MusicLibraryCtrl from "../controllers/music-library.controller";
 import multer from "multer";
+import { authenticate } from "../middleware/auth.middleware";
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
+
+router.use(authenticate);
 
 /*
  * presigned url routes
