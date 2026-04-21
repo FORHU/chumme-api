@@ -3,17 +3,7 @@ import FileRepo from "../repositories/file.repository";
 import S3Util from "../utils/s3.util";
 import S3PresignedUtil from "../utils/s3-presigned.util";
 
-function extractS3Key(fileUrl: string): string {
-  if (fileUrl.includes(".com/")) {
-    return fileUrl.split(".com/")[1];
-  } else if (fileUrl.includes(".net/")) {
-    return fileUrl.split(".net/")[1];
-  } else {
-    const matches = fileUrl.match(/^https?:\/\/[^/]+\/(.+)$/);
-    if (matches) return matches[1];
-  }
-  throw new Error(`Cannot extract S3 key from URL: ${fileUrl}`);
-}
+
 
 export default class ApkSvc {
   static async uploadApk(
@@ -74,7 +64,9 @@ export default class ApkSvc {
 
     await ApkRepo.incrementDownload(id);
 
-    const key = extractS3Key(release.file!.fileUrl!);
+    const key = S3Util.getKeyFromUrl(release.file!.fileUrl!);
+    if (!key) throw new Error(`Could not extract S3 key from URL: ${release.file!.fileUrl}`);
+
     const contentDisposition = `attachment; filename="chumme v${release.versionName}.apk"`;
     const url = await S3PresignedUtil.getDownloadUrl(
       key,
