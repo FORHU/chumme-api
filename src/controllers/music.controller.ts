@@ -193,6 +193,16 @@ export default class MusicCtrl {
     }
   }
 
+  static async recordPlay(req: Request, res: Response) {
+    const { id } = req.params;
+    try {
+      const result = await MusicSvc.recordPlay(id);
+      return res.json({ data: result });
+    } catch (error: any) {
+      return res.status(404).json({ message: error.message || error });
+    }
+  }
+
   static async streamMusic(req: Request, res: Response) {
     const { id } = req.params;
     try {

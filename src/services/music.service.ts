@@ -219,17 +219,17 @@ export default class MusicSvc {
     return enriched;
   }
 
+  static async recordPlay(id: string) {
+    const music = await MusicRepo.incrementPlayCount(id);
+    return { id: music.id, playCount: music.playCount };
+  }
+
   static async getStreamInfo(id: string) {
     const music = await this.getMusicById(id);
     if (!music) throw new Error("Music not found");
 
     const fileUrl = music.musicFile?.fileUrl;
     if (!fileUrl) throw new Error("Audio file not found for this track");
-
-    // Fire-and-forget play count increment
-    MusicRepo.incrementPlayCount(id).catch((err) =>
-      logger.warn(`[MusicSvc] Failed to increment playCount for ${id}: ${err}`),
-    );
 
     return {
       hlsUrl: fileUrl, // Direct CDN URL; replace with HLS manifest when pipeline is enabled
