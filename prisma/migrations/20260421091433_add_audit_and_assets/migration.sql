@@ -30,8 +30,6 @@ CREATE TABLE "AuditLog" (
 -- CreateIndex
 CREATE UNIQUE INDEX "SystemAsset_key_key" ON "SystemAsset"("key");
 
--- CreateIndex
-CREATE INDEX "SocialFeedItem_isDeleted_score_createdAt_idx" ON "SocialFeedItem"("isDeleted", "score", "createdAt");
 
 -- AddForeignKey
 ALTER TABLE "AuditLog" ADD CONSTRAINT "AuditLog_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
