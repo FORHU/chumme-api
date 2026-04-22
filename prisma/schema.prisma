@@ -1050,4 +1050,14 @@ enum SportEventStatus {
   POSTPONED
   CANCELLED
   DELAYED
+  POSTED
+}
+
+model SystemAsset {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  url       String
+  type      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

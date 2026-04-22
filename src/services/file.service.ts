@@ -95,6 +95,10 @@ export default class FileSvc {
     return file;
   }
 
+  static async getAllFiles() {
+    return FileRepo.findAll();
+  }
+
   static async deleteFile(fileId: string) {
     const file = await FileRepo.findFileById(fileId);
 
