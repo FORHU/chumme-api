@@ -73,9 +73,8 @@ async function main() {
   }
 
   try {
-    const { SchedulingService } = await import(
-      "./services/net-communities/ingestion/scheduling.service"
-    );
+    const { SchedulingService } =
+      await import("./services/net-communities/ingestion/scheduling.service");
     await SchedulingService.start();
     logger.info("[Worker] SchedulingService started");
   } catch (error) {

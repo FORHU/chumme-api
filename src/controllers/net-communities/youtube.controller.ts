@@ -166,5 +166,4 @@ export default class YouTubeCtrl {
         .json({ message: error.message || "Internal server error" });
     }
   }
-
 }

@@ -74,9 +74,7 @@ export default class SocialFeedCtrl {
       );
 
       const nextCursor =
-        feed?.length === limit
-          ? (feed[feed.length - 1] as any)?.id
-          : undefined;
+        feed?.length === limit ? (feed[feed.length - 1] as any)?.id : undefined;
 
       res.setHeader("X-Cache", (feed as any)._cacheHit ? "HIT" : "MISS");
 

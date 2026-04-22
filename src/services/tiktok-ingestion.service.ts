@@ -1,4 +1,5 @@
 import SocialFeedSvc from "./social-feed.service";
+import SocialFeedRepo from "../repositories/social-feed.repository";
 
 import FileRepo from "../repositories/file.repository";
 import { upsertArtist } from "../repositories/chumme-artist.repository";
@@ -83,11 +84,19 @@ export async function processTikTokCrawlerData(
       // Step 2d: Extract and link emotions from Spotify data
       if (post.metadata?.spotifyData?.data?.emotion) {
         const emotionData = post.metadata.spotifyData.data.emotion;
-        const emotionsToLink: string[] = [];
+        const signalsToLink: {
+          type: string;
+          value: string;
+          confidence: number;
+        }[] = [];
 
         // Add primary emotion
         if (emotionData.primaryEmotion) {
-          emotionsToLink.push(emotionData.primaryEmotion);
+          signalsToLink.push({
+            type: "EMOTION",
+            value: emotionData.primaryEmotion,
+            confidence: 0.95,
+          });
         }
 
         // Add secondary emotions (optional, for richer emotional context)
@@ -95,13 +104,22 @@ export async function processTikTokCrawlerData(
           emotionData.secondaryEmotions &&
           Array.isArray(emotionData.secondaryEmotions)
         ) {
-          emotionsToLink.push(...emotionData.secondaryEmotions);
+          for (const emo of emotionData.secondaryEmotions) {
+            signalsToLink.push({
+              type: "EMOTION",
+              value: emo,
+              confidence: 0.7,
+            });
+          }
         }
 
-        if (emotionsToLink.length > 0) {
-          // NOTE: Emotion linking is currently disabled for flat SocialFeedItem
+        if (signalsToLink.length > 0) {
+          await SocialFeedRepo.upsertSocialSignals(
+            result.item.id,
+            signalsToLink,
+          );
           console.log(
-            `[INGESTION] Emotion linking skipped for ${result.item.id}`,
+            `[INGESTION] Linked ${signalsToLink.length} emotions for ${result.item.id}`,
           );
         } else {
           console.log(

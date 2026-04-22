@@ -41,7 +41,7 @@ export default class YouTubeService {
     try {
       const response = await youtube.videos.list({
         part: ["snippet", "contentDetails", "statistics"],
-        id: [videoId],
+        id: [videoId.toString()], // Ensure it's a string, though videos.list usually takes one at a time here
       });
       await QuotaService.increment(1);
 
@@ -117,7 +117,7 @@ export default class YouTubeService {
     try {
       const response = await youtube.channels.list({
         part: ["snippet", "statistics"],
-        id: channelIds,
+        id: [channelIds.join(",")],
       });
       await QuotaService.increment(1); // 1 request = 1 unit
 

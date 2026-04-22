@@ -213,24 +213,24 @@ export default class SocialFeedRepo {
 
     // Infer artistId if missing
     if (!artistId) {
-      // 1. Try via Metadata (Channel ID Match) - NEW GROUND TRUTH
-      if (data.metaData) {
-        const meta = data.metaData as any;
-        const externalChannelId =
-          meta?.snippet?.channelId ||
-          meta?.channelId ||
-          meta?.snippet?.resourceId?.channelId;
+      // Extract common metadata for inference
+      const meta = data.metaData as any;
+      const externalChannelId = meta
+        ? meta.snippet?.channelId ||
+          meta.channelId ||
+          meta.snippet?.resourceId?.channelId
+        : null;
 
-        if (externalChannelId) {
-          const artist = await prisma.chummeArtist.findFirst({
-            where: {
-              channelId: { has: externalChannelId },
-              isDeleted: false,
-            },
-            select: { id: true },
-          });
-          if (artist) artistId = artist.id;
-        }
+      // 1. Try via Metadata (Channel ID Match) - NEW GROUND TRUTH
+      if (externalChannelId) {
+        const artist = await prisma.chummeArtist.findFirst({
+          where: {
+            channelId: { has: externalChannelId },
+            isDeleted: false,
+          },
+          select: { id: true },
+        });
+        if (artist) artistId = artist.id;
       }
 
       // 2. Try via Topic Category Name Match
@@ -253,17 +253,34 @@ export default class SocialFeedRepo {
 
       // 3. Last Resort: Try via Metadata Channel Title (Fuzzy)
       if (!artistId && data.metaData) {
-        const meta = data.metaData as any;
-        const channelTitle = meta?.snippet?.channelTitle || meta?.channelTitle;
+        const channelTitle =
+          meta?.snippet?.channelTitle ||
+          meta?.channelTitle ||
+          meta?.author?.name; // Support for TikTok/Instagram connector shapes
+
         if (channelTitle) {
           const artist = await prisma.chummeArtist.findFirst({
             where: {
-              name: { equals: channelTitle, mode: "insensitive" },
+              name: { equals: channelTitle.trim(), mode: "insensitive" },
               isDeleted: false,
             },
-            select: { id: true },
+            select: { id: true, channelId: true },
           });
-          if (artist) artistId = artist.id;
+
+          if (artist) {
+            artistId = artist.id;
+
+            // Self-healing: if ID match was missing but name match is high confidence, update artist record
+            if (
+              externalChannelId &&
+              !artist.channelId.includes(externalChannelId)
+            ) {
+              await prisma.chummeArtist.update({
+                where: { id: artist.id },
+                data: { channelId: { push: externalChannelId } },
+              });
+            }
+          }
         }
       }
     }
@@ -373,6 +390,33 @@ export default class SocialFeedRepo {
           publishedAt: c.publishedAt || null,
         })),
         skipDuplicates: true,
+      }),
+    ]);
+  }
+
+  /**
+   * Batch upsert signals (sentiments, moods, emotions) for a feed item
+   */
+  static async upsertSocialSignals(
+    feedItemId: string,
+    signals: { type: string; value: string; confidence?: number }[],
+  ) {
+    if (!signals || signals.length === 0) return;
+
+    await prisma.$transaction([
+      prisma.socialFeedSignal.deleteMany({
+        where: {
+          socialFeedId: feedItemId,
+          type: { in: signals.map((s) => s.type) },
+        },
+      }),
+      prisma.socialFeedSignal.createMany({
+        data: signals.map((s) => ({
+          socialFeedId: feedItemId,
+          type: s.type,
+          value: s.value.toUpperCase(),
+          confidence: s.confidence ?? 1.0,
+        })),
       }),
     ]);
   }
