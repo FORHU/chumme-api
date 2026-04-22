@@ -1,4 +1,5 @@
 import ChummeCategoryRepo from "../repositories/chumme-category.repository";
+import { mapLiveStatus } from "../utils/community-mapping.util";
 
 export default class ChummeCategorySvc {
   /**
@@ -70,7 +71,8 @@ export default class ChummeCategorySvc {
    * Get all chumme categories
    */
   static async getAllCategories(params: { publicOnly?: boolean } = {}) {
-    return ChummeCategoryRepo.getAllCategories(params);
+    const categories = await ChummeCategoryRepo.getAllCategories(params);
+    return categories.map((cat) => this.mapLiveStatus(cat));
   }
 
   /**
@@ -84,7 +86,7 @@ export default class ChummeCategorySvc {
     if (!category) {
       throw new Error("Category not found");
     }
-    return category;
+    return this.mapLiveStatus(category);
   }
 
   /**
@@ -204,7 +206,8 @@ export default class ChummeCategorySvc {
       throw new Error("Invalid password for this category");
     }
 
-    return ChummeCategoryRepo.getSubCategoriesInCategory(categoryId);
+    const subCategories = await ChummeCategoryRepo.getSubCategoriesInCategory(categoryId);
+    return subCategories.map((sub) => this.mapLiveStatus(sub));
   }
 
   /**
@@ -240,20 +243,30 @@ export default class ChummeCategorySvc {
   static async getSpecializedCategories(
     trait: "COMMUNITIES" | "ENTERTAINMENT",
   ) {
-    return ChummeCategoryRepo.getSpecializedCategories(trait);
+    const categories = await ChummeCategoryRepo.getSpecializedCategories(trait);
+    return categories.map((cat) => this.mapLiveStatus(cat));
   }
 
   /**
    * Get all entertainment categories
    */
   static async getChummeEntertainment() {
-    return ChummeCategoryRepo.getChummeEntertainment();
+    const categories = await ChummeCategoryRepo.getChummeEntertainment();
+    return categories.map((cat) => this.mapLiveStatus(cat));
   }
 
   /**
    * Get all communities categories
    */
   static async getChummeCommunities() {
-    return ChummeCategoryRepo.getChummeCommunities();
+    const categories = await ChummeCategoryRepo.getChummeCommunities();
+    return categories.map((cat) => this.mapLiveStatus(cat));
+  }
+
+  /**
+   * Helper to map live status from linked artists to the category
+   */
+  private static mapLiveStatus(item: any) {
+    return mapLiveStatus(item);
   }
 }

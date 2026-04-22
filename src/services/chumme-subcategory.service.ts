@@ -1,4 +1,5 @@
 import ChummeSubCategoryRepo from "../repositories/chumme-subcategory.repository";
+import { mapLiveStatus } from "../utils/community-mapping.util";
 import S3Util from "../utils/s3.util";
 import S3PresignedUtil from "../utils/s3-presigned.util";
 
@@ -90,7 +91,8 @@ export default class ChummeSubCategorySvc {
   static async getAllSubCategories(
     params: { categoryId?: string; publicOnly?: boolean } = {},
   ) {
-    return ChummeSubCategoryRepo.getAllSubCategories(params);
+    const subCategories = await ChummeSubCategoryRepo.getAllSubCategories(params);
+    return subCategories.map((sub) => mapLiveStatus(sub));
   }
 
   /**
@@ -111,10 +113,11 @@ export default class ChummeSubCategorySvc {
     categoryId: string,
     params: { publicOnly?: boolean } = {},
   ) {
-    return ChummeSubCategoryRepo.getChummeSubCategoryByChummeCategoryID(
+    const subCategories = await ChummeSubCategoryRepo.getChummeSubCategoryByChummeCategoryID(
       categoryId,
       params,
     );
+    return subCategories.map((sub) => mapLiveStatus(sub));
   }
 
   /**

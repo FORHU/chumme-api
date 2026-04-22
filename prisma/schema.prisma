@@ -151,6 +151,7 @@ model ChummeSubCategory {
   ingestionTargets      SocialIngestionTarget[]
   socialUserDiscoveries SocialUserDiscovery[]   @relation("ChummeSubCategoryToSocialUserDiscovery")
   sportLeagues          SportLeague[]
+  chummeArtists         ChummeArtist[]          @relation("ChummeArtistToChummeSubCategory")
 }
 
 model ChummeTopicCategory {
@@ -174,6 +175,7 @@ model ChummeTopicCategory {
   ingestionTargets      SocialIngestionTarget[]
   socialUserDiscoveries SocialUserDiscovery[]   @relation("ChummeTopicCategoryToSocialUserDiscovery")
   sportTeams            SportTeam[]
+  chummeArtists         ChummeArtist[]          @relation("ChummeArtistToChummeTopicCategory")
 }
 
 model ChummeCategoryDesign {
@@ -217,13 +219,19 @@ model ChummeArtist {
   subscriberCount        Int?
   totalViews             BigInt?
   channelId              String[]                @default([])
+  activeVideoId          String?
   socialFeedItemCount    Int                     @default(0)
+  liveViewCount          Int                     @default(0)
+  liveThumbnailUrl       String?
+  liveStartedAt          DateTime?
   music                  Music[]                 @relation("MainArtist")
   musicAlbum             MusicAlbum[]            @relation("MainArtist")
   musicFeaturedArtists   MusicFeaturedArtist[]
   socialFeedItems        SocialFeedItem[]
   ingestionTargets       SocialIngestionTarget[]
   chummeCategories       ChummeCategory[]        @relation("ChummeArtistToChummeCategory")
+  chummeSubCategories    ChummeSubCategory[]     @relation("ChummeArtistToChummeSubCategory")
+  chummeTopicCategories  ChummeTopicCategory[]     @relation("ChummeArtistToChummeTopicCategory")
 }
 
 model ChummeArtistPersona {

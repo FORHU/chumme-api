@@ -10,7 +10,7 @@ const router = Router();
  * @desc    List all system assets
  * @access  Private
  */
-router.get("/", authenticate, SystemAssetCtrl.listAssets);
+router.get("/", SystemAssetCtrl.listAssets);
 
 /**
  * @route   GET /v1/system-assets/:key
