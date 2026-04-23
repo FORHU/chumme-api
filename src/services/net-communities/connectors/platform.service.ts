@@ -92,7 +92,7 @@ export interface PlatformConnector {
   /**
    * Fetch current live status of a channel/account (Optional)
    */
-  getChannelLiveStatus?(channelId: string): Promise<boolean>;
+  getChannelLiveStatus?(channelId: string): Promise<any>;
 }
 
 /**

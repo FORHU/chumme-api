@@ -103,7 +103,7 @@ export default class ChummeSubCategorySvc {
     if (!subCategory) {
       throw new Error("Subcategory not found");
     }
-    return subCategory;
+    return mapLiveStatus(subCategory);
   }
 
   /**

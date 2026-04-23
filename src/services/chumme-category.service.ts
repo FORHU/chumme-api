@@ -1,4 +1,5 @@
 import ChummeCategoryRepo from "../repositories/chumme-category.repository";
+import { getLiveArtists } from "../repositories/chumme-artist.repository";
 import { mapLiveStatus } from "../utils/community-mapping.util";
 
 export default class ChummeCategorySvc {
@@ -72,7 +73,8 @@ export default class ChummeCategorySvc {
    */
   static async getAllCategories(params: { publicOnly?: boolean } = {}) {
     const categories = await ChummeCategoryRepo.getAllCategories(params);
-    return categories.map((cat) => this.mapLiveStatus(cat));
+    const liveArtists = await getLiveArtists();
+    return categories.map((cat) => mapLiveStatus(cat, liveArtists));
   }
 
   /**
@@ -86,7 +88,8 @@ export default class ChummeCategorySvc {
     if (!category) {
       throw new Error("Category not found");
     }
-    return this.mapLiveStatus(category);
+    const liveArtists = await getLiveArtists();
+    return mapLiveStatus(category, liveArtists);
   }
 
   /**
@@ -207,7 +210,8 @@ export default class ChummeCategorySvc {
     }
 
     const subCategories = await ChummeCategoryRepo.getSubCategoriesInCategory(categoryId);
-    return subCategories.map((sub) => this.mapLiveStatus(sub));
+    const liveArtists = await getLiveArtists();
+    return subCategories.map((sub) => mapLiveStatus(sub, liveArtists));
   }
 
   /**
@@ -244,7 +248,8 @@ export default class ChummeCategorySvc {
     trait: "COMMUNITIES" | "ENTERTAINMENT",
   ) {
     const categories = await ChummeCategoryRepo.getSpecializedCategories(trait);
-    return categories.map((cat) => this.mapLiveStatus(cat));
+    const liveArtists = await getLiveArtists();
+    return categories.map((cat) => mapLiveStatus(cat, liveArtists));
   }
 
   /**
@@ -252,7 +257,8 @@ export default class ChummeCategorySvc {
    */
   static async getChummeEntertainment() {
     const categories = await ChummeCategoryRepo.getChummeEntertainment();
-    return categories.map((cat) => this.mapLiveStatus(cat));
+    const liveArtists = await getLiveArtists();
+    return categories.map((cat) => mapLiveStatus(cat, liveArtists));
   }
 
   /**
@@ -260,7 +266,8 @@ export default class ChummeCategorySvc {
    */
   static async getChummeCommunities() {
     const categories = await ChummeCategoryRepo.getChummeCommunities();
-    return categories.map((cat) => this.mapLiveStatus(cat));
+    const liveArtists = await getLiveArtists();
+    return categories.map((cat) => mapLiveStatus(cat, liveArtists));
   }
 
   /**
