@@ -11,6 +11,7 @@ import { InstagramPostEvent } from "../listeners/instagram-post.listener";
  */
 export async function processInstagramCrawlerData(
   crawlerData: InstagramPostEvent,
+  topicCategoryId?: string,
 ): Promise<void> {
   const { data } = crawlerData;
 
@@ -77,6 +78,7 @@ export async function processInstagramCrawlerData(
           title: post.title || "Instagram Post/Video",
           socialPlatform: "INSTAGRAM",
           chummeArtistId: artist.id,
+          chummeTopicCategoryId: topicCategoryId,
           metaData: metadata,
         });
 
@@ -94,6 +96,7 @@ export async function processInstagramCrawlerData(
           title: post.title || "Instagram Post/Media",
           socialPlatform: "INSTAGRAM",
           chummeArtistId: artist.id,
+          chummeTopicCategoryId: topicCategoryId,
           metaData: metadata,
         });
 

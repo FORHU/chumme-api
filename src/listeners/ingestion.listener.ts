@@ -243,6 +243,8 @@ export class IngestionWorker {
         metaData: item.metaData,
         isLive: item.isLive,
         chummeArtistId: job.meta?.artistId,
+        chummeCategoryId: job.meta?.categoryId,
+        chummeSubCategoryId: job.meta?.subCategoryId,
         chummeTopicCategoryId: job.meta?.topicCategoryId,
       } as any);
 
@@ -330,32 +332,21 @@ export class IngestionWorker {
     const details = await connector.getContentDetails(job.targetId);
 
     if (details) {
-      const { item } = await SocialFeedSvc.upsertExternalMedia({
+      await SocialFeedSvc.upsertExternalMedia({
         externalUrl: details.url,
         title: details.title || "Social Media Content",
         socialPlatform: details.platform,
         metaData: details.metaData,
         chummeArtistId: job.meta?.artistId,
+        chummeCategoryId: job.meta?.categoryId,
+        chummeSubCategoryId: job.meta?.subCategoryId,
         chummeTopicCategoryId: job.meta?.topicCategoryId,
         views: details.stats?.views,
         likes: details.stats?.likes,
         comments: details.stats?.comments,
       } as any);
-      // Fetch and save comments if supported by connector
-      if (connector.getComments) {
-        try {
-          const comments = await connector.getComments(job.targetId);
-          await SocialFeedSvc.saveExternalComments(item.id, comments);
-          logger.info(
-            `[IngestionWorker] Saved ${comments.length} comments for ${job.platform}:${job.targetId}`,
-          );
-        } catch (err) {
-          logger.warn(
-            `[IngestionWorker] Failed to fetch comments for ${job.targetId}:`,
-            err,
-          );
-        }
-      }
+      // AI enrichment and other metadata updates continue below
+      // (Comment fetching disabled as per flow requirements)
 
       // Trigger AI Enrichment job
       await rabbitMQService.publishMessage(

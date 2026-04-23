@@ -24,6 +24,11 @@ router.get("/:key", SystemAssetCtrl.getAsset);
  * @desc    Upload/update system asset
  * @access  Private (Admin)
  */
-router.post("/upload", authenticate, upload.single("file"), SystemAssetCtrl.uploadAsset);
+router.post(
+  "/upload",
+  authenticate,
+  upload.single("file"),
+  SystemAssetCtrl.uploadAsset,
+);
 
 export default router;

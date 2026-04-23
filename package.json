@@ -12,6 +12,9 @@
     "start:worker": "node ./dist/src/worker.js",
     "dev:worker": "nodemon --watch src --ext ts --exec ts-node --files ./src/worker.ts",
     "db:setup": "npx prisma generate && npx prisma migrate dev",
+    "db:seed": "npx prisma db seed",
+    "ingest:instagram": "ts-node scripts/instagram.script.ts",
+    "scrape:instagram:comments": "ts-node scripts/scrapper/instagram-comments.ts",
     "test:audio": "mocha --require ts-node/register --timeout 60000 test/audio-utils.spec.ts",
     "test:integration": "mocha --require ts-node/register --timeout 60000 test/recording-flow.spec.ts"
   },
@@ -80,4 +83,8 @@
     "ts-node": "^10.9.1",
     "typescript": "^5.9.3"
   }
-}
+,
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
+  }
+}

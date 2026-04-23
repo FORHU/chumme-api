@@ -29,22 +29,10 @@ router.patch(
 );
 
 // Recording flow via HTTP
-router.post(
-  "/:studioId/start-recording",
-  MusicStudioCtrl.startRecording,
-);
-router.post(
-  "/:studioId/stop-recording",
-  MusicStudioCtrl.stopRecording,
-);
-router.post(
-  "/:studioId/save-recording",
-  MusicStudioCtrl.saveRecording,
-);
-router.post(
-  "/:studioId/preview-recording",
-  MusicStudioCtrl.previewRecording,
-);
+router.post("/:studioId/start-recording", MusicStudioCtrl.startRecording);
+router.post("/:studioId/stop-recording", MusicStudioCtrl.stopRecording);
+router.post("/:studioId/save-recording", MusicStudioCtrl.saveRecording);
+router.post("/:studioId/preview-recording", MusicStudioCtrl.previewRecording);
 
 // Delete
 router.delete("/:studioId", MusicStudioCtrl.closeStudio);
