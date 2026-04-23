@@ -116,6 +116,7 @@ model ChummeCategory {
   chummeTraits          ChummeTraits            @default(NONE)
   populationCount       Int                     @default(0)
   discoveryKeywords     String[]
+  targetCountries       String[]                @default([])
   channelId             String[]                @default([])
   chummeVisualDesign    ChummeCategoryDesign?   @relation("CategoryDesign", fields: [chummeVisualDesignId], references: [id])
   chummeSubCategories   ChummeSubCategory[]
@@ -140,6 +141,7 @@ model ChummeSubCategory {
   chummeTraits          ChummeTraits            @default(NONE)
   populationCount       Int                     @default(0)
   discoveryKeywords     String[]
+  targetCountries       String[]                @default([])
   channelId             String[]                @default([])
   chummeCategory        ChummeCategory          @relation(fields: [chummeCategoryId], references: [id])
   chummeVisualDesign    ChummeCategoryDesign?   @relation("SubCategoryDesign", fields: [chummeVisualDesignId], references: [id])
@@ -151,6 +153,7 @@ model ChummeSubCategory {
   ingestionTargets      SocialIngestionTarget[]
   socialUserDiscoveries SocialUserDiscovery[]   @relation("ChummeSubCategoryToSocialUserDiscovery")
   sportLeagues          SportLeague[]
+  chummeArtists         ChummeArtist[]          @relation("ChummeArtistToChummeSubCategory")
 }
 
 model ChummeTopicCategory {
@@ -167,13 +170,15 @@ model ChummeTopicCategory {
   chummeVisualDesignId  String?                 @unique
   populationCount       Int                     @default(0)
   discoveryKeywords     String[]
-  channelId             String[]                @default([])
+  channelId             String[]
+  targetCountries       String[]                @default([])
   chummeSubCategory     ChummeSubCategory       @relation(fields: [chummeSubCategoryId], references: [id])
   chummeVisualDesign    ChummeCategoryDesign?   @relation("TopicCategoryDesign", fields: [chummeVisualDesignId], references: [id])
   socialFeedItems       SocialFeedItem[]        @relation("TopicCategoryFeed")
   ingestionTargets      SocialIngestionTarget[]
   socialUserDiscoveries SocialUserDiscovery[]   @relation("ChummeTopicCategoryToSocialUserDiscovery")
   sportTeams            SportTeam[]
+  chummeArtists         ChummeArtist[]          @relation("ChummeArtistToChummeTopicCategory")
 }
 
 model ChummeCategoryDesign {
@@ -216,14 +221,21 @@ model ChummeArtist {
   lastLiveAt             DateTime?
   subscriberCount        Int?
   totalViews             BigInt?
+  countries              String[]                @default([])
   channelId              String[]                @default([])
+  activeVideoId          String?
   socialFeedItemCount    Int                     @default(0)
+  liveViewCount          Int                     @default(0)
+  liveThumbnailUrl       String?
+  liveStartedAt          DateTime?
   music                  Music[]                 @relation("MainArtist")
   musicAlbum             MusicAlbum[]            @relation("MainArtist")
   musicFeaturedArtists   MusicFeaturedArtist[]
   socialFeedItems        SocialFeedItem[]
   ingestionTargets       SocialIngestionTarget[]
   chummeCategories       ChummeCategory[]        @relation("ChummeArtistToChummeCategory")
+  chummeSubCategories    ChummeSubCategory[]     @relation("ChummeArtistToChummeSubCategory")
+  chummeTopicCategories  ChummeTopicCategory[]     @relation("ChummeArtistToChummeTopicCategory")
 }
 
 model ChummeArtistPersona {

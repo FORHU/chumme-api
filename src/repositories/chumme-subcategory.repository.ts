@@ -47,6 +47,21 @@ export default class ChummeSubCategoryRepo {
           : undefined,
       },
       include: {
+        chummeArtists: {
+          select: {
+            id: true,
+            name: true,
+            imageUrl: true,
+            isLive: true,
+            subscriberCount: true,
+            totalViews: true,
+            lastLiveAt: true,
+            activeVideoId: true,
+            liveViewCount: true,
+            liveThumbnailUrl: true,
+            liveStartedAt: true,
+          },
+        },
         chummeCategory: {
           include: {
             chummeArtists: {
@@ -58,6 +73,7 @@ export default class ChummeSubCategoryRepo {
                 subscriberCount: true,
                 totalViews: true,
                 lastLiveAt: true,
+                activeVideoId: true,
               },
             },
           },
@@ -82,6 +98,21 @@ export default class ChummeSubCategoryRepo {
         }),
       },
       include: {
+        chummeArtists: {
+          select: {
+            id: true,
+            name: true,
+            imageUrl: true,
+            isLive: true,
+            subscriberCount: true,
+            totalViews: true,
+            lastLiveAt: true,
+            activeVideoId: true,
+            liveViewCount: true,
+            liveThumbnailUrl: true,
+            liveStartedAt: true,
+          },
+        },
         chummeCategory: {
           include: {
             chummeArtists: {
@@ -93,6 +124,7 @@ export default class ChummeSubCategoryRepo {
                 subscriberCount: true,
                 totalViews: true,
                 lastLiveAt: true,
+                activeVideoId: true,
               },
             },
           },
@@ -121,6 +153,21 @@ export default class ChummeSubCategoryRepo {
         deletedAt: null,
       },
       include: {
+        chummeArtists: {
+          select: {
+            id: true,
+            name: true,
+            imageUrl: true,
+            isLive: true,
+            subscriberCount: true,
+            totalViews: true,
+            lastLiveAt: true,
+            activeVideoId: true,
+            liveViewCount: true,
+            liveThumbnailUrl: true,
+            liveStartedAt: true,
+          },
+        },
         chummeCategory: {
           include: {
             chummeArtists: {
@@ -132,6 +179,7 @@ export default class ChummeSubCategoryRepo {
                 subscriberCount: true,
                 totalViews: true,
                 lastLiveAt: true,
+                activeVideoId: true,
               },
             },
           },
@@ -163,6 +211,21 @@ export default class ChummeSubCategoryRepo {
         }),
       },
       include: {
+        chummeArtists: {
+          select: {
+            id: true,
+            name: true,
+            imageUrl: true,
+            isLive: true,
+            subscriberCount: true,
+            totalViews: true,
+            lastLiveAt: true,
+            activeVideoId: true,
+            liveViewCount: true,
+            liveThumbnailUrl: true,
+            liveStartedAt: true,
+          },
+        },
         chummeCategory: {
           include: {
             chummeArtists: {
@@ -174,6 +237,7 @@ export default class ChummeSubCategoryRepo {
                 subscriberCount: true,
                 totalViews: true,
                 lastLiveAt: true,
+                activeVideoId: true,
               },
             },
           },
@@ -252,6 +316,21 @@ export default class ChummeSubCategoryRepo {
         updatedAt: new Date(),
       },
       include: {
+        chummeArtists: {
+          select: {
+            id: true,
+            name: true,
+            imageUrl: true,
+            isLive: true,
+            subscriberCount: true,
+            totalViews: true,
+            lastLiveAt: true,
+            activeVideoId: true,
+            liveViewCount: true,
+            liveThumbnailUrl: true,
+            liveStartedAt: true,
+          },
+        },
         chummeCategory: {
           include: {
             chummeArtists: {
@@ -263,6 +342,7 @@ export default class ChummeSubCategoryRepo {
                 subscriberCount: true,
                 totalViews: true,
                 lastLiveAt: true,
+                activeVideoId: true,
               },
             },
           },

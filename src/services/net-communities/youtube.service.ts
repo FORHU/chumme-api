@@ -217,6 +217,35 @@ export default class YouTubeService {
   }
 
   /**
+   * Check if specific channels are currently live and get their video IDs
+   */
+  static async checkLiveStatus(channelIds: string[]): Promise<Map<string, string>> {
+    const youtube = this.getYouTubeClient();
+    const liveMap = new Map<string, string>();
+
+    try {
+      for (const channelId of channelIds) {
+        const response = await youtube.search.list({
+          part: ["snippet"],
+          channelId: channelId,
+          type: ["video"],
+          eventType: "live",
+          maxResults: 1,
+        });
+        await QuotaService.increment(100);
+
+        if (response.data.items?.[0]?.id?.videoId) {
+          liveMap.set(channelId, response.data.items[0].id.videoId);
+        }
+      }
+      return liveMap;
+    } catch (error) {
+      console.error("Error checking YouTube live status:", error);
+      return liveMap;
+    }
+  }
+
+  /**
    * Get comment threads for a video
    */
   static async getCommentThreads(
