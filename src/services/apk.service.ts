@@ -4,8 +4,6 @@ import { prisma } from "../utils/prisma";
 import S3Util from "../utils/s3.util";
 import S3PresignedUtil from "../utils/s3-presigned.util";
 
-
-
 export default class ApkSvc {
   static async uploadApk(
     file: Express.Multer.File,
@@ -69,7 +67,10 @@ export default class ApkSvc {
     if (!release) throw new Error("APK release not found");
 
     const key = S3Util.getKeyFromUrl(release.file!.fileUrl!);
-    if (!key) throw new Error(`Could not extract S3 key from URL: ${release.file!.fileUrl}`);
+    if (!key)
+      throw new Error(
+        `Could not extract S3 key from URL: ${release.file!.fileUrl}`,
+      );
 
     const exists = await S3Util.fileExists(key);
     if (!exists) {

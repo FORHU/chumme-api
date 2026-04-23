@@ -198,6 +198,8 @@ export default class SocialFeedSvc {
     title: string;
     socialPlatform: any;
     chummeArtistId?: string;
+    chummeCategoryId?: string;
+    chummeSubCategoryId?: string;
     chummeTopicCategoryId?: string;
     metaData?: any;
     views?: number;
@@ -236,6 +238,8 @@ export default class SocialFeedSvc {
         externalUrl: data.externalUrl,
         videoId,
         chummeArtistId: data.chummeArtistId ?? null,
+        chummeCategoryId: data.chummeCategoryId ?? null,
+        chummeSubCategoryId: data.chummeSubCategoryId ?? null,
         chummeTopicCategoryId: data.chummeTopicCategoryId ?? null,
         metaData: data.metaData ?? null,
         blockedCountries,
@@ -255,13 +259,13 @@ export default class SocialFeedSvc {
 
     return { item, isUpdate };
   }
-
-  /**
-   * Save read-only comments fetched from external platforms
-   */
+  /*
+  // NOTE: External comment flow is currently disabled. 
+  // To restore, uncomment this and the corresponding repository method.
   static async saveExternalComments(feedItemId: string, comments: any[]) {
     await SocialFeedRepo.saveExternalComments(feedItemId, comments);
   }
+  */
 
   /**
    * Create a user comment on a feed item
@@ -311,16 +315,9 @@ export default class SocialFeedSvc {
   }
 
   /**
-   * Get merged comments for a feed item (scraped + local)
+   * Get local user comments for a feed item
    */
   static async getFeedItemComments(feedItemId: string) {
-    // 1. Get scraped comments (read-only)
-    const scraped = await (prisma as any).socialFeedItemComment.findMany({
-      where: { socialFeedItemId: feedItemId },
-      orderBy: { createdAt: "desc" },
-    });
-
-    // 2. Get local user comments
     const local = await prisma.socialUserComment.findMany({
       where: { socialFeedItemId: feedItemId, isDeleted: false },
       include: {
@@ -336,19 +333,6 @@ export default class SocialFeedSvc {
       orderBy: { createdAt: "desc" },
     });
 
-    // 3. Map to Unified format
-    const unifiedScraped = scraped.map((c: any) => ({
-      id: c.id,
-      content: c.content,
-      createdAt: c.createdAt,
-      author: {
-        name: c.authorName || "Anonymous",
-        avatarUrl: c.authorAvatarUrl || undefined,
-        handle: c.authorHandle || undefined,
-        type: "external",
-      },
-    }));
-
     const unifiedLocal = local.map((c: any) => ({
       id: c.id,
       content: c.content,
@@ -362,11 +346,6 @@ export default class SocialFeedSvc {
       },
     }));
 
-    // 4. Merge and Sort by Date desc
-    const allComments = [...unifiedScraped, ...unifiedLocal].sort(
-      (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
-    );
-
-    return allComments;
+    return unifiedLocal;
   }
 }
