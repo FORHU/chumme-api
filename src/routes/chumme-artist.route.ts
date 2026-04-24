@@ -1,6 +1,6 @@
 import express from "express";
 import * as chummeArtistController from "../controllers/chumme-artist.controller";
-import { authenticate } from "../middleware/auth.middleware";
+import { authenticate, requireRoles } from "../middleware/auth.middleware";
 
 const router = express.Router();
 
@@ -24,8 +24,8 @@ router.delete(
 
 // CRUD routes for Artist entity
 router.get("/:id", authenticate, chummeArtistController.getArtistById);
-router.post("/", authenticate, chummeArtistController.createArtist);
-router.put("/:id", authenticate, chummeArtistController.updateArtist);
-router.delete("/:id", authenticate, chummeArtistController.deleteArtist);
+router.post("/", authenticate, requireRoles(["CREATOR", "ADMIN"]), chummeArtistController.createArtist);
+router.put("/:id", authenticate, requireRoles(["CREATOR", "ADMIN"]), chummeArtistController.updateArtist);
+router.delete("/:id", authenticate, requireRoles(["CREATOR", "ADMIN"]), chummeArtistController.deleteArtist);
 
 export default router;

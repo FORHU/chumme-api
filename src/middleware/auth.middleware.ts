@@ -83,3 +83,28 @@ export const authenticate = async (
     return res.status(401).json({ message: "Invalid token" });
   }
 };
+
+/**
+ * Verifies that the requesting user has one of the allowed roles.
+ * Must be placed after `authenticate` so req.user is already set.
+ */
+export const requireRoles = (allowedRoles: string[]) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (!req.user || !req.user.role) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    // DEVELOPER has access to everything
+    if (req.user.role === "DEVELOPER") {
+      return next();
+    }
+
+    if (!allowedRoles.includes(req.user.role)) {
+      return res.status(403).json({ 
+        message: `Forbidden: Requires one of the following roles: ${allowedRoles.join(", ")}` 
+      });
+    }
+
+    next();
+  };
+};

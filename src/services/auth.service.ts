@@ -23,6 +23,7 @@ export default class AuthSvc {
     username: string;
     name?: string;
     mobileNumber?: string;
+    role?: any;
     idToken?: string;
     accessToken?: string;
   }) {
@@ -55,6 +56,7 @@ export default class AuthSvc {
       username: data.username,
       name: data.name,
       mobileNumber: data.mobileNumber,
+      role: data.role,
       otpCode: otp, // Save OTP
       otpExpiry: otpExpiry, // Save expiry
     });

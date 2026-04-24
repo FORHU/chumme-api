@@ -1,6 +1,6 @@
 import express from "express";
 import MusicCtrl from "../controllers/music.controller";
-import { authenticate } from "../middleware/auth.middleware";
+import { authenticate, requireRoles } from "../middleware/auth.middleware";
 import { upload } from "../middleware/upload.middleware";
 
 const router = express.Router();
@@ -21,14 +21,20 @@ router.get("/:id", MusicCtrl.getMusicById);
 // Main creation endpoint (handles both JSON and Multipart)
 router.post(
   "/create",
+  requireRoles(["CREATOR", "ADMIN"]),
   upload.any(), // Flexible handling of fields
   MusicCtrl.createMusicWithFiles,
 );
 
 // Alias for backward compatibility
-router.post("/create-with-files", upload.any(), MusicCtrl.createMusicWithFiles);
+router.post(
+  "/create-with-files", 
+  requireRoles(["CREATOR", "ADMIN"]),
+  upload.any(), 
+  MusicCtrl.createMusicWithFiles
+);
 
-router.patch("/update/:id", MusicCtrl.updateMusic);
-router.delete("/delete/:id", MusicCtrl.deleteMusic);
+router.patch("/update/:id", requireRoles(["CREATOR", "ADMIN"]), MusicCtrl.updateMusic);
+router.delete("/delete/:id", requireRoles(["CREATOR", "ADMIN"]), MusicCtrl.deleteMusic);
 
 export default router;

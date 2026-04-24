@@ -4,7 +4,7 @@ import AuthSvc from "../services/auth.service";
 
 export default class AuthCtrl {
   static async register(req: Request, res: Response) {
-    const { email, password, username, name, mobileNumber } = req.body;
+    const { email, password, username, name, mobileNumber, role } = req.body;
 
     const schema = Joi.object({
       email: Joi.string().email().required(),
@@ -12,6 +12,7 @@ export default class AuthCtrl {
       username: Joi.string().required(),
       name: Joi.string().optional(),
       mobileNumber: Joi.string().optional(),
+      role: Joi.string().valid("USER", "CREATOR").optional(),
     });
 
     const { error } = schema.validate({
@@ -20,6 +21,7 @@ export default class AuthCtrl {
       username,
       name,
       mobileNumber,
+      role,
     });
     if (error) {
       return res.status(400).json({ message: error.message });
@@ -32,6 +34,7 @@ export default class AuthCtrl {
         username,
         name,
         mobileNumber,
+        role,
         idToken: req.body.idToken,
         accessToken: req.body.accessToken,
       });

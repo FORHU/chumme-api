@@ -16,6 +16,7 @@ export default class AuthRepo {
     username: string;
     name?: string;
     mobileNumber?: string;
+    role?: any;
     otpCode?: string;
     otpExpiry?: Date;
   }) {
@@ -26,6 +27,7 @@ export default class AuthRepo {
         username: data.username,
         name: data.name,
         mobileNumber: data.mobileNumber,
+        role: data.role || "USER",
         otpCode: data.otpCode,
         otpExpiry: data.otpExpiry,
         isEmailVerified: true,
