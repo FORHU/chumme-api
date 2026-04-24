@@ -2,6 +2,7 @@ import express from "express";
 import MusicCtrl from "../controllers/music.controller";
 import { authenticate, requireRoles } from "../middleware/auth.middleware";
 import { upload } from "../middleware/upload.middleware";
+import { UserRole } from "@prisma/client";
 
 const router = express.Router();
 
@@ -21,7 +22,7 @@ router.get("/:id", MusicCtrl.getMusicById);
 // Main creation endpoint (handles both JSON and Multipart)
 router.post(
   "/create",
-  requireRoles(["CREATOR", "ADMIN"]),
+  requireRoles([UserRole.CREATOR, UserRole.ADMIN]),
   upload.any(), // Flexible handling of fields
   MusicCtrl.createMusicWithFiles,
 );
@@ -29,12 +30,12 @@ router.post(
 // Alias for backward compatibility
 router.post(
   "/create-with-files", 
-  requireRoles(["CREATOR", "ADMIN"]),
+  requireRoles([UserRole.CREATOR, UserRole.ADMIN]),
   upload.any(), 
   MusicCtrl.createMusicWithFiles
 );
 
-router.patch("/update/:id", requireRoles(["CREATOR", "ADMIN"]), MusicCtrl.updateMusic);
-router.delete("/delete/:id", requireRoles(["CREATOR", "ADMIN"]), MusicCtrl.deleteMusic);
+router.patch("/update/:id", requireRoles([UserRole.CREATOR, UserRole.ADMIN]), MusicCtrl.updateMusic);
+router.delete("/delete/:id", requireRoles([UserRole.CREATOR, UserRole.ADMIN]), MusicCtrl.deleteMusic);
 
 export default router;

@@ -14,7 +14,7 @@ import {
   GOOGLE_ANDROID_CLIENT_ID,
 } from "../config";
 import { AutoSyncSvc } from "./net-communities/ingestion/auto-sync.service";
-import { SocialPlatform } from "@prisma/client";
+import { SocialPlatform, UserRole } from "@prisma/client";
 
 export default class AuthSvc {
   static async register(data: {
@@ -23,7 +23,7 @@ export default class AuthSvc {
     username: string;
     name?: string;
     mobileNumber?: string;
-    role?: any;
+    role?: UserRole;
     idToken?: string;
     accessToken?: string;
   }) {

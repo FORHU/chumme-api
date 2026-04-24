@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
+import { UserRole } from "@prisma/client";
 import UserRepo from "../repositories/user.repository";
 import PlaylistRepo from "../repositories/playlist.repository";
 
@@ -95,7 +96,7 @@ export const requireRoles = (allowedRoles: string[]) => {
     }
 
     // DEVELOPER has access to everything
-    if (req.user.role === "DEVELOPER") {
+    if (req.user.role === UserRole.DEVELOPER) {
       return next();
     }
 

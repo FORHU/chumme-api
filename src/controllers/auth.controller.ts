@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import Joi from "joi";
 import AuthSvc from "../services/auth.service";
+import { UserRole } from "@prisma/client";
 
 export default class AuthCtrl {
   static async register(req: Request, res: Response) {
@@ -12,7 +13,7 @@ export default class AuthCtrl {
       username: Joi.string().required(),
       name: Joi.string().optional(),
       mobileNumber: Joi.string().optional(),
-      role: Joi.string().valid("USER", "CREATOR").optional(),
+      role: Joi.string().valid(UserRole.USER, UserRole.CREATOR).optional(),
     });
 
     const { error } = schema.validate({
