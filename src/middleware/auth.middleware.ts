@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
+import { UserRole } from "@prisma/client";
 import UserRepo from "../repositories/user.repository";
 import PlaylistRepo from "../repositories/playlist.repository";
 
@@ -82,4 +83,29 @@ export const authenticate = async (
     console.error("[AuthMiddleware] Token verification failed:", error.message);
     return res.status(401).json({ message: "Invalid token" });
   }
+};
+
+/**
+ * Verifies that the requesting user has one of the allowed roles.
+ * Must be placed after `authenticate` so req.user is already set.
+ */
+export const requireRoles = (allowedRoles: string[]) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (!req.user || !req.user.role) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    // DEVELOPER has access to everything
+    if (req.user.role === UserRole.DEVELOPER) {
+      return next();
+    }
+
+    if (!allowedRoles.includes(req.user.role)) {
+      return res.status(403).json({ 
+        message: `Forbidden: Requires one of the following roles: ${allowedRoles.join(", ")}` 
+      });
+    }
+
+    next();
+  };
 };

@@ -20,6 +20,7 @@ export default class MusicCtrl {
       isKaraoke: Joi.boolean(),
       vocalRolesCount: Joi.number().integer().min(1),
       meta_data: Joi.object().optional(),
+      genre: Joi.string().allow(null, ""),
     });
 
     const { error, value } = schema.validate(req.body);
@@ -113,6 +114,7 @@ export default class MusicCtrl {
       playlistId: Joi.string().uuid().allow(null),
       isKaraoke: Joi.boolean(),
       vocalRolesCount: Joi.number().integer().min(1),
+      genre: Joi.string().allow(null, ""),
     }).min(1);
 
     const { error, value } = schema.validate(req.body);
@@ -280,6 +282,7 @@ export default class MusicCtrl {
         isKaraoke: Joi.boolean(),
         vocalRolesCount: Joi.number().integer().min(1).allow(null, ""),
         meta_data: Joi.object().optional(),
+        genre: Joi.string().allow(null, ""),
         fileType: Joi.string()
           .valid(
             "MUSIC",
