@@ -119,7 +119,7 @@ export default class YouTubeService {
         part: ["snippet", "statistics"],
         id: [channelIds.join(",")],
       });
-      await QuotaService.increment(1); // 1 request = 1 unit
+      // await QuotaService.increment(1); // 1 request = 1 unit
 
       return response.data.items || [];
     } catch (error) {
@@ -223,10 +223,30 @@ export default class YouTubeService {
     const youtube = this.getYouTubeClient();
     const liveMap = new Map<string, string>();
 
+    if (!channelIds || channelIds.length === 0) return liveMap;
+
     try {
-      for (const channelId of channelIds) {
-        const response = await youtube.search.list({
-          part: ["snippet"],
+      // 1. CHEAP CHECK: Batch check all channels (Cost: 1 unit per 50 channels)
+      // This tells us WHO is live, but not the video ID.
+      const channelsResponse = await youtube.channels.list({
+        part: ["snippet"],
+        id: channelIds,
+      });
+      await QuotaService.increment(1);
+
+      const liveChannelIds = (channelsResponse.data.items || [])
+        .filter(item => (item.snippet as any)?.liveBroadcastContent === "live")
+        .map(item => item.id as string);
+
+      if (liveChannelIds.length === 0) {
+        return liveMap; // Nobody is live, save 100s of units!
+      }
+
+      // 2. EXPENSIVE SEARCH: Only search for channels confirmed to be live
+      // (Cost: 100 units per live channel)
+      for (const channelId of liveChannelIds) {
+        const searchResponse = await youtube.search.list({
+          part: ["id"],
           channelId: channelId,
           type: ["video"],
           eventType: "live",
@@ -234,10 +254,12 @@ export default class YouTubeService {
         });
         await QuotaService.increment(100);
 
-        if (response.data.items?.[0]?.id?.videoId) {
-          liveMap.set(channelId, response.data.items[0].id.videoId);
+        const videoId = searchResponse.data.items?.[0]?.id?.videoId;
+        if (videoId) {
+          liveMap.set(channelId, videoId);
         }
       }
+
       return liveMap;
     } catch (error) {
       console.error("Error checking YouTube live status:", error);

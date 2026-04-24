@@ -23,7 +23,6 @@ export async function seedChummeCategories(prisma: PrismaClient) {
     );
     return;
   }
-
   // 2. Define Countries (Chumme Categories)
   const communitiesData = [
     {
@@ -43,6 +42,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
       emojiIcon: "🌍",
       keyPassword: null,
       chummeTraits: "COMMUNITIES",
+      targetCountries: [], // Global, matches everything or specific global events
     },
     {
       id: "96b3c9bf-1077-46aa-b37d-f16f28486936",
@@ -60,6 +60,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
       emojiIcon: "🇺🇸",
       keyPassword: null,
       chummeTraits: "COMMUNITIES",
+      targetCountries: ["US"],
     },
     {
       id: "77a9a080-bf60-4feb-9bbd-c0727c774ebd",
@@ -77,6 +78,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
       emojiIcon: "🇬🇧",
       keyPassword: null,
       chummeTraits: "COMMUNITIES",
+      targetCountries: ["GB"],
     },
     {
       id: "4ed0e800-c7a6-41d8-9c1a-7463c67e9126",
@@ -94,6 +96,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
       emojiIcon: "🇯🇵",
       keyPassword: null,
       chummeTraits: "COMMUNITIES",
+      targetCountries: ["JP"],
     },
     {
       id: "f7ac5ac8-5a1d-4b4f-b5c0-45eb3102bc3d",
@@ -111,6 +114,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
       emojiIcon: "🇰🇷",
       keyPassword: null,
       chummeTraits: "COMMUNITIES",
+      targetCountries: ["KR"],
     },
     {
       id: "1e888904-a298-4091-bdbf-6a3206bc8ee6",
@@ -128,6 +132,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
       emojiIcon: "🇨🇦",
       keyPassword: null,
       chummeTraits: "COMMUNITIES",
+      targetCountries: ["CA"],
     },
     {
       id: "cbe1ffec-945b-4128-a580-4e58cd7f4b6b",
@@ -145,6 +150,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
       emojiIcon: "🇦🇺",
       keyPassword: null,
       chummeTraits: "COMMUNITIES",
+      targetCountries: ["AU"],
     },
     {
       id: "4fa52b4d-287e-4be4-a9fb-af71fefcb6d1",
@@ -162,6 +168,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
       emojiIcon: "🇧🇷",
       keyPassword: null,
       chummeTraits: "COMMUNITIES",
+      targetCountries: ["BR"],
     },
     {
       id: "74043e34-6f34-4d01-beee-63a4b5348b70",
@@ -179,8 +186,8 @@ export async function seedChummeCategories(prisma: PrismaClient) {
       emojiIcon: "🇮🇩",
       keyPassword: null,
       chummeTraits: "COMMUNITIES",
+      targetCountries: ["ID"],
     },
-
     {
       id: "a6c88d69-6d17-4b88-8c6d-3e9d9e7bdb01",
       name: "Philippines",
@@ -197,6 +204,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
       emojiIcon: "🇵🇭",
       keyPassword: null,
       chummeTraits: "COMMUNITIES",
+      targetCountries: ["PH"],
     },
     {
       id: "2c6d44e6-33a8-4e47-8e3b-bd1fbd5fa102",
@@ -214,6 +222,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
       emojiIcon: "🇮🇳",
       keyPassword: null,
       chummeTraits: "COMMUNITIES",
+      targetCountries: ["IN"],
     },
     {
       id: "e24d4f59-15b4-4b36-bfe3-5e3ed2c9c103",
@@ -231,6 +240,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
       emojiIcon: "🇩🇪",
       keyPassword: null,
       chummeTraits: "COMMUNITIES",
+      targetCountries: ["DE"],
     },
     {
       id: "94a0ad14-b1d7-4d2b-b10d-45f8b2a4d104",
@@ -248,6 +258,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
       emojiIcon: "🇫🇷",
       keyPassword: null,
       chummeTraits: "COMMUNITIES",
+      targetCountries: ["FR"],
     },
   ];
 
