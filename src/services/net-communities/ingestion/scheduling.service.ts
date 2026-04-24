@@ -462,6 +462,19 @@ export class SchedulingService {
       logger.info(
         `[SchedulingService] Live Heartbeat sync complete for ${targets.length} artists.`,
       );
+
+      // 4. Auto-provision / deprovision community subcategories based on live status
+      try {
+        const { LiveProvisioningService } = await import(
+          "../../live-provisioning.service"
+        );
+        await LiveProvisioningService.syncAllLiveArtists();
+      } catch (provisionErr) {
+        logger.error(
+          "[SchedulingService] LiveProvisioning sync failed:",
+          provisionErr,
+        );
+      }
     } catch (error) {
       logger.error("[SchedulingService] Error in Live Heartbeat:", error);
     }

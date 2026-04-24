@@ -143,6 +143,8 @@ model ChummeSubCategory {
   discoveryKeywords     String[]
   targetCountries       String[]                @default([])
   channelId             String[]                @default([])
+  isAutoProvisioned     Boolean                 @default(false)
+  autoProvisionedAt     DateTime?
   chummeCategory        ChummeCategory          @relation(fields: [chummeCategoryId], references: [id])
   chummeVisualDesign    ChummeCategoryDesign?   @relation("SubCategoryDesign", fields: [chummeVisualDesignId], references: [id])
   owner                 User?                   @relation("ChummeSubCategoryOwner", fields: [ownerId], references: [id])
