@@ -9,7 +9,10 @@ export const mapLiveStatus = (item: any, globalLiveArtists: any[] = []) => {
     ? item.chummeArtists 
     : (item.chummeCategory?.chummeArtists || []);
   
-  const targetCountries = item.targetCountries || [];
+  // Inherit target countries from parent if not defined locally
+  const targetCountries = (item.targetCountries && item.targetCountries.length > 0)
+    ? item.targetCountries
+    : (item.chummeCategory?.targetCountries || item.chummeSubCategory?.chummeCategory?.targetCountries || []);
 
   // 1. Check local artists first (standard link logic)
   let liveArtist = localArtists.find((a: any) => {

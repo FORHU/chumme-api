@@ -442,17 +442,18 @@ export class SchedulingService {
           if (!meta) continue;
 
           const stats = meta.statistics;
-          const isLive = await connector.getChannelLiveStatus!(
+          const liveStatus = await connector.getChannelLiveStatus!(
             target.externalHandle,
           );
 
           await prisma.chummeArtist.update({
             where: { id: target.chummeArtistId },
             data: {
-              isLive,
+              isLive: liveStatus.isLive,
+              activeVideoId: liveStatus.isLive ? (liveStatus.videoId || null) : null,
               subscriberCount: parseInt(stats?.subscriberCount || "0"),
               totalViews: BigInt(stats?.viewCount || "0"),
-              lastLiveAt: isLive ? new Date() : undefined,
+              lastLiveAt: liveStatus.isLive ? new Date() : undefined,
             },
           });
         }
@@ -461,6 +462,19 @@ export class SchedulingService {
       logger.info(
         `[SchedulingService] Live Heartbeat sync complete for ${targets.length} artists.`,
       );
+
+      // 4. Auto-provision / deprovision community subcategories based on live status
+      try {
+        const { LiveProvisioningService } = await import(
+          "../../live-provisioning.service"
+        );
+        await LiveProvisioningService.syncAllLiveArtists();
+      } catch (provisionErr) {
+        logger.error(
+          "[SchedulingService] LiveProvisioning sync failed:",
+          provisionErr,
+        );
+      }
     } catch (error) {
       logger.error("[SchedulingService] Error in Live Heartbeat:", error);
     }

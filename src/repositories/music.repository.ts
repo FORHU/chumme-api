@@ -12,23 +12,30 @@ export default class MusicRepo {
       musicAlbumId,
       musicArtistId,
       musicFileId,
+      fileType,
       ...musicData
     } = data;
 
     // Use either camelCase or snake_case input
     const finalMetaData = metaData || meta_data;
 
-    // 1. Update File Metadata if needed (Prisma doesn't allow update on create relation)
-    if (musicFileId && finalMetaData) {
+    // 1. Update File Metadata and FileType if needed
+    if (musicFileId && (finalMetaData || fileType)) {
       await prisma.musicLibrary.update({
         where: { id: musicFileId },
-        data: { metaData: finalMetaData },
+        data: {
+          ...(finalMetaData && { metaData: finalMetaData }),
+          ...(fileType && { fileType: fileType }),
+        },
       });
     }
 
+    // Ensure fileType is not in musicData (it should be excluded by destructuring, but we'll be safe)
+    const { fileType: _, ...dataForCreate } = musicData as any;
+
     return prisma.music.create({
       data: {
-        ...musicData,
+        ...dataForCreate,
         // Connect relations if IDs are present
         musicAlbum: musicAlbumId
           ? { connect: { id: musicAlbumId } }
