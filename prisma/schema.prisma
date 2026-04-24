@@ -427,6 +427,8 @@ model SocialFeedItemComment {
   @@index([socialFeedItemId])
 }
 
+
+
 model SocialIngestionTarget {
   id                    String                    @id @default(uuid())
   chummeArtistId        String?

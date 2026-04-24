@@ -101,6 +101,8 @@ export default class DiscoveryController {
   static async triggerCrawlerByTargetId(req: Request, res: Response) {
     try {
       const channelId = req.params.targetId?.trim();
+      // We focus primarily on Topic Category for granular discovery mapping
+      const { topicCategoryId } = req.body;
 
       if (!channelId) {
         return res.status(400).json({ message: "channelId is required" });
@@ -162,6 +164,8 @@ export default class DiscoveryController {
           platform: SocialPlatform.YOUTUBE,
           externalHandle: channelId,
           chummeArtistId: artist.id,
+          // NOTE: We focus only on topicCategoryId here to ensure content is correctly picked up by RankingService
+          chummeTopicCategoryId: topicCategoryId || null,
           isActive: true,
           crawlIntervalHours: 1,
           crawlPriority: 1,
@@ -181,6 +185,7 @@ export default class DiscoveryController {
           force: true,
           artistId: artist.id,
           artistHandle: channelHandle,
+          topicCategoryId: topicCategoryId,
           maxItems: 100,
         },
       };

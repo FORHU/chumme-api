@@ -26,13 +26,12 @@ export default class RankingService {
       const items = await prisma.socialFeedItem.findMany({
         where: {
           isDeleted: false,
-          chummeTopicCategoryId: { not: null },
+          chummeCategoryId: { not: null },
         },
         select: {
           id: true,
           views: true,
           likes: true,
-          comments: true,
           bookmarks: true,
         },
       });
@@ -56,7 +55,6 @@ export default class RankingService {
           socialFeedId: true,
           views: true,
           likes: true,
-          comments: true,
           bookmarks: true,
         },
       });
@@ -64,7 +62,7 @@ export default class RankingService {
       // Build a map: feedId → earliest snapshot (first occurrence wins due to asc order)
       const snapshotMap = new Map<
         string,
-        { views: number; likes: number; comments: number; bookmarks: number }
+        { views: number; likes: number; bookmarks: number }
       >();
       for (const snap of snapshots) {
         if (!snapshotMap.has(snap.socialFeedId)) {
@@ -83,7 +81,6 @@ export default class RankingService {
           // Momentum-based scoring: deltas from 24h ago
           const deltaViews = Math.max(0, item.views - snapshot.views);
           const deltaLikes = Math.max(0, item.likes - snapshot.likes);
-          const deltaComments = Math.max(0, item.comments - snapshot.comments);
           const deltaBookmarks = Math.max(
             0,
             item.bookmarks - snapshot.bookmarks,
@@ -91,19 +88,11 @@ export default class RankingService {
 
           /**
            * Scoring Algorithm (Momentum-based)
-           * Views: 1pt each
-           * Likes: 5pts each
-           * Comments: 10pts each
-           * Bookmarks: 20pts each
            */
-          score =
-            deltaViews * 1 +
-            deltaLikes * 5 +
-            deltaComments * 10 +
-            deltaBookmarks * 20;
+          score = deltaViews * 1 + deltaLikes * 5 + deltaBookmarks * 20;
         } else {
           // New item without snapshot — use initial performance, weighted lower
-          score = item.views * 0.1 + item.likes * 1;
+          score = item.views * 0.1 + item.likes * 1 + item.bookmarks * 2;
         }
 
         updates.push({ id: item.id, score });

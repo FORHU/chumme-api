@@ -1,11 +1,7 @@
 import { prisma } from "../utils/prisma";
 
 export default class SystemAssetRepo {
-  static async upsertAsset(data: {
-    key: string;
-    url: string;
-    type: string;
-  }) {
+  static async upsertAsset(data: { key: string; url: string; type: string }) {
     return prisma.systemAsset.upsert({
       where: { key: data.key },
       update: {

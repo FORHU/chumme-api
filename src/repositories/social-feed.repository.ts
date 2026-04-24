@@ -192,6 +192,8 @@ export default class SocialFeedRepo {
       socialPlatform: any;
       externalUrl: string;
       chummeArtistId?: string | null;
+      chummeCategoryId?: string | null;
+      chummeSubCategoryId?: string | null;
       chummeTopicCategoryId?: string | null;
       metaData?: any | null;
       blockedCountries?: string[];
@@ -208,8 +210,12 @@ export default class SocialFeedRepo {
     });
     const isUpdate = !!existing;
 
-    const { chummeTopicCategoryId } = data;
-    let { chummeArtistId: artistId } = data;
+    let {
+      chummeCategoryId,
+      chummeSubCategoryId,
+      chummeTopicCategoryId,
+      chummeArtistId: artistId,
+    } = data;
 
     // Infer artistId if missing
     if (!artistId) {
@@ -285,6 +291,32 @@ export default class SocialFeedRepo {
       }
     }
 
+    // Infer all Category levels from active Ingestion Target if missing but artist exists
+    if ((!chummeCategoryId || !chummeTopicCategoryId) && artistId) {
+      const activeTarget = await prisma.socialIngestionTarget.findFirst({
+        where: {
+          chummeArtistId: artistId,
+          isActive: true,
+          OR: [
+            { chummeCategoryId: { not: null } },
+            { chummeTopicCategoryId: { not: null } },
+          ],
+        },
+        select: {
+          chummeCategoryId: true,
+          chummeSubCategoryId: true,
+          chummeTopicCategoryId: true,
+        },
+      });
+      if (activeTarget) {
+        if (!chummeCategoryId) chummeCategoryId = activeTarget.chummeCategoryId;
+        if (!chummeSubCategoryId)
+          chummeSubCategoryId = activeTarget.chummeSubCategoryId;
+        if (!chummeTopicCategoryId)
+          chummeTopicCategoryId = activeTarget.chummeTopicCategoryId;
+      }
+    }
+
     const item = await prisma.socialFeedItem.upsert({
       where: { externalUrl: where.externalUrl },
       create: {
@@ -295,6 +327,8 @@ export default class SocialFeedRepo {
         videoId: data.videoId ?? null,
         isLive: data.isLive ?? false,
         chummeArtistId: artistId ?? null,
+        chummeCategoryId: chummeCategoryId ?? null,
+        chummeSubCategoryId: chummeSubCategoryId ?? null,
         chummeTopicCategoryId: chummeTopicCategoryId ?? null,
         metaData: data.metaData ?? null,
         blockedCountries: data.blockedCountries || [],
@@ -310,6 +344,8 @@ export default class SocialFeedRepo {
         videoId: data.videoId ?? null,
         isLive: data.isLive !== undefined ? data.isLive : undefined,
         chummeArtistId: artistId ?? null,
+        chummeCategoryId: chummeCategoryId ?? null,
+        chummeSubCategoryId: chummeSubCategoryId ?? null,
         chummeTopicCategoryId: chummeTopicCategoryId ?? null,
         metaData: data.metaData ?? null,
         blockedCountries: data.blockedCountries || [],
@@ -368,10 +404,8 @@ export default class SocialFeedRepo {
       take: limit,
     });
   }
-
-  /**
-   * Save read-only comments scraped from external platforms
-   */
+  /*
+  // NOTE: External comment flow is currently disabled.
   static async saveExternalComments(feedItemId: string, comments: any[]) {
     if (!comments || comments.length === 0) return;
 
@@ -393,6 +427,7 @@ export default class SocialFeedRepo {
       }),
     ]);
   }
+  */
 
   /**
    * Batch upsert signals (sentiments, moods, emotions) for a feed item
