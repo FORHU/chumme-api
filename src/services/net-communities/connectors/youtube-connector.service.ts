@@ -8,22 +8,23 @@ import {
 import YouTubeService from "../youtube.service";
 
 /** Narrow shapes for YouTube Data API list responses (avoids implicit any in .map callbacks) */
+type GenericSnippet = {
+  title?: string | null;
+  description?: string | null;
+  publishedAt?: string | null;
+  channelId?: string | null;
+  channelTitle?: string | null;
+  thumbnails?: { high?: { url?: string }; default?: { url?: string } };
+};
+
 type PlaylistItemRow = {
-  snippet?: {
-    title?: string | null;
-    description?: string | null;
-    publishedAt?: string | null;
-    channelId?: string | null;
-    channelTitle?: string | null;
-    liveBroadcastContent?: string | null;
-    thumbnails?: { high?: { url?: string }; default?: { url?: string } };
-  };
+  snippet?: GenericSnippet;
   contentDetails?: { videoId?: string | null };
 };
 
 type SearchResultRow = {
   id?: { videoId?: string | null };
-  snippet?: PlaylistItemRow["snippet"];
+  snippet?: GenericSnippet & { liveBroadcastContent?: string | null };
 };
 
 type CommentThreadRow = {
@@ -96,14 +97,34 @@ export class YouTubeConnector implements PlatformConnector {
     return YouTubeService.getChannels(channelIds);
   }
 
-  async getChannelLiveStatus(channelId: string): Promise<{ isLive: boolean; videoId?: string }> {
+  async getChannelLiveStatus(channelId: string): Promise<{
+    isLive: boolean;
+    videoId?: string;
+    viewCount?: number;
+    thumbnailUrl?: string;
+    startedAt?: Date;
+  }> {
     const liveMap = await YouTubeService.checkLiveStatus([channelId]);
-    const videoId = liveMap.get(channelId);
+    return (
+      liveMap.get(channelId) || {
+        isLive: false,
+      }
+    );
+  }
 
-    return {
-      isLive: !!videoId,
-      videoId: videoId,
-    };
+  async getChannelsLiveStatus(channelIds: string[]): Promise<
+    Map<
+      string,
+      {
+        isLive: boolean;
+        videoId?: string;
+        viewCount?: number;
+        thumbnailUrl?: string;
+        startedAt?: Date;
+      }
+    >
+  > {
+    return YouTubeService.checkLiveStatus(channelIds);
   }
 
   async discoverMyProfile(accessToken: string): Promise<string | null> {
@@ -135,6 +156,8 @@ export class YouTubeConnector implements PlatformConnector {
         likes: parseInt(video.statistics?.likeCount || "0"),
         comments: parseInt(video.statistics?.commentCount || "0"),
       },
+      allowedCountries: video.contentDetails?.regionRestriction?.allowed || [],
+      blockedCountries: video.contentDetails?.regionRestriction?.blocked || [],
       metaData: video,
     };
   }
@@ -154,7 +177,7 @@ export class YouTubeConnector implements PlatformConnector {
         item.snippet?.thumbnails?.default?.url ||
         undefined,
       crawledAt: new Date(),
-      isLive: item.snippet?.liveBroadcastContent === "live",
+      isLive: false, // Not available in playlist snippet, updated during metadata enrichment
       publishedAt: item.snippet?.publishedAt
         ? new Date(item.snippet.publishedAt)
         : undefined,

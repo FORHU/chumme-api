@@ -10,6 +10,8 @@ import { SocialPlatform } from "@prisma/client";
 import RedisUtil from "../../../utils/redis.util";
 import RankingService from "./ranking.service";
 import { IngestionManager } from "../connectors/platform.service";
+import { WebSubService } from "./websub.service";
+import { LiveProvisioningService } from "../../live-provisioning.service";
 
 export class SchedulingService {
   private static intervalHandle: NodeJS.Timeout | null = null;
@@ -68,10 +70,20 @@ export class SchedulingService {
       );
     }
 
+    try {
+      await this.processWebSubMaintenance();
+    } catch (err) {
+      logger.error(
+        "[SchedulingService] processWebSubMaintenance failed at startup",
+        err,
+      );
+    }
+
     this.intervalHandle = setInterval(async () => {
       await this.processScheduledTasks();
       await this.processScoutTasks();
       await RankingService.calculateGrowthScores();
+      await this.processWebSubMaintenance();
     }, this.CHECK_INTERVAL_MS);
 
     // Dedicated Live Heartbeat (15 mins)
@@ -436,24 +448,53 @@ export class SchedulingService {
         const channelIds = batch.map((t) => t.externalHandle);
         const metadataList = await connector.getChannelsMetadata(channelIds);
 
-        // 3. Update each artist's stats and live status
+        // 3. Batch check live status if supported
+        let liveStatusMap = new Map<string, any>();
+        if (connector.getChannelsLiveStatus) {
+          liveStatusMap = await connector.getChannelsLiveStatus(channelIds);
+        }
+
+        // 4. Update each artist's stats and live status
         for (const target of batch) {
           const meta = metadataList.find((m) => m.id === target.externalHandle);
           if (!meta) continue;
 
           const stats = meta.statistics;
-          const liveStatus = await connector.getChannelLiveStatus!(
-            target.externalHandle,
-          );
+          let isLive = false;
+          let activeVideoId = null;
+          let liveViewCount = 0;
+          let liveThumbnailUrl = null;
+          let liveStartedAt = null;
+
+          if (connector.getChannelsLiveStatus) {
+            const status = liveStatusMap.get(target.externalHandle);
+            isLive = !!status?.isLive;
+            activeVideoId = status?.videoId;
+            liveViewCount = status?.viewCount || 0;
+            liveThumbnailUrl = status?.thumbnailUrl;
+            liveStartedAt = status?.startedAt;
+          } else if (connector.getChannelLiveStatus) {
+            const status = await connector.getChannelLiveStatus(
+              target.externalHandle,
+            );
+            isLive = !!status?.isLive;
+            activeVideoId = status?.videoId;
+            liveViewCount = status?.viewCount || 0;
+            liveThumbnailUrl = status?.thumbnailUrl;
+            liveStartedAt = status?.startedAt;
+          }
 
           await prisma.chummeArtist.update({
             where: { id: target.chummeArtistId },
             data: {
-              isLive: liveStatus.isLive,
-              activeVideoId: liveStatus.isLive ? (liveStatus.videoId || null) : null,
+              isLive,
+              activeVideoId: activeVideoId || null,
               subscriberCount: parseInt(stats?.subscriberCount || "0"),
               totalViews: BigInt(stats?.viewCount || "0"),
-              lastLiveAt: liveStatus.isLive ? new Date() : undefined,
+              lastLiveAt: isLive ? new Date() : undefined,
+              liveViewCount,
+              liveThumbnailUrl,
+              liveStartedAt,
             },
           });
         }
@@ -465,9 +506,6 @@ export class SchedulingService {
 
       // 4. Auto-provision / deprovision community subcategories based on live status
       try {
-        const { LiveProvisioningService } = await import(
-          "../../live-provisioning.service"
-        );
         await LiveProvisioningService.syncAllLiveArtists();
       } catch (provisionErr) {
         logger.error(
@@ -477,6 +515,93 @@ export class SchedulingService {
       }
     } catch (error) {
       logger.error("[SchedulingService] Error in Live Heartbeat:", error);
+    }
+  }
+
+  /**
+   * Maintenance job for WebSub subscriptions
+   * 1. Renews subscriptions expiring soon (within 48h)
+   * 2. Subscribes active targets that are missing a subscription
+   */
+  static async processWebSubMaintenance(): Promise<void> {
+    logger.info("[SchedulingService] Running WebSub maintenance...");
+
+    try {
+      const now = new Date();
+      const fortyEightHoursFromNow = new Date(
+        now.getTime() + 48 * 60 * 60 * 1000,
+      );
+
+      // 1. Find targets that need renewal or initial subscription
+      const targetsToSubscribe = await prisma.socialIngestionTarget.findMany({
+        where: {
+          platform: SocialPlatform.YOUTUBE,
+          isActive: true,
+          OR: [
+            { webSubState: null },
+            { webSubState: "UNSUBSCRIBED" },
+            {
+              AND: [
+                { webSubState: "SUBSCRIBED" },
+                { webSubExpiresAt: { lte: fortyEightHoursFromNow } },
+              ],
+            },
+          ],
+        },
+      });
+
+      if (targetsToSubscribe.length === 0) {
+        logger.info(
+          "[SchedulingService] No WebSub subscriptions need maintenance.",
+        );
+        return;
+      }
+
+      logger.info(
+        `[SchedulingService] Found ${targetsToSubscribe.length} YouTube targets for WebSub subscription/renewal`,
+      );
+
+      for (const target of targetsToSubscribe) {
+        try {
+          await WebSubService.subscribe(target.externalHandle);
+          // Wait slightly between requests to avoid hub rate limits
+          await new Promise((resolve) => setTimeout(resolve, 500));
+        } catch (error) {
+          logger.error(
+            `[SchedulingService] Failed to subscribe ${target.externalHandle} during maintenance:`,
+            error,
+          );
+        }
+      }
+
+      // 2. Find targets that are inactive but still subscribed (Cleanup)
+      const targetsToUnsubscribe = await prisma.socialIngestionTarget.findMany({
+        where: {
+          platform: SocialPlatform.YOUTUBE,
+          isActive: false,
+          webSubState: "SUBSCRIBED",
+        },
+      });
+
+      if (targetsToUnsubscribe.length > 0) {
+        logger.info(
+          `[SchedulingService] Found ${targetsToUnsubscribe.length} inactive YouTube targets for WebSub unsubscription`,
+        );
+
+        for (const target of targetsToUnsubscribe) {
+          try {
+            await WebSubService.unsubscribe(target.externalHandle);
+            await new Promise((resolve) => setTimeout(resolve, 500));
+          } catch (error) {
+            logger.error(
+              `[SchedulingService] Failed to unsubscribe ${target.externalHandle} during maintenance:`,
+              error,
+            );
+          }
+        }
+      }
+    } catch (error) {
+      logger.error("[SchedulingService] Error in WebSub maintenance:", error);
     }
   }
 }

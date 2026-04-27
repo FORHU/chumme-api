@@ -33,6 +33,12 @@ export default class RankingService {
           views: true,
           likes: true,
           bookmarks: true,
+          isLive: true,
+          chummeArtist: {
+            select: {
+              liveViewCount: true,
+            },
+          },
         },
       });
 
@@ -93,6 +99,12 @@ export default class RankingService {
         } else {
           // New item without snapshot — use initial performance, weighted lower
           score = item.views * 0.1 + item.likes * 1 + item.bookmarks * 2;
+        }
+
+        // Add Hype Bonus for Live Streams
+        if (item.isLive && item.chummeArtist?.liveViewCount) {
+          const hypeBonus = item.chummeArtist.liveViewCount * 5;
+          score += hypeBonus;
         }
 
         updates.push({ id: item.id, score });

@@ -116,7 +116,7 @@ export default class YouTubeService {
 
     try {
       const response = await youtube.channels.list({
-        part: ["snippet", "statistics"],
+        part: ["snippet", "statistics", "contentDetails"],
         id: [channelIds.join(",")],
       });
       // await QuotaService.increment(1); // 1 request = 1 unit
@@ -217,46 +217,68 @@ export default class YouTubeService {
   }
 
   /**
-   * Check if specific channels are currently live and get their video IDs
+   * Check if specific channels are currently live and get their video IDs and metadata
    */
-  static async checkLiveStatus(channelIds: string[]): Promise<Map<string, string>> {
-    const youtube = this.getYouTubeClient();
-    const liveMap = new Map<string, string>();
+  static async checkLiveStatus(channelIds: string[]): Promise<
+    Map<
+      string,
+      {
+        isLive: boolean;
+        videoId?: string;
+        viewCount?: number;
+        thumbnailUrl?: string;
+        startedAt?: Date;
+      }
+    >
+  > {
+    const liveMap = new Map<string, any>();
 
     if (!channelIds || channelIds.length === 0) return liveMap;
 
     try {
-      // 1. CHEAP CHECK: Batch check all channels (Cost: 1 unit per 50 channels)
-      // This tells us WHO is live, but not the video ID.
-      const channelsResponse = await youtube.channels.list({
-        part: ["snippet"],
-        id: channelIds,
+      const videoIds: string[] = [];
+      const channelToVideoMap = new Map<string, string>();
+
+      // 1. Get latest video ID for each channel (1 unit each)
+      for (const channelId of channelIds) {
+        const latest = await this.getLatestChannelUpload(channelId);
+        const videoId = latest?.contentDetails?.videoId;
+        if (videoId) {
+          videoIds.push(videoId);
+          channelToVideoMap.set(videoId, channelId);
+        }
+      }
+
+      if (videoIds.length === 0) return liveMap;
+
+      // 2. Batch check live status for all these videos (1 unit)
+      const youtube = this.getYouTubeClient();
+      const response = await youtube.videos.list({
+        part: ["snippet", "liveStreamingDetails"],
+        id: videoIds,
       });
       await QuotaService.increment(1);
 
-      const liveChannelIds = (channelsResponse.data.items || [])
-        .filter(item => (item.snippet as any)?.liveBroadcastContent === "live")
-        .map(item => item.id as string);
+      if (response.data.items) {
+        for (const video of response.data.items) {
+          const isLive = video.snippet?.liveBroadcastContent === "live";
+          const channelId = channelToVideoMap.get(video.id!);
 
-      if (liveChannelIds.length === 0) {
-        return liveMap; // Nobody is live, save 100s of units!
-      }
-
-      // 2. EXPENSIVE SEARCH: Only search for channels confirmed to be live
-      // (Cost: 100 units per live channel)
-      for (const channelId of liveChannelIds) {
-        const searchResponse = await youtube.search.list({
-          part: ["id"],
-          channelId: channelId,
-          type: ["video"],
-          eventType: "live",
-          maxResults: 1,
-        });
-        await QuotaService.increment(100);
-
-        const videoId = searchResponse.data.items?.[0]?.id?.videoId;
-        if (videoId) {
-          liveMap.set(channelId, videoId);
+          if (channelId) {
+            liveMap.set(channelId, {
+              isLive,
+              videoId: video.id,
+              viewCount: parseInt(
+                video.liveStreamingDetails?.concurrentViewers || "0",
+              ),
+              thumbnailUrl:
+                video.snippet?.thumbnails?.high?.url ||
+                video.snippet?.thumbnails?.default?.url,
+              startedAt: video.liveStreamingDetails?.actualStartTime
+                ? new Date(video.liveStreamingDetails.actualStartTime)
+                : undefined,
+            });
+          }
         }
       }
 

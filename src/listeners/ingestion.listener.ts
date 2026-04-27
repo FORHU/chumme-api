@@ -7,6 +7,7 @@ import { prisma } from "../utils/prisma";
 import { IngestionManager } from "../services/net-communities/connectors/platform.service";
 import SocialFeedSvc from "../services/social-feed.service";
 import RedisUtil from "../utils/redis.util";
+import { workerMetrics } from "../utils/worker-metrics";
 // import SocialUserDiscoverySvc from "../services/social-user-discovery.service";
 
 // Ensure connectors are registered
@@ -116,8 +117,8 @@ export class IngestionWorker {
         throw error;
       } finally {
         const durationMs = Date.now() - startTime;
-        const { workerMetrics } = await import("../utils/worker-metrics");
         workerMetrics.recordJob({
+
           jobId: `${message.platform}:${message.targetId}`,
           jobType: `ingestion:${message.type}`,
           durationMs,
@@ -223,6 +224,9 @@ export class IngestionWorker {
               subscriberCount: parseInt(stats?.subscriberCount || "0"),
               totalViews: BigInt(stats?.viewCount || "0"),
               lastLiveAt: isLive ? new Date() : undefined,
+              liveViewCount: (liveInfo as any)?.viewCount || 0,
+              liveThumbnailUrl: (liveInfo as any)?.thumbnailUrl,
+              liveStartedAt: (liveInfo as any)?.startedAt,
             },
           });
           logger.info(
@@ -362,6 +366,49 @@ export class IngestionWorker {
           meta: job.meta,
         },
       );
+
+      // Sync Artist Stats if linked (important for real-time WebSub triggers)
+      if (job.meta?.artistId && job.platform === SocialPlatform.YOUTUBE) {
+        try {
+          const channelId = details.author.id;
+          if (channelId) {
+            const meta = await connector.getChannelMetadata(channelId);
+            if (meta) {
+              const stats = meta.statistics;
+              const liveInfo = await connector.getChannelLiveStatus!(channelId);
+              const isLive =
+                typeof liveInfo === "boolean" ? liveInfo : !!liveInfo?.isLive;
+              const activeVideoId =
+                typeof liveInfo === "object" ? liveInfo?.videoId : null;
+
+              await prisma.chummeArtist.update({
+                where: { id: job.meta.artistId },
+                data: {
+                  isLive,
+                  activeVideoId: activeVideoId || null,
+                  subscriberCount: parseInt(stats?.subscriberCount || "0"),
+                  totalViews: BigInt(stats?.viewCount || "0"),
+                  lastLiveAt: isLive ? new Date() : undefined,
+                  liveViewCount: (liveInfo as any)?.viewCount || 0,
+                  liveThumbnailUrl: (liveInfo as any)?.thumbnailUrl,
+                  liveStartedAt: (liveInfo as any)?.startedAt,
+                  countries:
+                    details.allowedCountries && details.allowedCountries.length > 0
+                      ? details.allowedCountries
+                      : undefined,
+                },
+              });
+              logger.info(
+                `[IngestionWorker] Updated artist stats for ${job.meta.artistId} during metadata refresh`,
+              );
+            }
+          }
+        } catch (err) {
+          logger.warn(
+            `[IngestionWorker] Failed to sync artist stats during metadata refresh: ${err}`,
+          );
+        }
+      }
 
       logger.info(
         `[IngestionWorker] METADATA SUCCESS: ${details.platform}:${details.id} updated and AI Enrichment queued.`,

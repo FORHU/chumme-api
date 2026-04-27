@@ -25,6 +25,8 @@ export interface GenericContentItem {
     comments?: number;
     shares?: number;
   };
+  allowedCountries?: string[];
+  blockedCountries?: string[];
   metaData: any; // Raw platform-specific data
 }
 
@@ -92,7 +94,29 @@ export interface PlatformConnector {
   /**
    * Fetch current live status of a channel/account (Optional)
    */
-  getChannelLiveStatus?(channelId: string): Promise<any>;
+  getChannelLiveStatus?(channelId: string): Promise<{
+    isLive: boolean;
+    videoId?: string;
+    viewCount?: number;
+    thumbnailUrl?: string;
+    startedAt?: Date;
+  }>;
+
+  /**
+   * Fetch current live status for multiple channels/accounts (Optional Batch)
+   */
+  getChannelsLiveStatus?(channelIds: string[]): Promise<
+    Map<
+      string,
+      {
+        isLive: boolean;
+        videoId?: string;
+        viewCount?: number;
+        thumbnailUrl?: string;
+        startedAt?: Date;
+      }
+    >
+  >;
 }
 
 /**
