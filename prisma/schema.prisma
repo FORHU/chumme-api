@@ -237,7 +237,7 @@ model ChummeArtist {
   ingestionTargets       SocialIngestionTarget[]
   chummeCategories       ChummeCategory[]        @relation("ChummeArtistToChummeCategory")
   chummeSubCategories    ChummeSubCategory[]     @relation("ChummeArtistToChummeSubCategory")
-  chummeTopicCategories  ChummeTopicCategory[]     @relation("ChummeArtistToChummeTopicCategory")
+  chummeTopicCategories  ChummeTopicCategory[]   @relation("ChummeArtistToChummeTopicCategory")
 }
 
 model ChummeArtistPersona {
@@ -428,8 +428,6 @@ model SocialFeedItemComment {
 
   @@index([socialFeedItemId])
 }
-
-
 
 model SocialIngestionTarget {
   id                    String                    @id @default(uuid())
@@ -933,33 +931,33 @@ model SportTeam {
 }
 
 model SportAthlete {
-  id            String            @id @default(uuid())
-  espnId        String            @unique
-  teamId        String?
-  leagueId      String
-  fullName      String
-  firstName     String?
-  lastName      String?
-  position      String?
-  jerseyNumber  String?
-  headshotUrl   String?
-  isActive      Boolean           @default(true)
-  metaData      Json?
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
-  team          SportTeam?        @relation(fields: [teamId], references: [id])
-  league        SportLeague       @relation(fields: [leagueId], references: [id])
-  playerStats   SportPlayerStat[]
+  id           String            @id @default(uuid())
+  espnId       String            @unique
+  teamId       String?
+  leagueId     String
+  fullName     String
+  firstName    String?
+  lastName     String?
+  position     String?
+  jerseyNumber String?
+  headshotUrl  String?
+  isActive     Boolean           @default(true)
+  metaData     Json?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  team         SportTeam?        @relation(fields: [teamId], references: [id])
+  league       SportLeague       @relation(fields: [leagueId], references: [id])
+  playerStats  SportPlayerStat[]
 }
 
 model SportEvent {
-  id             String           @id @default(uuid())
-  espnId         String           @unique
+  id             String            @id @default(uuid())
+  espnId         String            @unique
   leagueId       String
   homeTeamId     String
   awayTeamId     String
-  homeScore      Int              @default(0)
-  awayScore      Int              @default(0)
+  homeScore      Int               @default(0)
+  awayScore      Int               @default(0)
   status         SportEventStatus
   statusDetail   String?
   period         Int?
@@ -974,11 +972,11 @@ model SportEvent {
   awayLineScores Json?
   metaData       Json?
   lastPolledAt   DateTime?
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-  league         SportLeague      @relation(fields: [leagueId], references: [id])
-  homeTeam       SportTeam        @relation("HomeTeam", fields: [homeTeamId], references: [id])
-  awayTeam       SportTeam        @relation("AwayTeam", fields: [awayTeamId], references: [id])
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  league         SportLeague       @relation(fields: [leagueId], references: [id])
+  homeTeam       SportTeam         @relation("HomeTeam", fields: [homeTeamId], references: [id])
+  awayTeam       SportTeam         @relation("AwayTeam", fields: [awayTeamId], references: [id])
   playerStats    SportPlayerStat[]
 }
 
@@ -1002,6 +1000,7 @@ enum UserRole {
   ADMIN
   SUPER_ADMIN
   DEVELOPER
+  CREATOR
 }
 
 enum SocialPlatform {

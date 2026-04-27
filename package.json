@@ -83,8 +83,4 @@
     "ts-node": "^10.9.1",
     "typescript": "^5.9.3"
   }
-,
-  "prisma": {
-    "seed": "ts-node prisma/seed.ts"
-  }
-}
+}
