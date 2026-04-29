@@ -66,10 +66,10 @@ export default class OnboardingSvc {
       nextSteps.push("discovery_categories");
     }
     if (!connectYoutubeDone) {
-      nextSteps.push("connect_google_youtube");
+      nextSteps.push("connect_google_youtube_optional");
     }
 
-    const allRequiredStepsDone = discoveryCategoriesDone && connectYoutubeDone;
+    const allRequiredStepsDone = discoveryCategoriesDone; // YouTube is optional
 
     return {
       onboardingCompleted: user?.onboardingCompleted ?? false,
