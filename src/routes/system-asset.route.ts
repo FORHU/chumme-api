@@ -31,4 +31,19 @@ router.post(
   SystemAssetCtrl.uploadAsset,
 );
 
+/**
+ * @route   PATCH /v1/system-assets/:id
+ * @desc    Update system asset
+ * @access  Private (Admin)
+ */
+router.patch("/:id", authenticate, SystemAssetCtrl.updateAsset);
+
+/**
+ * @route   DELETE /v1/system-assets/:id
+ * @desc    Soft delete system asset
+ * @access  Private (Admin)
+ */
+router.delete("/:id", authenticate, SystemAssetCtrl.deleteAsset);
+
 export default router;
+

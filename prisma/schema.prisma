@@ -23,7 +23,7 @@ model User {
   otpCode                String?
   otpExpiry              DateTime?
   isEmailVerified        Boolean                 @default(false)
-  onboardingCompleted    Boolean                 @default(true)
+  onboardingCompleted    Boolean                 @default(false)
   nationality            String?
   chatSessionId          String?
   role                   UserRole                @default(USER)
@@ -1069,10 +1069,13 @@ enum SportEventStatus {
 }
 
 model SystemAsset {
-  id        String   @id @default(uuid())
-  key       String   @unique
-  url       String
-  type      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(uuid())
+  key         String   @unique
+  url         String
+  type        String
+  title       String?
+  description String?
+  isDeleted   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

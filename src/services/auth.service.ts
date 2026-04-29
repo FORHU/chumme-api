@@ -63,7 +63,7 @@ export default class AuthSvc {
 
     // Send verification email with OTP
     try {
-      sendTemplatedEmail({
+      await sendTemplatedEmail({
         subject: `Verify Your Email Address`,
         email_data: {
           email: user.email,
@@ -149,13 +149,15 @@ export default class AuthSvc {
       }
     }
 
-    // Generate tokens and create session using the unified helper
-    const authResponse = await this.generateAuthResponse(user, "chumme");
-
     return {
-      ...authResponse,
       message:
         "Registration successful! Please check your email for verification code.",
+      user: {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        isEmailVerified: false,
+      },
     };
   }
 
@@ -436,7 +438,7 @@ export default class AuthSvc {
     // Send email with OTP
     // Send email with OTP
     try {
-      sendTemplatedEmail({
+      await sendTemplatedEmail({
         subject: "Password Reset Code",
         email_data: {
           email: user.email,
@@ -524,7 +526,7 @@ export default class AuthSvc {
     });
 
     try {
-      sendTemplatedEmail({
+      await sendTemplatedEmail({
         subject: "Verify Your Email Address",
         email_data: {
           email: user.email,

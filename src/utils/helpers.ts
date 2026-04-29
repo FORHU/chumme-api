@@ -11,7 +11,7 @@ Sends a templated email using the specified parameters.*
 @param {Object} params.email_data - The data to populate the email template.
 @param {Array} [params.attachments=[]] - Optional attachments to include in the email.
 @param {string|null} [params.cc=null] - Optional CC recipient for the email.*/
-export const sendTemplatedEmail = ({
+export const sendTemplatedEmail = async ({
   template_name,
   subject,
   email_data,
@@ -19,7 +19,7 @@ export const sendTemplatedEmail = ({
 }: any) => {
   const html = getHTMLContents({ template_name, email_data });
 
-  handleSendEmail({
+  await handleSendEmail({
     to: email_data.email,
     subject,
     html,
@@ -27,7 +27,7 @@ export const sendTemplatedEmail = ({
   });
 };
 
-export const handleSendEmail = ({ to, subject, html }: any) => {
+export const handleSendEmail = async ({ to, subject, html }: any) => {
   /**
      
   Adds a job to the email queue to send an email verification email to the user.
@@ -35,7 +35,7 @@ export const handleSendEmail = ({ to, subject, html }: any) => {
   @param {string} subject - The subject of the verification email.
   @param {string} html - The HTML content of the verification email.*/
 
-  sendEmail({
+  await sendEmail({
     to,
     subject,
     html,

@@ -31,8 +31,8 @@ export default class AuthRepo {
         role: data.role || UserRole.USER,
         otpCode: data.otpCode,
         otpExpiry: data.otpExpiry,
-        isEmailVerified: true,
-        onboardingCompleted: true,
+        isEmailVerified: false,
+        onboardingCompleted: false,
       },
       select: {
         id: true,
