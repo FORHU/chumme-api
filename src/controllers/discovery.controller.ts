@@ -6,7 +6,6 @@ import {
 } from "../listeners/ingestion.listener";
 import SocialFeedRepo from "../repositories/social-feed.repository";
 import * as ArtistRepo from "../repositories/chumme-artist.repository";
-import RankingService from "../services/net-communities/ingestion/ranking.service";
 import { SchedulingService } from "../services/net-communities/ingestion/scheduling.service";
 import { QuotaService } from "../services/net-communities/ingestion/quota.service";
 import YouTubeService from "../services/net-communities/youtube.service";
@@ -62,22 +61,6 @@ export default class DiscoveryController {
   }
 
   /**
-   * Manually trigger a ranking calculation (Admin only)
-   */
-  static async triggerRankingCalculation(req: Request, res: Response) {
-    try {
-      const count = await RankingService.calculateGrowthScores();
-      return res.json({
-        message: `Ranking calculation completed for ${count} items`,
-      });
-    } catch (error: any) {
-      return res
-        .status(500)
-        .json({ message: error.message || "Internal server error" });
-    }
-  }
-
-  /**
    * Manually trigger a full video crawl and scouting process (Admin only)
    */
   static async triggerCrawl(req: Request, res: Response) {
@@ -118,6 +101,8 @@ export default class DiscoveryController {
   static async triggerCrawlerByTargetId(req: Request, res: Response) {
     try {
       const channelId = req.params.targetId?.trim();
+      // We focus primarily on Topic Category for granular discovery mapping
+      const { topicCategoryId } = req.body;
 
       if (!channelId) {
         return res.status(400).json({ message: "channelId is required" });
@@ -179,8 +164,10 @@ export default class DiscoveryController {
           platform: SocialPlatform.YOUTUBE,
           externalHandle: channelId,
           chummeArtistId: artist.id,
+          // NOTE: We focus only on topicCategoryId here to ensure content is correctly picked up by RankingService
+          chummeTopicCategoryId: topicCategoryId || null,
           isActive: true,
-          crawlIntervalHours: 48,
+          crawlIntervalHours: 1,
           crawlPriority: 1,
         },
       });
@@ -198,6 +185,7 @@ export default class DiscoveryController {
           force: true,
           artistId: artist.id,
           artistHandle: channelHandle,
+          topicCategoryId: topicCategoryId,
           maxItems: 100,
         },
       };

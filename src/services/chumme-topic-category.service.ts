@@ -1,4 +1,6 @@
 import ChummeTopicCategoryRepo from "../repositories/chumme-topic-category.repository";
+import { mapLiveStatus } from "../utils/community-mapping.util";
+import { getLiveArtists } from "../repositories/chumme-artist.repository";
 
 export default class ChummeTopicCategorySvc {
   /**
@@ -68,7 +70,9 @@ export default class ChummeTopicCategorySvc {
       publicOnly?: boolean;
     } = {},
   ) {
-    return ChummeTopicCategoryRepo.getAllTopicCategories(params);
+    const topicCategories = await ChummeTopicCategoryRepo.getAllTopicCategories(params);
+    const liveArtists = await getLiveArtists();
+    return topicCategories.map((topic) => mapLiveStatus(topic, liveArtists));
   }
 
   /**
@@ -80,7 +84,8 @@ export default class ChummeTopicCategorySvc {
     if (!topicCategory) {
       throw new Error("Topic Category not found");
     }
-    return topicCategory;
+    const liveArtists = await getLiveArtists();
+    return mapLiveStatus(topicCategory, liveArtists);
   }
 
   /**

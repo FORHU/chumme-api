@@ -4,9 +4,6 @@ export const getAllArtists = async () => {
   return prisma.chummeArtist.findMany({
     where: {
       isDeleted: false,
-      socialFeedItemCount: {
-        gt: 0,
-      },
     },
     select: {
       id: true,
@@ -14,6 +11,10 @@ export const getAllArtists = async () => {
       bio: true,
       imageUrl: true,
       isLive: true,
+      activeVideoId: true,
+      liveThumbnailUrl: true,
+      liveStartedAt: true,
+      liveViewCount: true,
       subscriberCount: true,
       totalViews: true,
       lastLiveAt: true,
@@ -71,8 +72,13 @@ export const findById = async (id: string) => {
       bio: true,
       imageUrl: true,
       isLive: true,
+      activeVideoId: true,
+      liveThumbnailUrl: true,
+      liveStartedAt: true,
+      liveViewCount: true,
       subscriberCount: true,
       totalViews: true,
+      countries: true,
       lastLiveAt: true,
       socialPlatformUsername: true,
       platform: true,
@@ -224,5 +230,24 @@ export const getRisingStars = async (limit: number = 10) => {
       },
     },
     take: limit,
+  });
+};
+
+/**
+ * Get all artists currently live
+ */
+export const getLiveArtists = async () => {
+  return prisma.chummeArtist.findMany({
+    where: {
+      isLive: true,
+      isDeleted: false,
+    },
+    select: {
+      id: true,
+      name: true,
+      countries: true,
+      isLive: true,
+      activeVideoId: true,
+    },
   });
 };

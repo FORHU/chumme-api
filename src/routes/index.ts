@@ -31,6 +31,7 @@ import musicStudioRoute from "./music-studio.route";
 import musicLibraryRoute from "./music-library.route";
 import mediaRoute from "./media.route";
 import apkRoute from "./web/apk.route";
+import searchRoute from "./search.route";
 
 import systemRoute from "./system.route";
 import socialAccountRoute from "./net-communities/session-social-account.route";
@@ -38,6 +39,7 @@ import youtubeRoute from "./net-communities/youtube.route";
 import monitoringRoute from "./web/monitoring.route";
 import discoveryRoute from "./discovery.route";
 import onboardingRoute from "./onboarding.route";
+import systemAssetRoute from "./system-asset.route";
 
 const router = express.Router();
 
@@ -68,6 +70,7 @@ router.use("/v1/chumme-topic-categories", chummeTopicCategoryRoute);
 
 router.use("/v1/interests", userInterestRoute);
 router.use("/v1/emotions", userEmotionRoute);
+router.use("/v1/system-assets", systemAssetRoute);
 router.use("/v1/social-discovery", socialUserDiscoveryRoute);
 router.use("/v1/artists", chummeArtistRoute);
 router.use("/v1/files", fileRoute);
@@ -81,6 +84,7 @@ router.use("/v1/chat-wonder", chatWonderRoute);
 router.use("/v1/artist-persona", chummeArtistPersonaRoute);
 router.use("/v1/music-albums", musicAlbumRoute);
 router.use("/v1/music", musicRoute);
+router.use("/v1/search", searchRoute);
 router.use("/v1/playlists", playlistRoute);
 router.use("/v1/music-records", musicRecordRoute);
 router.use("/v1/music-studios", musicStudioRoute);

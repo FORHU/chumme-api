@@ -22,6 +22,11 @@ export enum IngestionJobType {
   SEARCH = "search",
 }
 
+export enum IngestionMode {
+  SYNC = "sync", // Get latest uploads, stop on duplicate
+  BACKFILL = "backfill", // Get historical uploads using token
+}
+
 export interface IngestionJob {
   type: IngestionJobType;
   platform: SocialPlatform;
@@ -136,6 +141,9 @@ export class IngestionWorker {
       job.meta && typeof job.meta.processedCount === "number"
         ? job.meta.processedCount
         : 0;
+    const mode = job.meta?.mode || IngestionMode.SYNC;
+    const isBackfill = mode === IngestionMode.BACKFILL;
+
     const remainingItems =
       typeof maxItems === "number"
         ? Math.max(maxItems - processedCount, 0)
@@ -150,24 +158,39 @@ export class IngestionWorker {
 
     let result;
     try {
+      const pageToken = isBackfill
+        ? job.meta?.backfillToken
+        : job.meta?.pageToken;
+
       result = await connector.getChannelContent(
         job.targetId,
         remainingItems ? Math.min(20, remainingItems) : 20,
-        job.meta?.pageToken,
+        pageToken,
       );
     } catch (error: any) {
-      if (error.message?.includes("quotaExceeded") || error.code === 403) {
+      const isQuotaError =
+        error.message?.includes("quotaExceeded") ||
+        error.code === 403 ||
+        error.status === 403;
+      if (isQuotaError) {
         logger.warn(
-          `[IngestionWorker] YouTube Daily Quota Exceeded for ${job.targetId}. Saving state in DB.`,
+          `[IngestionWorker] ${job.platform} Quota/Forbidden error for ${job.targetId}. Applying 6h cooldown.`,
         );
+        const updateData: any = {
+          quotaLimitHitAt: new Date(),
+        };
+
+        if (isBackfill) {
+          updateData.backfillToken = job.meta?.backfillToken || null;
+        } else {
+          updateData.nextPageToken = job.meta?.pageToken || null;
+        }
+
         await prisma.socialIngestionTarget.updateMany({
           where: { platform: job.platform, externalHandle: job.targetId },
-          data: {
-            nextPageToken: job.meta?.pageToken || null,
-            quotaLimitHitAt: new Date(),
-          },
+          data: updateData,
         });
-        return; // Graceful stop, do not throw as DLQ cannot solve quota waits
+        return; // Graceful stop
       }
       throw error;
     }
@@ -179,7 +202,7 @@ export class IngestionWorker {
     const nextPageToken = result.nextPageToken;
 
     logger.info(
-      `[IngestionWorker] Discovered ${items.length} items for ${job.platform}:${job.targetId}`,
+      `[IngestionWorker] Discovered ${items.length} items for ${job.platform}:${job.targetId} (Mode: ${mode})`,
     );
 
     // Sync Artist Stats during discovery if linked
@@ -188,12 +211,15 @@ export class IngestionWorker {
         const meta = await connector.getChannelMetadata(job.targetId);
         if (meta) {
           const stats = meta.statistics;
-          const isLive = await connector.getChannelLiveStatus!(job.targetId);
+          const liveInfo = await connector.getChannelLiveStatus!(job.targetId);
+          const isLive = typeof liveInfo === "boolean" ? liveInfo : !!liveInfo?.isLive;
+          const activeVideoId = typeof liveInfo === "object" ? liveInfo?.videoId : null;
 
           await prisma.chummeArtist.update({
             where: { id: job.meta.artistId },
             data: {
               isLive,
+              activeVideoId: activeVideoId || null,
               subscriberCount: parseInt(stats?.subscriberCount || "0"),
               totalViews: BigInt(stats?.viewCount || "0"),
               lastLiveAt: isLive ? new Date() : undefined,
@@ -210,17 +236,35 @@ export class IngestionWorker {
       }
     }
 
+    let newOrUpdatedCount = 0;
     for (const item of items) {
       // 1. Initial upsert to register the content
-      await SocialFeedSvc.upsertExternalMedia({
+      const { isUpdate } = await SocialFeedSvc.upsertExternalMedia({
         externalUrl: item.url,
         title: item.title || "Social Media Content",
         socialPlatform: item.platform,
         metaData: item.metaData,
         isLive: item.isLive,
         chummeArtistId: job.meta?.artistId,
+        chummeCategoryId: job.meta?.categoryId,
+        chummeSubCategoryId: job.meta?.subCategoryId,
         chummeTopicCategoryId: job.meta?.topicCategoryId,
       } as any);
+
+      if (!isUpdate) newOrUpdatedCount++;
+
+      // Stop SYNC crawling if we hit a video we already have (and not forced)
+      if (
+        mode === IngestionMode.SYNC &&
+        isUpdate &&
+        !job.meta?.force &&
+        item.platform !== SocialPlatform.TIKTOK // TikTok often returns unstable results, avoid stopping too early
+      ) {
+        logger.info(
+          `[IngestionWorker] SYNC hit existing item ${item.id}. Stopping discovery for ${job.targetId}`,
+        );
+        return;
+      }
 
       // 2. Queue metadata job for full enrichment with priority
       const routingKey = `ingestion.${IngestionJobType.METADATA}`;
@@ -241,21 +285,46 @@ export class IngestionWorker {
 
     const nextProcessedCount = processedCount + items.length;
 
+    logger.info(
+      `[IngestionWorker] DISCOVERY SUCCESS: ${items.length} items processed (${newOrUpdatedCount} new/updated) for ${job.platform}:${job.targetId}. Total so far: ${nextProcessedCount}`,
+    );
+
     // Recursive pagination loop
     if (
       nextPageToken &&
-      (typeof maxItems !== "number" || nextProcessedCount < maxItems)
+      (typeof maxItems !== "number" || nextProcessedCount < maxItems) &&
+      (isBackfill || job.meta?.force) // Sync mode generally shouldn't paginate unless forced
     ) {
+      // Save progress to DB for backfill
+      if (isBackfill) {
+        await prisma.socialIngestionTarget.updateMany({
+          where: { platform: job.platform, externalHandle: job.targetId },
+          data: { backfillToken: nextPageToken },
+        });
+      }
+
       logger.info(
-        `[IngestionWorker] Triggering next page sync for ${job.targetId}`,
+        `[IngestionWorker] Triggering next page ${mode} for ${job.targetId}`,
       );
       const routingKey = `ingestion.${IngestionJobType.DISCOVERY}`;
       await rabbitMQService.publishMessage(routingKey, {
         ...job,
         meta: {
           ...job.meta,
-          pageToken: nextPageToken,
+          [isBackfill ? "backfillToken" : "pageToken"]: nextPageToken,
           processedCount: nextProcessedCount,
+        },
+      });
+    } else if (isBackfill && !nextPageToken) {
+      // Backfill complete!
+      logger.info(
+        `[IngestionWorker] BACKFILL COMPLETED for ${job.platform}:${job.targetId}`,
+      );
+      await prisma.socialIngestionTarget.updateMany({
+        where: { platform: job.platform, externalHandle: job.targetId },
+        data: {
+          isHistoryCaughtUp: true,
+          backfillToken: null,
         },
       });
     }
@@ -266,36 +335,21 @@ export class IngestionWorker {
     const details = await connector.getContentDetails(job.targetId);
 
     if (details) {
-      const { item } = await SocialFeedSvc.upsertExternalMedia({
+      await SocialFeedSvc.upsertExternalMedia({
         externalUrl: details.url,
         title: details.title || "Social Media Content",
         socialPlatform: details.platform,
         metaData: details.metaData,
         chummeArtistId: job.meta?.artistId,
+        chummeCategoryId: job.meta?.categoryId,
+        chummeSubCategoryId: job.meta?.subCategoryId,
         chummeTopicCategoryId: job.meta?.topicCategoryId,
         views: details.stats?.views,
         likes: details.stats?.likes,
         comments: details.stats?.comments,
       } as any);
-      logger.info(
-        `[IngestionWorker] Metadata updated for ${details.platform}:${details.id}`,
-      );
-
-      // Fetch and save comments if supported by connector
-      if (connector.getComments) {
-        try {
-          const comments = await connector.getComments(job.targetId);
-          await SocialFeedSvc.saveExternalComments(item.id, comments);
-          logger.info(
-            `[IngestionWorker] Saved ${comments.length} comments for ${job.platform}:${job.targetId}`,
-          );
-        } catch (err) {
-          logger.warn(
-            `[IngestionWorker] Failed to fetch comments for ${job.targetId}:`,
-            err,
-          );
-        }
-      }
+      // AI enrichment and other metadata updates continue below
+      // (Comment fetching disabled as per flow requirements)
 
       // Trigger AI Enrichment job
       await rabbitMQService.publishMessage(
@@ -307,6 +361,14 @@ export class IngestionWorker {
           priority: job.priority,
           meta: job.meta,
         },
+      );
+
+      logger.info(
+        `[IngestionWorker] METADATA SUCCESS: ${details.platform}:${details.id} updated and AI Enrichment queued.`,
+      );
+    } else {
+      logger.warn(
+        `[IngestionWorker] METADATA FAILURE: No details found for ${job.platform}:${job.targetId}`,
       );
     }
   }

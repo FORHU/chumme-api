@@ -1,19 +1,8 @@
 import ApkRepo from "../repositories/apk.repository";
 import FileRepo from "../repositories/file.repository";
+import { prisma } from "../utils/prisma";
 import S3Util from "../utils/s3.util";
 import S3PresignedUtil from "../utils/s3-presigned.util";
-
-function extractS3Key(fileUrl: string): string {
-  if (fileUrl.includes(".com/")) {
-    return fileUrl.split(".com/")[1];
-  } else if (fileUrl.includes(".net/")) {
-    return fileUrl.split(".net/")[1];
-  } else {
-    const matches = fileUrl.match(/^https?:\/\/[^/]+\/(.+)$/);
-    if (matches) return matches[1];
-  }
-  throw new Error(`Cannot extract S3 key from URL: ${fileUrl}`);
-}
 
 export default class ApkSvc {
   static async uploadApk(
@@ -26,7 +15,12 @@ export default class ApkSvc {
       setAsStable?: boolean;
     },
   ) {
-    const key = `apk/${Date.now()}-${file.originalname}`;
+    const safeName = file.originalname
+      .normalize("NFKD")
+      .replace(/[^\w.-]+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "");
+    const key = `apk/${Date.now()}-${safeName || "app.apk"}`;
     const fileUrl = await S3Util.uploadFileWithKey(
       file.buffer,
       key,
@@ -72,10 +66,27 @@ export default class ApkSvc {
     const release = await ApkRepo.findById(id);
     if (!release) throw new Error("APK release not found");
 
+    const key = S3Util.getKeyFromUrl(release.file!.fileUrl!);
+    if (!key)
+      throw new Error(
+        `Could not extract S3 key from URL: ${release.file!.fileUrl}`,
+      );
+
+    const exists = await S3Util.fileExists(key);
+    if (!exists) {
+      throw new Error(
+        `APK file is missing from storage (key: ${key}). The release record exists but its object is not in the bucket.`,
+      );
+    }
+
     await ApkRepo.incrementDownload(id);
 
-    const key = extractS3Key(release.file!.fileUrl!);
-    const url = await S3PresignedUtil.getDownloadUrl(key);
+    const contentDisposition = `attachment; filename="chumme v${release.versionName}.apk"`;
+    const url = await S3PresignedUtil.getDownloadUrl(
+      key,
+      undefined,
+      contentDisposition,
+    );
 
     return { url };
   }
@@ -114,10 +125,20 @@ export default class ApkSvc {
     const existing = await ApkRepo.findById(id);
     if (!existing) throw new Error("APK release not found");
 
-    if (existing.fileId) {
-      await FileRepo.deleteFile(existing.fileId);
+    const fileUrl = existing.file?.fileUrl ?? null;
+    await prisma.$transaction(async (tx) => {
+      await tx.apkRelease.delete({ where: { id } });
+      if (existing.fileId) {
+        await tx.file.delete({ where: { id: existing.fileId } });
+      }
+    });
+    if (fileUrl) {
+      try {
+        await S3Util.deleteFile(fileUrl);
+      } catch (err) {
+        console.warn(`[APK delete] S3 cleanup failed for ${fileUrl}:`, err);
+      }
     }
-    await ApkRepo.delete(id);
 
     return { message: "APK release deleted successfully" };
   }

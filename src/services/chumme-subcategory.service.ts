@@ -1,4 +1,6 @@
 import ChummeSubCategoryRepo from "../repositories/chumme-subcategory.repository";
+import { mapLiveStatus } from "../utils/community-mapping.util";
+import { getLiveArtists } from "../repositories/chumme-artist.repository";
 import S3Util from "../utils/s3.util";
 import S3PresignedUtil from "../utils/s3-presigned.util";
 
@@ -90,7 +92,9 @@ export default class ChummeSubCategorySvc {
   static async getAllSubCategories(
     params: { categoryId?: string; publicOnly?: boolean } = {},
   ) {
-    return ChummeSubCategoryRepo.getAllSubCategories(params);
+    const subCategories = await ChummeSubCategoryRepo.getAllSubCategories(params);
+    const liveArtists = await getLiveArtists();
+    return subCategories.map((sub) => mapLiveStatus(sub, liveArtists));
   }
 
   /**
@@ -101,7 +105,8 @@ export default class ChummeSubCategorySvc {
     if (!subCategory) {
       throw new Error("Subcategory not found");
     }
-    return subCategory;
+    const liveArtists = await getLiveArtists();
+    return mapLiveStatus(subCategory, liveArtists);
   }
 
   /**
@@ -111,10 +116,12 @@ export default class ChummeSubCategorySvc {
     categoryId: string,
     params: { publicOnly?: boolean } = {},
   ) {
-    return ChummeSubCategoryRepo.getChummeSubCategoryByChummeCategoryID(
+    const subCategories = await ChummeSubCategoryRepo.getChummeSubCategoryByChummeCategoryID(
       categoryId,
       params,
     );
+    const liveArtists = await getLiveArtists();
+    return subCategories.map((sub) => mapLiveStatus(sub, liveArtists));
   }
 
   /**

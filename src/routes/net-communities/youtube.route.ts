@@ -31,20 +31,4 @@ router.get("/channel-videos", YouTubeCtrl.getChannelVideos);
  */
 router.get("/playlist-videos", YouTubeCtrl.getPlaylistVideos);
 
-// --- Ingestion Endpoints (Currently Disabled) ---
-
-// /**
-//  * @route   POST /v1/youtube/import-playlist
-//  * @desc    Import videos from a playlist into the database
-//  * @access  Private/Internal
-//  */
-// // router.post("/import-playlist", YouTubeCtrl.importPlaylistVideos);
-
-// /**
-//  * @route   POST /v1/youtube/import-channel
-//  * @desc    Import latest videos from a channel into the database
-//  * @access  Private/Internal
-//  */
-// // router.post("/import-channel", YouTubeCtrl.importChannelVideos);
-
 export default router;

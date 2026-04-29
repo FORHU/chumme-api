@@ -9,6 +9,8 @@ import { parseChatWonderResponse } from "../utils/chat-wonder";
 import { stripSourcesPrefix } from "../utils/chat-wonder/source-metadata.util";
 import { searchDbVideosFromSourceMetadata } from "../utils/chat-wonder/db-video-lookup.util";
 import { detectVideoIntent } from "../utils/openai/detect-video-intent.util";
+import { detectCommunityIntent } from "../utils/openai/detect-community-intent.util";
+import { searchDbCommunities } from "../utils/chat-wonder/db-community-lookup.util";
 import { ParsedVideo } from "../utils/chat-wonder/parse-response.util";
 import YouTubeService from "../services/net-communities/youtube.service";
 import CacheUtil from "../utils/cache.util";
@@ -189,6 +191,24 @@ export default class ChatWonderCtrl {
                     `[CHAT-WONDER-STREAM] No video intent for: "${input}" — skipping video fetch`,
                   );
                 }
+
+                // Only fetch communities if the user is asking for one
+                let communities: Awaited<
+                  ReturnType<typeof searchDbCommunities>
+                > = [];
+                const { wantsCommunity, query: communityQuery } =
+                  await detectCommunityIntent(input);
+                if (wantsCommunity) {
+                  communities = await searchDbCommunities(communityQuery);
+                  logger.info(
+                    `[CHAT-WONDER-STREAM] Community intent detected — found ${communities.length} match(es)`,
+                  );
+                } else {
+                  logger.info(
+                    `[CHAT-WONDER-STREAM] No community intent for: "${input}" — skipping community fetch`,
+                  );
+                }
+
                 const { raw, ...cleanResponse } = parsedResponse;
 
                 // Debug: show final parsed payload (keep it lightweight)
@@ -239,6 +259,7 @@ export default class ChatWonderCtrl {
                     ...cleanResponse,
                     videos: mergedVideos,
                     source_metadata: sourceMetadata,
+                    communities,
                     metadata: {
                       conversationId,
                       chatMessageId: chatMessage.id,

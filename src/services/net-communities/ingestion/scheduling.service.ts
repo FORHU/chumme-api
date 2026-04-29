@@ -1,8 +1,9 @@
 import { prisma } from "../../../utils/prisma";
 import { rabbitMQService } from "../../../utils/rabbitmq";
 import {
-  IngestionJobType,
   IngestionJob,
+  IngestionJobType,
+  IngestionMode,
 } from "../../../listeners/ingestion.listener";
 import logger from "../../../utils/logger";
 import { SocialPlatform } from "@prisma/client";
@@ -23,11 +24,49 @@ export class SchedulingService {
 
     logger.info("[SchedulingService] Starting periodic ingestion scheduler...");
 
-    // Initial run
-    await this.processScheduledTasks();
-    await this.processScoutTasks();
-    await this.processLiveHeartbeat();
-    await RankingService.calculateGrowthScores();
+    // Initial run - Each step isolated to prevent cascade failure if one API fails (e.g. 403)
+    try {
+      await this.processScheduledTasks();
+    } catch (err) {
+      logger.error(
+        "[SchedulingService] processScheduledTasks failed at startup",
+        err,
+      );
+    }
+
+    try {
+      await this.processScoutTasks();
+    } catch (err) {
+      logger.error(
+        "[SchedulingService] processScoutTasks failed at startup",
+        err,
+      );
+    }
+
+    try {
+      await this.processLiveHeartbeat();
+    } catch (err) {
+      const msg = (err as any).message || "";
+      if (msg.includes("403") || msg.includes("quota")) {
+        logger.warn(
+          "[SchedulingService] YouTube API Quota/Forbidden at startup. Skipping live heartbeat sync.",
+        );
+      } else {
+        logger.error(
+          "[SchedulingService] processLiveHeartbeat failed at startup",
+          err,
+        );
+      }
+    }
+
+    try {
+      await RankingService.calculateGrowthScores();
+    } catch (err) {
+      logger.error(
+        "[SchedulingService] calculateGrowthScores failed at startup",
+        err,
+      );
+    }
 
     this.intervalHandle = setInterval(async () => {
       await this.processScheduledTasks();
@@ -56,7 +95,7 @@ export class SchedulingService {
           { quotaLimitHitAt: null },
           {
             quotaLimitHitAt: {
-              lt: new Date(now.getTime() - 1000 * 60 * 60 * 24), // 24h backoff
+              lt: new Date(now.getTime() - 1000 * 60 * 60 * 6), // 6h backoff (reduced from 24h)
             },
           },
         ],
@@ -77,17 +116,11 @@ export class SchedulingService {
         ];
       }
 
-      where.AND.push({
-        chummeTopicCategory: {
-          chummeTraits: "ENTERTAINMENT",
-        },
-      });
+      // Removed hardcoded ENTERTAINMENT trait filter to allow all categories
 
       const targetsToCrawl = await prisma.socialIngestionTarget.findMany({
         where,
         include: {
-          chummeArtist: true,
-          chummeCategory: true,
           chummeSubCategory: true,
           chummeTopicCategory: true,
           schedules: {
@@ -161,33 +194,58 @@ export class SchedulingService {
       target.chummeTopicCategory?.name ||
       target.externalHandle;
 
-    logger.info(
-      `[SchedulingService] Queuing DISCOVERY job for ${targetName} on ${target.platform}`,
-    );
-
-    const job: IngestionJob = {
+    // 1. Sync Job (Priority: Higher)
+    const syncJob: IngestionJob = {
       type: IngestionJobType.DISCOVERY,
       platform: target.platform,
       targetId: target.externalHandle,
-      priority: target.crawlPriority,
+      priority: Math.min(target.crawlPriority + 2, 10), // Boost sync priority
       meta: {
+        mode: IngestionMode.SYNC,
         artistId: target.chummeArtistId,
         topicCategoryId: target.chummeTopicCategoryId,
-        force: true, // Bypass worker-level deduplication for manual triggers
-        // Legacy support for higher levels if needed by platform connectors
+        force: false, // Don't force, stop on duplicate
         categoryId: target.chummeCategoryId,
         subCategoryId: target.chummeSubCategoryId,
-        pageToken: target.nextPageToken || undefined,
       },
     };
 
     await rabbitMQService.publishMessage(
       `ingestion.${IngestionJobType.DISCOVERY}`,
-      job,
-      {
-        priority: job.priority,
-      },
+      syncJob,
+      { priority: syncJob.priority },
     );
+
+    // 2. Backfill Job (Only if not caught up, Priority: Lower)
+    if (!target.isHistoryCaughtUp) {
+      const backfillJob: IngestionJob = {
+        type: IngestionJobType.DISCOVERY,
+        platform: target.platform,
+        targetId: target.externalHandle,
+        priority: Math.max(target.crawlPriority - 1, 1), // Lower priority for history
+        meta: {
+          mode: IngestionMode.BACKFILL,
+          artistId: target.chummeArtistId,
+          topicCategoryId: target.chummeTopicCategoryId,
+          force: true, // Keep going until the end
+          backfillToken: target.backfillToken || undefined,
+          categoryId: target.chummeCategoryId,
+          subCategoryId: target.chummeSubCategoryId,
+        },
+      };
+
+      await rabbitMQService.publishMessage(
+        `ingestion.${IngestionJobType.DISCOVERY}`,
+        backfillJob,
+        { priority: backfillJob.priority },
+      );
+
+      logger.info(
+        `[SchedulingService] Queued SYNC & BACKFILL jobs for ${targetName}`,
+      );
+    } else {
+      logger.info(`[SchedulingService] Queued SYNC job for ${targetName}`);
+    }
 
     // Update lastCrawledAt
     await prisma.socialIngestionTarget.update({
@@ -384,17 +442,18 @@ export class SchedulingService {
           if (!meta) continue;
 
           const stats = meta.statistics;
-          const isLive = await connector.getChannelLiveStatus!(
+          const liveStatus = await connector.getChannelLiveStatus!(
             target.externalHandle,
           );
 
           await prisma.chummeArtist.update({
             where: { id: target.chummeArtistId },
             data: {
-              isLive,
+              isLive: liveStatus.isLive,
+              activeVideoId: liveStatus.isLive ? (liveStatus.videoId || null) : null,
               subscriberCount: parseInt(stats?.subscriberCount || "0"),
               totalViews: BigInt(stats?.viewCount || "0"),
-              lastLiveAt: isLive ? new Date() : undefined,
+              lastLiveAt: liveStatus.isLive ? new Date() : undefined,
             },
           });
         }
@@ -403,6 +462,19 @@ export class SchedulingService {
       logger.info(
         `[SchedulingService] Live Heartbeat sync complete for ${targets.length} artists.`,
       );
+
+      // 4. Auto-provision / deprovision community subcategories based on live status
+      try {
+        const { LiveProvisioningService } = await import(
+          "../../live-provisioning.service"
+        );
+        await LiveProvisioningService.syncAllLiveArtists();
+      } catch (provisionErr) {
+        logger.error(
+          "[SchedulingService] LiveProvisioning sync failed:",
+          provisionErr,
+        );
+      }
     } catch (error) {
       logger.error("[SchedulingService] Error in Live Heartbeat:", error);
     }

@@ -1,4 +1,6 @@
 import ChummeCategoryRepo from "../repositories/chumme-category.repository";
+import { getLiveArtists } from "../repositories/chumme-artist.repository";
+import { mapLiveStatus } from "../utils/community-mapping.util";
 
 export default class ChummeCategorySvc {
   /**
@@ -70,7 +72,9 @@ export default class ChummeCategorySvc {
    * Get all chumme categories
    */
   static async getAllCategories(params: { publicOnly?: boolean } = {}) {
-    return ChummeCategoryRepo.getAllCategories(params);
+    const categories = await ChummeCategoryRepo.getAllCategories(params);
+    const liveArtists = await getLiveArtists();
+    return categories.map((cat) => mapLiveStatus(cat, liveArtists));
   }
 
   /**
@@ -84,7 +88,8 @@ export default class ChummeCategorySvc {
     if (!category) {
       throw new Error("Category not found");
     }
-    return category;
+    const liveArtists = await getLiveArtists();
+    return mapLiveStatus(category, liveArtists);
   }
 
   /**
@@ -204,7 +209,9 @@ export default class ChummeCategorySvc {
       throw new Error("Invalid password for this category");
     }
 
-    return ChummeCategoryRepo.getSubCategoriesInCategory(categoryId);
+    const subCategories = await ChummeCategoryRepo.getSubCategoriesInCategory(categoryId);
+    const liveArtists = await getLiveArtists();
+    return subCategories.map((sub) => mapLiveStatus(sub, liveArtists));
   }
 
   /**
@@ -240,20 +247,33 @@ export default class ChummeCategorySvc {
   static async getSpecializedCategories(
     trait: "COMMUNITIES" | "ENTERTAINMENT",
   ) {
-    return ChummeCategoryRepo.getSpecializedCategories(trait);
+    const categories = await ChummeCategoryRepo.getSpecializedCategories(trait);
+    const liveArtists = await getLiveArtists();
+    return categories.map((cat) => mapLiveStatus(cat, liveArtists));
   }
 
   /**
    * Get all entertainment categories
    */
   static async getChummeEntertainment() {
-    return ChummeCategoryRepo.getChummeEntertainment();
+    const categories = await ChummeCategoryRepo.getChummeEntertainment();
+    const liveArtists = await getLiveArtists();
+    return categories.map((cat) => mapLiveStatus(cat, liveArtists));
   }
 
   /**
    * Get all communities categories
    */
   static async getChummeCommunities() {
-    return ChummeCategoryRepo.getChummeCommunities();
+    const categories = await ChummeCategoryRepo.getChummeCommunities();
+    const liveArtists = await getLiveArtists();
+    return categories.map((cat) => mapLiveStatus(cat, liveArtists));
+  }
+
+  /**
+   * Helper to map live status from linked artists to the category
+   */
+  private static mapLiveStatus(item: any) {
+    return mapLiveStatus(item);
   }
 }

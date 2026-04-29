@@ -157,19 +157,42 @@ export default class S3Util {
   /**
    * Extracts the S3 Key from a URL
    */
-  private static getKeyFromUrl(fileUrl: string): string | undefined {
+  public static getKeyFromUrl(fileUrl: string): string | undefined {
     let key: string | undefined;
-    if (fileUrl.includes(".com/")) {
-      key = fileUrl.split(".com/")[1];
-    } else if (fileUrl.includes(".net/")) {
-      key = fileUrl.split(".net/")[1];
-    } else {
-      // Try to find the first single slash after http(s)://
-      const matches = fileUrl.match(/^https?:\/\/[^/]+\/(.+)$/);
-      if (matches) {
-        key = matches[1];
+
+    try {
+      const url = new URL(fileUrl);
+      let path = url.pathname;
+      if (path.startsWith("/")) {
+        path = path.substring(1);
+      }
+
+      // If the path starts with the bucket name, it's path-style
+      if (path.startsWith(`${AWS_S3_BUCKET_NAME}/`)) {
+        key = path.substring(AWS_S3_BUCKET_NAME.length + 1);
+      } else {
+        key = path;
+      }
+    } catch (e) {
+      // Fallback logic if URL parsing fails
+      if (fileUrl.includes(".com/")) {
+        key = fileUrl.split(".com/")[1];
+      } else if (fileUrl.includes(".net/")) {
+        key = fileUrl.split(".net/")[1];
+      } else {
+        // Try to find the first single slash after http(s)://
+        const matches = fileUrl.match(/^https?:\/\/[^/]+\/(.+)$/);
+        if (matches) {
+          key = matches[1];
+        }
+      }
+
+      // Double check for bucket name in fallback results
+      if (key && key.startsWith(`${AWS_S3_BUCKET_NAME}/`)) {
+        key = key.substring(AWS_S3_BUCKET_NAME.length + 1);
       }
     }
+
     return key;
   }
 

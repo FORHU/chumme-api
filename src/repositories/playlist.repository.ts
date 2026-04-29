@@ -8,6 +8,13 @@ export default class PlaylistRepo {
     });
   }
 
+  static async findOwner(id: string) {
+    return prisma.musicPlaylist.findUnique({
+      where: { id },
+      select: { userId: true, deletedAt: true },
+    });
+  }
+
   static async findById(id: string) {
     return prisma.musicPlaylist.findUnique({
       where: { id },
@@ -24,10 +31,11 @@ export default class PlaylistRepo {
     });
   }
 
-  static async findAll() {
+  static async findAll(userId?: string) {
     return prisma.musicPlaylist.findMany({
       where: {
         deletedAt: null,
+        ...(userId ? { userId } : { isPublic: true }),
       },
       include: {
         tracks: {
@@ -60,5 +68,45 @@ export default class PlaylistRepo {
       where: { id },
       data: { deletedAt: new Date() },
     });
+  }
+
+  static async findTrack(playlistId: string, musicId: string) {
+    return prisma.musicSubPlaylist.findUnique({
+      where: { musicId_playlistId: { musicId, playlistId } },
+    });
+  }
+
+  static async addTrack(playlistId: string, musicId: string, order: number) {
+    const maxOrder = await prisma.musicSubPlaylist.aggregate({
+      where: { playlistId },
+      _max: { order: true },
+    });
+    const nextOrder =
+      order ?? (maxOrder._max.order !== null ? maxOrder._max.order + 1 : 0);
+
+    return prisma.musicSubPlaylist.create({
+      data: { playlistId, musicId, order: nextOrder },
+      include: { music: { include: { musicArtist: true, musicFile: true } } },
+    });
+  }
+
+  static async removeTrack(playlistId: string, musicId: string) {
+    return prisma.musicSubPlaylist.delete({
+      where: { musicId_playlistId: { musicId, playlistId } },
+    });
+  }
+
+  static async reorderTracks(
+    playlistId: string,
+    trackOrder: { musicId: string; order: number }[],
+  ) {
+    await prisma.$transaction(
+      trackOrder.map(({ musicId, order }) =>
+        prisma.musicSubPlaylist.update({
+          where: { musicId_playlistId: { musicId, playlistId } },
+          data: { order },
+        }),
+      ),
+    );
   }
 }

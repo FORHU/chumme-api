@@ -14,7 +14,7 @@ import {
   GOOGLE_ANDROID_CLIENT_ID,
 } from "../config";
 import { AutoSyncSvc } from "./net-communities/ingestion/auto-sync.service";
-import { SocialPlatform } from "@prisma/client";
+import { SocialPlatform, UserRole } from "@prisma/client";
 
 export default class AuthSvc {
   static async register(data: {
@@ -23,6 +23,7 @@ export default class AuthSvc {
     username: string;
     name?: string;
     mobileNumber?: string;
+    role?: UserRole;
     idToken?: string;
     accessToken?: string;
   }) {
@@ -55,13 +56,14 @@ export default class AuthSvc {
       username: data.username,
       name: data.name,
       mobileNumber: data.mobileNumber,
+      role: data.role,
       otpCode: otp, // Save OTP
       otpExpiry: otpExpiry, // Save expiry
     });
 
     // Send verification email with OTP
     try {
-      sendTemplatedEmail({
+      await sendTemplatedEmail({
         subject: `Verify Your Email Address`,
         email_data: {
           email: user.email,
@@ -147,13 +149,15 @@ export default class AuthSvc {
       }
     }
 
-    // Generate tokens and create session using the unified helper
-    const authResponse = await this.generateAuthResponse(user, "chumme");
-
     return {
-      ...authResponse,
       message:
         "Registration successful! Please check your email for verification code.",
+      user: {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        isEmailVerified: false,
+      },
     };
   }
 
@@ -434,7 +438,7 @@ export default class AuthSvc {
     // Send email with OTP
     // Send email with OTP
     try {
-      sendTemplatedEmail({
+      await sendTemplatedEmail({
         subject: "Password Reset Code",
         email_data: {
           email: user.email,
@@ -522,7 +526,7 @@ export default class AuthSvc {
     });
 
     try {
-      sendTemplatedEmail({
+      await sendTemplatedEmail({
         subject: "Verify Your Email Address",
         email_data: {
           email: user.email,

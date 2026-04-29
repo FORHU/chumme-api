@@ -34,28 +34,8 @@ export default class UserSvc {
 
     // Clear cache for this user (they're deleted now)
     await CacheUtil.del(`user:${userId}`);
-    // Clear all users list cache (list changed)
-    await CacheUtil.del(`user:all`);
 
     return result;
-  }
-
-  static async getAllUsers() {
-    // Cache key: all users list
-    const cachedKey = `user:all`;
-
-    // Check cache
-    const cached = await CacheUtil.get(cachedKey);
-    if (cached) {
-      return cached; // Fast return
-    }
-
-    const users = await UserRepo.findAllUsers();
-
-    // Cache the list
-    await CacheUtil.set(cachedKey, users);
-
-    return users;
   }
 
   static async updateUser(
@@ -101,8 +81,6 @@ export default class UserSvc {
 
     // Clear cache because user data changed
     await CacheUtil.del(`user:${userId}`);
-    // Clear all users list (user info in list is now stale)
-    await CacheUtil.del(`user:all`);
 
     return updatedUser;
   }

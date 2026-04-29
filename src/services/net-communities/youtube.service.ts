@@ -41,7 +41,7 @@ export default class YouTubeService {
     try {
       const response = await youtube.videos.list({
         part: ["snippet", "contentDetails", "statistics"],
-        id: [videoId],
+        id: [videoId.toString()], // Ensure it's a string, though videos.list usually takes one at a time here
       });
       await QuotaService.increment(1);
 
@@ -117,9 +117,9 @@ export default class YouTubeService {
     try {
       const response = await youtube.channels.list({
         part: ["snippet", "statistics"],
-        id: channelIds,
+        id: [channelIds.join(",")],
       });
-      await QuotaService.increment(1); // 1 request = 1 unit
+      // await QuotaService.increment(1); // 1 request = 1 unit
 
       return response.data.items || [];
     } catch (error) {
@@ -213,6 +213,57 @@ export default class YouTubeService {
         error,
       );
       return null;
+    }
+  }
+
+  /**
+   * Check if specific channels are currently live and get their video IDs
+   */
+  static async checkLiveStatus(channelIds: string[]): Promise<Map<string, string>> {
+    const youtube = this.getYouTubeClient();
+    const liveMap = new Map<string, string>();
+
+    if (!channelIds || channelIds.length === 0) return liveMap;
+
+    try {
+      // 1. CHEAP CHECK: Batch check all channels (Cost: 1 unit per 50 channels)
+      // This tells us WHO is live, but not the video ID.
+      const channelsResponse = await youtube.channels.list({
+        part: ["snippet"],
+        id: channelIds,
+      });
+      await QuotaService.increment(1);
+
+      const liveChannelIds = (channelsResponse.data.items || [])
+        .filter(item => (item.snippet as any)?.liveBroadcastContent === "live")
+        .map(item => item.id as string);
+
+      if (liveChannelIds.length === 0) {
+        return liveMap; // Nobody is live, save 100s of units!
+      }
+
+      // 2. EXPENSIVE SEARCH: Only search for channels confirmed to be live
+      // (Cost: 100 units per live channel)
+      for (const channelId of liveChannelIds) {
+        const searchResponse = await youtube.search.list({
+          part: ["id"],
+          channelId: channelId,
+          type: ["video"],
+          eventType: "live",
+          maxResults: 1,
+        });
+        await QuotaService.increment(100);
+
+        const videoId = searchResponse.data.items?.[0]?.id?.videoId;
+        if (videoId) {
+          liveMap.set(channelId, videoId);
+        }
+      }
+
+      return liveMap;
+    } catch (error) {
+      console.error("Error checking YouTube live status:", error);
+      return liveMap;
     }
   }
 

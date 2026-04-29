@@ -1,4 +1,5 @@
 import SocialFeedSvc from "./social-feed.service";
+import SocialFeedRepo from "../repositories/social-feed.repository";
 
 import FileRepo from "../repositories/file.repository";
 import { upsertArtist } from "../repositories/chumme-artist.repository";
@@ -10,6 +11,7 @@ import { InstagramPostEvent } from "../listeners/instagram-post.listener";
  */
 export async function processInstagramCrawlerData(
   crawlerData: InstagramPostEvent,
+  topicCategoryId?: string,
 ): Promise<void> {
   const { data } = crawlerData;
 
@@ -76,6 +78,7 @@ export async function processInstagramCrawlerData(
           title: post.title || "Instagram Post/Video",
           socialPlatform: "INSTAGRAM",
           chummeArtistId: artist.id,
+          chummeTopicCategoryId: topicCategoryId,
           metaData: metadata,
         });
 
@@ -93,6 +96,7 @@ export async function processInstagramCrawlerData(
           title: post.title || "Instagram Post/Media",
           socialPlatform: "INSTAGRAM",
           chummeArtistId: artist.id,
+          chummeTopicCategoryId: topicCategoryId,
           metaData: metadata,
         });
 
@@ -114,24 +118,40 @@ export async function processInstagramCrawlerData(
       // Step 2d: Extract and link emotions from Spotify data
       if (post.metadata?.spotifyData?.data?.emotion) {
         const emotionData = post.metadata.spotifyData.data.emotion;
-        const emotionsToLink: string[] = [];
+        const signalsToLink: {
+          type: string;
+          value: string;
+          confidence: number;
+        }[] = [];
 
         // Add primary emotion
         if (emotionData.primaryEmotion) {
-          emotionsToLink.push(emotionData.primaryEmotion);
+          signalsToLink.push({
+            type: "EMOTION",
+            value: emotionData.primaryEmotion,
+            confidence: 0.95,
+          });
         }
 
-        // Add secondary emotions (optional, for richer emotional context)
+        // Add secondary emotions
         if (
           emotionData.secondaryEmotions &&
           Array.isArray(emotionData.secondaryEmotions)
         ) {
-          emotionsToLink.push(...emotionData.secondaryEmotions);
+          for (const emo of emotionData.secondaryEmotions) {
+            signalsToLink.push({
+              type: "EMOTION",
+              value: emo,
+              confidence: 0.7,
+            });
+          }
         }
 
-        if (emotionsToLink.length > 0) {
-          // NOTE: Emotion linking is currently disabled for flat SocialFeedItem
-          console.log(`[INGESTION] Emotion linking skipped for ${resultId}`);
+        if (signalsToLink.length > 0) {
+          await SocialFeedRepo.upsertSocialSignals(resultId, signalsToLink);
+          console.log(
+            `[INGESTION] Linked ${signalsToLink.length} emotions for ${resultId}`,
+          );
         } else {
           console.log(
             `No emotions found in Spotify data for video ${resultId}`,
