@@ -225,26 +225,9 @@ export default class YouTubeService {
 
     if (!channelIds || channelIds.length === 0) return liveMap;
 
+    const videoIdToChannelId = new Map<string, string>();
     try {
-      // 1. CHEAP CHECK: Batch check all channels (Cost: 1 unit per 50 channels)
-      // This tells us WHO is live, but not the video ID.
-      const channelsResponse = await youtube.channels.list({
-        part: ["snippet"],
-        id: channelIds,
-      });
-      await QuotaService.increment(1);
-
-      const liveChannelIds = (channelsResponse.data.items || [])
-        .filter(item => (item.snippet as any)?.liveBroadcastContent === "live")
-        .map(item => item.id as string);
-
-      if (liveChannelIds.length === 0) {
-        return liveMap; // Nobody is live, save 100s of units!
-      }
-
-      // 2. EXPENSIVE SEARCH: Only search for channels confirmed to be live
-      // (Cost: 100 units per live channel)
-      for (const channelId of liveChannelIds) {
+      for (const channelId of channelIds) {
         const searchResponse = await youtube.search.list({
           part: ["id"],
           channelId: channelId,
@@ -256,7 +239,41 @@ export default class YouTubeService {
 
         const videoId = searchResponse.data.items?.[0]?.id?.videoId;
         if (videoId) {
-          liveMap.set(channelId, videoId);
+          videoIdToChannelId.set(videoId, channelId);
+        }
+      }
+
+      if (videoIdToChannelId.size === 0) return liveMap;
+
+      // 3. EMBEDDABILITY GATE (Cost: 1 unit): drop videos that are non-embeddable
+      // (e.g. FOX, BBC, sports streams that block third-party embeds) or have
+      // already ended. Without this check we hand the mobile player a videoId
+      // YouTube's iframe will reject with "This live stream recording is not
+      // available."
+      const videosResponse = await youtube.videos.list({
+        part: ["status", "liveStreamingDetails"],
+        id: Array.from(videoIdToChannelId.keys()),
+      });
+      await QuotaService.increment(1);
+
+      for (const item of videosResponse.data.items || []) {
+        const vid = item.id;
+        if (!vid) continue;
+        const channelId = videoIdToChannelId.get(vid);
+        if (!channelId) continue;
+
+        const status = item.status as any;
+        const liveDetails = item.liveStreamingDetails as any;
+        const isEmbeddable = status?.embeddable !== false;
+        const isOngoing = !liveDetails?.actualEndTime;
+
+        if (isEmbeddable && isOngoing) {
+          liveMap.set(channelId, vid);
+        } else {
+          console.log(
+            `[YouTubeService] Dropping ${vid} for channel ${channelId}: ` +
+              `embeddable=${isEmbeddable} ongoing=${isOngoing}`,
+          );
         }
       }
 

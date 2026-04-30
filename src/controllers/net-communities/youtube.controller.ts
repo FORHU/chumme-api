@@ -1,7 +1,39 @@
 import { Request, Response } from "express";
 import YouTubeService from "../../services/net-communities/youtube.service";
+import { LiveProvisioningService } from "../../services/live-provisioning.service";
 
 export default class YouTubeCtrl {
+  /**
+   * On-demand live refresh for a single chat room.
+   * Called by the mobile player when its YouTube embed fails — the stored
+   * activeVideoId may be stale (the broadcast ended and a new one started).
+   */
+  static async refreshRoomLive(req: Request, res: Response) {
+    try {
+      const { roomId } = req.params;
+      if (!roomId) {
+        return res.status(400).json({ message: "roomId is required" });
+      }
+
+      const result = await LiveProvisioningService.refreshByRoom(roomId);
+      if (!result) {
+        return res
+          .status(404)
+          .json({ message: "Room or linked artist not found" });
+      }
+
+      return res.json({
+        message: "Live status refreshed",
+        data: result,
+      });
+    } catch (error: any) {
+      console.error("YouTubeCtrl.refreshRoomLive Error:", error);
+      return res
+        .status(500)
+        .json({ message: error.message || "Internal server error" });
+    }
+  }
+
   /**
    * Get metadata for a YouTube video via URL or ID
    */
