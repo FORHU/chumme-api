@@ -18,6 +18,7 @@ router.post("/", FileCtrl.saveFile);
 router.post("/upload", upload.single("file"), FileCtrl.uploadFile);
 router.put("/upsert", FileCtrl.upsertFile);
 router.get("/:id", FileCtrl.getFile);
+router.get("/download/:id", FileCtrl.downloadFileById);
 router.delete("/:id", FileCtrl.deleteFile);
 
 export default router;
