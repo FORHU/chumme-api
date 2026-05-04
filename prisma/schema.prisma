@@ -64,7 +64,7 @@ model Session {
   provider          String?
   providerAvatarUrl String?
   providerUserId    String?
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User     @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   @@index([userId])
   @@index([provider, providerUserId])
@@ -82,7 +82,7 @@ model SessionSocialAccount {
   avatarUrl      String?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
-  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user           User      @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   @@unique([userId, platform])
 }
@@ -260,7 +260,7 @@ model SocialUserDiscovery {
   id                    String                @id @default(uuid())
   userId                String                @unique
   createdAt             DateTime              @default(now())
-  user                  User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                  User                  @relation(fields: [userId], references: [id], onDelete: Restrict)
   chummeCategories      ChummeCategory[]      @relation("ChummeCategoryToSocialUserDiscovery")
   chummeSubCategories   ChummeSubCategory[]   @relation("ChummeSubCategoryToSocialUserDiscovery")
   chummeTopicCategories ChummeTopicCategory[] @relation("ChummeTopicCategoryToSocialUserDiscovery")
@@ -275,7 +275,7 @@ model SocialUserLike {
   createdAt      DateTime       @default(now())
   isDeleted      Boolean        @default(false)
   socialUserPost SocialUserPost @relation(fields: [socialPostId], references: [id])
-  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user           User           @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   @@unique([socialPostId, userId])
   @@index([socialPostId])
@@ -293,7 +293,7 @@ model SocialUserPost {
   socialFeedItem     SocialFeedItem?
   socialUserComments SocialUserComment[]
   socialUserLikes    SocialUserLike[]
-  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user               User                @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   @@index([userId])
 }
@@ -312,7 +312,7 @@ model SocialUserComment {
   replies               SocialUserComment[] @relation("ThreadedComments")
   socialFeedItem        SocialFeedItem?     @relation(fields: [socialFeedItemId], references: [id])
   socialUserPost        SocialUserPost?     @relation(fields: [socialUserPostId], references: [id])
-  user                  User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                  User                @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   @@index([socialUserPostId])
   @@index([socialFeedItemId])
@@ -327,7 +327,7 @@ model SocialUserBookmark {
   updatedAt        DateTime       @updatedAt
   socialFeedItemId String
   socialFeedItem   SocialFeedItem @relation(fields: [socialFeedItemId], references: [id])
-  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user             User           @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   @@unique([socialFeedItemId, userId], name: "userFeed")
 }
@@ -340,7 +340,7 @@ model SocialUserView {
   updatedAt        DateTime       @updatedAt
   socialFeedItemId String
   socialFeedItem   SocialFeedItem @relation(fields: [socialFeedItemId], references: [id])
-  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user             User           @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   @@unique([socialFeedItemId, userId], name: "userFeed")
 }
@@ -371,7 +371,7 @@ model SocialFeedItem {
   chummeCategory         ChummeCategory?         @relation("CategoryFeed", fields: [chummeCategoryId], references: [id])
   chummeSubCategory      ChummeSubCategory?      @relation("SubCategoryFeed", fields: [chummeSubCategoryId], references: [id])
   chummeTopicCategory    ChummeTopicCategory?    @relation("TopicCategoryFeed", fields: [chummeTopicCategoryId], references: [id])
-  post                   SocialUserPost?         @relation(fields: [postId], references: [id], onDelete: Cascade)
+  post                   SocialUserPost?         @relation(fields: [postId], references: [id], onDelete: Restrict)
   socialFeedItemComments SocialFeedItemComment[]
   socialFeedSignals      SocialFeedSignal[]
   socialFeedSnapshots    SocialFeedSnapshot[]
@@ -396,7 +396,7 @@ model SocialFeedSnapshot {
   likes          Int            @default(0)
   comments       Int            @default(0)
   bookmarks      Int            @default(0)
-  socialFeedItem SocialFeedItem @relation(fields: [socialFeedId], references: [id], onDelete: Cascade)
+  socialFeedItem SocialFeedItem @relation(fields: [socialFeedId], references: [id], onDelete: Restrict)
 
   @@index([socialFeedId, snapshotAt])
 }
@@ -408,7 +408,7 @@ model SocialFeedSignal {
   value          String
   confidence     Float?
   createdAt      DateTime       @default(now())
-  socialFeedItem SocialFeedItem @relation(fields: [socialFeedId], references: [id], onDelete: Cascade)
+  socialFeedItem SocialFeedItem @relation(fields: [socialFeedId], references: [id], onDelete: Restrict)
 
   @@index([socialFeedId])
   @@index([type])
@@ -424,7 +424,7 @@ model SocialFeedItemComment {
   externalId       String?
   publishedAt      DateTime?
   createdAt        DateTime       @default(now())
-  socialFeedItem   SocialFeedItem @relation(fields: [socialFeedItemId], references: [id], onDelete: Cascade)
+  socialFeedItem   SocialFeedItem @relation(fields: [socialFeedItemId], references: [id], onDelete: Restrict)
 
   @@index([socialFeedItemId])
 }
@@ -469,7 +469,7 @@ model SocialIngestionSchedule {
   isActive                Boolean               @default(true)
   createdAt               DateTime              @default(now())
   updatedAt               DateTime              @updatedAt
-  target                  SocialIngestionTarget @relation(fields: [socialIngestionTargetId], references: [id], onDelete: Cascade)
+  target                  SocialIngestionTarget @relation(fields: [socialIngestionTargetId], references: [id], onDelete: Restrict)
 
   @@index([socialIngestionTargetId])
 }
@@ -483,7 +483,7 @@ model RoomUserChat {
   muted               Boolean           @default(false)
   lastSeenAt          DateTime?
   chummeSubCategory   ChummeSubCategory @relation(fields: [chummeSubCategoryId], references: [id])
-  user                User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                User              @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   @@unique([userId, chummeSubCategoryId])
   @@index([chummeSubCategoryId])
@@ -499,7 +499,7 @@ model RoomMessage {
   createdAt           DateTime              @default(now())
   updatedAt           DateTime              @updatedAt
   chummeSubCategoryId String
-  author              User                  @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  author              User                  @relation(fields: [authorId], references: [id], onDelete: Restrict)
   chummeSubCategory   ChummeSubCategory     @relation(fields: [chummeSubCategoryId], references: [id])
   parentMessage       RoomMessage?          @relation("ThreadedMessages", fields: [parentMessageId], references: [id])
   replies             RoomMessage[]         @relation("ThreadedMessages")
@@ -517,7 +517,7 @@ model RoomMessageReaction {
   emoji     String
   createdAt DateTime    @default(now())
   message   RoomMessage @relation("MessageReactions", fields: [messageId], references: [id])
-  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User        @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   @@unique([messageId, userId, emoji])
   @@index([messageId])
@@ -532,7 +532,7 @@ model Conversation {
   lastMessageAt DateTime?
   isDeleted     Boolean       @default(false)
   chatMessages  ChatMessage[]
-  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User          @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   @@index([userId, lastMessageAt(sort: Desc)])
   @@index([userId, isDeleted])
@@ -547,7 +547,7 @@ model ChatMessage {
   conversationId String?
   role           ChatMessageRole @default(USER)
   conversation   Conversation?   @relation(fields: [conversationId], references: [id])
-  User           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  User           User            @relation(fields: [userId], references: [id], onDelete: Restrict)
   embedding      Embedding?
   emotionMemory  EmotionMemory?
 
@@ -572,7 +572,7 @@ model EmotionMemory {
   confidence    Float
   createdAt     DateTime    @default(now())
   ChatMessage   ChatMessage @relation(fields: [chatMessageId], references: [id])
-  User          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  User          User        @relation(fields: [userId], references: [id], onDelete: Restrict)
 }
 
 model Follow {
@@ -581,8 +581,8 @@ model Follow {
   followingId String
   createdAt   DateTime @default(now())
   isDeleted   Boolean  @default(false)
-  follower    User     @relation("UserFollows", fields: [followerId], references: [id], onDelete: Cascade)
-  following   User     @relation("UserFollowers", fields: [followingId], references: [id], onDelete: Cascade)
+  follower    User     @relation("UserFollows", fields: [followerId], references: [id], onDelete: Restrict)
+  following   User     @relation("UserFollowers", fields: [followingId], references: [id], onDelete: Restrict)
 
   @@unique([followerId, followingId])
 }
@@ -604,7 +604,7 @@ model UserInterest {
   interestId String
   createdAt  DateTime @default(now())
   interest   Interest @relation(fields: [interestId], references: [id])
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   @@unique([userId, interestId])
   @@index([userId])
@@ -629,7 +629,7 @@ model UserEmotionPreference {
   emotionId String
   createdAt DateTime @default(now())
   emotion   Emotion  @relation(fields: [emotionId], references: [id])
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   @@unique([userId, emotionId])
   @@index([userId])
@@ -691,7 +691,7 @@ model MusicPlaylist {
   name          String
   userId        String
   music         Music?             @relation(fields: [musicId], references: [id])
-  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User               @relation(fields: [userId], references: [id], onDelete: Restrict)
   tracks        MusicSubPlaylist[]
 }
 
@@ -776,7 +776,7 @@ model UserLikedSong {
   userId    String
   musicId   String
   createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Restrict)
   music     Music    @relation(fields: [musicId], references: [id])
 
   @@unique([userId, musicId])
@@ -814,7 +814,7 @@ model MusicStudioMember {
   vocalRoleIndex Int?
   role           MusicStudioRole @default(LISTENER)
   studio         MusicStudio     @relation("StudioMembers", fields: [studioId], references: [id])
-  user           User            @relation("StudioMembership", fields: [userId], references: [id], onDelete: Cascade)
+  user           User            @relation("StudioMembership", fields: [userId], references: [id], onDelete: Restrict)
 
   @@unique([userId, studioId])
   @@index([studioId])
@@ -835,7 +835,7 @@ model MusicStudio {
   /// @description Null/Empty = public, otherwise private
   keyPassword   String?
   records       MusicRecord[]       @relation("StudioRecords")
-  owner         User                @relation("StudioOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  owner         User                @relation("StudioOwner", fields: [ownerId], references: [id], onDelete: Restrict)
   members       MusicStudioMember[] @relation("StudioMembers")
   tempRecords   MusicTempRecord[]   @relation("StudioTempRecords")
 }
