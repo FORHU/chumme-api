@@ -92,11 +92,27 @@ export default class FileSvc {
       throw new Error("File not found");
     }
 
-    return file;
+    return this.signFileUrl(file);
   }
 
   static async getAllFiles() {
-    return FileRepo.findAll();
+    const files = await FileRepo.findAll();
+    return Promise.all(files.map((file) => this.signFileUrl(file)));
+  }
+
+  static async signFileUrl(file: any) {
+    if (file && file.fileUrl) {
+      const key = S3Util.getKeyFromUrl(file.fileUrl);
+      if (key) {
+        try {
+          const signedUrl = await S3PresignedUtil.getDownloadUrl(key);
+          return { ...file, fileUrl: signedUrl };
+        } catch (err) {
+          console.error(`Error signing URL for file ${file.id}:`, err);
+        }
+      }
+    }
+    return file;
   }
 
   static async deleteFile(fileId: string) {
@@ -123,5 +139,19 @@ export default class FileSvc {
   static async getDownloadUrl(key: string) {
     const response = await S3PresignedUtil.getDownloadUrl(key);
     return { message: "File Downloaded Successfully", data: response };
+  }
+
+  static async getDownloadUrlById(id: string) {
+    const file = await this.getFileById(id);
+    if (!file || !file.fileUrl) {
+      throw new Error("File has no URL");
+    }
+
+    const key = S3Util.getKeyFromUrl(file.fileUrl);
+    if (!key) {
+      throw new Error("Could not extract S3 key from file URL");
+    }
+
+    return this.getDownloadUrl(key);
   }
 }

@@ -117,3 +117,18 @@ export const deleteArtist = async (id: string) => {
 
   return result;
 };
+
+export const getLiveArtists = async () => {
+  const cacheKey = "artists:live";
+
+  const cached = await CacheUtil.get(cacheKey);
+  if (cached) {
+    return JSON.parse(cached);
+  }
+
+  const artists = await chummeArtistRepo.getLiveArtists();
+
+  await CacheUtil.set(cacheKey, JSON.stringify(artists), 300); // Cache for 5 mins
+
+  return artists;
+};

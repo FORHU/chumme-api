@@ -96,13 +96,15 @@ export class YouTubeConnector implements PlatformConnector {
     return YouTubeService.getChannels(channelIds);
   }
 
-  async getChannelLiveStatus(channelId: string): Promise<{ isLive: boolean; videoId?: string }> {
+  async getChannelLiveStatus(channelId: string): Promise<{ isLive: boolean; videoId?: string; concurrentViewers?: number; actualStartTime?: string }> {
     const liveMap = await YouTubeService.checkLiveStatus([channelId]);
-    const videoId = liveMap.get(channelId);
+    const liveData = liveMap.get(channelId);
 
     return {
-      isLive: !!videoId,
-      videoId: videoId,
+      isLive: !!liveData,
+      videoId: liveData?.videoId,
+      concurrentViewers: liveData?.concurrentViewers,
+      actualStartTime: liveData?.actualStartTime,
     };
   }
 

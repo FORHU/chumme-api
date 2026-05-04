@@ -304,6 +304,98 @@ export class LiveProvisioningService {
   }
 
   /**
+   * Refresh live status for a single artist on demand.
+   *
+   * Used when the mobile player hits an embed error — the stored activeVideoId
+   * may have ended/rotated since the last 15m heartbeat. Re-runs checkLiveStatus
+   * for just this artist's channel, updates the DB, and emits the socket event
+   * so connected clients pick up the new videoId immediately.
+   */
+  static async refreshArtistLive(artistId: string): Promise<{
+    isLive: boolean;
+    activeVideoId: string | null;
+    channelId: string | null;
+  }> {
+    const artist = await prisma.chummeArtist.findUnique({
+      where: { id: artistId },
+      select: {
+        id: true,
+        channelId: true,
+        isLive: true,
+        activeVideoId: true,
+      },
+    });
+
+    if (!artist || !artist.channelId || artist.channelId.length === 0) {
+      return { isLive: false, activeVideoId: null, channelId: null };
+    }
+
+    const primaryChannelId = artist.channelId[0];
+
+    const { default: YouTubeService } = await import(
+      "./net-communities/youtube.service"
+    );
+    const liveMap = await YouTubeService.checkLiveStatus([primaryChannelId]);
+    const liveData = liveMap.get(primaryChannelId);
+    const newVideoId = liveData?.videoId || null;
+    const nowLive = !!newVideoId;
+
+    const changed =
+      nowLive !== artist.isLive || newVideoId !== artist.activeVideoId;
+
+    if (changed) {
+      await prisma.chummeArtist.update({
+        where: { id: artistId },
+        data: {
+          isLive: nowLive,
+          activeVideoId: nowLive ? newVideoId : null,
+          liveViewCount: nowLive ? (liveData?.concurrentViewers || 0) : 0,
+          liveStartedAt: nowLive ? (liveData?.actualStartTime ? new Date(liveData.actualStartTime) : undefined) : null,
+          lastLiveAt: nowLive ? new Date() : undefined,
+        },
+      });
+
+      if (nowLive) {
+        await LiveProvisioningService.provisionLiveCommunity(artistId);
+      } else {
+        await LiveProvisioningService.deprovisionLiveCommunity(artistId);
+      }
+
+      logger.info(
+        `[LiveProvisioning] Refreshed artist ${artistId}: isLive=${nowLive} videoId=${newVideoId}`,
+      );
+    }
+
+    return {
+      isLive: nowLive,
+      activeVideoId: newVideoId,
+      channelId: primaryChannelId,
+    };
+  }
+
+  /**
+   * Refresh live status for whichever artist is linked to a given subcategory/room.
+   * Returns null if the room doesn't exist or has no artist link.
+   */
+  static async refreshByRoom(roomId: string): Promise<{
+    isLive: boolean;
+    activeVideoId: string | null;
+    channelId: string | null;
+  } | null> {
+    const sub = await prisma.chummeSubCategory.findUnique({
+      where: { id: roomId },
+      select: {
+        chummeArtists: { select: { id: true } },
+      },
+    });
+
+    const artistId = sub?.chummeArtists[0]?.id;
+    if (!artistId) return null;
+
+    return await LiveProvisioningService.refreshArtistLive(artistId);
+  }
+
+  /**
    * Emit a socket event for live status changes.
    * Uses the global io instance set by app.ts
    */

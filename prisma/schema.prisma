@@ -371,7 +371,7 @@ model SocialFeedItem {
   chummeCategory         ChummeCategory?         @relation("CategoryFeed", fields: [chummeCategoryId], references: [id])
   chummeSubCategory      ChummeSubCategory?      @relation("SubCategoryFeed", fields: [chummeSubCategoryId], references: [id])
   chummeTopicCategory    ChummeTopicCategory?    @relation("TopicCategoryFeed", fields: [chummeTopicCategoryId], references: [id])
-  post                   SocialUserPost?         @relation(fields: [postId], references: [id], onDelete: Cascade)
+  post                   SocialUserPost?         @relation(fields: [postId], references: [id])
   socialFeedItemComments SocialFeedItemComment[]
   socialFeedSignals      SocialFeedSignal[]
   socialFeedSnapshots    SocialFeedSnapshot[]
@@ -396,7 +396,7 @@ model SocialFeedSnapshot {
   likes          Int            @default(0)
   comments       Int            @default(0)
   bookmarks      Int            @default(0)
-  socialFeedItem SocialFeedItem @relation(fields: [socialFeedId], references: [id], onDelete: Cascade)
+  socialFeedItem SocialFeedItem @relation(fields: [socialFeedId], references: [id])
 
   @@index([socialFeedId, snapshotAt])
 }
@@ -408,7 +408,7 @@ model SocialFeedSignal {
   value          String
   confidence     Float?
   createdAt      DateTime       @default(now())
-  socialFeedItem SocialFeedItem @relation(fields: [socialFeedId], references: [id], onDelete: Cascade)
+  socialFeedItem SocialFeedItem @relation(fields: [socialFeedId], references: [id])
 
   @@index([socialFeedId])
   @@index([type])
@@ -424,7 +424,7 @@ model SocialFeedItemComment {
   externalId       String?
   publishedAt      DateTime?
   createdAt        DateTime       @default(now())
-  socialFeedItem   SocialFeedItem @relation(fields: [socialFeedItemId], references: [id], onDelete: Cascade)
+  socialFeedItem   SocialFeedItem @relation(fields: [socialFeedItemId], references: [id])
 
   @@index([socialFeedItemId])
 }
@@ -469,7 +469,7 @@ model SocialIngestionSchedule {
   isActive                Boolean               @default(true)
   createdAt               DateTime              @default(now())
   updatedAt               DateTime              @updatedAt
-  target                  SocialIngestionTarget @relation(fields: [socialIngestionTargetId], references: [id], onDelete: Cascade)
+  target                  SocialIngestionTarget @relation(fields: [socialIngestionTargetId], references: [id])
 
   @@index([socialIngestionTargetId])
 }
@@ -532,7 +532,7 @@ model Conversation {
   lastMessageAt DateTime?
   isDeleted     Boolean       @default(false)
   chatMessages  ChatMessage[]
-  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User          @relation(fields: [userId], references: [id])
 
   @@index([userId, lastMessageAt(sort: Desc)])
   @@index([userId, isDeleted])

@@ -238,9 +238,12 @@ export default class AuthSvc {
     }
 
     if (!user.isEmailVerified) {
+      // Automatically send a new OTP if login is attempted on an unverified account
+      await this.resendVerificationOTP(user.email);
+      
       return {
         requiresVerification: true,
-        message: "Please verify your email before logging in.",
+        message: "Please verify your email before logging in. A new verification code has been sent.",
         user: {
           email: user.email,
           isEmailVerified: user.isEmailVerified,

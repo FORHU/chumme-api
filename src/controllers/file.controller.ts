@@ -146,4 +146,15 @@ export default class FileCtrl {
       return res.status(400).json({ message: err.message || err });
     }
   }
+
+  static async downloadFileById(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const result = await FileSvc.getDownloadUrlById(id);
+      return res.status(200).json(result);
+    } catch (err: any) {
+      const statusCode = err.message === "File not found" ? 404 : 400;
+      return res.status(statusCode).json({ message: err.message || err });
+    }
+  }
 }

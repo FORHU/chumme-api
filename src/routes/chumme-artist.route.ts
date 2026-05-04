@@ -7,6 +7,7 @@ const router = express.Router();
 
 // Public/Authenticated routes
 router.get("/", authenticate, chummeArtistController.getAllArtists);
+router.get("/live", authenticate, chummeArtistController.getLiveArtists);
 
 // Skip onboarding by selecting random artists
 router.post(

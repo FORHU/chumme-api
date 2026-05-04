@@ -1,4 +1,6 @@
 import SystemAssetRepo from "../repositories/system-asset.repository";
+import S3Util from "../utils/s3.util";
+import S3PresignedUtil from "../utils/s3-presigned.util";
 
 export default class SystemAssetSvc {
   static async upsertAsset(
@@ -24,15 +26,33 @@ export default class SystemAssetSvc {
   }
 
   static async getAssetByKey(key: string) {
-    return SystemAssetRepo.findByKey(key);
+    const asset = await SystemAssetRepo.findByKey(key);
+    return this.signAssetUrl(asset);
   }
 
   static async getAllAssets() {
-    return SystemAssetRepo.findAll();
+    const assets = await SystemAssetRepo.findAll();
+    return Promise.all(assets.map((asset) => this.signAssetUrl(asset)));
   }
 
   static async getAssetById(id: string) {
-    return SystemAssetRepo.findById(id);
+    const asset = await SystemAssetRepo.findById(id);
+    return this.signAssetUrl(asset);
+  }
+
+  private static async signAssetUrl(asset: any) {
+    if (asset && asset.url) {
+      const key = S3Util.getKeyFromUrl(asset.url);
+      if (key) {
+        try {
+          const signedUrl = await S3PresignedUtil.getDownloadUrl(key);
+          return { ...asset, url: signedUrl };
+        } catch (err) {
+          console.error(`Error signing URL for asset ${asset.id}:`, err);
+        }
+      }
+    }
+    return asset;
   }
 }
 

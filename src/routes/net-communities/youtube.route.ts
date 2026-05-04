@@ -31,4 +31,13 @@ router.get("/channel-videos", YouTubeCtrl.getChannelVideos);
  */
 router.get("/playlist-videos", YouTubeCtrl.getPlaylistVideos);
 
+/**
+ * @route   POST /v1/youtube/rooms/:roomId/refresh-live
+ * @desc    Force-refresh the live status for the artist linked to a chat room.
+ *          Called by the mobile player when its embed fails to detect a stale
+ *          activeVideoId without waiting for the next 15-min heartbeat.
+ * @access  Public
+ */
+router.post("/rooms/:roomId/refresh-live", YouTubeCtrl.refreshRoomLive);
+
 export default router;
