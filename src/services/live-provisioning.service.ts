@@ -336,7 +336,8 @@ export class LiveProvisioningService {
       "./net-communities/youtube.service"
     );
     const liveMap = await YouTubeService.checkLiveStatus([primaryChannelId]);
-    const newVideoId = liveMap.get(primaryChannelId) || null;
+    const liveData = liveMap.get(primaryChannelId);
+    const newVideoId = liveData?.videoId || null;
     const nowLive = !!newVideoId;
 
     const changed =
@@ -348,6 +349,8 @@ export class LiveProvisioningService {
         data: {
           isLive: nowLive,
           activeVideoId: nowLive ? newVideoId : null,
+          liveViewCount: nowLive ? (liveData?.concurrentViewers || 0) : 0,
+          liveStartedAt: nowLive ? (liveData?.actualStartTime ? new Date(liveData.actualStartTime) : undefined) : null,
           lastLiveAt: nowLive ? new Date() : undefined,
         },
       });

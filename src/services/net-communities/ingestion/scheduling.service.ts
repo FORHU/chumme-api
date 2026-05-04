@@ -451,6 +451,8 @@ export class SchedulingService {
             data: {
               isLive: liveStatus.isLive,
               activeVideoId: liveStatus.isLive ? (liveStatus.videoId || null) : null,
+              liveViewCount: liveStatus.isLive ? (liveStatus.concurrentViewers || 0) : 0,
+              liveStartedAt: liveStatus.isLive ? (liveStatus.actualStartTime ? new Date(liveStatus.actualStartTime) : undefined) : null,
               subscriberCount: parseInt(stats?.subscriberCount || "0"),
               totalViews: BigInt(stats?.viewCount || "0"),
               lastLiveAt: liveStatus.isLive ? new Date() : undefined,

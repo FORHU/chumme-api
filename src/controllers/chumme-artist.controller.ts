@@ -278,3 +278,31 @@ export const skipOnboarding = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const getLiveArtists = async (req: Request, res: Response) => {
+  try {
+    const artists = await chummeArtistService.getLiveArtists();
+
+    const mappedArtists = artists.map((artist: any) => ({
+      ...artist,
+      id: artist.activeVideoId || artist.id, // Replace with Video ID for frontend player
+      artistId: artist.id,
+      uptime: artist.liveStartedAt
+        ? Math.floor((Date.now() - new Date(artist.liveStartedAt).getTime()) / 1000)
+        : 0,
+      viewCount: artist.liveViewCount || 0,
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: mappedArtists,
+    });
+  } catch (error) {
+    console.error("Error fetching live artists:", error);
+    res.status(500).json({
+      success: false,
+      message:
+        error instanceof Error ? error.message : "Failed to fetch live artists",
+    });
+  }
+};

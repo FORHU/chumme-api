@@ -219,9 +219,9 @@ export default class YouTubeService {
   /**
    * Check if specific channels are currently live and get their video IDs
    */
-  static async checkLiveStatus(channelIds: string[]): Promise<Map<string, string>> {
+  static async checkLiveStatus(channelIds: string[]): Promise<Map<string, { videoId: string, concurrentViewers?: number, actualStartTime?: string }>> {
     const youtube = this.getYouTubeClient();
-    const liveMap = new Map<string, string>();
+    const liveMap = new Map<string, { videoId: string, concurrentViewers?: number, actualStartTime?: string }>();
 
     if (!channelIds || channelIds.length === 0) return liveMap;
 
@@ -268,7 +268,11 @@ export default class YouTubeService {
         const isOngoing = !liveDetails?.actualEndTime;
 
         if (isEmbeddable && isOngoing) {
-          liveMap.set(channelId, vid);
+          liveMap.set(channelId, {
+            videoId: vid,
+            concurrentViewers: parseInt(liveDetails?.concurrentViewers || "0", 10),
+            actualStartTime: liveDetails?.actualStartTime
+          });
         } else {
           console.log(
             `[YouTubeService] Dropping ${vid} for channel ${channelId}: ` +

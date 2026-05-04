@@ -248,6 +248,8 @@ export const getLiveArtists = async () => {
       countries: true,
       isLive: true,
       activeVideoId: true,
+      liveStartedAt: true,
+      liveViewCount: true,
     },
   });
 };
