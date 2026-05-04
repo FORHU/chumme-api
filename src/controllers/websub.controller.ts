@@ -39,4 +39,23 @@ export class WebSubController {
       return res.status(500).send("Internal Error");
     }
   }
+
+  /**
+   * POST /api/ingestion/websub/:platform/simulate
+   * Manual trigger for testing
+   */
+  static async simulate(req: Request, res: Response) {
+    const platform = req.params.platform;
+    const body = req.body;
+    const signature = req.headers["x-hub-signature"] as string;
+
+    logger.info(`[WebSubController] Simulation trigger for platform: ${platform}`);
+    
+    try {
+      await WebSubService.handleNotification(platform, body, signature);
+      return res.status(200).send("Simulation Triggered");
+    } catch (error) {
+      return res.status(500).send("Simulation Failed");
+    }
+  }
 }

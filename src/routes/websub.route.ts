@@ -8,9 +8,12 @@ const router = Router();
  * We use express.text() middleware to capture the raw body as a string,
  * which is required for HMAC signature verification.
  */
-const xmlParser = text({ type: ["application/atom+xml", "text/xml", "application/xml"] });
+const xmlParser = text({
+  type: ["application/atom+xml", "text/xml", "application/xml"],
+});
 
 router.get("/:platform", WebSubController.verify);
 router.post("/:platform", xmlParser, WebSubController.notify);
+router.post("/:platform/simulate", xmlParser, WebSubController.simulate);
 
 export default router;

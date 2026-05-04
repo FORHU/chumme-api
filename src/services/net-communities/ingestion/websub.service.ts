@@ -170,55 +170,62 @@ export class WebSubService {
     // 2. Parse Payload (YouTube Atom Feed)
     try {
       const jsonObj = this.XML_PARSER.parse(body);
-      const entry = jsonObj.feed?.entry;
+      const entries = Array.isArray(jsonObj.feed?.entry) 
+        ? jsonObj.feed.entry 
+        : jsonObj.feed?.entry 
+          ? [jsonObj.feed.entry] 
+          : [];
       
-      if (!entry) {
+      if (entries.length === 0) {
         logger.warn("[WebSubService] Received empty or invalid Atom feed.");
         return;
       }
 
-      const videoId = entry["yt:videoId"];
-      const channelId = entry["yt:channelId"];
-      const title = entry.title;
+      for (const entry of entries) {
+        const videoId = entry["yt:videoId"];
+        const channelId = entry["yt:channelId"];
+        const title = entry.title;
 
-      logger.info(`[WebSubService] Notification: Video "${title}" (${videoId}) in channel ${channelId}`);
+        logger.info(`[WebSubService] Notification: Video "${title}" (${videoId}) in channel ${channelId}`);
 
-      // 3. Look up target to get artist and category context
-      if (videoId && channelId) {
-        const target = await prisma.socialIngestionTarget.findFirst({
-          where: {
-            platform: SocialPlatform.YOUTUBE,
-            externalHandle: channelId,
-            isActive: true,
-          },
-          select: {
-            chummeArtistId: true,
-            chummeCategoryId: true,
-            chummeSubCategoryId: true,
-            chummeTopicCategoryId: true,
-          },
-        });
-
-        await rabbitMQService.publishMessage(
-          `ingestion.${IngestionJobType.METADATA}`,
-          {
-            type: IngestionJobType.METADATA,
-            platform: SocialPlatform.YOUTUBE,
-            targetId: videoId,
-            priority: 10, // High priority for real-time
-            meta: {
-              isLiveTrigger: true,
-              artistId: target?.chummeArtistId,
-              categoryId: target?.chummeCategoryId,
-              subCategoryId: target?.chummeSubCategoryId,
-              topicCategoryId: target?.chummeTopicCategoryId,
+        // 3. Look up target to get artist and category context
+        if (videoId && channelId) {
+          const target = await prisma.socialIngestionTarget.findFirst({
+            where: {
+              platform: SocialPlatform.YOUTUBE,
+              externalHandle: channelId,
+              isActive: true,
             },
-          },
-          { priority: 10 },
-        );
+            select: {
+              chummeArtistId: true,
+              chummeCategoryId: true,
+              chummeSubCategoryId: true,
+              chummeTopicCategoryId: true,
+            },
+          });
+
+          await rabbitMQService.publishMessage(
+            `ingestion.${IngestionJobType.METADATA}`,
+            {
+              type: IngestionJobType.METADATA,
+              platform: SocialPlatform.YOUTUBE,
+              targetId: videoId,
+              priority: 10, // High priority for real-time
+              meta: {
+                isLiveTrigger: true,
+                artistId: target?.chummeArtistId,
+                categoryId: target?.chummeCategoryId,
+                subCategoryId: target?.chummeSubCategoryId,
+                topicCategoryId: target?.chummeTopicCategoryId,
+              },
+            },
+            { priority: 10 },
+          );
+        }
       }
-    } catch (error) {
+    } catch (error: any) {
       logger.error("[WebSubService] Error parsing notification payload:", error);
     }
   }
 }
+
