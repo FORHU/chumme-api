@@ -200,6 +200,8 @@ model ChummeCategoryDesign {
   status              String               @default("active")
   tags                String[]             @default([])
   emojiIcon           String               @default("")
+  aiChatEnabled       Boolean              @default(true)
+  discoveryEnabled    Boolean              @default(true)
   chummeCategory      ChummeCategory?      @relation("CategoryDesign")
   chummeSubCategory   ChummeSubCategory?   @relation("SubCategoryDesign")
   chummeTopicCategory ChummeTopicCategory? @relation("TopicCategoryDesign")

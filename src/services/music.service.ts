@@ -276,6 +276,11 @@ export default class MusicSvc {
         }
       });
 
+      // 2.5 Ensure imageUrl is at the top level (optimized for frontend list response)
+      if (fileMeta.imageUrl && !music.imageUrl) {
+        music.imageUrl = fileMeta.imageUrl;
+      }
+
       // 3. Extract songInfo specifically if it exists
       const songInfo = fileMeta.songInfo || fileMeta;
       const transcription = fileMeta.transcription || songInfo?.transcription;

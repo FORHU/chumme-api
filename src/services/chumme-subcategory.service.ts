@@ -27,6 +27,8 @@ export default class ChummeSubCategorySvc {
     metaData?: any;
     tags?: string[];
     emojiIcon?: string;
+    aiChatEnabled?: boolean;
+    discoveryEnabled?: boolean;
     note?: string;
     channelId?: string[];
   }) {
@@ -62,6 +64,8 @@ export default class ChummeSubCategorySvc {
       metaData,
       tags,
       emojiIcon,
+      aiChatEnabled,
+      discoveryEnabled,
       ...rest
     } = data;
 
@@ -80,6 +84,8 @@ export default class ChummeSubCategorySvc {
         metaData,
         tags,
         emojiIcon,
+        aiChatEnabled,
+        discoveryEnabled,
       },
     });
     return subCategory;
@@ -94,7 +100,13 @@ export default class ChummeSubCategorySvc {
   ) {
     const subCategories = await ChummeSubCategoryRepo.getAllSubCategories(params);
     const liveArtists = await getLiveArtists();
-    return subCategories.map((sub) => mapLiveStatus(sub, liveArtists));
+    return subCategories.map((sub) => {
+      const mapped = mapLiveStatus(sub, liveArtists);
+      return {
+        ...mapped,
+        membersCount: mapped.populationCount || 0,
+      };
+    });
   }
 
   /**
@@ -106,7 +118,11 @@ export default class ChummeSubCategorySvc {
       throw new Error("Subcategory not found");
     }
     const liveArtists = await getLiveArtists();
-    return mapLiveStatus(subCategory, liveArtists);
+    const mapped = mapLiveStatus(subCategory, liveArtists);
+    return {
+      ...mapped,
+      membersCount: mapped.populationCount || 0,
+    };
   }
 
   /**
@@ -121,7 +137,13 @@ export default class ChummeSubCategorySvc {
       params,
     );
     const liveArtists = await getLiveArtists();
-    return subCategories.map((sub) => mapLiveStatus(sub, liveArtists));
+    return subCategories.map((sub) => {
+      const mapped = mapLiveStatus(sub, liveArtists);
+      return {
+        ...mapped,
+        membersCount: mapped.populationCount || 0,
+      };
+    });
   }
 
   /**
@@ -148,6 +170,8 @@ export default class ChummeSubCategorySvc {
       tags?: string[];
       ownerId?: string;
       emojiIcon?: string;
+      aiChatEnabled?: boolean;
+      discoveryEnabled?: boolean;
       note?: string;
       channelId?: string[];
     },
@@ -196,6 +220,8 @@ export default class ChummeSubCategorySvc {
       metaData,
       tags,
       emojiIcon,
+      aiChatEnabled,
+      discoveryEnabled,
       ...rest
     } = data;
 
@@ -214,6 +240,8 @@ export default class ChummeSubCategorySvc {
         metaData,
         tags,
         emojiIcon,
+        aiChatEnabled,
+        discoveryEnabled,
       },
     });
   }

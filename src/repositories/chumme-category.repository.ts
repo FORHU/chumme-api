@@ -22,6 +22,8 @@ export default class ChummeCategoryRepo {
       metaData?: any;
       tags?: string[];
       emojiIcon?: string;
+      aiChatEnabled?: boolean;
+      discoveryEnabled?: boolean;
     };
     channelId?: string[];
   }) {
@@ -139,6 +141,8 @@ export default class ChummeCategoryRepo {
                 status: true,
                 tags: true,
                 emojiIcon: true,
+                aiChatEnabled: true,
+                discoveryEnabled: true,
               },
             },
             chummeTopicCategories: {
@@ -150,8 +154,25 @@ export default class ChummeCategoryRepo {
                 isAd: true,
                 populationCount: true,
                 discoveryKeywords: true,
-            targetCountries: true,
+                targetCountries: true,
                 channelId: true,
+                chummeVisualDesign: {
+                  select: {
+                    id: true,
+                    colorSet: true,
+                    sizeSet: true,
+                    position: true,
+                    border: true,
+                    shadow: true,
+                    opacity: true,
+                    capacity: true,
+                    status: true,
+                    tags: true,
+                    emojiIcon: true,
+                    aiChatEnabled: true,
+                    discoveryEnabled: true,
+                  },
+                },
               },
             },
           },
@@ -221,6 +242,8 @@ export default class ChummeCategoryRepo {
                 status: true,
                 tags: true,
                 emojiIcon: true,
+                aiChatEnabled: true,
+                discoveryEnabled: true,
               },
             },
             chummeTopicCategories: {
@@ -232,8 +255,25 @@ export default class ChummeCategoryRepo {
                 isAd: true,
                 populationCount: true,
                 discoveryKeywords: true,
-            targetCountries: true,
+                targetCountries: true,
                 channelId: true,
+                chummeVisualDesign: {
+                  select: {
+                    id: true,
+                    colorSet: true,
+                    sizeSet: true,
+                    position: true,
+                    border: true,
+                    shadow: true,
+                    opacity: true,
+                    capacity: true,
+                    status: true,
+                    tags: true,
+                    emojiIcon: true,
+                    aiChatEnabled: true,
+                    discoveryEnabled: true,
+                  },
+                },
               },
             },
           },
@@ -266,6 +306,8 @@ export default class ChummeCategoryRepo {
         metaData?: any;
         tags?: string[];
         emojiIcon?: string;
+        aiChatEnabled?: boolean;
+        discoveryEnabled?: boolean;
       };
       channelId?: string[];
     },
@@ -486,6 +528,8 @@ export default class ChummeCategoryRepo {
           status: true,
           tags: true,
           emojiIcon: true,
+          aiChatEnabled: true,
+          discoveryEnabled: true,
         },
       },
       chummeSubCategories: {
@@ -497,7 +541,7 @@ export default class ChummeCategoryRepo {
           isAd: true,
           populationCount: true,
           discoveryKeywords: true,
-            targetCountries: true,
+          targetCountries: true,
           channelId: true,
           chummeVisualDesign: {
             select: {
@@ -524,15 +568,30 @@ export default class ChummeCategoryRepo {
                   isAd: true,
                   populationCount: true,
                   discoveryKeywords: true,
-            targetCountries: true,
+                  targetCountries: true,
                   channelId: true,
+                  chummeVisualDesign: {
+                    select: {
+                      id: true,
+                      colorSet: true,
+                      sizeSet: true,
+                      position: true,
+                      border: true,
+                      shadow: true,
+                      opacity: true,
+                      capacity: true,
+                      status: true,
+                      tags: true,
+                      emojiIcon: true,
+                    },
+                  },
                 },
               }
             : false,
         },
       },
       discoveryKeywords: true,
-            targetCountries: true,
+      targetCountries: true,
       channelId: true,
       chummeArtists: {
         select: {

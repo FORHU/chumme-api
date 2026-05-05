@@ -114,8 +114,10 @@ export default class MusicCtrl {
       playlistId: Joi.string().uuid().allow(null),
       isKaraoke: Joi.boolean(),
       vocalRolesCount: Joi.number().integer().min(1),
+      album: Joi.string().allow(null, ""),
       genre: Joi.string().allow(null, ""),
-    }).min(1);
+      metaData: Joi.object().optional(),
+    }).min(1).unknown(true);
 
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ message: error.message });

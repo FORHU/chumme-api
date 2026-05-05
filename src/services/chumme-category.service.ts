@@ -25,6 +25,8 @@ export default class ChummeCategorySvc {
     metaData?: any;
     tags?: string[];
     emojiIcon?: string;
+    aiChatEnabled?: boolean;
+    discoveryEnabled?: boolean;
     channelId?: string[];
   }) {
     // Check if category with same name already exists (case-insensitive)
@@ -47,6 +49,8 @@ export default class ChummeCategorySvc {
       metaData,
       tags,
       emojiIcon,
+      aiChatEnabled,
+      discoveryEnabled,
       ...rest
     } = data;
 
@@ -64,6 +68,8 @@ export default class ChummeCategorySvc {
         metaData,
         tags,
         emojiIcon,
+        aiChatEnabled,
+        discoveryEnabled,
       },
     });
   }
@@ -74,7 +80,21 @@ export default class ChummeCategorySvc {
   static async getAllCategories(params: { publicOnly?: boolean } = {}) {
     const categories = await ChummeCategoryRepo.getAllCategories(params);
     const liveArtists = await getLiveArtists();
-    return categories.map((cat) => mapLiveStatus(cat, liveArtists));
+    return categories.map((cat) => {
+      const mapped = mapLiveStatus(cat, liveArtists);
+      return {
+        ...mapped,
+        membersCount: mapped.populationCount || 0,
+        chummeSubCategories: mapped.chummeSubCategories?.map((sub: any) => ({
+          ...sub,
+          membersCount: sub.populationCount || 0,
+          chummeTopicCategories: sub.chummeTopicCategories?.map((topic: any) => ({
+            ...topic,
+            membersCount: topic.populationCount || 0,
+          })),
+        })),
+      };
+    });
   }
 
   /**
@@ -89,7 +109,19 @@ export default class ChummeCategorySvc {
       throw new Error("Category not found");
     }
     const liveArtists = await getLiveArtists();
-    return mapLiveStatus(category, liveArtists);
+    const mapped = mapLiveStatus(category, liveArtists);
+    return {
+      ...mapped,
+      membersCount: mapped.populationCount || 0,
+      chummeSubCategories: mapped.chummeSubCategories?.map((sub: any) => ({
+        ...sub,
+        membersCount: sub.populationCount || 0,
+        chummeTopicCategories: sub.chummeTopicCategories?.map((topic: any) => ({
+          ...topic,
+          membersCount: topic.populationCount || 0,
+        })),
+      })),
+    };
   }
 
   /**
@@ -116,6 +148,8 @@ export default class ChummeCategorySvc {
       metaData?: any;
       tags?: string[];
       emojiIcon?: string;
+      aiChatEnabled?: boolean;
+      discoveryEnabled?: boolean;
       channelId?: string[];
     },
   ) {
@@ -147,6 +181,8 @@ export default class ChummeCategorySvc {
       metaData,
       tags,
       emojiIcon,
+      aiChatEnabled,
+      discoveryEnabled,
       ...rest
     } = data;
 
@@ -164,6 +200,8 @@ export default class ChummeCategorySvc {
         metaData,
         tags,
         emojiIcon,
+        aiChatEnabled,
+        discoveryEnabled,
       },
     });
   }
@@ -211,7 +249,13 @@ export default class ChummeCategorySvc {
 
     const subCategories = await ChummeCategoryRepo.getSubCategoriesInCategory(categoryId);
     const liveArtists = await getLiveArtists();
-    return subCategories.map((sub) => mapLiveStatus(sub, liveArtists));
+    return subCategories.map((sub) => {
+      const mapped = mapLiveStatus(sub, liveArtists);
+      return {
+        ...mapped,
+        membersCount: mapped.populationCount || 0,
+      };
+    });
   }
 
   /**
