@@ -4,29 +4,33 @@
 export const mapLiveStatus = (item: any, globalLiveArtists: any[] = []) => {
   if (!item) return item;
 
-  // Direct artists associated with this item
-  const localArtists = (item.chummeArtists && item.chummeArtists.length > 0) 
-    ? item.chummeArtists 
-    : (item.chummeCategory?.chummeArtists || []);
-  
-  // Inherit target countries from parent if not defined locally
+  // 1. Identify the type of item
+  // Top-level categories have chummeTraits but no parent link
+  // Sub-categories have chummeCategoryId or a chummeCategory relation
+  const isSub = !!item.chummeCategoryId || !!item.chummeCategory;
+  const isTopic = !!item.chummeSubCategoryId || !!item.chummeSubCategory;
+  const isTopLevel = !isSub && !isTopic;
+
+  // 2. Resolve target countries (used for matching live artists)
   const targetCountries = (item.targetCountries && item.targetCountries.length > 0)
     ? item.targetCountries
     : (item.chummeCategory?.targetCountries || item.chummeSubCategory?.chummeCategory?.targetCountries || []);
 
-  // 1. Check local artists first (standard link logic)
-  let liveArtist = localArtists.find((a: any) => {
-    if (!a.isLive) return false;
-    // If category has target countries, linked artist must match one to "represent" this bubble correctly
-    if (targetCountries.length > 0) {
-      return a.countries?.some((c: string) => targetCountries.includes(c));
-    }
-    return true; 
-  });
+  // 3. Resolve local artists
+  // Top-level categories can use their own linked artists.
+  // We STOP subcategories/topics from inheriting artists from their parents (as per user request).
+  const localArtists = (item.chummeArtists && item.chummeArtists.length > 0)
+    ? item.chummeArtists
+    : [];
 
-  // 2. If no local match, check GLOBAL live artists for geographical match
-  if (!liveArtist && targetCountries.length > 0 && globalLiveArtists.length > 0) {
-    liveArtist = globalLiveArtists.find((a: any) => 
+  // 4. Check if any local artist is live
+  let liveArtist = localArtists.find((a: any) => a.isLive);
+
+  // 5. Global geographical fallback - ONLY for top-level categories
+  // This makes the country bubble (e.g. "United States") light up if ANYONE in that country is live.
+  // It is DISABLED for subcategories/topics to prevent "NBC News" from lighting up "Some Topic".
+  if (!liveArtist && isTopLevel && targetCountries.length > 0 && globalLiveArtists.length > 0) {
+    liveArtist = globalLiveArtists.find((a: any) =>
       a.countries?.some((c: string) => targetCountries.includes(c))
     );
   }

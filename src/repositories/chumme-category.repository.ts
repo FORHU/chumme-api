@@ -22,6 +22,8 @@ export default class ChummeCategoryRepo {
       metaData?: any;
       tags?: string[];
       emojiIcon?: string;
+      aiChatEnabled?: boolean;
+      discoveryEnabled?: boolean;
     };
     channelId?: string[];
   }) {
@@ -139,6 +141,8 @@ export default class ChummeCategoryRepo {
                 status: true,
                 tags: true,
                 emojiIcon: true,
+                aiChatEnabled: true,
+                discoveryEnabled: true,
               },
             },
             chummeTopicCategories: {
@@ -165,6 +169,8 @@ export default class ChummeCategoryRepo {
                     status: true,
                     tags: true,
                     emojiIcon: true,
+                    aiChatEnabled: true,
+                    discoveryEnabled: true,
                   },
                 },
               },
@@ -236,6 +242,8 @@ export default class ChummeCategoryRepo {
                 status: true,
                 tags: true,
                 emojiIcon: true,
+                aiChatEnabled: true,
+                discoveryEnabled: true,
               },
             },
             chummeTopicCategories: {
@@ -262,6 +270,8 @@ export default class ChummeCategoryRepo {
                     status: true,
                     tags: true,
                     emojiIcon: true,
+                    aiChatEnabled: true,
+                    discoveryEnabled: true,
                   },
                 },
               },
@@ -296,6 +306,8 @@ export default class ChummeCategoryRepo {
         metaData?: any;
         tags?: string[];
         emojiIcon?: string;
+        aiChatEnabled?: boolean;
+        discoveryEnabled?: boolean;
       };
       channelId?: string[];
     },
@@ -516,6 +528,8 @@ export default class ChummeCategoryRepo {
           status: true,
           tags: true,
           emojiIcon: true,
+          aiChatEnabled: true,
+          discoveryEnabled: true,
         },
       },
       chummeSubCategories: {

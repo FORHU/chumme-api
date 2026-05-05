@@ -248,31 +248,95 @@ export default class MusicRepo {
   }
 
   static async update(id: string, data: any) {
-    const { playlistId, order, ...musicData } = data;
+    const {
+      playlistId,
+      order,
+      musicArtistId,
+      musicAlbumId,
+      musicFileId,
+      metaData,
+      ...musicData
+    } = data;
+
+    // 1. Prepare dynamic update object
+    const updateData: any = { ...musicData };
+
+    // 2. Handle MusicLibrary (File) and Metadata
+    let targetFileId = musicFileId;
+    if (!targetFileId && metaData) {
+      const current = await prisma.music.findUnique({
+        where: { id },
+        select: { musicFileId: true },
+      });
+      targetFileId = current?.musicFileId;
+    }
+
+    if (targetFileId) {
+      const fileExists = await prisma.musicLibrary.findUnique({
+        where: { id: targetFileId },
+      });
+      if (fileExists) {
+        // Update metadata if provided
+        if (metaData) {
+          await prisma.musicLibrary.update({
+            where: { id: targetFileId },
+            data: { metaData },
+          });
+        }
+        // Connect file to music record if it was explicitly passed
+        if (musicFileId) {
+          updateData.musicFile = { connect: { id: musicFileId } };
+        }
+      }
+    }
+
+    // 3. Safe Relation Connects for Artist and Album
+    if (musicArtistId === null) {
+      updateData.musicArtist = { disconnect: true };
+    } else if (musicArtistId) {
+      const artistExists = await prisma.chummeArtist.findUnique({
+        where: { id: musicArtistId },
+      });
+      if (artistExists) {
+        updateData.musicArtist = { connect: { id: musicArtistId } };
+      }
+    }
+
+    if (musicAlbumId === null) {
+      updateData.musicAlbum = { disconnect: true };
+    } else if (musicAlbumId) {
+      const albumExists = await prisma.musicAlbum.findUnique({
+        where: { id: musicAlbumId },
+      });
+      if (albumExists) {
+        updateData.musicAlbum = { connect: { id: musicAlbumId } };
+      }
+    }
+
+    // 4. Handle Playlist Upsert
+    if (playlistId) {
+      updateData.musicSubPlaylists = {
+        upsert: {
+          where: {
+            musicId_playlistId: {
+              musicId: id,
+              playlistId: playlistId,
+            },
+          },
+          create: {
+            playlistId: playlistId,
+            order: order || 0,
+          },
+          update: {
+            order: order,
+          },
+        },
+      };
+    }
+
     return prisma.music.update({
       where: { id },
-      data: {
-        ...musicData,
-        musicSubPlaylists: playlistId
-          ? {
-              upsert: {
-                where: {
-                  musicId_playlistId: {
-                    musicId: id,
-                    playlistId: playlistId,
-                  },
-                },
-                create: {
-                  playlistId: playlistId,
-                  order: order || 0,
-                },
-                update: {
-                  order: order,
-                },
-              },
-            }
-          : undefined,
-      },
+      data: updateData,
       include: {
         musicFile: true,
         musicArtist: true,

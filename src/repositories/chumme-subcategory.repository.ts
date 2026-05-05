@@ -24,6 +24,8 @@ export default class ChummeSubCategoryRepo {
       metaData?: any;
       tags?: string[];
       emojiIcon?: string;
+      aiChatEnabled?: boolean;
+      discoveryEnabled?: boolean;
     };
     channelId?: string[];
   }) {
@@ -281,6 +283,8 @@ export default class ChummeSubCategoryRepo {
         metaData?: any;
         tags?: string[];
         emojiIcon?: string;
+        aiChatEnabled?: boolean;
+        discoveryEnabled?: boolean;
       };
       channelId?: string[];
     },

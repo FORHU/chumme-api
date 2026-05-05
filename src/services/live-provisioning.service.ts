@@ -25,6 +25,7 @@ export class LiveProvisioningService {
           name: true,
           countries: true,
           isLive: true,
+          isDraft: true,
           activeVideoId: true,
           channelId: true,
         },
