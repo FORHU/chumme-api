@@ -212,8 +212,10 @@ export class IngestionWorker {
         if (meta) {
           const stats = meta.statistics;
           const liveInfo = await connector.getChannelLiveStatus!(job.targetId);
-          const isLive = typeof liveInfo === "boolean" ? liveInfo : !!liveInfo?.isLive;
-          const activeVideoId = typeof liveInfo === "object" ? liveInfo?.videoId : null;
+          const isLive =
+            typeof liveInfo === "boolean" ? liveInfo : !!liveInfo?.isLive;
+          const activeVideoId =
+            typeof liveInfo === "object" ? liveInfo?.videoId : null;
 
           await prisma.chummeArtist.update({
             where: { id: job.meta.artistId },

@@ -333,9 +333,8 @@ export class LiveProvisioningService {
 
     const primaryChannelId = artist.channelId[0];
 
-    const { default: YouTubeService } = await import(
-      "./net-communities/youtube.service"
-    );
+    const { default: YouTubeService } =
+      await import("./net-communities/youtube.service");
     const liveMap = await YouTubeService.checkLiveStatus([primaryChannelId]);
     const liveData = liveMap.get(primaryChannelId);
     const newVideoId = liveData?.videoId || null;
@@ -350,8 +349,12 @@ export class LiveProvisioningService {
         data: {
           isLive: nowLive,
           activeVideoId: nowLive ? newVideoId : null,
-          liveViewCount: nowLive ? (liveData?.concurrentViewers || 0) : 0,
-          liveStartedAt: nowLive ? (liveData?.actualStartTime ? new Date(liveData.actualStartTime) : undefined) : null,
+          liveViewCount: nowLive ? liveData?.concurrentViewers || 0 : 0,
+          liveStartedAt: nowLive
+            ? liveData?.actualStartTime
+              ? new Date(liveData.actualStartTime)
+              : undefined
+            : null,
           lastLiveAt: nowLive ? new Date() : undefined,
         },
       });

@@ -118,7 +118,9 @@ export default class MusicCtrl {
       album: Joi.string().allow(null, ""),
       genre: Joi.string().allow(null, ""),
       metaData: Joi.object().optional(),
-    }).min(1).unknown(true);
+    })
+      .min(1)
+      .unknown(true);
 
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ message: error.message });

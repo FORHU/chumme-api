@@ -17,7 +17,16 @@ export default class SystemAssetSvc {
     return asset;
   }
 
-  static async updateAsset(id: string, data: { key?: string; url?: string; type?: string; title?: string; description?: string }) {
+  static async updateAsset(
+    id: string,
+    data: {
+      key?: string;
+      url?: string;
+      type?: string;
+      title?: string;
+      description?: string;
+    },
+  ) {
     return SystemAssetRepo.updateAsset(id, data);
   }
 
@@ -55,4 +64,3 @@ export default class SystemAssetSvc {
     return asset;
   }
 }
-

@@ -29,13 +29,21 @@ router.post(
 
 // Alias for backward compatibility
 router.post(
-  "/create-with-files", 
+  "/create-with-files",
   requireRoles([UserRole.CREATOR, UserRole.ADMIN]),
-  upload.any(), 
-  MusicCtrl.createMusicWithFiles
+  upload.any(),
+  MusicCtrl.createMusicWithFiles,
 );
 
-router.patch("/update/:id", requireRoles([UserRole.CREATOR, UserRole.ADMIN]), MusicCtrl.updateMusic);
-router.delete("/delete/:id", requireRoles([UserRole.CREATOR, UserRole.ADMIN]), MusicCtrl.deleteMusic);
+router.patch(
+  "/update/:id",
+  requireRoles([UserRole.CREATOR, UserRole.ADMIN]),
+  MusicCtrl.updateMusic,
+);
+router.delete(
+  "/delete/:id",
+  requireRoles([UserRole.CREATOR, UserRole.ADMIN]),
+  MusicCtrl.deleteMusic,
+);
 
 export default router;

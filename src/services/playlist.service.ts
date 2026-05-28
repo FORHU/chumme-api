@@ -53,7 +53,8 @@ export default class PlaylistSvc {
     const playlist = await PlaylistRepo.update(id, data);
     await CacheUtil.del(`playlist:${id}`);
     await CacheUtil.del("playlists:all");
-    if (playlist.userId) await CacheUtil.del(`playlists:user:${playlist.userId}`);
+    if (playlist.userId)
+      await CacheUtil.del(`playlists:user:${playlist.userId}`);
     return playlist;
   }
 
@@ -61,7 +62,8 @@ export default class PlaylistSvc {
     const playlist = await PlaylistRepo.delete(id);
     await CacheUtil.del(`playlist:${id}`);
     await CacheUtil.del("playlists:all");
-    if (playlist.userId) await CacheUtil.del(`playlists:user:${playlist.userId}`);
+    if (playlist.userId)
+      await CacheUtil.del(`playlists:user:${playlist.userId}`);
     return playlist;
   }
 
@@ -81,7 +83,8 @@ export default class PlaylistSvc {
     const playlist = await PlaylistRepo.update(playlistId, { coverImageUrl });
     await CacheUtil.del(`playlist:${playlistId}`);
     await CacheUtil.del("playlists:all");
-    if (playlist.userId) await CacheUtil.del(`playlists:user:${playlist.userId}`);
+    if (playlist.userId)
+      await CacheUtil.del(`playlists:user:${playlist.userId}`);
 
     return { coverImageUrl, playlist };
   }
@@ -96,7 +99,8 @@ export default class PlaylistSvc {
     const track = await PlaylistRepo.addTrack(playlistId, musicId, order);
     await CacheUtil.del(`playlist:${playlistId}`);
     await CacheUtil.del("playlists:all");
-    if (playlist.userId) await CacheUtil.del(`playlists:user:${playlist.userId}`);
+    if (playlist.userId)
+      await CacheUtil.del(`playlists:user:${playlist.userId}`);
     return track;
   }
 
@@ -110,7 +114,8 @@ export default class PlaylistSvc {
     await PlaylistRepo.removeTrack(playlistId, musicId);
     await CacheUtil.del(`playlist:${playlistId}`);
     await CacheUtil.del("playlists:all");
-    if (playlist.userId) await CacheUtil.del(`playlists:user:${playlist.userId}`);
+    if (playlist.userId)
+      await CacheUtil.del(`playlists:user:${playlist.userId}`);
   }
 
   static async reorderTracks(
@@ -123,6 +128,7 @@ export default class PlaylistSvc {
     await PlaylistRepo.reorderTracks(playlistId, trackOrder);
     await CacheUtil.del(`playlist:${playlistId}`);
     await CacheUtil.del("playlists:all");
-    if (playlist.userId) await CacheUtil.del(`playlists:user:${playlist.userId}`);
+    if (playlist.userId)
+      await CacheUtil.del(`playlists:user:${playlist.userId}`);
   }
 }

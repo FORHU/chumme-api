@@ -98,7 +98,8 @@ export default class ChummeSubCategorySvc {
   static async getAllSubCategories(
     params: { categoryId?: string; publicOnly?: boolean } = {},
   ) {
-    const subCategories = await ChummeSubCategoryRepo.getAllSubCategories(params);
+    const subCategories =
+      await ChummeSubCategoryRepo.getAllSubCategories(params);
     const liveArtists = await getLiveArtists();
     return subCategories.map((sub) => {
       const mapped = mapLiveStatus(sub, liveArtists);
@@ -132,10 +133,11 @@ export default class ChummeSubCategorySvc {
     categoryId: string,
     params: { publicOnly?: boolean } = {},
   ) {
-    const subCategories = await ChummeSubCategoryRepo.getChummeSubCategoryByChummeCategoryID(
-      categoryId,
-      params,
-    );
+    const subCategories =
+      await ChummeSubCategoryRepo.getChummeSubCategoryByChummeCategoryID(
+        categoryId,
+        params,
+      );
     const liveArtists = await getLiveArtists();
     return subCategories.map((sub) => {
       const mapped = mapLiveStatus(sub, liveArtists);
