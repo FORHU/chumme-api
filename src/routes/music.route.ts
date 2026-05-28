@@ -22,15 +22,16 @@ router.get("/:id", MusicCtrl.getMusicById);
 // Main creation endpoint (handles both JSON and Multipart)
 router.post(
   "/create",
-  requireRoles([UserRole.CREATOR, UserRole.ADMIN]),
   upload.any(), // Flexible handling of fields
   MusicCtrl.createMusicWithFiles,
 );
 
+// JSON-only creation endpoint
+router.post("/create-with-json", MusicCtrl.createMusic);
+
 // Alias for backward compatibility
 router.post(
   "/create-with-files",
-  requireRoles([UserRole.CREATOR, UserRole.ADMIN]),
   upload.any(),
   MusicCtrl.createMusicWithFiles,
 );

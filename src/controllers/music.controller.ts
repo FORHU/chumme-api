@@ -21,7 +21,7 @@ export default class MusicCtrl {
       vocalRolesCount: Joi.number().integer().min(1),
       meta_data: Joi.object().optional(),
       genre: Joi.string().allow(null, ""),
-    });
+    }).unknown(true);
 
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ message: error.message });
@@ -284,6 +284,8 @@ export default class MusicCtrl {
         release_date: Joi.date().iso().required(),
         musicAlbumId: Joi.string().uuid().allow(null, ""),
         musicArtistId: Joi.string().uuid().allow(null, ""),
+        playlistId: Joi.string().uuid().allow(null, ""),
+        musicFileId: Joi.string().uuid().optional(),
         isKaraoke: Joi.boolean(),
         vocalRolesCount: Joi.number().integer().min(1).allow(null, ""),
         meta_data: Joi.object().optional(),
@@ -299,7 +301,7 @@ export default class MusicCtrl {
             "OTHER",
           )
           .optional(),
-      });
+      }).unknown(true);
 
       const { error, value } = schema.validate(req.body);
       if (error) return res.status(400).json({ message: error.message });
@@ -308,45 +310,55 @@ export default class MusicCtrl {
       const audioFile = files?.find(
         (f) => f.fieldname === "fileData" || f.fieldname === "file",
       );
-      if (!audioFile) {
+      if (!audioFile && !value.musicFileId) {
         return res.status(400).json({
-          message: "Audio file is required (field: fileData or file)",
+          message: "Audio file or musicFileId is required",
         });
       }
 
-      // 5. Upload Audio File to MusicLibrary
-      const fileRecord = await MusicLibrarySvc.uploadMusicFile(
-        audioFile.buffer,
-        audioFile.originalname,
-        audioFile.mimetype,
-        undefined,
-        value.fileType || (value.isKaraoke ? "KARAOKE" : "MUSIC"),
-      );
+      let fileId = value.musicFileId;
+      let fileUrl = null;
 
-      // 6. Create Music using the new file ID
+      // 5. Upload Audio File to MusicLibrary if provided
+      if (audioFile) {
+        const fileRecord = await MusicLibrarySvc.uploadMusicFile(
+          audioFile.buffer,
+          audioFile.originalname,
+          audioFile.mimetype,
+          undefined,
+          value.fileType || (value.isKaraoke ? "KARAOKE" : "MUSIC"),
+        );
+        fileId = fileRecord.id;
+        fileUrl = fileRecord.fileUrl;
+      }
+
+      // 6. Create Music using the new or existing file ID
       const music = await MusicSvc.createMusic({
         ...value,
-        musicFileId: fileRecord.id,
+        musicFileId: fileId,
         metaData: value.meta_data,
         ownerId: req.user.id,
       });
 
       // 7. Trigger Media Optimization in Background
-      try {
-        await MediaQueueSvc.publishJob({
-          jobType: "optimize_audio",
-          inputUrl: fileRecord.fileUrl,
-          outputKeyPrefix: `music/${music.id}`,
-          mediaId: music.id,
-        });
-        logger.info(`[MusicCtrl] Queued optimization for music ${music.id}`);
-      } catch (e) {
-        logger.warn(`[MusicCtrl] Failed to queue optimization: ${e}`);
+      if (fileUrl) {
+        try {
+          await MediaQueueSvc.publishJob({
+            jobType: "optimize_audio",
+            inputUrl: fileUrl,
+            outputKeyPrefix: `music/${music.id}`,
+            mediaId: music.id,
+          });
+          logger.info(`[MusicCtrl] Queued optimization for music ${music.id}`);
+        } catch (e) {
+          logger.warn(`[MusicCtrl] Failed to queue optimization: ${e}`);
+        }
       }
 
       return res.status(201).json({
-        message:
-          "Music created successfully with files and queued for optimization",
+        message: fileUrl 
+          ? "Music created successfully with files and queued for optimization"
+          : "Music created successfully with existing file",
         data: music,
       });
     } catch (error: any) {

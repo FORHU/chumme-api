@@ -24,6 +24,7 @@ const fileFilter = (
     "audio/mp3",
     "audio/m4a",
     "audio/wav",
+    "audio/webm",
     "audio/ogg",
     "audio/aac",
     "audio/x-wav",
