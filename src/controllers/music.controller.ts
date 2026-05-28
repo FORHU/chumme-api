@@ -30,7 +30,7 @@ export default class MusicCtrl {
       const music = await MusicSvc.createMusic({
         ...value,
         metaData: value.meta_data,
-        ownerId: req.user.id,
+        ownerId: req.user?.id,
       });
       return res.status(201).json({
         message: "Music created successfully",
@@ -337,7 +337,7 @@ export default class MusicCtrl {
         ...value,
         musicFileId: fileId,
         metaData: value.meta_data,
-        ownerId: req.user.id,
+        ownerId: req.user?.id,
       });
 
       // 7. Trigger Media Optimization in Background
