@@ -30,11 +30,7 @@ router.post(
 router.post("/create-with-json", MusicCtrl.createMusic);
 
 // Alias for backward compatibility
-router.post(
-  "/create-with-files",
-  upload.any(),
-  MusicCtrl.createMusicWithFiles,
-);
+router.post("/create-with-files", upload.any(), MusicCtrl.createMusicWithFiles);
 
 router.patch(
   "/update/:id",
