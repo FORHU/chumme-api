@@ -16,6 +16,7 @@ interface CreateMusicInput {
   metaData?: any;
   isKaraoke?: boolean;
   vocalRolesCount?: number;
+  ownerId?: string;
 }
 export default class MusicSvc {
   /**

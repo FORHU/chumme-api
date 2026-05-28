@@ -13,6 +13,7 @@ export default class MusicRepo {
       musicArtistId,
       musicFileId,
       fileType,
+      ownerId,
       ...musicData
     } = data;
 
@@ -44,6 +45,7 @@ export default class MusicRepo {
           ? { connect: { id: musicArtistId } }
           : undefined,
         musicFile: musicFileId ? { connect: { id: musicFileId } } : undefined,
+        owner: ownerId ? { connect: { id: ownerId } } : undefined,
         parts: parts ? { create: parts } : undefined,
         musicSubPlaylists: playlistId
           ? {

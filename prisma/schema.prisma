@@ -53,6 +53,8 @@ model User {
   userInterests          UserInterest[]
   musicRecords           MusicRecord[]           @relation("MusicRecordSingers")
   likedSongs             UserLikedSong[]
+  uploadedMusic          Music[]                 @relation("MusicOwner")
+  ownedArtists           ChummeArtist[]          @relation("ArtistOwner")
 }
 
 model Session {
@@ -240,6 +242,8 @@ model ChummeArtist {
   chummeCategories       ChummeCategory[]        @relation("ChummeArtistToChummeCategory")
   chummeSubCategories    ChummeSubCategory[]     @relation("ChummeArtistToChummeSubCategory")
   chummeTopicCategories  ChummeTopicCategory[]   @relation("ChummeArtistToChummeTopicCategory")
+  ownerId                String?
+  owner                  User?                   @relation("ArtistOwner", fields: [ownerId], references: [id])
 }
 
 model ChummeArtistPersona {
@@ -765,6 +769,8 @@ model Music {
   likedBy              UserLikedSong[]
   playCount            Int                   @default(0)
   genre                String?
+  ownerId              String?
+  owner                User?                 @relation("MusicOwner", fields: [ownerId], references: [id])
 
   @@index([musicArtistId])
   @@index([musicAlbumId])
