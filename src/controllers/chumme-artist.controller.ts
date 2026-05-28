@@ -74,7 +74,10 @@ export const createArtist = async (req: Request, res: Response) => {
       });
     }
 
-    const artist = await chummeArtistService.createArtist(value);
+    const artist = await chummeArtistService.createArtist({
+      ...value,
+      ownerId: req.user.id,
+    });
 
     res.status(201).json({
       success: true,
@@ -119,7 +122,10 @@ export const updateArtist = async (req: Request, res: Response) => {
       });
     }
 
-    const artist = await chummeArtistService.updateArtist(id, value);
+    const artist = await chummeArtistService.updateArtist(id, {
+      ...value,
+      ownerId: req.user.id,
+    });
 
     res.status(200).json({
       success: true,

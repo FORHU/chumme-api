@@ -106,6 +106,7 @@ export const create = async (data: {
   totalViews?: bigint | number | string | null;
   lastLiveAt?: Date | null;
   channelId?: string[];
+  ownerId?: string | null;
 }) => {
   return prisma.chummeArtist.create({
     data: {
@@ -134,6 +135,7 @@ export const update = async (
     totalViews?: bigint | number | string | null;
     lastLiveAt?: Date | null;
     channelId?: string[];
+    ownerId?: string | null;
   },
 ) => {
   return prisma.chummeArtist.update({
@@ -159,6 +161,7 @@ export const upsertArtist = async (data: {
   name: string;
   bio?: string | null;
   imageUrl?: string | null;
+  nationality?: string | null;
   genre?: string | null;
   socialPlatformUsername?: string | null;
   platform?: string;
@@ -167,6 +170,7 @@ export const upsertArtist = async (data: {
   totalViews?: bigint | number | string | null;
   lastLiveAt?: Date | null;
   channelId?: string[];
+  ownerId?: string | null;
 }) => {
   // Use upsert to handle concurrent requests gracefully
   const artist = await prisma.chummeArtist.upsert({
@@ -177,6 +181,7 @@ export const upsertArtist = async (data: {
       // Only update if new data is provided
       ...(data.bio !== undefined && { bio: data.bio }),
       ...(data.imageUrl !== undefined && { imageUrl: data.imageUrl }),
+      ...(data.nationality !== undefined && { nationality: data.nationality }),
       ...(data.genre !== undefined && { genre: data.genre }),
       ...(data.socialPlatformUsername !== undefined && {
         socialPlatformUsername: data.socialPlatformUsername,
@@ -191,11 +196,13 @@ export const upsertArtist = async (data: {
       }),
       ...(data.lastLiveAt !== undefined && { lastLiveAt: data.lastLiveAt }),
       ...(data.channelId !== undefined && { channelId: data.channelId }),
+      ...(data.ownerId !== undefined && { ownerId: data.ownerId }),
     },
     create: {
       name: data.name,
       bio: data.bio ?? null,
       imageUrl: data.imageUrl ?? null,
+      nationality: data.nationality ?? null,
       genre: data.genre ?? null,
       socialPlatformUsername: data.socialPlatformUsername ?? null,
       platform: data.platform ?? "YOUTUBE", // Default to YOUTUBE if not provided
@@ -207,6 +214,7 @@ export const upsertArtist = async (data: {
           : BigInt(0),
       lastLiveAt: data.lastLiveAt ?? null,
       channelId: data.channelId ?? [],
+      ownerId: data.ownerId ?? null,
     },
   });
 
