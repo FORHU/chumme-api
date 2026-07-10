@@ -83,10 +83,14 @@ export default class ConversationSvc {
       throw new BadRequestError("User ID is required");
     }
 
+    // Search results bypass the cache — keys don't account for the query text
+    const isSearching = Boolean(options.search?.trim());
     const cachedKey = `conversation:list:${userId}:page:${options.page || 1}:limit:${options.limit || 20}`;
-    const cached = await CacheUtil.get(cachedKey);
-    if (cached) {
-      return cached;
+    if (!isSearching) {
+      const cached = await CacheUtil.get(cachedKey);
+      if (cached) {
+        return cached;
+      }
     }
 
     try {
@@ -95,7 +99,9 @@ export default class ConversationSvc {
         options,
       );
 
-      await CacheUtil.set(cachedKey, conversations, 180); // Cache for 3 minutes
+      if (!isSearching) {
+        await CacheUtil.set(cachedKey, conversations, 180); // Cache for 3 minutes
+      }
       return conversations;
     } catch (error: any) {
       logger.error(

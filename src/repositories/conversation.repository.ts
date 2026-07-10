@@ -6,6 +6,7 @@ export type TGetConversationsByUserIdOptions = {
   limit?: number;
   sortOrder?: "asc" | "desc";
   includeDeleted?: boolean;
+  search?: string;
 };
 
 export default class ConversationRepo {
@@ -71,16 +72,34 @@ export default class ConversationRepo {
       limit = 20,
       sortOrder = "desc",
       includeDeleted = false,
+      search,
     } = options;
 
     const skip = (page - 1) * limit;
 
+    const searchTerm = search?.trim();
+    const where: Prisma.ConversationWhereInput = {
+      userId,
+      ...(includeDeleted ? {} : { isDeleted: false }),
+      ...(searchTerm
+        ? {
+            OR: [
+              { title: { contains: searchTerm, mode: "insensitive" } },
+              {
+                chatMessages: {
+                  some: {
+                    message: { contains: searchTerm, mode: "insensitive" },
+                  },
+                },
+              },
+            ],
+          }
+        : {}),
+    };
+
     const [conversations, total] = await Promise.all([
       prisma.conversation.findMany({
-        where: {
-          userId,
-          ...(includeDeleted ? {} : { isDeleted: false }),
-        },
+        where,
         include: {
           _count: {
             select: {
@@ -95,10 +114,7 @@ export default class ConversationRepo {
         },
       }),
       prisma.conversation.count({
-        where: {
-          userId,
-          ...(includeDeleted ? {} : { isDeleted: false }),
-        },
+        where,
       }),
     ]);
 
