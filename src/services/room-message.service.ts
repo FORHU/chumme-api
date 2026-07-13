@@ -1,6 +1,7 @@
 import RoomMessageRepo from "../repositories/room-message.repository";
 import RoomUserChatRepo from "../repositories/room-user-chat.repository";
 import CacheUtil from "../utils/cache.util";
+import { prisma } from "../utils/prisma";
 
 export default class RoomMessageSvc {
   /**
@@ -12,6 +13,8 @@ export default class RoomMessageSvc {
     content: any;
     voiceMessageId?: string;
     parentMessageId?: string;
+    duration?: number;
+    waveform?: number[];
   }) {
     // 1. Verify user is a member of the room
     const isMember = await RoomUserChatRepo.isMember(
@@ -35,10 +38,43 @@ export default class RoomMessageSvc {
       }
     }
 
-    // 3. Clear cache
+    // 3. Persist voice note duration/waveform on the file record so messages
+    // loaded from history show the real duration instead of 0:00
+    if (data.voiceMessageId && (data.duration || data.waveform?.length)) {
+      try {
+        const file = await prisma.file.findUnique({
+          where: { id: data.voiceMessageId },
+          select: { metaData: true },
+        });
+        if (file) {
+          const existing =
+            file.metaData && typeof file.metaData === "object"
+              ? (file.metaData as Record<string, unknown>)
+              : {};
+          await prisma.file.update({
+            where: { id: data.voiceMessageId },
+            data: {
+              metaData: {
+                ...existing,
+                ...(data.duration ? { duration: data.duration } : {}),
+                ...(data.waveform?.length ? { waveform: data.waveform } : {}),
+              },
+            },
+          });
+        }
+      } catch (err) {
+        // Metadata enrichment is best-effort — never block the message itself
+        console.error(
+          "[RoomMessageSvc] Failed to persist voice note metadata:",
+          err,
+        );
+      }
+    }
+
+    // 4. Clear cache
     await CacheUtil.delByPattern(`messages:room:${data.chummeSubCategoryId}:*`);
 
-    // 4. Create message
+    // 5. Create message
     return RoomMessageRepo.createMessage({
       chummeSubCategoryId: data.chummeSubCategoryId,
       authorId: data.userId,

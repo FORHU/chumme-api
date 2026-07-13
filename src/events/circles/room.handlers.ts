@@ -105,6 +105,8 @@ export const registerRoomHandlers = (
         content: message,
         voiceMessageId,
         parentMessageId,
+        duration,
+        waveform,
       });
 
       // 2. Map message for frontend
