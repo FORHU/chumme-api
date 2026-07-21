@@ -332,6 +332,31 @@ export const registerSessionHandlers = (
       // Check if the leaving user is the owner — if so, close the studio
       const isOwner = await MusicStudioSvc.isOwner(studioId, socket.user.id);
 
+      // Owner leaving: close the studio FIRST so a failure in any later
+      // cleanup step can never leave an orphaned, producer-less room open.
+      if (isOwner) {
+        io.to(studioId).emit("studio_closed", {
+          studioId,
+          message: "Studio closed — the producer has left",
+        });
+        const socketsInRoom = await io.in(studioId).fetchSockets();
+        socketsInRoom.forEach((s) => s.leave(studioId));
+        socket.leave(studioId);
+
+        // Use centralized closeStudio for full cleanup (Redis, S3, DB)
+        await MusicStudioSvc.closeStudio(studioId, socket.user.id, true);
+
+        socket.emit("leave_studio_success", {
+          studioId,
+          message: "Left studio successfully",
+        });
+
+        console.log(
+          `[MusicStudio] 🔒 Studio auto-closed (owner left): ${studioId}`,
+        );
+        return;
+      }
+
       await MusicStudioSvc.leaveStudio(studioId, socket.user.id);
       socket.leave(studioId);
 
@@ -360,38 +385,21 @@ export const registerSessionHandlers = (
         MusicStudioCacheSvc.removeSingerRequest(studioId, socket.user.id),
       ]);
 
-      // Auto-close studio if the owner/producer left
-      if (isOwner) {
+      // Auto-close studio if no members remain
+      const remainingMembers = await MusicStudioCacheSvc.getMembers(studioId);
+      if (remainingMembers.length === 0) {
         io.to(studioId).emit("studio_closed", {
           studioId,
-          message: "Studio closed — the producer has left",
+          message: "Studio closed — no members remaining",
         });
         const socketsInRoom = await io.in(studioId).fetchSockets();
         socketsInRoom.forEach((s) => s.leave(studioId));
 
-        // Use centralized closeStudio for full cleanup (Redis, S3, DB)
         await MusicStudioSvc.closeStudio(studioId, socket.user.id, true);
 
         console.log(
-          `[MusicStudio] 🔒 Studio auto-closed (owner left): ${studioId}`,
+          `[MusicStudio] 🔒 Studio auto-closed (0 members): ${studioId}`,
         );
-      } else {
-        // Auto-close studio if no members remain
-        const remainingMembers = await MusicStudioCacheSvc.getMembers(studioId);
-        if (remainingMembers.length === 0) {
-          io.to(studioId).emit("studio_closed", {
-            studioId,
-            message: "Studio closed — no members remaining",
-          });
-          const socketsInRoom = await io.in(studioId).fetchSockets();
-          socketsInRoom.forEach((s) => s.leave(studioId));
-
-          await MusicStudioSvc.closeStudio(studioId, socket.user.id, true);
-
-          console.log(
-            `[MusicStudio] 🔒 Studio auto-closed (0 members): ${studioId}`,
-          );
-        }
       }
 
       console.log(

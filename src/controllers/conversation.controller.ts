@@ -66,6 +66,7 @@ export default class ConversationCtrl {
       limit: Joi.number().integer().min(1).max(100).optional(),
       sortOrder: Joi.string().valid("asc", "desc").optional(),
       includeDeleted: Joi.boolean().optional(),
+      search: Joi.string().trim().allow("").max(200).optional(),
     });
 
     const { error, value } = schema.validate(req.query);
@@ -80,6 +81,7 @@ export default class ConversationCtrl {
         limit: value.limit,
         sortOrder: value.sortOrder,
         includeDeleted: value.includeDeleted,
+        search: value.search,
       });
       return res.json(conversations);
     } catch (error) {
