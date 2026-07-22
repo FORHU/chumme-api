@@ -218,7 +218,18 @@ export default class MusicStudioSvc {
       publicOnly,
       search,
     });
-    return { message: "Studios fetched successfully", ...result };
+
+    // The chosen song is kept in Redis (studio:{id}:activeSong), not in the DB,
+    // so enrich each studio with it. Clients use this to hide rooms whose creator
+    // hasn't picked a song yet.
+    const data = await Promise.all(
+      (result.data ?? []).map(async (studio: any) => ({
+        ...studio,
+        activeSongId: await MusicStudioCacheSvc.getActiveSong(studio.id),
+      })),
+    );
+
+    return { message: "Studios fetched successfully", ...result, data };
   }
 
   /**
