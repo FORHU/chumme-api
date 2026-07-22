@@ -44,11 +44,20 @@ export const registerMediaHandlers = (
         if (callback) callback({ error: "Invalid payload" });
         return;
       }
-      const file = await MusicLibrarySvc.getMusicFileById(chunk.fileId);
+      // getMusicFileById throws when the record is missing, so guard it — an
+      // uncaught throw here would abort the handler without acking, leaving the
+      // client to believe the chunk was persisted.
+      let file;
+      try {
+        file = await MusicLibrarySvc.getMusicFileById(chunk.fileId);
+      } catch {
+        file = null;
+      }
       if (!file) {
         console.log("[MusicStudio] audio_chunk dropped: file not found", {
           fileId: chunk.fileId,
         });
+        if (callback) callback({ error: "Audio file not found" });
         return;
       }
 
@@ -62,6 +71,8 @@ export const registerMediaHandlers = (
           userId: socket.user.id,
           studioId,
         });
+        if (callback)
+          callback({ error: "You are not allowed to record in this studio" });
         return;
       }
 
@@ -93,6 +104,8 @@ export const registerMediaHandlers = (
             console.log(
               "[MusicStudio] audio_chunk dropped: not the current singer in Relay mode",
             );
+            if (callback)
+              callback({ error: "It is not your turn to sing yet" });
             return; // Not the current singer — drop chunk
           }
         }

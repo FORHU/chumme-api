@@ -422,6 +422,14 @@ export default class MusicStudioSvc {
    * Check if user is a singer/producer (can record)
    */
   static async canRecord(studioId: string, userId: string) {
+    // The studio owner can always record in their own room. Their PRODUCER
+    // membership is created asynchronously by the socket join_studio handler, so
+    // relying on it alone drops the owner's own audio chunks if a chunk arrives
+    // before the join is persisted — which surfaces later as an empty
+    // "No audio chunks found" error on save.
+    const studio = await MusicStudioRepo.findById(studioId);
+    if (studio && studio.ownerId === userId) return true;
+
     const membership = await MusicStudioRepo.getMembership(studioId, userId);
     if (!membership || !membership.isActive) return false;
     return (
