@@ -69,7 +69,10 @@ export default class OnboardingSvc {
       nextSteps.push("connect_google_youtube_optional");
     }
 
-    const allRequiredStepsDone = discoveryCategoriesDone; // YouTube is optional
+    // Interest/category selection was removed from onboarding, so it is no longer
+    // a required step — completion only needs the client to POST /onboarding/complete.
+    // (discoveryCategories/YouTube remain reported above as optional, informational.)
+    const allRequiredStepsDone = true;
 
     return {
       onboardingCompleted: user?.onboardingCompleted ?? false,
