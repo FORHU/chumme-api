@@ -1,6 +1,44 @@
 import { PrismaClient } from "@prisma/client";
 
 /**
+ * Attach a visual design to a category, creating one when the category has none.
+ *
+ * Categories seeded before the design fields existed have a null
+ * chummeVisualDesignId — updating in place would skip them forever and leave the
+ * bubble to fall back on canvas defaults, so backfill instead.
+ */
+async function upsertCategoryDesign(
+  prisma: PrismaClient,
+  params: {
+    categoryId: string;
+    categoryName: string;
+    existingDesignId: string | null;
+    design: Record<string, any>;
+  },
+) {
+  const { categoryId, categoryName, existingDesignId, design } = params;
+
+  if (existingDesignId) {
+    await prisma.chummeCategoryDesign.update({
+      where: { id: existingDesignId },
+      data: design,
+    });
+    return;
+  }
+
+  const created = await prisma.chummeCategoryDesign.create({
+    data: { name: `${categoryName} Design`, ...design },
+  });
+
+  await prisma.chummeCategory.update({
+    where: { id: categoryId },
+    data: { chummeVisualDesignId: created.id },
+  });
+
+  console.log(`🎨 Backfilled missing visual design for "${categoryName}"`);
+}
+
+/**
  * Seeds Chumme Categories (Countries) with fixed UUIDs
  */
 export async function seedChummeCategories(prisma: PrismaClient) {
@@ -268,6 +306,16 @@ export async function seedChummeCategories(prisma: PrismaClient) {
       name: "Music",
       chummeTraits: "ENTERTAINMENT",
       note: "Songs, artists, bands, albums, concerts, and music culture.",
+      colorSet: { primary: "#ec4899", secondary: "#f9a8d4", border: "#ec4899" },
+      position: { x: 30, y: 40 },
+      sizeSet: { radius: 3, maxRadius: 90 },
+      border: { width: 2, color: "#000", style: "solid" },
+      shadow: { x: 0, y: 2, blur: 6, color: "#aaa" },
+      opacity: 0.9,
+      capacity: 5000000,
+      status: "active",
+      tags: ["Music", "Entertainment", "Artists"],
+      emojiIcon: "🎵",
       subcategories: [
         {
           id: "5e3f6d8b-21e1-4c79-91aa-0f1b23c3d4e5",
@@ -445,23 +493,23 @@ export async function seedChummeCategories(prisma: PrismaClient) {
         },
       });
 
-      if (existingCategory.chummeVisualDesignId) {
-        await prisma.chummeCategoryDesign.update({
-          where: { id: existingCategory.chummeVisualDesignId },
-          data: {
-            position,
-            colorSet,
-            sizeSet,
-            border,
-            shadow,
-            opacity,
-            capacity,
-            status,
-            tags,
-            emojiIcon,
-          },
-        });
-      }
+      await upsertCategoryDesign(prisma, {
+        categoryId: categoryData.id,
+        categoryName: categoryData.name,
+        existingDesignId: existingCategory.chummeVisualDesignId,
+        design: {
+          position,
+          colorSet,
+          sizeSet,
+          border,
+          shadow,
+          opacity,
+          capacity,
+          status,
+          tags,
+          emojiIcon,
+        },
+      });
     } else {
       // Create new
       const design = await prisma.chummeCategoryDesign.create({
@@ -498,6 +546,19 @@ export async function seedChummeCategories(prisma: PrismaClient) {
   // 3. Seed Other Categories
   console.log("🌱 Seeding General Categories...");
   for (const category of categoriesData) {
+    const design = {
+      position: category.position,
+      colorSet: category.colorSet,
+      sizeSet: category.sizeSet,
+      border: category.border,
+      shadow: category.shadow,
+      opacity: category.opacity,
+      capacity: category.capacity,
+      status: category.status,
+      tags: category.tags,
+      emojiIcon: category.emojiIcon,
+    };
+
     const existing = await prisma.chummeCategory.findUnique({
       where: { id: category.id },
     });
@@ -514,7 +575,18 @@ export async function seedChummeCategories(prisma: PrismaClient) {
           channelId: (category as any).channelId || [],
         },
       });
+
+      await upsertCategoryDesign(prisma, {
+        categoryId: category.id,
+        categoryName: category.name,
+        existingDesignId: existing.chummeVisualDesignId,
+        design,
+      });
     } else {
+      const createdDesign = await prisma.chummeCategoryDesign.create({
+        data: { name: `${category.name} Design`, ...design },
+      });
+
       await prisma.chummeCategory.create({
         data: {
           id: category.id,
@@ -524,6 +596,7 @@ export async function seedChummeCategories(prisma: PrismaClient) {
           note: category.note,
           discoveryKeywords: (category as any).discoveryKeywords || [],
           channelId: (category as any).channelId || [],
+          chummeVisualDesignId: createdDesign.id,
         },
       });
     }
