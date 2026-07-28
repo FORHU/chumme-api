@@ -309,6 +309,15 @@ export class AudioMergeWorker {
           logger.warn(`[AudioMergeWorker] Failed to cleanup S3 files: ${e}`);
         }
 
+        // A record without singers can never be listed by findByUserId — surface
+        // it here rather than letting the client show a false "saved".
+        if (!musicRecord.singers?.length) {
+          logger.error(
+            `[AudioMergeWorker] Record ${musicRecord.id} saved with NO singers — it will not appear in any user's recordings`,
+            { jobId: job.jobId, studioId: job.studioId },
+          );
+        }
+
         // Broadcast recording_saved to studio
         if (io) {
           io.to(job.studioId).emit("recording_saved", {

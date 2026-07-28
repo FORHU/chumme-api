@@ -22,7 +22,9 @@ export default class MusicRecordRepo {
         fileId: data.fileId,
         metaData: (data as any).metaData,
         recordDuration: data.recordDuration,
-        singers: data.singerIds
+        // NOTE: an empty array is truthy — `connect: []` would silently create a
+        // record with no singers, which findByUserId can never return.
+        singers: data.singerIds?.length
           ? { connect: data.singerIds.map((id) => ({ id })) }
           : undefined,
       },
@@ -238,6 +240,7 @@ export default class MusicRecordRepo {
       prisma.musicRecord.findMany({
         where: { singers: { some: { id: userId } }, deletedAt: null },
         include: {
+          singers: true,
           file: true,
           music: {
             include: {
