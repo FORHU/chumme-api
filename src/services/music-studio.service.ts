@@ -32,6 +32,7 @@ interface CreateStudioInput {
 interface SaveRecordingInput {
   studioId: string;
   musicId: string;
+  userId?: string; // The user who pressed Save — always credited as a singer
   metaData?: any;
   performanceMapping?: {
     startLine: number;
@@ -659,19 +660,32 @@ export default class MusicStudioSvc {
 
       // 4. Get singer IDs
       const singerIds = [
-        ...new Set([
-          ...filteredRecords
-            .map((r: any) => (r.metaData as any)?.userId)
-            .filter(Boolean),
-          ...activeMembers
-            .filter(
-              (m) =>
-                (m.role === "SINGER" || m.role === "PRODUCER") &&
-                m.isConnected === true,
-            )
-            .map((m) => m.userId),
-        ]),
+        ...new Set(
+          [
+            // The saver always owns the recording, even if their membership
+            // row already dropped out of the cache.
+            data.userId,
+            ...filteredRecords
+              .map((r: any) => (r.metaData as any)?.userId)
+              .filter(Boolean),
+            ...activeMembers
+              .filter(
+                (m) =>
+                  (m.role === "SINGER" || m.role === "PRODUCER") &&
+                  m.isConnected === true,
+              )
+              .map((m) => m.userId),
+          ].filter(Boolean),
+        ),
       ] as string[];
+
+      // A record with no singers is unreachable — findByUserId matches on the
+      // singers relation, so it would be saved but invisible in My Recordings.
+      if (!singerIds.length) {
+        throw new Error(
+          "Cannot save recording: no singers could be resolved for this session",
+        );
+      }
 
       // Calculate session duration for trimming
       const [startTime, endTime] = await Promise.all([

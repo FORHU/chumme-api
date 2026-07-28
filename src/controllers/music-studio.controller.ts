@@ -376,6 +376,7 @@ export default class MusicStudioCtrl {
         ...value,
         studioId: studioId,
         musicId: musicId,
+        userId: (req as any).user?.id,
         duration: value.duration,
       });
 
