@@ -34,6 +34,10 @@ export default class ChummeCategoryCtrl {
       discoveryEnabled: Joi.boolean().optional(),
       note: Joi.string().max(500).optional(),
       channelId: Joi.array().items(Joi.string()).optional(),
+      // Where the category sits on the Circles globe. Stored free-form (the
+      // seeders use ISO-3166 alpha-2); without it Prisma defaults to [] and the
+      // client has to scatter the circle to an arbitrary coordinate.
+      targetCountries: Joi.array().items(Joi.string().trim().min(2)).optional(),
     });
 
     const { error, value } = schema.validate(req.body);
