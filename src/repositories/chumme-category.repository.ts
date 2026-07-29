@@ -26,6 +26,7 @@ export default class ChummeCategoryRepo {
       discoveryEnabled?: boolean;
     };
     channelId?: string[];
+    targetCountries?: string[];
   }) {
     return prisma.chummeCategory.create({
       data: {
@@ -35,6 +36,7 @@ export default class ChummeCategoryRepo {
         chummeTraits: data.chummeTraits || "ENTERTAINMENT",
         note: data.note || null,
         channelId: data.channelId || [],
+        targetCountries: data.targetCountries || [],
         chummeVisualDesign: data.chummeVisualDesign
           ? {
               create: {

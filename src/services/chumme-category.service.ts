@@ -28,6 +28,7 @@ export default class ChummeCategorySvc {
     aiChatEnabled?: boolean;
     discoveryEnabled?: boolean;
     channelId?: string[];
+    targetCountries?: string[];
   }) {
     // Check if category with same name already exists (case-insensitive)
     const existingCategory = await ChummeCategoryRepo.findCategoryByName(
