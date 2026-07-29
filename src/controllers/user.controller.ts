@@ -71,10 +71,19 @@ export default class UserCtrl {
 
   static async getCurrentUser(req: Request, res: Response) {
     try {
-      const user = req.user; // From auth middleware
+      // req.user comes from findUserForAuth — a deliberately minimal auth
+      // projection (id/email/username/role/isActive/isDeleted). Returning it
+      // directly made GET /me omit name, avatar, onboardingCompleted and the
+      // rest, so clients that merge this response over their cached user kept
+      // stale values forever: a renamed profile saved to the DB but never
+      // showed up. Read the full record instead.
+      const user: any = await UserSvc.getUserById(req.user.id);
       return res.json({
         ...user,
-        artistCount: user._count?.socialUserDiscoveries ?? 0,
+        artistCount:
+          user?._count?.socialUserDiscoveries ??
+          user?.socialUserDiscoveries?.length ??
+          0,
       });
     } catch (error) {
       console.error("Error in getCurrentUser:", error);
