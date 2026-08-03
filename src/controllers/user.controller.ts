@@ -107,16 +107,26 @@ export default class UserCtrl {
 
   static async updateUser(req: Request, res: Response) {
     try {
+      // `email` is intentionally absent. It used to be settable here behind a
+      // bare Joi .email(), which let any signed-in caller point their account
+      // at an address they do not own — and account recovery follows the
+      // address. Email now moves only through POST /auth/change-email/request
+      // + /confirm, which proves control of the new inbox first.
       const schema = Joi.object({
         username: Joi.string(),
         name: Joi.string(),
-        email: Joi.string().email(),
         avatar: Joi.string().uuid().optional(),
       }).min(1);
 
       const { error, value } = schema.validate(req.body);
       if (error) {
-        return res.status(400).json({ message: error.message });
+        // Builds already in the field still PATCH email here, so this message
+        // is read by users who have no verified-change UI to switch to. Tell
+        // them what to actually do rather than naming an internal flow.
+        const message = (req.body ?? {}).email
+          ? "Changing your email now requires confirming it by code. Please update the app to continue."
+          : error.message;
+        return res.status(400).json({ message });
       }
 
       const userId = req.user.id;

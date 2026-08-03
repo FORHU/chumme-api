@@ -22,6 +22,14 @@ model User {
   mobileNumber           String?
   otpCode                String?
   otpExpiry              DateTime?
+  /// What the live otpCode was minted for. Without this the single OTP slot is
+  /// interchangeable across flows — a code emailed to verify an address could be
+  /// spent to change the account password. Checked on every redeem.
+  otpPurpose             OtpPurpose?
+  /// Address awaiting confirmation during an email change. `email` is only
+  /// overwritten once an OTP sent to *this* address comes back, so a typo or a
+  /// hostile address never takes over account recovery.
+  pendingEmail           String?
   isEmailVerified        Boolean                 @default(false)
   onboardingCompleted    Boolean                 @default(false)
   nationality            String?
@@ -1009,6 +1017,17 @@ enum UserRole {
   SUPER_ADMIN
   DEVELOPER
   CREATOR
+}
+
+/// Scopes a User.otpCode to the one flow that minted it. A code is only
+/// redeemable by the flow whose purpose it carries, so codes cannot be
+/// replayed across flows (e.g. an email-verification code spent on a
+/// password change).
+enum OtpPurpose {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+  PASSWORD_CHANGE
+  EMAIL_CHANGE
 }
 
 enum SocialPlatform {
