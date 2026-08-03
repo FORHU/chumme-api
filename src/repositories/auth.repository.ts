@@ -1,5 +1,5 @@
 import { prisma } from "../utils/prisma";
-import { UserRole } from "@prisma/client";
+import { OtpPurpose, UserRole } from "@prisma/client";
 
 export default class AuthRepo {
   static async findUserByEmailOrUsername(email: string, username: string) {
@@ -20,6 +20,7 @@ export default class AuthRepo {
     role?: UserRole;
     otpCode?: string;
     otpExpiry?: Date;
+    otpPurpose?: OtpPurpose;
   }) {
     return prisma.user.create({
       data: {
@@ -31,6 +32,7 @@ export default class AuthRepo {
         role: data.role || UserRole.USER,
         otpCode: data.otpCode,
         otpExpiry: data.otpExpiry,
+        otpPurpose: data.otpPurpose,
         isEmailVerified: false,
         onboardingCompleted: false,
       },
@@ -129,6 +131,27 @@ export default class AuthRepo {
     return prisma.session.deleteMany({
       where: {
         refreshToken,
+      },
+    });
+  }
+
+  /**
+   * Drop refresh tokens for a user, optionally sparing one. Used when the
+   * password rotates — a session that survives the rotation defeats the point
+   * of rotating — but the device *performing* the rotation should stay signed
+   * in, otherwise changing your password logs you out of the app you are
+   * standing in.
+   */
+  static async deleteSessionsForUser(
+    userId: string,
+    exceptRefreshToken?: string | null,
+  ) {
+    return prisma.session.deleteMany({
+      where: {
+        userId,
+        ...(exceptRefreshToken
+          ? { refreshToken: { not: exceptRefreshToken } }
+          : {}),
       },
     });
   }

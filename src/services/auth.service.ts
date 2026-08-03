@@ -14,9 +14,97 @@ import {
   GOOGLE_ANDROID_CLIENT_ID,
 } from "../config";
 import { AutoSyncSvc } from "./net-communities/ingestion/auto-sync.service";
-import { SocialPlatform, UserRole } from "@prisma/client";
+import { OtpPurpose, SocialPlatform, UserRole } from "@prisma/client";
+
+/**
+ * Addresses are rejected here as well as at the route edge. `email` is the
+ * account-recovery channel, so a malformed or unowned address is an account
+ * takeover waiting to happen — the check belongs next to the write, not only
+ * in whichever controller happens to call it.
+ */
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$/;
+
+export function isValidEmail(value: string): boolean {
+  const trimmed = (value || "").trim();
+  // Guard the length before the regex: an over-long local part is invalid
+  // anyway, and bounding it keeps the check linear.
+  if (!trimmed || trimmed.length > 254) return false;
+  return EMAIL_RE.test(trimmed);
+}
 
 export default class AuthSvc {
+  /** pbkdf2 with a per-password salt, stored as `salt:hash`. */
+  private static hashPassword(plain: string): string {
+    const salt = crypto.randomBytes(16).toString("hex");
+    const hash = crypto
+      .pbkdf2Sync(plain, salt, 1000, 64, "sha512")
+      .toString("hex");
+    return `${salt}:${hash}`;
+  }
+
+  /** Constant-time check of `plain` against a stored `salt:hash`. */
+  private static verifyPassword(plain: string, stored: string | null): boolean {
+    if (!stored) return false;
+    const [salt, storedHash] = stored.split(":");
+    if (!salt || !storedHash) return false;
+
+    const hash = crypto
+      .pbkdf2Sync(plain, salt, 1000, 64, "sha512")
+      .toString("hex");
+
+    // Both sides are fixed-length hex of the same digest, so they normally
+    // match in length — but a truncated stored hash would make timingSafeEqual
+    // throw, so compare lengths first.
+    const a = Uint8Array.from(Buffer.from(hash, "hex"));
+    const b = Uint8Array.from(Buffer.from(storedHash, "hex"));
+    if (a.length !== b.length) return false;
+    return crypto.timingSafeEqual(a, b);
+  }
+
+  /**
+   * Redeem the account's live OTP for one specific flow.
+   *
+   * The purpose check is the point: User carries a single otpCode slot shared
+   * by every flow, so without it a code emailed to verify an address would also
+   * unlock a password change. Codes minted before otpPurpose existed are
+   * backfilled by the migration, so a null purpose here means the slot was
+   * written by a build that predates this check — treat it as unusable rather
+   * than as a wildcard.
+   */
+  private static assertOtp(
+    user: {
+      otpCode: string | null;
+      otpExpiry: Date | null;
+      otpPurpose: OtpPurpose | null;
+    },
+    otpCode: string,
+    purpose: OtpPurpose,
+  ): void {
+    if (!user.otpCode || !user.otpExpiry) {
+      throw new Error("No verification code found. Please request a new one.");
+    }
+
+    if (user.otpPurpose !== purpose) {
+      // Deliberately indistinguishable from a wrong code: saying "that code was
+      // for something else" tells an attacker which flow the live code belongs to.
+      throw new Error("Invalid verification code");
+    }
+
+    if (isOTPExpired(user.otpExpiry)) {
+      throw new Error("Verification code expired. Please request a new one.");
+    }
+
+    const encoder = new TextEncoder();
+    const supplied = encoder.encode(String(otpCode));
+    const actual = encoder.encode(user.otpCode);
+    if (
+      supplied.length !== actual.length ||
+      !crypto.timingSafeEqual(supplied, actual)
+    ) {
+      throw new Error("Invalid verification code");
+    }
+  }
+
   static async register(data: {
     email: string;
     password: string;
@@ -59,6 +147,7 @@ export default class AuthSvc {
       role: data.role,
       otpCode: otp, // Save OTP
       otpExpiry: otpExpiry, // Save expiry
+      otpPurpose: OtpPurpose.EMAIL_VERIFICATION,
     });
 
     // Send verification email with OTP
@@ -172,17 +261,9 @@ export default class AuthSvc {
       throw new Error("User not found");
     }
 
-    if (!user.otpCode || !user.otpExpiry) {
-      throw new Error("No verification code found. Please request a new one.");
-    }
-
-    if (user.otpCode !== otpCode) {
-      throw new Error("Invalid verification code");
-    }
-
-    if (isOTPExpired(user.otpExpiry)) {
-      throw new Error("Verification code expired. Please request a new one.");
-    }
+    // Scoped to PASSWORD_RESET: this is the forgot-password pre-check, and it
+    // deliberately leaves the code live for resetPassword to spend.
+    this.assertOtp(user, otpCode, OtpPurpose.PASSWORD_RESET);
 
     return { message: "OTP verified" };
   }
@@ -198,22 +279,13 @@ export default class AuthSvc {
       throw new Error("Email already verified");
     }
 
-    if (!user.otpCode || !user.otpExpiry) {
-      throw new Error("No verification code found. Please register again.");
-    }
-
-    if (user.otpCode !== otpCode) {
-      throw new Error("Invalid verification code");
-    }
-
-    if (isOTPExpired(user.otpExpiry)) {
-      throw new Error("Verification code expired. Please request a new one.");
-    }
+    this.assertOtp(user, otpCode, OtpPurpose.EMAIL_VERIFICATION);
 
     await AuthRepo.updateUser(user.id, {
       isEmailVerified: true,
       otpCode: null,
       otpExpiry: null,
+      otpPurpose: null,
     });
 
     return {
@@ -437,6 +509,7 @@ export default class AuthSvc {
     await AuthRepo.updateUser(user.id, {
       otpCode: otp,
       otpExpiry: otpExpiry,
+      otpPurpose: OtpPurpose.PASSWORD_RESET,
     });
 
     // Send email with OTP
@@ -473,35 +546,14 @@ export default class AuthSvc {
       throw new Error("Invalid request");
     }
 
-    // Check if OTP exists
-    if (!user.otpCode || !user.otpExpiry) {
-      throw new Error(
-        "No password reset request found. Please request a new code.",
-      );
-    }
-
-    // Check if OTP expired
-    if (isOTPExpired(user.otpExpiry)) {
-      throw new Error("Reset code has expired. Please request a new one.");
-    }
-
-    // Check if OTP matches
-    if (user.otpCode !== otpCode) {
-      throw new Error("Invalid reset code");
-    }
-
-    // Hash new password (same method as registration)
-    const salt = crypto.randomBytes(16).toString("hex");
-    const hash = crypto
-      .pbkdf2Sync(newPassword, salt, 1000, 64, "sha512")
-      .toString("hex");
-    const hashedPassword = `${salt}:${hash}`;
+    this.assertOtp(user, otpCode, OtpPurpose.PASSWORD_RESET);
 
     // Update password and clear OTP
     await AuthRepo.updateUser(user.id, {
-      password: hashedPassword,
+      password: this.hashPassword(newPassword),
       otpCode: null,
       otpExpiry: null,
+      otpPurpose: null,
     });
 
     return {
@@ -527,6 +579,7 @@ export default class AuthSvc {
     await AuthRepo.updateUser(user.id, {
       otpCode: otp,
       otpExpiry: otpExpiry,
+      otpPurpose: OtpPurpose.EMAIL_VERIFICATION,
     });
 
     try {
@@ -545,6 +598,233 @@ export default class AuthSvc {
       message: "New verification code sent to your email",
     };
   }
+
+  // ── Password change (signed-in) ────────────────────────────────────────────
+  //
+  // Split into request + confirm so the change is gated on two independent
+  // factors: knowing the current password, and controlling the inbox. A stolen
+  // session alone cannot rotate the password and lock the owner out.
+
+  /**
+   * Step 1 — check the current password and email a PASSWORD_CHANGE code.
+   */
+  static async requestPasswordChange(userId: string, currentPassword: string) {
+    const user = await AuthRepo.findUserById(userId);
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    if (!user.password) {
+      // SSO-only accounts have no password to compare against, so there is
+      // nothing this flow can verify. Point them at the reset flow, which
+      // establishes a password from inbox control alone.
+      throw new Error(
+        "This account signs in with Google or Facebook. Use 'Forgot password' to set a password first.",
+      );
+    }
+
+    if (!this.verifyPassword(currentPassword, user.password)) {
+      const err: any = new Error("Your current password is incorrect");
+      err.statusCode = 401;
+      throw err;
+    }
+
+    const otp = generateOTP();
+
+    await AuthRepo.updateUser(user.id, {
+      otpCode: otp,
+      otpExpiry: getOTPExpiry(),
+      otpPurpose: OtpPurpose.PASSWORD_CHANGE,
+    });
+
+    try {
+      await sendTemplatedEmail({
+        subject: "Confirm Your Password Change",
+        email_data: { email: user.email, OTP_CODE: otp.toString() },
+        template_name: "forgot-password.html",
+      });
+    } catch (error) {
+      console.log(`Password change OTP for ${user.email}: ${otp}`);
+    }
+
+    return {
+      message: "We sent a confirmation code to your email.",
+      data: { email: user.email },
+    };
+  }
+
+  /**
+   * Step 2 — redeem the code and write the new password.
+   *
+   * currentPassword is re-checked here rather than trusted from step 1: the two
+   * calls are minutes apart, and re-checking means a code intercepted in that
+   * window is still not enough on its own.
+   */
+  static async confirmPasswordChange(
+    userId: string,
+    currentPassword: string,
+    otpCode: string,
+    newPassword: string,
+    /**
+     * The caller's own refresh token, so its session survives the purge. The
+     * access token only carries `userId`, so the server cannot identify the
+     * calling session on its own. Omitted (older clients) means every session
+     * dies, including this one — safe, just a forced re-login.
+     */
+    keepRefreshToken?: string | null,
+  ) {
+    const user = await AuthRepo.findUserById(userId);
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    if (!this.verifyPassword(currentPassword, user.password)) {
+      const err: any = new Error("Your current password is incorrect");
+      err.statusCode = 401;
+      throw err;
+    }
+
+    if (this.verifyPassword(newPassword, user.password)) {
+      throw new Error(
+        "Your new password must be different from your current one.",
+      );
+    }
+
+    this.assertOtp(user, otpCode, OtpPurpose.PASSWORD_CHANGE);
+
+    await AuthRepo.updateUser(user.id, {
+      password: this.hashPassword(newPassword),
+      otpCode: null,
+      otpExpiry: null,
+      otpPurpose: null,
+    });
+
+    // Rotating a password is how someone evicts an intruder, so every other
+    // refresh token has to die with it — otherwise a stolen session outlives
+    // the change and the rotation accomplishes nothing.
+    await AuthRepo.deleteSessionsForUser(user.id, keepRefreshToken);
+    await CacheUtil.del(`user:${user.id}`);
+
+    return {
+      message:
+        "Password changed successfully. Other devices have been signed out.",
+      data: { keptCurrentSession: !!keepRefreshToken },
+    };
+  }
+
+  // ── Email change (signed-in) ───────────────────────────────────────────────
+
+  /**
+   * Step 1 — stage the new address and email a code *to that address*.
+   *
+   * The live `email` is untouched until step 2. Sending the code to the new
+   * address (not the current one) is what proves the user actually receives
+   * mail there; validating the format alone would happily hand account
+   * recovery to a typo.
+   */
+  static async requestEmailChange(userId: string, newEmail: string) {
+    const user = await AuthRepo.findUserById(userId);
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const email = (newEmail || "").trim().toLowerCase();
+
+    if (!isValidEmail(email)) {
+      throw new Error("Please enter a valid email address");
+    }
+
+    if (email === user.email.toLowerCase()) {
+      throw new Error("That is already your email address");
+    }
+
+    const taken = await AuthRepo.findUserByEmail(email);
+    if (taken) {
+      throw new Error("Email already in use");
+    }
+
+    const otp = generateOTP();
+
+    await AuthRepo.updateUser(user.id, {
+      pendingEmail: email,
+      otpCode: otp,
+      otpExpiry: getOTPExpiry(),
+      otpPurpose: OtpPurpose.EMAIL_CHANGE,
+    });
+
+    try {
+      await sendTemplatedEmail({
+        subject: "Confirm Your New Email Address",
+        email_data: { email, OTP_CODE: otp.toString() },
+        template_name: "verification-email.html",
+      });
+    } catch (error) {
+      console.log(`Email change OTP for ${email}: ${otp}`);
+    }
+
+    return {
+      message: `We sent a confirmation code to ${email}.`,
+      data: { pendingEmail: email },
+    };
+  }
+
+  /** Step 2 — redeem the code and promote pendingEmail to the live address. */
+  static async confirmEmailChange(userId: string, otpCode: string) {
+    const user = await AuthRepo.findUserById(userId);
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    if (!user.pendingEmail) {
+      throw new Error("No email change is pending. Please start again.");
+    }
+
+    this.assertOtp(user, otpCode, OtpPurpose.EMAIL_CHANGE);
+
+    // Re-check at commit time: the address may have been claimed by someone
+    // else in the minutes since it was staged, and the unique index would
+    // otherwise surface that as a raw Prisma error.
+    const taken = await AuthRepo.findUserByEmail(user.pendingEmail);
+    if (taken && taken.id !== user.id) {
+      await AuthRepo.updateUser(user.id, {
+        pendingEmail: null,
+        otpCode: null,
+        otpExpiry: null,
+        otpPurpose: null,
+      });
+      throw new Error("Email already in use");
+    }
+
+    const updated = await AuthRepo.updateUser(user.id, {
+      email: user.pendingEmail,
+      // The address is verified by definition — the code only reachable from
+      // that inbox came back.
+      isEmailVerified: true,
+      pendingEmail: null,
+      otpCode: null,
+      otpExpiry: null,
+      otpPurpose: null,
+    });
+
+    await CacheUtil.del(`user:${user.id}`);
+
+    return {
+      message: "Email updated successfully.",
+      data: { email: updated.email },
+    };
+  }
+
+  /** Abandon a staged email change without spending the code. */
+  static async cancelEmailChange(userId: string) {
+    await AuthRepo.updateUser(userId, {
+      pendingEmail: null,
+      otpCode: null,
+      otpExpiry: null,
+      otpPurpose: null,
+    });
+    return { message: "Email change cancelled." };
+  }
+
   static async getAuthUser(userId: string) {
     return AuthRepo.getAuthUser(userId);
   }

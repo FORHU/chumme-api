@@ -201,6 +201,139 @@ export default class AuthCtrl {
     }
   }
 
+  // ── Password change (authenticated) ────────────────────────────────────────
+
+  /**
+   * Rules match the app's validatePassword so the client's live checklist and
+   * the server agree on what "strong enough" means — a password the meter calls
+   * Strong must not be rejected here.
+   */
+  private static readonly NEW_PASSWORD = Joi.string()
+    .min(8)
+    .max(16)
+    .pattern(/[0-9]/, "a number")
+    .pattern(/[a-z]/, "a lowercase letter")
+    .pattern(/[A-Z]/, "an uppercase letter")
+    .required();
+
+  static async requestPasswordChange(req: Request, res: Response) {
+    try {
+      const schema = Joi.object({
+        currentPassword: Joi.string().required(),
+      });
+
+      const { error, value } = schema.validate(req.body);
+      if (error) {
+        return res.status(400).json({ message: error.message });
+      }
+
+      const result = await AuthSvc.requestPasswordChange(
+        req.user.id,
+        value.currentPassword,
+      );
+      return res.status(200).json(result);
+    } catch (error: any) {
+      return res.status(error.statusCode || 400).json({
+        message: error.message || "Failed to start password change",
+      });
+    }
+  }
+
+  static async confirmPasswordChange(req: Request, res: Response) {
+    try {
+      const schema = Joi.object({
+        currentPassword: Joi.string().required(),
+        otpCode: Joi.string().length(6).required(),
+        newPassword: AuthCtrl.NEW_PASSWORD,
+        // Optional so an older client that omits it still succeeds — it just
+        // gets signed out along with every other device.
+        refreshToken: Joi.string().optional(),
+      });
+
+      const { error, value } = schema.validate(req.body);
+      if (error) {
+        return res.status(400).json({ message: error.message });
+      }
+
+      const result = await AuthSvc.confirmPasswordChange(
+        req.user.id,
+        value.currentPassword,
+        value.otpCode,
+        value.newPassword,
+        value.refreshToken ?? null,
+      );
+      return res.status(200).json(result);
+    } catch (error: any) {
+      return res.status(error.statusCode || 400).json({
+        message: error.message || "Failed to change password",
+      });
+    }
+  }
+
+  // ── Email change (authenticated) ───────────────────────────────────────────
+
+  static async requestEmailChange(req: Request, res: Response) {
+    try {
+      // minDomainSegments + an explicit TLD allowlist is what makes Joi reject
+      // "a@b" and "a@b.c" — its permissive default is how a malformed address
+      // reached the database in the first place.
+      const schema = Joi.object({
+        email: Joi.string()
+          .email({ minDomainSegments: 2, tlds: { allow: true } })
+          .max(254)
+          .required(),
+      });
+
+      const { error, value } = schema.validate(req.body);
+      if (error) {
+        return res
+          .status(400)
+          .json({ message: "Please enter a valid email address" });
+      }
+
+      const result = await AuthSvc.requestEmailChange(req.user.id, value.email);
+      return res.status(200).json(result);
+    } catch (error: any) {
+      return res.status(error.statusCode || 400).json({
+        message: error.message || "Failed to start email change",
+      });
+    }
+  }
+
+  static async confirmEmailChange(req: Request, res: Response) {
+    try {
+      const schema = Joi.object({
+        otpCode: Joi.string().length(6).required(),
+      });
+
+      const { error, value } = schema.validate(req.body);
+      if (error) {
+        return res.status(400).json({ message: error.message });
+      }
+
+      const result = await AuthSvc.confirmEmailChange(
+        req.user.id,
+        value.otpCode,
+      );
+      return res.status(200).json(result);
+    } catch (error: any) {
+      return res.status(error.statusCode || 400).json({
+        message: error.message || "Failed to confirm email change",
+      });
+    }
+  }
+
+  static async cancelEmailChange(req: Request, res: Response) {
+    try {
+      const result = await AuthSvc.cancelEmailChange(req.user.id);
+      return res.status(200).json(result);
+    } catch (error: any) {
+      return res.status(400).json({
+        message: error.message || "Failed to cancel email change",
+      });
+    }
+  }
+
   static async googleAuthSSO(req: Request, res: Response) {
     const { idToken } = req.body;
 

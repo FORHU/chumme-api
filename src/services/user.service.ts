@@ -73,6 +73,14 @@ export default class UserSvc {
 
     const dataToUpdate: any = { ...updateData };
 
+    // Any path that still writes email directly (admin tooling, scripts) must
+    // not leave the account claiming a verified address it has never proven.
+    // The user-facing route no longer accepts email at all — see
+    // UserCtrl.updateUser — but this is the last line before the write.
+    if (updateData.email && updateData.email !== existingUser.email) {
+      dataToUpdate.isEmailVerified = false;
+    }
+
     if (updateData.avatar) {
       dataToUpdate.avatar = { connect: { id: updateData.avatar } };
     }
