@@ -1,0 +1,15 @@
+-- Reconciles an orphan column. "User"."activeSessionId" exists in the dev
+-- database but was created by no migration -- it was added by hand, and
+-- schema.prisma never declared it. That left `prisma migrate diff` reporting a
+-- permanent difference, which makes any automated drift check useless: it can
+-- never reach a clean baseline, so a real drift looks the same as this one.
+--
+-- Verified before writing this: 30 rows, 0 non-null values, no indexes, no
+-- constraints, and no reference anywhere in src/ or prisma/. Nothing reads it.
+--
+-- IF EXISTS is load-bearing, not defensive habit. A database built by running
+-- these migrations from scratch never had the column, because no migration ever
+-- created it -- so a bare DROP COLUMN would fail on every fresh environment
+-- (CI, a new developer, a rebuilt staging DB) while succeeding only on the one
+-- hand-patched dev database.
+ALTER TABLE "User" DROP COLUMN IF EXISTS "activeSessionId";
