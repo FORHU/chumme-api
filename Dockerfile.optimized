@@ -48,6 +48,14 @@ RUN npm ci --only=production && npm cache clean --force
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
 
+# The schema and migration history must ship with the image: without them the
+# entrypoint cannot apply migrations or diff the live schema, and this stage
+# would start an API against a database nobody verified. The `prisma` CLI is a
+# regular dependency (not a devDependency), so `npm ci --only=production` above
+# already installed it.
+COPY --from=build /app/prisma ./prisma
+COPY --from=build /app/scripts ./scripts
+
 # Change ownership
 RUN chown -R nodejs:nodejs /app
 
@@ -59,4 +67,7 @@ EXPOSE 3000
 
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["npm", "start"]
+# Previously `npm start`, which skipped migrations entirely. An image built from
+# this file would boot against whatever schema the database happened to have --
+# a second, silent path to the 2026-08-03 auth outage.
+CMD ["sh", "./scripts/start.sh"]
