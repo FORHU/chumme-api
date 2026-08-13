@@ -1,0 +1,86 @@
+# Production/staging stack for chumme-api on the BOOSTK EC2 host.
+# Lives at ~/chumme-api/docker-compose.prod.yaml on the instance.
+#
+# ${IMAGE} is exported by .github/workflows/deploy.yml so the app container runs
+# the exact commit that was just built and pushed.
+#
+# Copy up with:
+#   scp deploy/docker-compose.prod.yaml ec2-user@<host>:~/chumme-api/
+#
+# COEXISTENCE WITH BOOSTK: this is a separate compose project, so it gets its own
+# Docker network. BOOSTK's rabbitmq/postgres are unpublished (Docker-network-only),
+# and redis/rabbitmq here are too, so nothing collides on the host. The only host
+# port claimed is 3002 — BOOSTK holds 5000/5001 on loopback and nginx holds 80,
+# so there is no overlap and BOOSTK's nginx config is never touched.
+
+services:
+    app:
+        image: ${IMAGE}
+        restart: unless-stopped
+        env_file: app.env
+        ports:
+            # Published on ALL interfaces, NOT loopback — deliberately different
+            # from BOOSTK's services on this box.
+            #
+            # chumme has no domain and no nginx vhost: it is a mobile app, and the
+            # APK dials the instance's public DNS directly on this port (same
+            # pattern as CHAT_WONDER_API_URL already uses for another service).
+            # BOOSTK binds 127.0.0.1 because its nginx fronts it on :80; chumme
+            # has nothing in front, so binding loopback would make it unreachable.
+            #
+            # REQUIRES: the EC2 security group must allow inbound TCP 3002.
+            # 3002 matches PORT in src/config.ts.
+            - "3002:3002"
+        depends_on:
+            redis:
+                condition: service_healthy
+            rabbitmq:
+                condition: service_started
+        # Socket.IO shares this port with the HTTP API (io is attached to the
+        # same server in src/app.ts) — there is no second relay service to run,
+        # unlike BOOSTK.
+
+    # ---------------------------------------------------------------------------
+    # REQUIRED. Not optional like RabbitMQ.
+    #
+    # src/app.ts awaits pubClient.connect() / subClient.connect() with NO
+    # try/catch, so if Redis is unreachable the boot promise rejects and the API
+    # never starts listening. RabbitMQ, by contrast, is wrapped in try/catch and
+    # only logs on failure.
+    # ---------------------------------------------------------------------------
+    redis:
+        image: redis:7
+        restart: unless-stopped
+        command: ["redis-server", "--appendonly", "yes"]
+        volumes:
+            - chumme_redis:/data
+        # No ports: reachable only on this project's internal Docker network.
+        healthcheck:
+            test: ["CMD", "redis-cli", "ping"]
+            interval: 5s
+            timeout: 3s
+            retries: 10
+
+    rabbitmq:
+        image: rabbitmq:3-management
+        restart: unless-stopped
+        # RABBITMQ_DEFAULT_USER / _PASS / _VHOST come from app.env, written by
+        # deploy.yml. The default guest/guest account only works over loopback,
+        # and app reaches this over the Docker network, so a real user is required.
+        env_file: app.env
+        volumes:
+            - chumme_rabbitmq:/var/lib/rabbitmq
+        # No ports. NEVER publish 15672 — the management UI ships with guest/guest.
+
+    # ---------------------------------------------------------------------------
+    # NO postgres service, deliberately.
+    #
+    # chumme-api uses a shared staging RDS instance (see deploy/app.env.example),
+    # so the database lives outside this stack entirely. DATABASE_URL points
+    # there. Do not add a postgres service here — it would silently shadow RDS if
+    # anyone ever pointed DATABASE_URL at the hostname `postgres`.
+    # ---------------------------------------------------------------------------
+
+volumes:
+    chumme_redis:
+    chumme_rabbitmq:

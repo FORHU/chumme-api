@@ -1,0 +1,172 @@
+name: Deploy to EC2
+
+on:
+  workflow_dispatch: # manual "Run workflow" button — safe default while cutting over
+  # push:
+  #   branches: [main]   # <-- uncomment once the EC2 path is proven
+
+env:
+  # Existing repo, reused from the old ECS pipeline. Only the NAME goes here —
+  # the registry host comes from the ecr-login step.
+  ECR_REPOSITORY: npx/chumme-api
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # Build ON THE RUNNER (not on EC2) — the instance is shared with BOOSTK and
+      # a Node build there would compete for CPU with a live service.
+      #
+      # No --build-arg, unlike BOOSTK: this is a plain API with no client bundle
+      # that needs values inlined at build time. Everything is runtime env.
+      - name: Build and push image
+        env:
+          REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+        run: |
+          # SHA tag is what the deploy actually pulls, so a rollback can target
+          # any previous commit. `:latest` is a convenience pointer for humans.
+          docker build \
+            -t "$REGISTRY/$ECR_REPOSITORY:${{ github.sha }}" \
+            -t "$REGISTRY/$ECR_REPOSITORY:latest" .
+          docker push "$REGISTRY/$ECR_REPOSITORY:${{ github.sha }}"
+          docker push "$REGISTRY/$ECR_REPOSITORY:latest"
+
+      # mint a fresh ECR password per deploy
+      - name: Get ECR pull password
+        id: ecr-pw
+        run: |
+          PASSWORD=$(aws ecr get-login-password)
+          echo "::add-mask::$PASSWORD"
+          echo "password=$PASSWORD" >> "$GITHUB_OUTPUT"
+
+      # Ship the compose file straight from the repo checkout, so the box can
+      # never drift from what is committed. strip_components drops "deploy/".
+      - name: Upload compose file to EC2
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: deploy/docker-compose.prod.yaml
+          target: ~/chumme-api/
+          strip_components: 1
+
+      # EC2 only logs in, pulls the prebuilt image, and swaps containers.
+      # app.env is written here from individual secrets, so nothing has to be
+      # created on the box by hand.
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }} # EC2 public IP or DNS name
+          username: ${{ secrets.EC2_USER }} # usually "ubuntu" or "ec2-user"
+          key: ${{ secrets.EC2_SSH_KEY }} # contents of your .pem private key
+          envs: REGISTRY,IMAGE,ECR_PASSWORD
+          script: |
+            set -e
+
+            # `docker compose` (no hyphen) requires this plugin; without it
+            # Docker's CLI can't parse "compose" as a subcommand and instead
+            # prints an unhelpful "unknown docker command".
+            if ! docker compose version &> /dev/null; then
+              mkdir -p ~/.docker/cli-plugins
+              curl -SL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 \
+                -o ~/.docker/cli-plugins/docker-compose
+              chmod +x ~/.docker/cli-plugins/docker-compose
+            fi
+
+            mkdir -p ~/chumme-api
+            cd ~/chumme-api
+
+            umask 077
+            cat > app.env << 'ENVEOF'
+            NODE_ENV=production
+            PORT=3002
+            START_WORKERS=${{ vars.START_WORKERS }}
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            ACCESS_TOKEN_SECRET=${{ secrets.ACCESS_TOKEN_SECRET }}
+            REFRESH_TOKEN_SECRET=${{ secrets.REFRESH_TOKEN_SECRET }}
+            ACCESS_TOKEN_EXPIRY=${{ vars.ACCESS_TOKEN_EXPIRY }}
+            REDIS_HOST=redis
+            REDIS_PORT=6379
+            REDIS_PASSWORD=
+            REDIS_TTL_SECONDS=3600
+            RABBITMQ_DEFAULT_USER=${{ secrets.RABBITMQ_DEFAULT_USER }}
+            RABBITMQ_DEFAULT_PASS=${{ secrets.RABBITMQ_DEFAULT_PASS }}
+            RABBITMQ_DEFAULT_VHOST=my_vhost
+            RABBITMQ_URL=amqp://${{ secrets.RABBITMQ_DEFAULT_USER }}:${{ secrets.RABBITMQ_DEFAULT_PASS }}@rabbitmq:5672/my_vhost
+            RABBITMQ_EXCHANGE=chumme_exchange
+            RABBITMQ_QUEUE_PREFIX=chumme
+            INGESTION_QUEUE_NAME=ingestion_jobs
+            MAILER_TRANSPORT_HOST=${{ vars.MAILER_TRANSPORT_HOST }}
+            MAILER_TRANSPORT_PORT=${{ vars.MAILER_TRANSPORT_PORT }}
+            MAILER_TRANSPORT_SECURE=${{ vars.MAILER_TRANSPORT_SECURE }}
+            MAILER_EMAIL=${{ secrets.MAILER_EMAIL }}
+            MAILER_PASSWORD=${{ secrets.MAILER_PASSWORD }}
+            AWS_REGION=${{ secrets.AWS_REGION }}
+            AWS_ACCESS_KEY_ID=${{ secrets.APP_AWS_ACCESS_KEY_ID }}
+            AWS_SECRET_ACCESS_KEY=${{ secrets.APP_AWS_SECRET_ACCESS_KEY }}
+            AWS_S3_BUCKET_NAME=${{ vars.AWS_S3_BUCKET_NAME }}
+            S3_CDN_URL=${{ vars.S3_CDN_URL }}
+            OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+            YOUTUBE_API_KEY=${{ secrets.YOUTUBE_API_KEY }}
+            CHAT_WONDER_API_URL=${{ vars.CHAT_WONDER_API_URL }}
+            GOOGLE_CLIENT_ID=${{ vars.GOOGLE_CLIENT_ID }}
+            GOOGLE_ANDROID_CLIENT_ID=${{ vars.GOOGLE_ANDROID_CLIENT_ID }}
+            ENVEOF
+            # Deliberately NOT written: SECRET_KEY, SERVICE_ACCOUNT,
+            # GOOGLE_CLIENT_SECRET, FACEBOOK_APP_ID, FACEBOOK_APP_SECRET,
+            # WEBSUB_CALLBACK_URL. All six are exported from src/config.ts (or sit
+            # in .env) but have zero readers anywhere in the repo. Adding them as
+            # GitHub Secrets would be six live credentials guarding nothing.
+            # If a feature starts using one, add it here and to app.env.example
+            # together.
+
+            echo "$ECR_PASSWORD" | docker login --username AWS --password-stdin "$REGISTRY"
+            docker pull "$IMAGE"
+
+            # docker-compose.prod.yaml interpolates ${IMAGE}.
+            export IMAGE
+
+            # NO separate migration step, unlike BOOSTK's deploy.yml.
+            # scripts/start.sh already runs `prisma migrate deploy` plus a schema
+            # drift check on every container boot, so migrating here would just
+            # run it twice. The trade-off: a failed migration surfaces as a
+            # crash-looping container rather than an aborted deploy, which is why
+            # the health check below dumps logs and fails the job loudly.
+            docker compose -f docker-compose.prod.yaml up -d
+
+            # Fail the deploy loudly instead of reporting green on a dead app.
+            # /api/v1/health reports api, database, redis and rabbitmq status.
+            for i in $(seq 1 60); do
+              if curl -fs http://127.0.0.1:3002/api/v1/health > /dev/null; then
+                echo "✅ app healthy after ${i}s"
+                curl -s http://127.0.0.1:3002/api/v1/health
+                break
+              fi
+              if [ "$i" = "60" ]; then
+                echo "❌ health check failed — last 50 lines:"
+                docker compose -f docker-compose.prod.yaml logs --tail=50 app
+                exit 1
+              fi
+              sleep 1
+            done
+
+            docker image prune -f            # clean up old image layers
+        env:
+          REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE: ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+          ECR_PASSWORD: ${{ steps.ecr-pw.outputs.password }}
