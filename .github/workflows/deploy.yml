@@ -13,6 +13,13 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    # Reads the `dev` environment's secrets and variables — that is where they live,
+    # same as the old docker-build.yml. WITHOUT this line every ${{ secrets.* }} and
+    # ${{ vars.* }} below silently resolves to an empty string, because a job with no
+    # `environment:` only sees repository- and org-level values.
+    #
+    # Switch to `staging` here (not in the secret names) to deploy that environment.
+    environment: dev
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -22,7 +29,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          aws-region: ${{ vars.AWS_REGION }}
 
       - name: Login to Amazon ECR
         id: ecr-login
@@ -116,7 +123,7 @@ jobs:
             MAILER_TRANSPORT_SECURE=${{ vars.MAILER_TRANSPORT_SECURE }}
             MAILER_EMAIL=${{ secrets.MAILER_EMAIL }}
             MAILER_PASSWORD=${{ secrets.MAILER_PASSWORD }}
-            AWS_REGION=${{ secrets.AWS_REGION }}
+            AWS_REGION=${{ vars.AWS_REGION }}
             AWS_ACCESS_KEY_ID=${{ secrets.APP_AWS_ACCESS_KEY_ID }}
             AWS_SECRET_ACCESS_KEY=${{ secrets.APP_AWS_SECRET_ACCESS_KEY }}
             AWS_S3_BUCKET_NAME=${{ vars.AWS_S3_BUCKET_NAME }}
