@@ -6,9 +6,14 @@ on:
   #   branches: [main]   # <-- uncomment once the EC2 path is proven
 
 env:
-  # Existing repo, reused from the old ECS pipeline. Only the NAME goes here —
-  # the registry host comes from the ecr-login step.
-  ECR_REPOSITORY: npx/chumme-api
+  # Dedicated repo:
+  # arn:aws:ecr:ap-southeast-1:617163942417:repository/chumme-api
+  # URI: 617163942417.dkr.ecr.ap-southeast-1.amazonaws.com/chumme-api
+  #
+  # Only the NAME goes here — the registry host comes from the ecr-login step.
+  # NOT `npx/chumme-api`: that was the old ECS pipeline's repo. This is a new,
+  # dedicated one in the same account BOOSTK pushes to.
+  ECR_REPOSITORY: chumme-api
 
 jobs:
   deploy:
