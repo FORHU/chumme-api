@@ -34,7 +34,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ vars.AWS_REGION }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Login to Amazon ECR
         id: ecr-login
@@ -128,7 +128,7 @@ jobs:
             MAILER_TRANSPORT_SECURE=${{ vars.MAILER_TRANSPORT_SECURE }}
             MAILER_EMAIL=${{ secrets.MAILER_EMAIL }}
             MAILER_PASSWORD=${{ secrets.MAILER_PASSWORD }}
-            AWS_REGION=${{ vars.AWS_REGION }}
+            AWS_REGION=${{ secrets.AWS_REGION }}
             AWS_ACCESS_KEY_ID=${{ secrets.APP_AWS_ACCESS_KEY_ID }}
             AWS_SECRET_ACCESS_KEY=${{ secrets.APP_AWS_SECRET_ACCESS_KEY }}
             AWS_S3_BUCKET_NAME=${{ vars.AWS_S3_BUCKET_NAME }}
