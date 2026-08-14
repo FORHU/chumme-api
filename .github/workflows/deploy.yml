@@ -116,17 +116,18 @@ jobs:
             REDIS_PORT=6379
             REDIS_PASSWORD=
             REDIS_TTL_SECONDS=3600
-            RABBITMQ_DEFAULT_USER=${{ secrets.RABBITMQ_DEFAULT_USER }}
+            RABBITMQ_DEFAULT_USER=${{ vars.RABBITMQ_DEFAULT_USER }}
             RABBITMQ_DEFAULT_PASS=${{ secrets.RABBITMQ_DEFAULT_PASS }}
             RABBITMQ_DEFAULT_VHOST=my_vhost
-            RABBITMQ_URL=amqp://${{ secrets.RABBITMQ_DEFAULT_USER }}:${{ secrets.RABBITMQ_DEFAULT_PASS }}@rabbitmq:5672/my_vhost
+            RABBITMQ_URL=amqp://${{ vars.RABBITMQ_DEFAULT_USER }}:${{ secrets.RABBITMQ_DEFAULT_PASS }}@rabbitmq:5672/my_vhost
             RABBITMQ_EXCHANGE=chumme_exchange
             RABBITMQ_QUEUE_PREFIX=chumme
             INGESTION_QUEUE_NAME=ingestion_jobs
             MAILER_TRANSPORT_HOST=${{ vars.MAILER_TRANSPORT_HOST }}
             MAILER_TRANSPORT_PORT=${{ vars.MAILER_TRANSPORT_PORT }}
             MAILER_TRANSPORT_SECURE=${{ vars.MAILER_TRANSPORT_SECURE }}
-            MAILER_EMAIL=${{ secrets.MAILER_EMAIL }}
+            # Also a variable, not a secret (a sender address is not sensitive).
+            MAILER_EMAIL=${{ vars.MAILER_EMAIL }}
             MAILER_PASSWORD=${{ secrets.MAILER_PASSWORD }}
             AWS_REGION=${{ secrets.AWS_REGION }}
             AWS_ACCESS_KEY_ID=${{ secrets.APP_AWS_ACCESS_KEY_ID }}
