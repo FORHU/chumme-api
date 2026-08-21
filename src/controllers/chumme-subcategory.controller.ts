@@ -118,13 +118,9 @@ export default class ChummeSubCategoryCtrl {
   ) {
     const { categoryId } = req.params;
 
-    const schema = Joi.object({
-      categoryId: Joi.string().uuid().required(),
-    });
-
-    const { error } = schema.validate({ categoryId });
-    if (error) {
-      return res.status(400).json({ message: error.message });
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(categoryId)) {
+      return res.json({ subCategories: [] });
     }
 
     try {
