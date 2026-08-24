@@ -27,7 +27,7 @@ export default class RoomUserChatCtrl {
     const { chummeSubCategoryId } = req.params;
 
     const schema = Joi.object({
-      chummeSubCategoryId: Joi.string().uuid().required(),
+      chummeSubCategoryId: Joi.string().required(),
       keyPassword: Joi.string().allow(null, "").optional(), // Optional password for join validation
     });
 
@@ -62,7 +62,7 @@ export default class RoomUserChatCtrl {
     const { chummeSubCategoryId } = req.params;
 
     const schema = Joi.object({
-      chummeSubCategoryId: Joi.string().uuid().required(),
+      chummeSubCategoryId: Joi.string().required(),
     });
 
     const { error } = schema.validate({ chummeSubCategoryId });
@@ -86,7 +86,7 @@ export default class RoomUserChatCtrl {
     const userId = (req as any).user.id;
 
     const schema = Joi.object({
-      chummeSubCategoryId: Joi.string().uuid().required(),
+      chummeSubCategoryId: Joi.string().required(),
     });
 
     const { error } = schema.validate({ chummeSubCategoryId });

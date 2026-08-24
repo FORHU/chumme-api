@@ -105,6 +105,26 @@ export default class ChummeCategoryRepo {
         }),
       },
       include: {
+        // Subcategories below already return their design; categories did not,
+        // so the globe never received a category's position, emoji or colours
+        // and fell back to a country centroid plus a palette colour for every
+        // circle. Same select shape as the subcategory block, for consistency.
+        chummeVisualDesign: {
+          select: {
+            position: true,
+            colorSet: true,
+            sizeSet: true,
+            border: true,
+            shadow: true,
+            opacity: true,
+            capacity: true,
+            status: true,
+            tags: true,
+            emojiIcon: true,
+            aiChatEnabled: true,
+            discoveryEnabled: true,
+          },
+        },
         chummeArtists: {
           select: {
             id: true,

@@ -7,6 +7,8 @@ import { seedChummeCategories } from "./seeders/chummeCategory.seeder";
 import { seedUsers } from "./seeders/users.seeder";
 import { seedChummeArtistPersonas } from "./seeders/chummeArtistPersona.seeder";
 import { seedSocialIngestionSchedules } from "./seeders/socialIngestionSchedule.seeder";
+import { seedGlobeCommunities } from "./seeders/globeCommunities.seeder";
+import { seedRoomChats } from "./seeders/roomChat.seeder";
 
 const prisma = new PrismaClient();
 
@@ -22,6 +24,9 @@ async function main() {
     await seedChummeArtistPersonas(prisma);
     await seedChummeCategories(prisma);
     await seedSocialIngestionSchedules(prisma);
+    await seedGlobeCommunities(prisma);
+    // Must run last — it reads whatever subcategories exist by then.
+    await seedRoomChats(prisma);
 
     console.log("🎉 All seeder modules executed successfully!");
   } catch (error) {

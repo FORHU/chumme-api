@@ -10,7 +10,7 @@ export default class RoomMessageCtrl {
     const userId = (req as any).user.id;
 
     const schema = Joi.object({
-      chummeSubCategoryId: Joi.string().uuid().required(),
+      chummeSubCategoryId: Joi.string().required(),
       content: Joi.any().required(),
       voiceMessageId: Joi.string().uuid().optional(),
       parentMessageId: Joi.string().uuid().optional(),
@@ -46,7 +46,7 @@ export default class RoomMessageCtrl {
     const parentMessageId = req.query.parentMessageId as string;
 
     const schema = Joi.object({
-      chummeSubCategoryId: Joi.string().uuid().required(),
+      chummeSubCategoryId: Joi.string().required(),
       page: Joi.number().min(1).optional(),
       limit: Joi.number().min(1).max(50).optional(),
       parentMessageId: Joi.string().uuid().optional(),
