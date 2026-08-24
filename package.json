@@ -15,6 +15,7 @@
     "db:seed": "npx prisma db seed",
     "db:seed:chat": "ts-node scripts/seed_room_chats.ts",
     "db:seed:globe": "ts-node scripts/seed_globe.ts",
+    "db:migration-status": "ts-node scripts/check_migration_status.ts",
     "redis:flush": "ts-node scripts/flush_redis.ts",
     "data:drop-interstellar": "ts-node scripts/drop_interstellar_data.ts",
     "ingest:instagram": "ts-node scripts/instagram.script.ts",
