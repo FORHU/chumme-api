@@ -17,12 +17,16 @@ export const registerMediaHandlers = (
    * Flow:
    * 1. Validate input (studioId, chunk, userId, musicId)
    * 2. Verify file exists in DB
-   * 3. Role gate — only SINGER / PRODUCER can stream
-   * 4. Mode gate:
+   * 3. Resolve studio mode (cache, falling back to the studio row)
+   * 4. Role gate:
+   *    - CROWDSINGING / COMPETITION → any active member can stream
+   *    - otherwise → only SINGER / PRODUCER
+   * 5. Turn gate:
    *    - CROWDSINGING / COMPETITION → everyone streams freely
    *    - RELAYSINGING → only the current singer (unless chorus / role 0)
-   * 5. Broadcast chunk to other studio members
-   * 6. Persist chunk as TempMusicRecord for later FFmpeg merge
+   * 6. Calculate start time offset for sync
+   * 7. Broadcast chunk to other studio members
+   * 8. Persist chunk as TempMusicRecord for later FFmpeg merge
    */
   socket.on(
     "audio_chunk",
@@ -61,22 +65,7 @@ export const registerMediaHandlers = (
         return;
       }
 
-      // 3. Role gate — only Singers & Producers can stream audio
-      const canStream = await MusicStudioSvc.canRecord(
-        studioId,
-        socket.user.id,
-      );
-      if (!canStream) {
-        console.log("[MusicStudio] audio_chunk dropped: user cannot record", {
-          userId: socket.user.id,
-          studioId,
-        });
-        if (callback)
-          callback({ error: "You are not allowed to record in this studio" });
-        return;
-      }
-
-      // 4. Mode gate — RELAYSINGING: only the current singer can stream
+      // 3. Resolve the studio mode first — the role gate below depends on it.
       const studioStatePromise = MusicStudioCacheSvc.getStudioType(studioId);
       const startTimePromise =
         MusicStudioCacheSvc.getRecordingStartTime(studioId);
@@ -86,6 +75,29 @@ export const registerMediaHandlers = (
         startTimePromise,
       ]);
 
+      // 4. Role gate — CROWDSINGING/COMPETITION let any member stream, which is
+      // the whole point of those modes; elsewhere it stays Singers & Producers.
+      // This check used to run before the mode was known and always demanded a
+      // SINGER/PRODUCER role, so it silently overrode the open-mode rule the
+      // header documents: joiners are persisted as LISTENER, so every take from
+      // anyone but the owner was dropped here after already reaching S3.
+      const canStream = await MusicStudioSvc.canStream(
+        studioId,
+        socket.user.id,
+        cachedType,
+      );
+      if (!canStream) {
+        console.log("[MusicStudio] audio_chunk dropped: user cannot record", {
+          userId: socket.user.id,
+          studioId,
+          studioType: cachedType,
+        });
+        if (callback)
+          callback({ error: "You are not allowed to record in this studio" });
+        return;
+      }
+
+      // 5. Mode gate — RELAYSINGING: only the current singer can stream
       if (cachedType === MusicStudioType.RELAYSINGING) {
         const [currentSinger, currentRoleIndex] = await Promise.all([
           MusicStudioCacheSvc.getCurrentSinger(studioId),
@@ -111,7 +123,7 @@ export const registerMediaHandlers = (
         }
       }
 
-      // 5. Calculate start time offset (for sync)
+      // 6. Calculate start time offset (for sync)
       // Note: recordingStartTime and timestamp must be Unix milliseconds (UTC)
       // for international compatibility across different time zones.
       let startTimeOffset: number | undefined;
@@ -122,7 +134,7 @@ export const registerMediaHandlers = (
         if (startTimeOffset < 0) startTimeOffset = 0;
       }
 
-      // 6. Broadcast to other users in the studio
+      // 7. Broadcast to other users in the studio
       socket.to(studioId).emit("audio_chunk", {
         userId: socket.user.id,
         file,
@@ -130,7 +142,7 @@ export const registerMediaHandlers = (
         startTimeOffset,
       });
 
-      // 7. Persist chunk for later FFmpeg merge (saveRecording flow)
+      // 8. Persist chunk for later FFmpeg merge (saveRecording flow)
       try {
         await MusicTempRecordSvc.saveChunk({
           fileId: chunk.fileId,

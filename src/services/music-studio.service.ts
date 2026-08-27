@@ -440,6 +440,44 @@ export default class MusicStudioSvc {
   }
 
   /**
+   * Whether a user may stream audio chunks into a studio.
+   *
+   * Crowd-singing and competition rooms are open by design — everybody in the
+   * room sings. `canRecord` demands a SINGER/PRODUCER membership, but a joiner
+   * is persisted as LISTENER and only the host can promote them, so every
+   * joiner's take was rejected at the audio_chunk gate: the audio reached S3,
+   * never became a TempMusicRecord, and there was nothing left to merge on
+   * save. Only the owner (who short-circuits canRecord) could actually record.
+   *
+   * Membership is still required — this opens the room to the people in it, not
+   * to everyone. Relay singing keeps the stricter role gate, on top of the
+   * turn-based check the caller applies.
+   *
+   * @param cachedStudioType Redis copy of the type, when the caller already has
+   * it. It is `null` on a cold cache, so the studio row is the authority —
+   * without that fallback this silently reverts to the strict gate after a
+   * restart.
+   */
+  static async canStream(
+    studioId: string,
+    userId: string,
+    cachedStudioType?: string | null,
+  ) {
+    const studio = await MusicStudioRepo.findById(studioId);
+    if (studio && studio.ownerId === userId) return true;
+
+    const effectiveType = cachedStudioType ?? studio?.studioType;
+    const isOpenMode =
+      effectiveType === MusicStudioType.CROWDSINGING ||
+      effectiveType === MusicStudioType.COMPETITION;
+
+    if (!isOpenMode) return this.canRecord(studioId, userId);
+
+    const membership = await MusicStudioRepo.getMembership(studioId, userId);
+    return Boolean(membership?.isActive);
+  }
+
+  /**
    * Helper to retrieve backing track URL and original music ID from Music or MusicRecord
    */
   private static async getBackingTrackInfo(musicId: string): Promise<{

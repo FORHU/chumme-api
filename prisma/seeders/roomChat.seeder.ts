@@ -691,6 +691,32 @@ export async function seedRoomChats(prisma: PrismaClient) {
     ? Number(process.env.SEED_VOICE_RATIO) || 0.12
     : 0;
 
+  // Voice notes arrive in runs, not sprinkled one at a time. When someone sends
+  // one the room tends to answer in kind for a few messages before dropping
+  // back to text, so an independent per-message coin flip — which is what this
+  // used to be — reads wrong: at a 12% rate almost every note lands alone.
+  //
+  // A run's length is drawn up front rather than ended by a per-message coin
+  // flip. A geometric chain has its mode at 1 whatever mean you give it — at
+  // SEED_VOICE_RUN=5 a quarter of runs still came out as lone notes, which is
+  // the exact thing this exists to prevent. Drawing from a band around the
+  // target instead puts the mode where it was asked for.
+  //
+  // `pStart` is solved so the overall share still lands on SEED_VOICE_RATIO:
+  // runs of mean length L separated by gaps of mean 1/pStart give
+  //
+  //   share = L / (L + 1/pStart)  ==  voiceRatio
+  //
+  // so raising SEED_VOICE_RUN clusters the same number of notes into fewer,
+  // longer runs rather than adding more of them.
+  const voiceRun = Math.max(1, Number(process.env.SEED_VOICE_RUN) || 5);
+  const runLo = Math.max(1, Math.round(voiceRun * 0.6));
+  const runHi = Math.max(runLo, Math.round(voiceRun * 1.4));
+  const pStart =
+    voiceRatio > 0
+      ? Math.min(1, voiceRatio / (voiceRun * (1 - voiceRatio)))
+      : 0;
+
   const memberships: {
     id: string;
     userId: string;
@@ -845,6 +871,43 @@ export async function seedRoomChats(prisma: PrismaClient) {
     // Never let a fitted gap go negative if a room happens to be all one burst.
     const elasticTotal = Math.max(windowEnd - windowStart - withinTotal, 0);
 
+    // Which messages in this room are voice notes, decided before the layout
+    // loop so the room can be inspected as a whole afterwards.
+    //
+    // Runs are deliberately not broken at burst boundaries. Grouping is a
+    // visual property — what matters is that the bubbles sit next to each other
+    // in the scroll, not that they share a sitting.
+    const voiceAt: boolean[] = new Array(drafts.length).fill(false);
+
+    if (voiceRatio > 0 && voiceClips.length > 0) {
+      let runLeft = 0;
+      for (let i = 0; i < drafts.length; i++) {
+        if (runLeft > 0) {
+          runLeft -= 1;
+          voiceAt[i] = true;
+        } else if (rand() < pStart) {
+          // Commit to the whole run here. Ending it by coin flip instead would
+          // put the mode back at 1 and undo the clustering.
+          runLeft = runLo + Math.floor(rand() * (runHi - runLo + 1)) - 1;
+          voiceAt[i] = true;
+        }
+      }
+
+      // Guarantee every room opens at least one run. At the rates involved a
+      // room of ~24 messages has roughly a one-in-three chance of drawing none
+      // at all, which left half the rooms — and whole countries — silent. A
+      // community whose rooms are entirely text reads as dead next to one with
+      // voice, and that is a property of the seed, not of the country.
+      if (!voiceAt.some(Boolean)) {
+        const len = Math.min(
+          drafts.length,
+          runLo + Math.floor(rand() * (runHi - runLo + 1)),
+        );
+        const start = Math.floor(rand() * (drafts.length - len + 1));
+        for (let i = start; i < start + len; i++) voiceAt[i] = true;
+      }
+    }
+
     let cursor = windowStart;
 
     for (const [index, draft] of drafts.entries()) {
@@ -857,8 +920,7 @@ export async function seedRoomChats(prisma: PrismaClient) {
 
       // A voice note replaces the line's text rather than accompanying it —
       // the client keys off `voiceMessage` and never renders both.
-      const asVoice = voiceRatio > 0 && rand() < voiceRatio;
-      const clip = asVoice
+      const clip = voiceAt[index]
         ? voiceClips[Math.floor(rand() * voiceClips.length)]
         : null;
 
