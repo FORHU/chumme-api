@@ -90,7 +90,23 @@ export default class UserRepo {
     });
   }
 
+  /**
+   * Soft-delete a user and release their sign-up identifiers.
+   *
+   * `email` and `username` are hard `@unique` columns, but every lookup that
+   * guards registration filters on `isDeleted: false`. A soft-deleted row was
+   * therefore invisible to the duplicate check while still occupying the
+   * unique index, so signing up again with that address sailed past the check
+   * and died inside `prisma.user.create()` — surfacing Prisma's raw
+   * "Invalid `prisma.user.create()` invocation" to the user.
+   *
+   * Tombstoning both fields frees them for reuse immediately. The row itself
+   * stays put, so recordings, messages and room ownership still resolve.
+   */
   static async softDeleteUser(userId: string) {
+    // Short and collision-free: ids are uuids, and one user soft-deletes once.
+    const tombstone = userId.replace(/-/g, "").slice(0, 12);
+
     return prisma.user.update({
       where: {
         id: userId,
@@ -98,6 +114,14 @@ export default class UserRepo {
       data: {
         isDeleted: true,
         isActive: false,
+        email: `deleted+${tombstone}@chumme.invalid`,
+        username: `deleted_${tombstone}`,
+        // The account is gone — leave nothing usable for auth or recovery.
+        password: null,
+        otpCode: null,
+        otpExpiry: null,
+        otpPurpose: null,
+        pendingEmail: null,
       },
     });
   }
