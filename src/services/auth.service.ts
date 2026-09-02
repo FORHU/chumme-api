@@ -137,18 +137,41 @@ export default class AuthSvc {
     const otp = generateOTP(); // "582941"
     const otpExpiry = getOTPExpiry(); // 5 minutes from now
 
-    // Create user with OTP
-    const user = await AuthRepo.createUser({
-      email: data.email,
-      password: hashedPassword,
-      username: data.username,
-      name: data.name,
-      mobileNumber: data.mobileNumber,
-      role: data.role,
-      otpCode: otp, // Save OTP
-      otpExpiry: otpExpiry, // Save expiry
-      otpPurpose: OtpPurpose.EMAIL_VERIFICATION,
-    });
+    // Create user with OTP.
+    //
+    // The checks above filter `isDeleted: false`, but `email` and `username`
+    // are unconditional unique columns — so a row they cannot see can still
+    // own the identifier. New deletions release theirs (see
+    // `UserRepo.softDeleteUser`); accounts deleted before that shipped still
+    // hold them, and two concurrent signups can race the check either way.
+    // Without this, Prisma's raw "Invalid `prisma.user.create()` invocation"
+    // string went to the client as the error message.
+    let user;
+    try {
+      user = await AuthRepo.createUser({
+        email: data.email,
+        password: hashedPassword,
+        username: data.username,
+        name: data.name,
+        mobileNumber: data.mobileNumber,
+        role: data.role,
+        otpCode: otp, // Save OTP
+        otpExpiry: otpExpiry, // Save expiry
+        otpPurpose: OtpPurpose.EMAIL_VERIFICATION,
+      });
+    } catch (error: any) {
+      if (error?.code === "P2002") {
+        const targets: string[] = Array.isArray(error?.meta?.target)
+          ? error.meta.target
+          : [error?.meta?.target].filter(Boolean);
+
+        if (targets.includes("username")) {
+          throw new Error("Username is already taken");
+        }
+        throw new Error("User with this email already exists");
+      }
+      throw error;
+    }
 
     // Send verification email with OTP
     try {

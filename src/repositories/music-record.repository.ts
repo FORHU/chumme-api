@@ -247,6 +247,13 @@ export default class MusicRecordRepo {
               musicArtist: true,
             },
           },
+          // Selected rather than `studio: true`: My Recordings needs the
+          // session type to label each take, but the studio row also carries
+          // `keyPassword` — the private-room password — which must not ship
+          // to the client.
+          studio: {
+            select: { id: true, name: true, studioType: true },
+          },
           musicParts: {
             include: {
               singer: true,
