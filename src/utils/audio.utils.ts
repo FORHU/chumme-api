@@ -314,6 +314,141 @@ export type VoiceEffect =
   | "RADIO"
   | "CHIPMUNK";
 
+/** A single FFmpeg filter in a vocal chain, before input/output labels are threaded on. */
+type VocalFilter = { filter: string; options?: Record<string, unknown> };
+
+/**
+ * What each voice effect actually does to the vocal track before it meets the
+ * backing track.
+ *
+ * The vocals arrive dry, so every preset starts by clearing rumble below the
+ * voice and ends leaving enough headroom for the mix bus limiter. `mixWeights`
+ * is the `amix` balance as "vocals backing" — wetter, more reverberant presets
+ * carry a little more level because the reverb tail spreads their energy out.
+ *
+ * Kept as data rather than branches so adding an effect is one entry here and
+ * one pill in the client's VoiceEffectSelector.
+ */
+const VOICE_EFFECT_PRESETS: Record<
+  VoiceEffect,
+  { filters: VocalFilter[]; mixWeights: string }
+> = {
+  /** Straight through: rumble filter and gentle levelling, no colour. */
+  CLEAN: {
+    filters: [
+      { filter: "highpass", options: { f: 80 } },
+      {
+        filter: "acompressor",
+        options: { threshold: 0.2, ratio: 2, attack: 20, release: 250, makeup: 2 },
+      },
+      { filter: "volume", options: { volume: 1.3 } },
+    ],
+    mixWeights: "3 1",
+  },
+
+  /** Polished pop vocal: low-mid warmth, firm compression, a hint of room. */
+  STUDIO: {
+    filters: [
+      { filter: "highpass", options: { f: 80 } },
+      { filter: "equalizer", options: { f: 150, width_type: "h", width: 100, g: 4 } },
+      { filter: "equalizer", options: { f: 6000, width_type: "h", width: 2000, g: 2 } },
+      {
+        filter: "acompressor",
+        options: { threshold: 0.125, ratio: 3, attack: 15, release: 200, makeup: 3 },
+      },
+      // Very short single tap — reads as a tight vocal booth, not an effect.
+      { filter: "aecho", options: { in_gain: 0.8, out_gain: 0.9, delays: "40", decays: "0.25" } },
+      { filter: "volume", options: { volume: 1.4 } },
+    ],
+    mixWeights: "3 1",
+  },
+
+  /** Karaoke box: the classic heavy, obvious sing-along reverb. */
+  KTV: {
+    filters: [
+      { filter: "highpass", options: { f: 90 } },
+      { filter: "equalizer", options: { f: 200, width_type: "h", width: 120, g: 3 } },
+      {
+        filter: "acompressor",
+        options: { threshold: 0.1, ratio: 4, attack: 10, release: 250, makeup: 4 },
+      },
+      // Multi-tap: the closely spaced repeats smear into reverb rather than
+      // reading as distinct echoes.
+      {
+        filter: "aecho",
+        options: {
+          in_gain: 0.8,
+          out_gain: 0.85,
+          delays: "60|120|200",
+          decays: "0.45|0.3|0.2",
+        },
+      },
+      { filter: "volume", options: { volume: 1.45 } },
+    ],
+    mixWeights: "7 2",
+  },
+
+  /** Big hall: long, wide tail with the pre-delay a real room would have. */
+  CONCERT: {
+    filters: [
+      { filter: "highpass", options: { f: 90 } },
+      { filter: "equalizer", options: { f: 3000, width_type: "h", width: 1500, g: 2 } },
+      {
+        filter: "acompressor",
+        options: { threshold: 0.125, ratio: 3.5, attack: 12, release: 300, makeup: 3 },
+      },
+      {
+        filter: "aecho",
+        options: {
+          in_gain: 0.8,
+          out_gain: 0.8,
+          delays: "150|300|500|700",
+          decays: "0.5|0.35|0.25|0.15",
+        },
+      },
+      { filter: "volume", options: { volume: 1.5 } },
+    ],
+    mixWeights: "7 2",
+  },
+
+  /** AM broadcast: band-limited and squashed flat, the telephone/radio voice. */
+  RADIO: {
+    filters: [
+      { filter: "highpass", options: { f: 300 } },
+      { filter: "lowpass", options: { f: 3400 } },
+      { filter: "equalizer", options: { f: 1500, width_type: "h", width: 800, g: 5 } },
+      {
+        filter: "acompressor",
+        options: { threshold: 0.05, ratio: 8, attack: 5, release: 120, makeup: 6 },
+      },
+      { filter: "volume", options: { volume: 1.5 } },
+    ],
+    mixWeights: "3 1",
+  },
+
+  /**
+   * Pitched up without getting shorter. `asetrate` speeds the vocal up (which
+   * raises pitch), and `atempo` slows it back down by the reciprocal so the take
+   * still lines up with the backing track. The leading `aresample` pins the rate
+   * `asetrate` is multiplying, since the recorder's output rate varies by device.
+   */
+  CHIPMUNK: {
+    filters: [
+      { filter: "highpass", options: { f: 80 } },
+      { filter: "aresample", options: { osr: 44100 } },
+      { filter: "asetrate", options: { r: Math.round(44100 * 1.35) } },
+      { filter: "aresample", options: { osr: 44100 } },
+      { filter: "atempo", options: { tempo: Number((1 / 1.35).toFixed(6)) } },
+      {
+        filter: "acompressor",
+        options: { threshold: 0.15, ratio: 3, attack: 10, release: 200, makeup: 3 },
+      },
+      { filter: "volume", options: { volume: 1.35 } },
+    ],
+    mixWeights: "3 1",
+  },
+};
+
 /**
  * Mixes a vocal buffer with a backing track.
  * Applies EBU R128 loudness normalization and injects ID3 metadata.
@@ -355,73 +490,36 @@ export const mixVocalsWithBacking = async (
     command.input(localBackingPath!);
     command.input(tempVocalsPath);
 
-    // No filters — simple direct mix of backing track + raw vocals
-    // const filterChain: any[] = [
-    //   // Boost vocals so they sit above the backing track
-    /**
-     * 1.0 = original volume (no boost)
-     * 1.5 = 50% louder
-     * 1.8 = 80% louder ← current
-     * 2.0 = double volume
-     */
-    //   {
-    //     filter: "volume",
-    //     options: { volume: 1.8 },
-    //     inputs: "1:a",
-    //     outputs: "v_loud",
-    //   },
-    /**
-     * inputs: 2 = mix 2 streams
-     * duration: "shortest" = mix until the shorter stream ends
-     */
-    //   {
-    //     filter: "amix",
-    //     options: { inputs: 2, duration: "shortest" },
-    //     inputs: ["0:a", "v_loud"],
-    //     outputs: "mixed",
-    //   },
-    // ];
+    // Build the vocal chain for the selected effect, threading each filter's
+    // output into the next one's input (v_0 -> v_1 -> ...). An unknown effect
+    // falls back to STUDIO rather than dropping the chain, so a client sending a
+    // preset this build doesn't know still gets a mixed, processed vocal.
+    const preset =
+      VOICE_EFFECT_PRESETS[voiceEffect] ?? VOICE_EFFECT_PRESETS.STUDIO;
 
-    const filterChain: any[] = [
-      {
-        filter: "highpass",
-        options: { f: 80 },
-        inputs: "1:a",
-        outputs: "v_hp",
-      },
-      // Bass boost — adds warmth to vocals
-      {
-        filter: "equalizer",
-        options: { f: 150, width_type: "h", width: 100, g: 4 },
-        inputs: "v_hp",
-        outputs: "v_clean",
-      },
-      {
-        filter: "acompressor",
-        options: {
-          threshold: 0.125,
-          ratio: 3,
-          attack: 15,
-          release: 200,
-          makeup: 3,
-        },
-        inputs: "v_clean",
-        outputs: "v_comp",
-      },
-      {
-        filter: "volume",
-        options: { volume: 1.4 },
-        inputs: "v_comp",
-        outputs: "v_loud",
-      },
+    const filterChain: any[] = [];
+    let vocalLabel = "1:a";
+
+    preset.filters.forEach((step, index) => {
+      const outputs = `v_${index}`;
+      filterChain.push({
+        filter: step.filter,
+        options: step.options,
+        inputs: vocalLabel,
+        outputs,
+      });
+      vocalLabel = outputs;
+    });
+
+    filterChain.push(
       {
         filter: "amix",
         options: {
           inputs: 2,
-          weights: "3 1",
+          weights: preset.mixWeights,
           duration: "shortest",
         },
-        inputs: ["v_loud", "0:a"],
+        inputs: [vocalLabel, "0:a"],
         outputs: "mixed",
       },
       {
@@ -430,7 +528,7 @@ export const mixVocalsWithBacking = async (
         inputs: "mixed",
         outputs: "final",
       },
-    ];
+    );
 
     let finalOutput = "final";
 
