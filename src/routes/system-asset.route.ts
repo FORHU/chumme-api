@@ -46,4 +46,3 @@ router.patch("/:id", authenticate, SystemAssetCtrl.updateAsset);
 router.delete("/:id", authenticate, SystemAssetCtrl.deleteAsset);
 
 export default router;
-

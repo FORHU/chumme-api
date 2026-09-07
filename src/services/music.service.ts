@@ -255,6 +255,18 @@ export default class MusicSvc {
   private static enrichMusicData(music: any) {
     if (!music) return music;
 
+    if (music.musicFile && music.musicFile.fileUrl) {
+      try {
+        music.musicFile.fileUrl = encodeURI(decodeURI(music.musicFile.fileUrl));
+      } catch (e) {
+        try {
+          music.musicFile.fileUrl = encodeURI(music.musicFile.fileUrl);
+        } catch (err) {
+          logger.warn(`[MusicSvc] Failed to encode URL: ${music.musicFile.fileUrl}`, err);
+        }
+      }
+    }
+
     const fileMeta = music.musicFile?.metaData as any;
     if (fileMeta) {
       // 1. Backward Compatibility: Ensure .transcription exists if it's in .songInfo

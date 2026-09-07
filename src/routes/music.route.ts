@@ -1,20 +1,24 @@
 import express from "express";
 import MusicCtrl from "../controllers/music.controller";
-import { authenticate, requireRoles } from "../middleware/auth.middleware";
+import {
+  authenticate,
+  requireRoles,
+  optionalAuthenticate,
+} from "../middleware/auth.middleware";
 import { upload } from "../middleware/upload.middleware";
 import { UserRole } from "@prisma/client";
 
 const router = express.Router();
 
-router.use(authenticate);
+router.use(optionalAuthenticate);
 
 // Named routes — must come before /:id wildcard
 router.get("/list", MusicCtrl.getMusics);
 router.get("/new-releases", MusicCtrl.getNewReleases);
 router.get("/trending", MusicCtrl.getTrending);
 
-router.get("/liked", MusicCtrl.getLikedSongs);
-router.post("/:id/like", MusicCtrl.toggleLike);
+router.get("/liked", authenticate, MusicCtrl.getLikedSongs);
+router.post("/:id/like", authenticate, MusicCtrl.toggleLike);
 router.get("/:id/stream", MusicCtrl.streamMusic);
 router.post("/:id/play", MusicCtrl.recordPlay);
 router.get("/:id", MusicCtrl.getMusicById);
@@ -30,6 +34,9 @@ router.post(
   upload.any(), // Flexible handling of fields
   MusicCtrl.createMusicWithFiles,
 );
+
+// JSON-only creation endpoint
+router.post("/create-with-json", MusicCtrl.createMusic);
 
 // Alias for backward compatibility
 router.post("/create-with-files", upload.any(), MusicCtrl.createMusicWithFiles);

@@ -98,6 +98,16 @@ export default class S3Util {
       cleanUrl = `https://${cleanUrl}`;
     }
 
+    try {
+      cleanUrl = encodeURI(decodeURI(cleanUrl));
+    } catch (e) {
+      try {
+        cleanUrl = encodeURI(cleanUrl);
+      } catch (err) {
+        logger.warn(`[S3Util] Failed to encode URL: ${cleanUrl}`, err);
+      }
+    }
+
     return cleanUrl;
   }
 

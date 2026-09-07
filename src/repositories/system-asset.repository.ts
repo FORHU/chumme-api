@@ -1,7 +1,13 @@
 import { prisma } from "../utils/prisma";
 
 export default class SystemAssetRepo {
-  static async upsertAsset(data: { key: string; url: string; type: string; title?: string; description?: string }) {
+  static async upsertAsset(data: {
+    key: string;
+    url: string;
+    type: string;
+    title?: string;
+    description?: string;
+  }) {
     return prisma.systemAsset.upsert({
       where: { key: data.key },
       update: {
@@ -21,7 +27,16 @@ export default class SystemAssetRepo {
     });
   }
 
-  static async updateAsset(id: string, data: { key?: string; url?: string; type?: string; title?: string; description?: string }) {
+  static async updateAsset(
+    id: string,
+    data: {
+      key?: string;
+      url?: string;
+      type?: string;
+      title?: string;
+      description?: string;
+    },
+  ) {
     return prisma.systemAsset.update({
       where: { id },
       data,
@@ -54,4 +69,3 @@ export default class SystemAssetRepo {
     });
   }
 }
-

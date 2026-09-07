@@ -26,6 +26,16 @@ export default class FileSvc {
     // 3. Remove trailing dots (FFmpeg/Android incompatible)
     sanitized = sanitized.replace(/\.+$/, "");
 
+    try {
+      sanitized = encodeURI(decodeURI(sanitized));
+    } catch (e) {
+      try {
+        sanitized = encodeURI(sanitized);
+      } catch (err) {
+        console.warn(`[FileSvc] Failed to encode URL: ${sanitized}`, err);
+      }
+    }
+
     return sanitized;
   }
 

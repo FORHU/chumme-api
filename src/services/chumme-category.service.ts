@@ -89,10 +89,12 @@ export default class ChummeCategorySvc {
         chummeSubCategories: mapped.chummeSubCategories?.map((sub: any) => ({
           ...sub,
           membersCount: sub.populationCount || 0,
-          chummeTopicCategories: sub.chummeTopicCategories?.map((topic: any) => ({
-            ...topic,
-            membersCount: topic.populationCount || 0,
-          })),
+          chummeTopicCategories: sub.chummeTopicCategories?.map(
+            (topic: any) => ({
+              ...topic,
+              membersCount: topic.populationCount || 0,
+            }),
+          ),
         })),
       };
     });
@@ -248,7 +250,8 @@ export default class ChummeCategorySvc {
       throw new Error("Invalid password for this category");
     }
 
-    const subCategories = await ChummeCategoryRepo.getSubCategoriesInCategory(categoryId);
+    const subCategories =
+      await ChummeCategoryRepo.getSubCategoriesInCategory(categoryId);
     const liveArtists = await getLiveArtists();
     return subCategories.map((sub) => {
       const mapped = mapLiveStatus(sub, liveArtists);

@@ -8,8 +8,13 @@ export default class UserCtrl {
   static async createAdmin(req: Request, res: Response) {
     try {
       // Check if the current user is an ADMIN or DEVELOPER
-      if (req.user.role !== UserRole.ADMIN && req.user.role !== UserRole.DEVELOPER) {
-        return res.status(403).json({ message: "Forbidden: Only admins can create admin accounts" });
+      if (
+        req.user.role !== UserRole.ADMIN &&
+        req.user.role !== UserRole.DEVELOPER
+      ) {
+        return res.status(403).json({
+          message: "Forbidden: Only admins can create admin accounts",
+        });
       }
 
       const schema = Joi.object({
@@ -35,7 +40,9 @@ export default class UserCtrl {
         role: UserRole.ADMIN,
       });
 
-      return res.status(201).json({ message: "Admin account created successfully", data });
+      return res
+        .status(201)
+        .json({ message: "Admin account created successfully", data });
     } catch (error: any) {
       return res.status(400).json({ message: error.message || error });
     }
@@ -44,10 +51,15 @@ export default class UserCtrl {
   static async updateUserStatus(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      
+
       const schema = Joi.object({
         isActive: Joi.boolean(),
-        role: Joi.string().valid(UserRole.USER, UserRole.CREATOR, UserRole.ADMIN, UserRole.DEVELOPER),
+        role: Joi.string().valid(
+          UserRole.USER,
+          UserRole.CREATOR,
+          UserRole.ADMIN,
+          UserRole.DEVELOPER,
+        ),
         isDeleted: Joi.boolean(),
       }).min(1);
 

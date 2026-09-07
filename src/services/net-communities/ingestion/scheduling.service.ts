@@ -450,9 +450,17 @@ export class SchedulingService {
             where: { id: target.chummeArtistId },
             data: {
               isLive: liveStatus.isLive,
-              activeVideoId: liveStatus.isLive ? (liveStatus.videoId || null) : null,
-              liveViewCount: liveStatus.isLive ? (liveStatus.concurrentViewers || 0) : 0,
-              liveStartedAt: liveStatus.isLive ? (liveStatus.actualStartTime ? new Date(liveStatus.actualStartTime) : undefined) : null,
+              activeVideoId: liveStatus.isLive
+                ? liveStatus.videoId || null
+                : null,
+              liveViewCount: liveStatus.isLive
+                ? liveStatus.concurrentViewers || 0
+                : 0,
+              liveStartedAt: liveStatus.isLive
+                ? liveStatus.actualStartTime
+                  ? new Date(liveStatus.actualStartTime)
+                  : undefined
+                : null,
               subscriberCount: parseInt(stats?.subscriberCount || "0"),
               totalViews: BigInt(stats?.viewCount || "0"),
               lastLiveAt: liveStatus.isLive ? new Date() : undefined,
@@ -467,9 +475,8 @@ export class SchedulingService {
 
       // 4. Auto-provision / deprovision community subcategories based on live status
       try {
-        const { LiveProvisioningService } = await import(
-          "../../live-provisioning.service"
-        );
+        const { LiveProvisioningService } =
+          await import("../../live-provisioning.service");
         await LiveProvisioningService.syncAllLiveArtists();
       } catch (provisionErr) {
         logger.error(

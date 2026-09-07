@@ -294,7 +294,9 @@ export const getLiveArtists = async (req: Request, res: Response) => {
       id: artist.activeVideoId || artist.id, // Replace with Video ID for frontend player
       artistId: artist.id,
       uptime: artist.liveStartedAt
-        ? Math.floor((Date.now() - new Date(artist.liveStartedAt).getTime()) / 1000)
+        ? Math.floor(
+            (Date.now() - new Date(artist.liveStartedAt).getTime()) / 1000,
+          )
         : 0,
       viewCount: artist.liveViewCount || 0,
     }));

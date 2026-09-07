@@ -26,8 +26,23 @@ router.delete(
 
 // CRUD routes for Artist entity
 router.get("/:id", authenticate, chummeArtistController.getArtistById);
-router.post("/", authenticate, requireRoles([UserRole.CREATOR, UserRole.ADMIN]), chummeArtistController.createArtist);
-router.put("/:id", authenticate, requireRoles([UserRole.CREATOR, UserRole.ADMIN]), chummeArtistController.updateArtist);
-router.delete("/:id", authenticate, requireRoles([UserRole.CREATOR, UserRole.ADMIN]), chummeArtistController.deleteArtist);
+router.post(
+  "/",
+  authenticate,
+  requireRoles([UserRole.CREATOR, UserRole.ADMIN]),
+  chummeArtistController.createArtist,
+);
+router.put(
+  "/:id",
+  authenticate,
+  requireRoles([UserRole.CREATOR, UserRole.ADMIN]),
+  chummeArtistController.updateArtist,
+);
+router.delete(
+  "/:id",
+  authenticate,
+  requireRoles([UserRole.CREATOR, UserRole.ADMIN]),
+  chummeArtistController.deleteArtist,
+);
 
 export default router;

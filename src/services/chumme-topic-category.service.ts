@@ -70,7 +70,8 @@ export default class ChummeTopicCategorySvc {
       publicOnly?: boolean;
     } = {},
   ) {
-    const topicCategories = await ChummeTopicCategoryRepo.getAllTopicCategories(params);
+    const topicCategories =
+      await ChummeTopicCategoryRepo.getAllTopicCategories(params);
     const liveArtists = await getLiveArtists();
     return topicCategories.map((topic) => mapLiveStatus(topic, liveArtists));
   }
