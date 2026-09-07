@@ -20,20 +20,19 @@ router.post("/:id/play", MusicCtrl.recordPlay);
 router.get("/:id", MusicCtrl.getMusicById);
 
 // Main creation endpoint (handles both JSON and Multipart)
+//
+// Open to any authenticated user: "upload your own song" is a user-level
+// action, and the controller stamps `ownerId: req.user.id` on every record so
+// uploads stay attributable. Update and delete below remain CREATOR/ADMIN —
+// those act on *any* song by id, not just your own.
 router.post(
   "/create",
-  requireRoles([UserRole.CREATOR, UserRole.ADMIN]),
   upload.any(), // Flexible handling of fields
   MusicCtrl.createMusicWithFiles,
 );
 
 // Alias for backward compatibility
-router.post(
-  "/create-with-files", 
-  requireRoles([UserRole.CREATOR, UserRole.ADMIN]),
-  upload.any(), 
-  MusicCtrl.createMusicWithFiles
-);
+router.post("/create-with-files", upload.any(), MusicCtrl.createMusicWithFiles);
 
 router.patch("/update/:id", requireRoles([UserRole.CREATOR, UserRole.ADMIN]), MusicCtrl.updateMusic);
 router.delete("/delete/:id", requireRoles([UserRole.CREATOR, UserRole.ADMIN]), MusicCtrl.deleteMusic);
