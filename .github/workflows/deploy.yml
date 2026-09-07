@@ -3,7 +3,20 @@ name: Deploy to EC2
 on:
   workflow_dispatch: # manual "Run workflow" button — safe default while cutting over
   # push:
-  #   branches: [main]   # <-- uncomment once the EC2 path is proven
+  #   branches: [main]   # <-- uncomment once the SSM path is proven
+
+# Required for OIDC. `contents: read` has to be restated: naming any permission
+# drops every default the workflow would otherwise get, including checkout's.
+permissions:
+  id-token: write
+  contents: read
+
+# Two overlapping deploys would race on the same containers and the same
+# app.env. Queue instead of cancelling — cancelling mid-SSM leaves the box in
+# an unknown state, since the remote script keeps running regardless.
+concurrency:
+  group: deploy-chumme-api
+  cancel-in-progress: false
 
 env:
   # Dedicated repo:
@@ -14,6 +27,14 @@ env:
   # NOT `npx/chumme-api`: that was the old ECS pipeline's repo. This is a new,
   # dedicated one in the same account BOOSTK pushes to.
   ECR_REPOSITORY: chumme-api
+
+  # SSM RunCommand executes as ROOT, not as ec2-user, so the old `~/chumme-api`
+  # would now resolve to /root/chumme-api and orphan the existing deployment.
+  # An absolute path removes the ambiguity. The basename stays `chumme-api`, and
+  # every compose call below passes `-p chumme-api` explicitly, so the existing
+  # containers and the chumme_redis / chumme_rabbitmq volumes are adopted rather
+  # than duplicated.
+  APP_DIR: /opt/chumme-api
 
 jobs:
   deploy:
@@ -32,13 +53,67 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          # If the IAM role in step 2 above is not ready yet and you need a
+          # deploy TODAY, swap these two lines for a freshly-issued key pair:
+          #   aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          #   aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          # The rest of the workflow is unaffected either way.
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
 
       - name: Login to Amazon ECR
         id: ecr-login
         uses: aws-actions/amazon-ecr-login@v2
+
+      # Fail on a missing value HERE rather than three minutes later as a
+      # crash-looping container. GitHub resolves an unset secret to an empty
+      # string with no warning, which previously wrote blank lines into app.env
+      # and produced an app that booted and then failed on first use.
+      - name: Validate required config
+        env:
+          EC2_INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          DEPLOY_ROLE_ARN: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          ACCESS_TOKEN_SECRET: ${{ secrets.ACCESS_TOKEN_SECRET }}
+          REFRESH_TOKEN_SECRET: ${{ secrets.REFRESH_TOKEN_SECRET }}
+          RABBITMQ_DEFAULT_USER: ${{ vars.RABBITMQ_DEFAULT_USER }}
+          RABBITMQ_DEFAULT_PASS: ${{ secrets.RABBITMQ_DEFAULT_PASS }}
+          # Feature-scoped: the API still boots without these, but the feature
+          # they gate is dead. Warn, do not fail.
+          MAILER_TRANSPORT_HOST: ${{ vars.MAILER_TRANSPORT_HOST }}
+          MAILER_PASSWORD: ${{ secrets.MAILER_PASSWORD }}
+          APP_AWS_ACCESS_KEY_ID: ${{ secrets.APP_AWS_ACCESS_KEY_ID }}
+          AWS_S3_BUCKET_NAME: ${{ vars.AWS_S3_BUCKET_NAME }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
+          CHAT_WONDER_API_URL: ${{ vars.CHAT_WONDER_API_URL }}
+        run: |
+          set -euo pipefail
+
+          MISSING=""
+          for NAME in EC2_INSTANCE_ID AWS_REGION DEPLOY_ROLE_ARN \
+                      DATABASE_URL ACCESS_TOKEN_SECRET REFRESH_TOKEN_SECRET \
+                      RABBITMQ_DEFAULT_USER RABBITMQ_DEFAULT_PASS; do
+            eval "VALUE=\${$NAME:-}"
+            [ -n "$VALUE" ] || MISSING="$MISSING $NAME"
+          done
+
+          for NAME in MAILER_TRANSPORT_HOST MAILER_PASSWORD \
+                      APP_AWS_ACCESS_KEY_ID AWS_S3_BUCKET_NAME \
+                      OPENAI_API_KEY YOUTUBE_API_KEY GOOGLE_CLIENT_ID \
+                      CHAT_WONDER_API_URL; do
+            eval "VALUE=\${$NAME:-}"
+            [ -n "$VALUE" ] || echo "::warning::$NAME is empty — the feature it gates will not work"
+          done
+
+          if [ -n "$MISSING" ]; then
+            echo "::error::Missing required GitHub Environment values (dev):$MISSING"
+            echo "Set them under Settings -> Environments -> dev, not at repo level."
+            exit 1
+          fi
+          echo "All required values present."
 
       # Build ON THE RUNNER (not on EC2) — the instance is shared with BOOSTK and
       # a Node build there would compete for CPU with a live service.
@@ -49,6 +124,7 @@ jobs:
         env:
           REGISTRY: ${{ steps.ecr-login.outputs.registry }}
         run: |
+          set -euo pipefail
           # SHA tag is what the deploy actually pulls, so a rollback can target
           # any previous commit. `:latest` is a convenience pointer for humans.
           docker build \
@@ -57,129 +133,265 @@ jobs:
           docker push "$REGISTRY/$ECR_REPOSITORY:${{ github.sha }}"
           docker push "$REGISTRY/$ECR_REPOSITORY:latest"
 
-      # mint a fresh ECR password per deploy
-      - name: Get ECR pull password
-        id: ecr-pw
+      # Confirm the instance is actually reachable over SSM before sending a
+      # command to it. Without this, a stopped agent shows up as a command that
+      # sits in Pending until it expires — a ten-minute wait for "the agent is
+      # not running", which is a confusing way to learn that.
+      - name: Verify instance is registered with SSM
+        env:
+          EC2_INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
         run: |
-          PASSWORD=$(aws ecr get-login-password)
-          echo "::add-mask::$PASSWORD"
-          echo "password=$PASSWORD" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
+          PING=$(aws ssm describe-instance-information \
+            --filters "Key=InstanceIds,Values=$EC2_INSTANCE_ID" \
+            --query "InstanceInformationList[0].PingStatus" \
+            --output text 2>/dev/null || echo "None")
 
-      # Ship the compose file straight from the repo checkout, so the box can
-      # never drift from what is committed. strip_components drops "deploy/".
-      - name: Upload compose file to EC2
-        uses: appleboy/scp-action@v1
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          source: deploy/docker-compose.prod.yaml
-          target: ~/chumme-api/
-          strip_components: 1
+          if [ "$PING" != "Online" ]; then
+            echo "::error::Instance $EC2_INSTANCE_ID is not Online in SSM (status: $PING)."
+            echo "On the box: sudo systemctl status amazon-ssm-agent"
+            echo "In IAM: the instance profile needs AmazonSSMManagedInstanceCore."
+            exit 1
+          fi
+          echo "$EC2_INSTANCE_ID is Online."
 
-      # EC2 only logs in, pulls the prebuilt image, and swaps containers.
-      # app.env is written here from individual secrets, so nothing has to be
-      # created on the box by hand.
-      - name: Deploy over SSH
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.EC2_HOST }} # EC2 public IP or DNS name
-          username: ${{ secrets.EC2_USER }} # usually "ubuntu" or "ec2-user"
-          key: ${{ secrets.EC2_SSH_KEY }} # contents of your .pem private key
-          envs: REGISTRY,IMAGE,ECR_PASSWORD
-          script: |
-            set -e
-
-            # `docker compose` (no hyphen) requires this plugin; without it
-            # Docker's CLI can't parse "compose" as a subcommand and instead
-            # prints an unhelpful "unknown docker command".
-            if ! docker compose version &> /dev/null; then
-              mkdir -p ~/.docker/cli-plugins
-              curl -SL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 \
-                -o ~/.docker/cli-plugins/docker-compose
-              chmod +x ~/.docker/cli-plugins/docker-compose
-            fi
-
-            mkdir -p ~/chumme-api
-            cd ~/chumme-api
-
-            umask 077
-            cat > app.env << 'ENVEOF'
-            NODE_ENV=production
-            PORT=3002
-            START_WORKERS=${{ vars.START_WORKERS }}
-            DATABASE_URL=${{ secrets.DATABASE_URL }}
-            ACCESS_TOKEN_SECRET=${{ secrets.ACCESS_TOKEN_SECRET }}
-            REFRESH_TOKEN_SECRET=${{ secrets.REFRESH_TOKEN_SECRET }}
-            ACCESS_TOKEN_EXPIRY=${{ vars.ACCESS_TOKEN_EXPIRY }}
-            REDIS_HOST=redis
-            REDIS_PORT=6379
-            REDIS_PASSWORD=
-            REDIS_TTL_SECONDS=3600
-            RABBITMQ_DEFAULT_USER=${{ vars.RABBITMQ_DEFAULT_USER }}
-            RABBITMQ_DEFAULT_PASS=${{ secrets.RABBITMQ_DEFAULT_PASS }}
-            RABBITMQ_DEFAULT_VHOST=my_vhost
-            RABBITMQ_URL=amqp://${{ vars.RABBITMQ_DEFAULT_USER }}:${{ secrets.RABBITMQ_DEFAULT_PASS }}@rabbitmq:5672/my_vhost
-            RABBITMQ_EXCHANGE=chumme_exchange
-            RABBITMQ_QUEUE_PREFIX=chumme
-            INGESTION_QUEUE_NAME=ingestion_jobs
-            MAILER_TRANSPORT_HOST=${{ vars.MAILER_TRANSPORT_HOST }}
-            MAILER_TRANSPORT_PORT=${{ vars.MAILER_TRANSPORT_PORT }}
-            MAILER_TRANSPORT_SECURE=${{ vars.MAILER_TRANSPORT_SECURE }}
-            # Also a variable, not a secret (a sender address is not sensitive).
-            MAILER_EMAIL=${{ vars.MAILER_EMAIL }}
-            MAILER_PASSWORD=${{ secrets.MAILER_PASSWORD }}
-            AWS_REGION=${{ secrets.AWS_REGION }}
-            AWS_ACCESS_KEY_ID=${{ secrets.APP_AWS_ACCESS_KEY_ID }}
-            AWS_SECRET_ACCESS_KEY=${{ secrets.APP_AWS_SECRET_ACCESS_KEY }}
-            AWS_S3_BUCKET_NAME=${{ vars.AWS_S3_BUCKET_NAME }}
-            S3_CDN_URL=${{ vars.S3_CDN_URL }}
-            OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
-            YOUTUBE_API_KEY=${{ secrets.YOUTUBE_API_KEY }}
-            CHAT_WONDER_API_URL=${{ vars.CHAT_WONDER_API_URL }}
-            GOOGLE_CLIENT_ID=${{ vars.GOOGLE_CLIENT_ID }}
-            GOOGLE_ANDROID_CLIENT_ID=${{ vars.GOOGLE_ANDROID_CLIENT_ID }}
-            ENVEOF
-            # Deliberately NOT written: SECRET_KEY, SERVICE_ACCOUNT,
-            # GOOGLE_CLIENT_SECRET, FACEBOOK_APP_ID, FACEBOOK_APP_SECRET,
-            # WEBSUB_CALLBACK_URL. All six are exported from src/config.ts (or sit
-            # in .env) but have zero readers anywhere in the repo. Adding them as
-            # GitHub Secrets would be six live credentials guarding nothing.
-            # If a feature starts using one, add it here and to app.env.example
-            # together.
-
-            echo "$ECR_PASSWORD" | docker login --username AWS --password-stdin "$REGISTRY"
-            docker pull "$IMAGE"
-
-            # docker-compose.prod.yaml interpolates ${IMAGE}.
-            export IMAGE
-
-            # NO separate migration step, unlike BOOSTK's deploy.yml.
-            # scripts/start.sh already runs `prisma migrate deploy` plus a schema
-            # drift check on every container boot, so migrating here would just
-            # run it twice. The trade-off: a failed migration surfaces as a
-            # crash-looping container rather than an aborted deploy, which is why
-            # the health check below dumps logs and fails the job loudly.
-            docker compose -f docker-compose.prod.yaml up -d
-
-            # Fail the deploy loudly instead of reporting green on a dead app.
-            # /api/v1/health reports api, database, redis and rabbitmq status.
-            for i in $(seq 1 60); do
-              if curl -fs http://127.0.0.1:3002/api/v1/health > /dev/null; then
-                echo "✅ app healthy after ${i}s"
-                curl -s http://127.0.0.1:3002/api/v1/health
-                break
-              fi
-              if [ "$i" = "60" ]; then
-                echo "❌ health check failed — last 50 lines:"
-                docker compose -f docker-compose.prod.yaml logs --tail=50 app
-                exit 1
-              fi
-              sleep 1
-            done
-
-            docker image prune -f            # clean up old image layers
+      # Both files the box needs are assembled here and shipped inside the SSM
+      # payload — this is what replaces the scp step. The compose file comes
+      # straight from the checkout, so the box can never drift from what is
+      # committed, exactly as before.
+      - name: Send deploy command via SSM
+        id: send
         env:
           REGISTRY: ${{ steps.ecr-login.outputs.registry }}
           IMAGE: ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
-          ECR_PASSWORD: ${{ steps.ecr-pw.outputs.password }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          EC2_INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
+          START_WORKERS: ${{ vars.START_WORKERS }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          ACCESS_TOKEN_SECRET: ${{ secrets.ACCESS_TOKEN_SECRET }}
+          REFRESH_TOKEN_SECRET: ${{ secrets.REFRESH_TOKEN_SECRET }}
+          ACCESS_TOKEN_EXPIRY: ${{ vars.ACCESS_TOKEN_EXPIRY }}
+          RABBITMQ_DEFAULT_USER: ${{ vars.RABBITMQ_DEFAULT_USER }}
+          RABBITMQ_DEFAULT_PASS: ${{ secrets.RABBITMQ_DEFAULT_PASS }}
+          MAILER_TRANSPORT_HOST: ${{ vars.MAILER_TRANSPORT_HOST }}
+          MAILER_TRANSPORT_PORT: ${{ vars.MAILER_TRANSPORT_PORT }}
+          MAILER_TRANSPORT_SECURE: ${{ vars.MAILER_TRANSPORT_SECURE }}
+          # Also a variable, not a secret (a sender address is not sensitive).
+          MAILER_EMAIL: ${{ vars.MAILER_EMAIL }}
+          MAILER_PASSWORD: ${{ secrets.MAILER_PASSWORD }}
+          APP_AWS_ACCESS_KEY_ID: ${{ secrets.APP_AWS_ACCESS_KEY_ID }}
+          APP_AWS_SECRET_ACCESS_KEY: ${{ secrets.APP_AWS_SECRET_ACCESS_KEY }}
+          AWS_S3_BUCKET_NAME: ${{ vars.AWS_S3_BUCKET_NAME }}
+          S3_CDN_URL: ${{ vars.S3_CDN_URL }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          CHAT_WONDER_API_URL: ${{ vars.CHAT_WONDER_API_URL }}
+          GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
+          GOOGLE_ANDROID_CLIENT_ID: ${{ vars.GOOGLE_ANDROID_CLIENT_ID }}
+        run: |
+          set -euo pipefail
+
+          # --- app.env ---------------------------------------------------------
+          # Built here rather than in a heredoc on the remote side: a secret
+          # containing a backtick, `$(`, or the heredoc terminator itself would
+          # otherwise be interpreted by the remote shell instead of stored.
+          {
+            echo "NODE_ENV=production"
+            echo "PORT=3002"
+            echo "START_WORKERS=${START_WORKERS}"
+            echo "DATABASE_URL=${DATABASE_URL}"
+            echo "ACCESS_TOKEN_SECRET=${ACCESS_TOKEN_SECRET}"
+            echo "REFRESH_TOKEN_SECRET=${REFRESH_TOKEN_SECRET}"
+            echo "ACCESS_TOKEN_EXPIRY=${ACCESS_TOKEN_EXPIRY}"
+            echo "REDIS_HOST=redis"
+            echo "REDIS_PORT=6379"
+            echo "REDIS_PASSWORD="
+            echo "REDIS_TTL_SECONDS=3600"
+            echo "RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER}"
+            echo "RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS}"
+            echo "RABBITMQ_DEFAULT_VHOST=my_vhost"
+            echo "RABBITMQ_URL=amqp://${RABBITMQ_DEFAULT_USER}:${RABBITMQ_DEFAULT_PASS}@rabbitmq:5672/my_vhost"
+            echo "RABBITMQ_EXCHANGE=chumme_exchange"
+            echo "RABBITMQ_QUEUE_PREFIX=chumme"
+            echo "INGESTION_QUEUE_NAME=ingestion_jobs"
+            echo "MAILER_TRANSPORT_HOST=${MAILER_TRANSPORT_HOST}"
+            echo "MAILER_TRANSPORT_PORT=${MAILER_TRANSPORT_PORT}"
+            echo "MAILER_TRANSPORT_SECURE=${MAILER_TRANSPORT_SECURE}"
+            echo "MAILER_EMAIL=${MAILER_EMAIL}"
+            echo "MAILER_PASSWORD=${MAILER_PASSWORD}"
+            echo "AWS_REGION=${AWS_REGION}"
+            echo "AWS_ACCESS_KEY_ID=${APP_AWS_ACCESS_KEY_ID}"
+            echo "AWS_SECRET_ACCESS_KEY=${APP_AWS_SECRET_ACCESS_KEY}"
+            echo "AWS_S3_BUCKET_NAME=${AWS_S3_BUCKET_NAME}"
+            echo "S3_CDN_URL=${S3_CDN_URL}"
+            echo "OPENAI_API_KEY=${OPENAI_API_KEY}"
+            echo "YOUTUBE_API_KEY=${YOUTUBE_API_KEY}"
+            echo "CHAT_WONDER_API_URL=${CHAT_WONDER_API_URL}"
+            echo "GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}"
+            echo "GOOGLE_ANDROID_CLIENT_ID=${GOOGLE_ANDROID_CLIENT_ID}"
+          } > app.env
+          # Deliberately NOT written: SECRET_KEY, SERVICE_ACCOUNT,
+          # GOOGLE_CLIENT_SECRET, FACEBOOK_APP_ID, FACEBOOK_APP_SECRET,
+          # WEBSUB_CALLBACK_URL. All six are exported from src/config.ts (or sit
+          # in .env) but have zero readers anywhere in the repo. Adding them as
+          # GitHub Secrets would be six live credentials guarding nothing.
+          # If a feature starts using one, add it here and to app.env.example
+          # together.
+
+          ENV_B64=$(base64 -w0 < app.env)
+          COMPOSE_B64=$(base64 -w0 < deploy/docker-compose.prod.yaml)
+          rm -f app.env
+
+          # app.env is now a single base64 string. Mask it, or every secret in it
+          # is one `echo` away from appearing in a public build log.
+          echo "::add-mask::$ENV_B64"
+
+          # --- remote script ---------------------------------------------------
+          # Header assigns the values the body needs. Every one of them is
+          # base64, a DNS name, or an absolute path, so plain single quotes are
+          # sufficient — none can contain a quote character.
+          {
+            echo "set -eu"
+            echo "AWS_REGION='$AWS_REGION'"
+            echo "REGISTRY='$REGISTRY'"
+            echo "IMAGE='$IMAGE'"
+            echo "APP_DIR='$APP_DIR'"
+            echo "ENV_B64='$ENV_B64'"
+            echo "COMPOSE_B64='$COMPOSE_B64'"
+          } > deploy-remote.sh
+
+          # Quoted terminator: the body is passed through verbatim, so $i and
+          # $(uname -m) below are evaluated on the instance, not on the runner.
+          # SSM may hand this to dash on Ubuntu, so the body stays POSIX — no
+          # `pipefail`, no `[[`.
+          cat >> deploy-remote.sh <<'REMOTE'
+
+          command -v docker >/dev/null 2>&1 || { echo "docker is not installed on this instance"; exit 1; }
+          command -v aws    >/dev/null 2>&1 || { echo "aws CLI is not installed on this instance"; exit 1; }
+
+          # `docker compose` (no hyphen) requires this plugin; without it
+          # Docker's CLI can't parse "compose" as a subcommand and instead
+          # prints an unhelpful "unknown docker command".
+          #
+          # Installed system-wide, not under ~/.docker: SSM runs as root, so a
+          # plugin the old SSH deploy dropped in /home/ec2-user is invisible here.
+          if ! docker compose version >/dev/null 2>&1; then
+            install -d /usr/local/lib/docker/cli-plugins
+            curl -SL "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-$(uname -m)" \
+              -o /usr/local/lib/docker/cli-plugins/docker-compose
+            chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+          fi
+
+          install -d -m 755 "$APP_DIR"
+          cd "$APP_DIR"
+
+          printf '%s' "$COMPOSE_B64" | base64 -d > docker-compose.prod.yaml
+          umask 077
+          printf '%s' "$ENV_B64" | base64 -d > app.env
+          chmod 600 app.env
+
+          # The instance mints its own registry token from its instance profile.
+          # The old workflow forwarded one minted on the runner; that would now
+          # mean a live ECR credential sitting in SSM command history.
+          aws ecr get-login-password --region "$AWS_REGION" \
+            | docker login --username AWS --password-stdin "$REGISTRY"
+
+          docker pull "$IMAGE"
+
+          # docker-compose.prod.yaml interpolates ${IMAGE}.
+          export IMAGE
+
+          # -p pins the compose project name. Without it the name is derived
+          # from the directory, and moving from ~/chumme-api to /opt/chumme-api
+          # would risk a second stack alongside the running one.
+          #
+          # NO separate migration step, unlike BOOSTK's deploy.yml.
+          # scripts/start.sh already runs `prisma migrate deploy` plus a schema
+          # drift check on every container boot, so migrating here would just
+          # run it twice. The trade-off: a failed migration surfaces as a
+          # crash-looping container rather than an aborted deploy, which is why
+          # the health check below dumps logs and fails the job loudly.
+          docker compose -p chumme-api -f docker-compose.prod.yaml up -d
+
+          # Fail the deploy loudly instead of reporting green on a dead app.
+          # /api/v1/health reports api, database, redis and rabbitmq status.
+          for i in $(seq 1 60); do
+            if curl -fs http://127.0.0.1:3002/api/v1/health > /dev/null; then
+              echo "app healthy after ${i}s"
+              curl -s http://127.0.0.1:3002/api/v1/health
+              break
+            fi
+            if [ "$i" = "60" ]; then
+              echo "health check failed - last 50 lines:"
+              docker compose -p chumme-api -f docker-compose.prod.yaml logs --tail=50 app
+              exit 1
+            fi
+            sleep 1
+          done
+
+          docker image prune -f
+          REMOTE
+
+          # --rawfile keeps the script out of the shell's argument list, so no
+          # quoting of the script body has to survive a second round trip.
+          PARAMS=$(jq -n --rawfile script deploy-remote.sh \
+            '{commands: [$script], executionTimeout: ["900"]}')
+
+          COMMAND_ID=$(aws ssm send-command \
+            --document-name "AWS-RunShellScript" \
+            --comment "Deploy chumme-api ${GITHUB_SHA:0:12}" \
+            --instance-ids "$EC2_INSTANCE_ID" \
+            --parameters "$PARAMS" \
+            --timeout-seconds 600 \
+            --query "Command.CommandId" \
+            --output text)
+
+          echo "command_id=$COMMAND_ID" >> "$GITHUB_OUTPUT"
+          echo "Sent SSM command $COMMAND_ID to $EC2_INSTANCE_ID"
+
+      # `aws ssm wait command-executed` is not used here: it gives up after 100
+      # seconds, and an image pull plus a 60-second health check regularly runs
+      # past that.
+      - name: Wait for deploy and report
+        env:
+          COMMAND_ID: ${{ steps.send.outputs.command_id }}
+          EC2_INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
+        run: |
+          set -euo pipefail
+
+          STATUS="Pending"
+          for i in $(seq 1 60); do
+            sleep 10
+            STATUS=$(aws ssm get-command-invocation \
+              --command-id "$COMMAND_ID" \
+              --instance-id "$EC2_INSTANCE_ID" \
+              --query "Status" --output text 2>/dev/null || echo "Pending")
+            case "$STATUS" in
+              Pending|InProgress|Delayed) echo "status: $STATUS ($i/60)" ;;
+              *) break ;;
+            esac
+          done
+
+          aws ssm get-command-invocation \
+            --command-id "$COMMAND_ID" \
+            --instance-id "$EC2_INSTANCE_ID" \
+            --query "{Status:Status,Stdout:StandardOutputContent,Stderr:StandardErrorContent}" \
+            --output json > invocation.json
+
+          echo "::group::Remote stdout"
+          jq -r '.Stdout // ""' invocation.json
+          echo "::endgroup::"
+
+          STDERR=$(jq -r '.Stderr // ""' invocation.json)
+          if [ -n "$STDERR" ]; then
+            echo "::group::Remote stderr"
+            echo "$STDERR"
+            echo "::endgroup::"
+          fi
+
+          FINAL=$(jq -r '.Status' invocation.json)
+          if [ "$FINAL" != "Success" ]; then
+            echo "::error::Deploy failed on $EC2_INSTANCE_ID (SSM status: $FINAL)"
+            exit 1
+          fi
+          echo "Deploy succeeded on $EC2_INSTANCE_ID"
