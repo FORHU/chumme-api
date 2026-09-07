@@ -50,29 +50,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          # If the IAM role in step 2 above is not ready yet and you need a
-          # deploy TODAY, swap these two lines for a freshly-issued key pair:
-          #   aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          #   aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          # The rest of the workflow is unaffected either way.
-          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
-          aws-region: ${{ vars.AWS_REGION }}
-
-      - name: Login to Amazon ECR
-        id: ecr-login
-        uses: aws-actions/amazon-ecr-login@v2
-
-      # Fail on a missing value HERE rather than three minutes later as a
-      # crash-looping container. GitHub resolves an unset secret to an empty
-      # string with no warning, which previously wrote blank lines into app.env
-      # and produced an app that booted and then failed on first use.
+      # MUST stay ahead of "Configure AWS credentials". An empty ${{ }} is not an
+      # error to GitHub, it is an empty string, so the aws action reports the
+      # unhelpful "Input required and not supplied: aws-region" and never says
+      # WHICH GitHub value is missing. Checking here names every missing value at
+      # once, in a step that cannot itself fail for lack of credentials.
       - name: Validate required config
         env:
           EC2_INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
-          AWS_REGION: ${{ vars.AWS_REGION }}
+          AWS_REGION: ${{ vars.AWS_REGION || secrets.AWS_REGION }}
           DEPLOY_ROLE_ARN: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           ACCESS_TOKEN_SECRET: ${{ secrets.ACCESS_TOKEN_SECRET }}
@@ -111,9 +97,29 @@ jobs:
           if [ -n "$MISSING" ]; then
             echo "::error::Missing required GitHub Environment values (dev):$MISSING"
             echo "Set them under Settings -> Environments -> dev, not at repo level."
+            echo "AWS_DEPLOY_ROLE_ARN must be created in IAM first — see the header of this file."
             exit 1
           fi
           echo "All required values present."
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          # If the IAM role in step 2 above is not ready yet and you need a
+          # deploy TODAY, swap these two lines for a freshly-issued key pair:
+          #   aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          #   aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          # The rest of the workflow is unaffected either way.
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          # Falls back to the pre-existing SECRET so this keeps working before
+          # anyone creates the variable. Prefer the variable: as a secret, every
+          # "ap-southeast-1" in the logs is masked to *** , which makes an
+          # ordinary region mismatch genuinely hard to see.
+          aws-region: ${{ vars.AWS_REGION || secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
 
       # Build ON THE RUNNER (not on EC2) — the instance is shared with BOOSTK and
       # a Node build there would compete for CPU with a live service.
@@ -164,7 +170,7 @@ jobs:
         env:
           REGISTRY: ${{ steps.ecr-login.outputs.registry }}
           IMAGE: ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
-          AWS_REGION: ${{ vars.AWS_REGION }}
+          AWS_REGION: ${{ vars.AWS_REGION || secrets.AWS_REGION }}
           EC2_INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
           START_WORKERS: ${{ vars.START_WORKERS }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
