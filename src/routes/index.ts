@@ -32,6 +32,7 @@ import musicLibraryRoute from "./music-library.route";
 import mediaRoute from "./media.route";
 import apkRoute from "./web/apk.route";
 import searchRoute from "./search.route";
+import sportRoute from "./sport.route";
 
 import systemRoute from "./system.route";
 import socialAccountRoute from "./net-communities/session-social-account.route";
@@ -90,6 +91,7 @@ router.use("/v1/music-records", musicRecordRoute);
 router.use("/v1/music-studios", musicStudioRoute);
 router.use("/v1/music-library", musicLibraryRoute);
 router.use("/v1/media", mediaRoute);
+router.use("/v1/sports", sportRoute);
 router.use("/v1/ingestion-schedules", ingestionScheduleRoute);
 router.use("/v1/apk", apkRoute);
 

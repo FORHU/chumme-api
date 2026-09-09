@@ -191,6 +191,7 @@ model ChummeTopicCategory {
   socialUserDiscoveries SocialUserDiscovery[]   @relation("ChummeTopicCategoryToSocialUserDiscovery")
   sportTeams            SportTeam[]
   chummeArtists         ChummeArtist[]          @relation("ChummeArtistToChummeTopicCategory")
+  roomMessages          RoomMessage[]
 }
 
 model ChummeCategoryDesign {
@@ -503,24 +504,43 @@ model RoomUserChat {
   @@index([chummeSubCategoryId])
 }
 
+/// A message belongs to EXACTLY ONE room: either a Circle
+/// (`chummeSubCategoryId`) or a team room (`chummeTopicCategoryId`). Both are
+/// nullable so that holds structurally.
+///
+/// `chummeSubCategoryId` was previously required. It is nullable now, and a
+/// team-room message leaves it NULL rather than carrying the parent Circle's
+/// id. That is the whole point: every existing `where: { chummeSubCategoryId }`
+/// query keeps working unchanged AND automatically excludes team messages. Had
+/// team messages inherited the parent id, every Circle query would silently
+/// start returning team chat, and each one would need a
+/// `chummeTopicCategoryId: null` clause added by hand — one miss being a leak.
 model RoomMessage {
-  id                  String                @id @default(uuid())
-  authorId            String
-  isSystem            Boolean               @default(false)
-  content             Json?
-  voiceMessageId      String?
-  parentMessageId     String?
-  createdAt           DateTime              @default(now())
-  updatedAt           DateTime              @updatedAt
-  chummeSubCategoryId String
-  author              User                  @relation(fields: [authorId], references: [id])
-  chummeSubCategory   ChummeSubCategory     @relation(fields: [chummeSubCategoryId], references: [id])
-  parentMessage       RoomMessage?          @relation("ThreadedMessages", fields: [parentMessageId], references: [id])
-  replies             RoomMessage[]         @relation("ThreadedMessages")
-  voiceMessage        File?                 @relation("VoiceMessageFile", fields: [voiceMessageId], references: [id])
-  reactions           RoomMessageReaction[] @relation("MessageReactions")
+  id                    String                @id @default(uuid())
+  authorId              String
+  isSystem              Boolean               @default(false)
+  content               Json?
+  voiceMessageId        String?
+  parentMessageId       String?
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  chummeSubCategoryId   String?
+  chummeTopicCategoryId String?
+  /// Which fixture was being played when this was said. Lets a team room offer
+  /// a "this match only" filter without needing a room per match.
+  sportEventId          String?
+  author                User                  @relation(fields: [authorId], references: [id])
+  chummeSubCategory     ChummeSubCategory?    @relation(fields: [chummeSubCategoryId], references: [id])
+  chummeTopicCategory   ChummeTopicCategory?  @relation(fields: [chummeTopicCategoryId], references: [id])
+  sportEvent            SportEvent?           @relation(fields: [sportEventId], references: [id])
+  parentMessage         RoomMessage?          @relation("ThreadedMessages", fields: [parentMessageId], references: [id])
+  replies               RoomMessage[]         @relation("ThreadedMessages")
+  voiceMessage          File?                 @relation("VoiceMessageFile", fields: [voiceMessageId], references: [id])
+  reactions             RoomMessageReaction[] @relation("MessageReactions")
 
   @@index([chummeSubCategoryId, createdAt])
+  @@index([chummeTopicCategoryId, createdAt])
+  @@index([sportEventId, createdAt])
   @@index([authorId, createdAt])
 }
 
@@ -994,6 +1014,7 @@ model SportEvent {
   homeTeam       SportTeam         @relation("HomeTeam", fields: [homeTeamId], references: [id])
   awayTeam       SportTeam         @relation("AwayTeam", fields: [awayTeamId], references: [id])
   playerStats    SportPlayerStat[]
+  roomMessages   RoomMessage[]
 }
 
 model SportPlayerStat {

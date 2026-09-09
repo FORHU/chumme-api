@@ -17,10 +17,34 @@ export class SchedulingService {
   private static readonly HEARTBEAT_INTERVAL_MS = 15 * 60 * 1000; // Check every 15 minutes
 
   /**
+   * Kill switches. Both default to OFF so production behaviour is unchanged;
+   * set them in .env to stop the scheduler burning YouTube quota on boot.
+   *
+   *   DISABLE_INGESTION_SCHEDULER=true  -> no crawls, no scouts, no heartbeat
+   *   DISABLE_YOUTUBE_HEARTBEAT=true    -> heartbeat only (the search.list burner)
+   */
+  private static get schedulerDisabled(): boolean {
+    return process.env.DISABLE_INGESTION_SCHEDULER === "true";
+  }
+
+  private static get heartbeatDisabled(): boolean {
+    return (
+      this.schedulerDisabled || process.env.DISABLE_YOUTUBE_HEARTBEAT === "true"
+    );
+  }
+
+  /**
    * Start the periodic scheduling loop
    */
   static async start(): Promise<void> {
     if (this.intervalHandle) return;
+
+    if (this.schedulerDisabled) {
+      logger.warn(
+        "[SchedulingService] DISABLE_INGESTION_SCHEDULER=true - scheduler not started (no YouTube calls).",
+      );
+      return;
+    }
 
     logger.info("[SchedulingService] Starting periodic ingestion scheduler...");
 
@@ -75,9 +99,11 @@ export class SchedulingService {
     }, this.CHECK_INTERVAL_MS);
 
     // Dedicated Live Heartbeat (15 mins)
-    setInterval(async () => {
-      await this.processLiveHeartbeat();
-    }, this.HEARTBEAT_INTERVAL_MS);
+    if (!this.heartbeatDisabled) {
+      setInterval(async () => {
+        await this.processLiveHeartbeat();
+      }, this.HEARTBEAT_INTERVAL_MS);
+    }
   }
 
   static async processScheduledTasks(force: boolean = false): Promise<void> {
@@ -405,6 +431,13 @@ export class SchedulingService {
    * Runs more frequently (15m) than full crawls (1h+).
    */
   static async processLiveHeartbeat(): Promise<void> {
+    if (this.heartbeatDisabled) {
+      logger.warn(
+        "[SchedulingService] Live Heartbeat disabled by env flag - skipping YouTube live check.",
+      );
+      return;
+    }
+
     logger.info("[SchedulingService] Running Live Heartbeat for artists...");
 
     try {
