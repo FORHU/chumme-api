@@ -81,6 +81,17 @@ async function main() {
     logger.error("[Worker] Failed to start SchedulingService:", error);
   }
 
+  // Sports fixtures and live scores. Non-fatal like the workers above: an ESPN
+  // outage or an empty SportLeague table must not stop the rest of the worker.
+  try {
+    const { default: SportPollingService } =
+      await import("./services/sport-polling.service");
+    await SportPollingService.start();
+    logger.info("[Worker] SportPollingService started");
+  } catch (error) {
+    logger.error("[Worker] Failed to start SportPollingService:", error);
+  }
+
   isHealthy = true;
   healthServer.listen(WORKER_PORT, () => {
     logger.info(`[Worker] Health endpoint listening on :${WORKER_PORT}/health`);
