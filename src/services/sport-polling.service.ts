@@ -41,7 +41,9 @@ let task: cron.ScheduledTask | null = null;
 async function tick(): Promise<void> {
   // A slow ESPN response must not let ticks pile up on top of each other.
   if (running) {
-    logger.warn("[SportPolling] Previous tick still running — skipping this one");
+    logger.warn(
+      "[SportPolling] Previous tick still running — skipping this one",
+    );
     return;
   }
   running = true;
@@ -54,7 +56,10 @@ async function tick(): Promise<void> {
 
     for (const league of leagues) {
       try {
-        const active = await SportRepo.hasActiveWindow(league.id, LEAD_IN_MINUTES);
+        const active = await SportRepo.hasActiveWindow(
+          league.id,
+          LEAD_IN_MINUTES,
+        );
         const intervalSeconds = active
           ? league.pollIntervalSeconds
           : IDLE_INTERVAL_SECONDS;
@@ -114,7 +119,9 @@ async function tick(): Promise<void> {
 export default class SportPollingService {
   static async start(): Promise<void> {
     if (task) {
-      logger.warn("[SportPolling] Already started — ignoring duplicate start()");
+      logger.warn(
+        "[SportPolling] Already started — ignoring duplicate start()",
+      );
       return;
     }
 
@@ -122,7 +129,9 @@ export default class SportPollingService {
     if (leagues.length === 0) {
       // Not an error: the tables ship empty and stay that way until leagues are
       // seeded. Say so plainly rather than starting a timer that does nothing.
-      logger.info("[SportPolling] No active leagues — poller idle until one is seeded");
+      logger.info(
+        "[SportPolling] No active leagues — poller idle until one is seeded",
+      );
     }
 
     task = cron.schedule(TICK_EXPRESSION, () => {
@@ -147,13 +156,14 @@ export default class SportPollingService {
     logger.info(`[SportPolling] Backfilling ${days} days of fixtures...`);
     const results = await SportIngestionSvc.backfillUpcoming(days);
     for (const r of results) {
-      logger.info(`[SportPolling] ${r.league}: ${r.events} fixture(s), ${r.skipped} skipped`);
+      logger.info(
+        `[SportPolling] ${r.league}: ${r.events} fixture(s), ${r.skipped} skipped`,
+      );
     }
 
-    // Teams only exist after a sync, so rooms are provisioned here rather than
-    // at startup — on a cold database there would be nothing to provision yet.
-    await SportRoomSvc.provisionMissingRooms();
-
+    // No room provisioning step: a match room is not a row that has to exist
+    // beforehand. It is identified by the fixture, so the moment a SportEvent
+    // is ingested its room is addressable.
     return results;
   }
 }

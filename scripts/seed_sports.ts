@@ -1,7 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { seedSportLeagues } from "../prisma/seeders/sportLeagues.seeder";
 import SportIngestionSvc from "../src/services/sport-ingestion.service";
-import SportRoomSvc from "../src/services/sport-room.service";
 
 /**
  * Turns the sports feature on, end to end.
@@ -32,7 +31,9 @@ async function main() {
       return;
     }
 
-    console.log("\n── 2. Fixtures from ESPN ───────────────────────────────────");
+    console.log(
+      "\n── 2. Fixtures from ESPN ───────────────────────────────────",
+    );
     const results = await SportIngestionSvc.backfillUpcoming(DAYS);
 
     let fixtures = 0;
@@ -40,7 +41,9 @@ async function main() {
     for (const r of results) {
       fixtures += r.events;
       skipped += r.skipped;
-      console.log(`  ${r.league.padEnd(28)} ${r.events} fixture(s)${r.skipped ? `, ${r.skipped} skipped` : ""}`);
+      console.log(
+        `  ${r.league.padEnd(28)} ${r.events} fixture(s)${r.skipped ? `, ${r.skipped} skipped` : ""}`,
+      );
     }
 
     if (fixtures === 0) {
@@ -52,14 +55,13 @@ async function main() {
       );
     }
 
-    console.log("\n── 3. Team rooms ───────────────────────────────────────────");
-    const rooms = await SportRoomSvc.provisionMissingRooms();
-    console.log(`  ${rooms.created} room(s) created, ${rooms.skipped} skipped`);
-
+    // No room-provisioning step. A match room is identified by its fixture, so
+    // every ingested SportEvent is already addressable as a room — there is
+    // nothing to create.
+    console.log(`\nDone. ${fixtures} fixture(s), ${skipped} skipped.`);
     console.log(
-      `\nDone. ${fixtures} fixture(s), ${skipped} skipped, ${rooms.created} team room(s).`,
+      "The Sports tab should now have data. Start the poller with `npm run dev:worker`.",
     );
-    console.log("The Sports tab should now have data. Start the poller with `npm run dev:worker`.");
   } finally {
     await prisma.$disconnect();
   }

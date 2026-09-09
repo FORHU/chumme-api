@@ -46,6 +46,7 @@ model User {
   musicStudios           MusicStudio[]           @relation("StudioOwner")
   musicStudioMemberships MusicStudioMember[]     @relation("StudioMembership")
   roomMessage            RoomMessage[]
+  sportRoomMessages      SportRoomMessage[]
   messageReactions       RoomMessageReaction[]
   userChatRoom           RoomUserChat[]
   sessions               Session[]
@@ -109,7 +110,8 @@ model File {
   personaAudio  ChummeArtistPersona? @relation("PersonaAudioFile")
   personaImage  ChummeArtistPersona? @relation("PersonaImageFile")
   personaVideo  ChummeArtistPersona? @relation("PersonaVideoFile")
-  voiceMessages RoomMessage[]        @relation("VoiceMessageFile")
+  voiceMessages      RoomMessage[]      @relation("VoiceMessageFile")
+  sportVoiceMessages SportRoomMessage[] @relation("SportVoiceMessageFile")
   users         User[]               @relation("UserAvatar")
 }
 
@@ -191,7 +193,6 @@ model ChummeTopicCategory {
   socialUserDiscoveries SocialUserDiscovery[]   @relation("ChummeTopicCategoryToSocialUserDiscovery")
   sportTeams            SportTeam[]
   chummeArtists         ChummeArtist[]          @relation("ChummeArtistToChummeTopicCategory")
-  roomMessages          RoomMessage[]
 }
 
 model ChummeCategoryDesign {
@@ -504,44 +505,66 @@ model RoomUserChat {
   @@index([chummeSubCategoryId])
 }
 
-/// A message belongs to EXACTLY ONE room: either a Circle
-/// (`chummeSubCategoryId`) or a team room (`chummeTopicCategoryId`). Both are
-/// nullable so that holds structurally.
-///
-/// `chummeSubCategoryId` was previously required. It is nullable now, and a
-/// team-room message leaves it NULL rather than carrying the parent Circle's
-/// id. That is the whole point: every existing `where: { chummeSubCategoryId }`
-/// query keeps working unchanged AND automatically excludes team messages. Had
-/// team messages inherited the parent id, every Circle query would silently
-/// start returning team chat, and each one would need a
-/// `chummeTopicCategoryId: null` clause added by hand — one miss being a leak.
+/// Circle chat. Left exactly as it was — sports chat lives in
+/// `SportRoomMessage`, a separate table, so nothing here had to become nullable
+/// or grow a discriminator.
 model RoomMessage {
-  id                    String                @id @default(uuid())
-  authorId              String
-  isSystem              Boolean               @default(false)
-  content               Json?
-  voiceMessageId        String?
-  parentMessageId       String?
-  createdAt             DateTime              @default(now())
-  updatedAt             DateTime              @updatedAt
-  chummeSubCategoryId   String?
-  chummeTopicCategoryId String?
-  /// Which fixture was being played when this was said. Lets a team room offer
-  /// a "this match only" filter without needing a room per match.
-  sportEventId          String?
-  author                User                  @relation(fields: [authorId], references: [id])
-  chummeSubCategory     ChummeSubCategory?    @relation(fields: [chummeSubCategoryId], references: [id])
-  chummeTopicCategory   ChummeTopicCategory?  @relation(fields: [chummeTopicCategoryId], references: [id])
-  sportEvent            SportEvent?           @relation(fields: [sportEventId], references: [id])
-  parentMessage         RoomMessage?          @relation("ThreadedMessages", fields: [parentMessageId], references: [id])
-  replies               RoomMessage[]         @relation("ThreadedMessages")
-  voiceMessage          File?                 @relation("VoiceMessageFile", fields: [voiceMessageId], references: [id])
-  reactions             RoomMessageReaction[] @relation("MessageReactions")
+  id                  String                @id @default(uuid())
+  authorId            String
+  isSystem            Boolean               @default(false)
+  content             Json?
+  voiceMessageId      String?
+  parentMessageId     String?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  chummeSubCategoryId String
+  author              User                  @relation(fields: [authorId], references: [id])
+  chummeSubCategory   ChummeSubCategory     @relation(fields: [chummeSubCategoryId], references: [id])
+  parentMessage       RoomMessage?          @relation("ThreadedMessages", fields: [parentMessageId], references: [id])
+  replies             RoomMessage[]         @relation("ThreadedMessages")
+  voiceMessage        File?                 @relation("VoiceMessageFile", fields: [voiceMessageId], references: [id])
+  reactions           RoomMessageReaction[] @relation("MessageReactions")
 
   @@index([chummeSubCategoryId, createdAt])
-  @@index([chummeTopicCategoryId, createdAt])
-  @@index([sportEventId, createdAt])
   @@index([authorId, createdAt])
+}
+
+/// Match-room chat: one room per fixture, holding BOTH fanbases.
+///
+/// Deliberately its own table rather than columns on RoomMessage. Sports chat
+/// has no sub-category, no threads and no rich content — it is voice and text
+/// between rival fans. Bolting it onto RoomMessage meant three nullable room
+/// keys, two CHECK constraints to keep them exclusive, and dropping NOT NULL on
+/// a column every existing Circle query depends on. Here every column can just
+/// be required, and Circle chat is untouched.
+model SportRoomMessage {
+  id             String     @id @default(uuid())
+  /// The room. Required — a message with no fixture has nowhere to live.
+  sportEventId   String
+  /// Which side the author is cheering for. NULL only for system messages,
+  /// which belong to neither column and render centred between them.
+  ///
+  /// The LEFT/RIGHT column is computed per VIEWER, never stored: your own team
+  /// is always on the right, so the same row renders on opposite sides for two
+  /// fans watching the same game. A stored "left" would be one viewer's
+  /// perspective baked in, and wrong for everyone else.
+  sportTeamId    String?
+  authorId       String
+  isSystem       Boolean    @default(false)
+  /// Plain text. Voice messages carry no text and set `voiceMessageId` instead.
+  content        String?
+  voiceMessageId String?
+  createdAt      DateTime   @default(now())
+
+  sportEvent   SportEvent @relation(fields: [sportEventId], references: [id])
+  sportTeam    SportTeam? @relation(fields: [sportTeamId], references: [id])
+  author       User       @relation(fields: [authorId], references: [id])
+  voiceMessage File?      @relation("SportVoiceMessageFile", fields: [voiceMessageId], references: [id])
+
+  /// The only read this table serves: one fixture's messages, oldest first.
+  /// Splitting into columns happens in memory afterwards, so no per-team index
+  /// is needed — a query never asks for one side alone.
+  @@index([sportEventId, createdAt])
 }
 
 model RoomMessageReaction {
@@ -964,6 +987,7 @@ model SportTeam {
   homeEvents            SportEvent[]         @relation("HomeTeam")
   awayEvents            SportEvent[]         @relation("AwayTeam")
   stats                 SportPlayerStat[]
+  roomMessages          SportRoomMessage[]
 }
 
 model SportAthlete {
@@ -1011,10 +1035,10 @@ model SportEvent {
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
   league         SportLeague       @relation(fields: [leagueId], references: [id])
-  homeTeam       SportTeam         @relation("HomeTeam", fields: [homeTeamId], references: [id])
-  awayTeam       SportTeam         @relation("AwayTeam", fields: [awayTeamId], references: [id])
+  homeTeam       SportTeam          @relation("HomeTeam", fields: [homeTeamId], references: [id])
+  awayTeam       SportTeam          @relation("AwayTeam", fields: [awayTeamId], references: [id])
   playerStats    SportPlayerStat[]
-  roomMessages   RoomMessage[]
+  roomMessages   SportRoomMessage[]
 }
 
 model SportPlayerStat {

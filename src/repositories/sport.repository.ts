@@ -14,10 +14,6 @@ const TEAM_SELECT = {
   logoUrl: true,
   color: true,
   alternateColor: true,
-  // The room a fan lands in when they tap this crest. Null until the team has
-  // been provisioned a topic category, which is why the app must treat it as
-  // optional rather than assuming a room exists.
-  chummeTopicCategoryId: true,
 } satisfies Prisma.SportTeamSelect;
 
 const LEAGUE_SELECT = {
@@ -95,96 +91,22 @@ export default class SportRepo {
     });
   }
 
-  // ── Room provisioning ─────────────────────────────────────────────────────
+  // ── Match room messages ───────────────────────────────────────────────────
 
   /**
-   * Teams that still need a chat room.
+   * System message into a match room.
    *
-   * A team room is a ChummeTopicCategory, which requires a parent
-   * ChummeSubCategory — so a league with no Circle linked cannot have team
-   * rooms yet. Those teams are excluded rather than half-provisioned.
+   * `sportTeamId` stays NULL: a kickoff or full-time announcement belongs to
+   * neither side, and the UI centres those between the two columns. The table's
+   * CHECK allows that only for `isSystem` rows.
    */
-  static async findTeamsNeedingRooms(limit = 200) {
-    return prisma.sportTeam.findMany({
-      where: {
-        isActive: true,
-        chummeTopicCategoryId: null,
-        league: { chummeSubCategoryId: { not: null } },
-      },
-      take: limit,
-      select: {
-        id: true,
-        name: true,
-        displayName: true,
-        abbreviation: true,
-        league: { select: { id: true, name: true, chummeSubCategoryId: true } },
-      },
-    });
-  }
-
-  /**
-   * Creates a team's room and links it back, atomically.
-   *
-   * The transaction matters: a created topic category whose link never lands is
-   * an invisible orphan room that the next provisioning run would duplicate.
-   */
-  static async createTeamRoom(params: {
-    teamId: string;
-    chummeSubCategoryId: string;
-    name: string;
-    note: string;
-    discoveryKeywords: string[];
-  }) {
-    return prisma.$transaction(async (tx) => {
-      const topicCategory = await tx.chummeTopicCategory.create({
-        data: {
-          name: params.name,
-          note: params.note,
-          chummeSubCategoryId: params.chummeSubCategoryId,
-          discoveryKeywords: params.discoveryKeywords,
-        },
-        select: { id: true, name: true },
-      });
-
-      await tx.sportTeam.update({
-        where: { id: params.teamId },
-        data: { chummeTopicCategoryId: topicCategory.id },
-      });
-
-      return topicCategory;
-    });
-  }
-
-  /** Both teams' rooms for a fixture — where a match system message is posted. */
-  static async findRoomsForEvent(eventId: string) {
-    const event = await prisma.sportEvent.findUnique({
-      where: { id: eventId },
-      select: {
-        id: true,
-        homeTeam: { select: { displayName: true, chummeTopicCategoryId: true } },
-        awayTeam: { select: { displayName: true, chummeTopicCategoryId: true } },
-      },
-    });
-    if (!event) return [];
-
-    return [event.homeTeam, event.awayTeam]
-      .filter((t) => t.chummeTopicCategoryId)
-      .map((t) => ({
-        chummeTopicCategoryId: t.chummeTopicCategoryId as string,
-        teamName: t.displayName,
-      }));
-  }
-
-  /** System message into a team room. Authored by a real user id — see the service. */
   static async createSystemMessage(params: {
-    chummeTopicCategoryId: string;
     sportEventId: string;
     authorId: string;
     content: string;
   }) {
-    return prisma.roomMessage.create({
+    return prisma.sportRoomMessage.create({
       data: {
-        chummeTopicCategoryId: params.chummeTopicCategoryId,
         sportEventId: params.sportEventId,
         authorId: params.authorId,
         isSystem: true,
@@ -199,9 +121,10 @@ export default class SportRepo {
   /**
    * Local rows for a set of ESPN team ids.
    *
-   * The live proxy returns ESPN's payload, which knows nothing about our
-   * `chummeTopicCategoryId` — without this lookup a proxied fixture would have
-   * no room to tap into. Teams we have never ingested simply come back absent.
+   * The live proxy returns ESPN's payload, which carries ESPN's ids and not
+   * ours. Tapping a crest has to name a local SportTeam — that is the side the
+   * message is stored against — so a proxied fixture is useless without this
+   * lookup. Teams we have never ingested simply come back absent.
    */
   static async findTeamsByEspnIds(espnIds: string[]) {
     if (espnIds.length === 0) return [];
@@ -290,12 +213,7 @@ export default class SportRepo {
       create: { espnId: data.espnId, leagueId: data.leagueId, ...writable },
       // displayName comes back so a match message can name the teams without a
       // second read on every score change.
-      select: {
-        id: true,
-        espnId: true,
-        displayName: true,
-        chummeTopicCategoryId: true,
-      },
+      select: { id: true, espnId: true, displayName: true },
     });
   }
 
@@ -368,7 +286,11 @@ export default class SportRepo {
       where: {
         leagueId,
         OR: [
-          { status: { in: [SportEventStatus.IN_PROGRESS, SportEventStatus.HALFTIME] } },
+          {
+            status: {
+              in: [SportEventStatus.IN_PROGRESS, SportEventStatus.HALFTIME],
+            },
+          },
           { gameDate: { gte: now, lte: soon } },
         ],
       },
