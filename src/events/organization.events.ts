@@ -3,6 +3,7 @@ import authenticateSocket from "../middleware/authenticate-sockets.middleware";
 import RoomUserChatSvc from "../services/room-user-chat.service";
 import CircleCacheSvc from "../services/circle-cache.service";
 import { registerRoomHandlers } from "./circles/room.handlers";
+import { registerMatchRoomHandlers } from "./sports/match-room.handlers";
 import { PresenceBatcher } from "../utils/presence-batcher";
 
 interface AuthenticatedSocket extends Socket {
@@ -33,6 +34,11 @@ export default (io: Server) => {
 
     // Register modular Circles handlers
     registerRoomHandlers(io, socket, presenceBatcher);
+
+    // Match rooms share the connection but nothing else — their events are
+    // namespaced `sport_*` and their room keys prefixed, so the two chat
+    // systems cannot reach into one another.
+    registerMatchRoomHandlers(io, socket);
 
     socket.on("disconnect", async () => {
       try {

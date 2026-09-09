@@ -20,15 +20,7 @@ env:
 
 jobs:
   deploy:
-    # ARM, not x86. The EC2 target is Graviton (arm64), so an image built on a
-    # normal x64 runner pulls fine and then dies on `docker run` with
-    # "exec format error" — the compose file comes up, the container never does.
-    # Building natively on an arm64 runner is the fix, and it is faster than the
-    # QEMU + buildx --platform cross-build the BOOSTK workflow uses.
-    #
-    # If this ever queues forever with no runner picked up, the repo's plan does
-    # not include ARM runners — fall back to ubuntu-latest plus
-    # docker/setup-qemu-action and `docker buildx build --platform linux/arm64`.
+
     runs-on: ubuntu-24.04-arm
     # Reads the `dev` environment's secrets and variables — that is where they live,
     # same as the old docker-build.yml. WITHOUT this line every ${{ secrets.* }} and
