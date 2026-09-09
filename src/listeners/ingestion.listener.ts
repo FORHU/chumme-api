@@ -40,6 +40,18 @@ export class IngestionWorker {
   private readonly routingKeys = ["ingestion.*"];
 
   async start(): Promise<void> {
+    // Kill switch. The ingestion queue is durable AND self-feeding (each page
+    // job publishes its successor, see the nextPageToken block below), so a
+    // backlog keeps draining across restarts no matter what the scheduler does.
+    // Set DISABLE_INGESTION_WORKER=true to stop consuming; the backlog stays
+    // parked in RabbitMQ until you either re-enable or purge the queue.
+    if (process.env.DISABLE_INGESTION_WORKER === "true") {
+      logger.warn(
+        `[IngestionWorker] DISABLE_INGESTION_WORKER=true - not subscribing to ${this.queueName}. Queued jobs remain parked.`,
+      );
+      return;
+    }
+
     logger.info("[IngestionWorker] Starting... [v2: isLive restored]");
     await rabbitMQService.subscribeToMessages(
       this.queueName,
