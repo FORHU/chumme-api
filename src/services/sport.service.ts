@@ -65,7 +65,11 @@ export default class SportSvc {
     let source: "live" | "database" = "database";
 
     if (!params.teamId) {
-      items = await this.fixturesFromEspn({ from, to, leagueId: params.leagueId });
+      items = await this.fixturesFromEspn({
+        from,
+        to,
+        leagueId: params.leagueId,
+      });
       if (items) source = "live";
     }
 
@@ -131,7 +135,10 @@ export default class SportSvc {
       // Every league failing is an ESPN problem, not an empty schedule.
       if (boards.every((b) => !b.board)) return null;
 
-      const extracted: { league: (typeof leagues)[number]; fixture: NonNullable<ReturnType<typeof extractFixture>> }[] = [];
+      const extracted: {
+        league: (typeof leagues)[number];
+        fixture: NonNullable<ReturnType<typeof extractFixture>>;
+      }[] = [];
       for (const { league, board } of boards) {
         for (const event of board?.events ?? []) {
           const fixture = extractFixture(event);
@@ -141,8 +148,9 @@ export default class SportSvc {
 
       if (extracted.length === 0) return [];
 
-      // Two lookups total, regardless of fixture count — this is what carries
-      // `chummeTopicCategoryId` (the room link) onto a proxied payload.
+      // Two lookups total, regardless of fixture count — this is what puts OUR
+      // team and fixture ids onto a proxied payload. Without them a tapped
+      // crest could not name the side to store a message against.
       const [teams, events] = await Promise.all([
         SportRepo.findTeamsByEspnIds([
           ...new Set(
@@ -152,7 +160,9 @@ export default class SportSvc {
             ]),
           ),
         ]),
-        SportRepo.findEventIdsByEspnIds(extracted.map(({ fixture }) => fixture.espnId)),
+        SportRepo.findEventIdsByEspnIds(
+          extracted.map(({ fixture }) => fixture.espnId),
+        ),
       ]);
 
       const teamByEspnId = new Map(teams.map((t) => [t.espnId, t]));
@@ -170,7 +180,9 @@ export default class SportSvc {
 
       return rows as unknown as Fixture[];
     } catch (error: any) {
-      logger.warn(`[SportSvc] Live fixtures unavailable, using database: ${error?.message ?? error}`);
+      logger.warn(
+        `[SportSvc] Live fixtures unavailable, using database: ${error?.message ?? error}`,
+      );
       return null;
     }
   }
@@ -185,8 +197,8 @@ export default class SportSvc {
       const espn = competitor.team!;
       const local = teamByEspnId.get(espn.id!);
 
-      // A team we have never ingested still renders — it just has no room to
-      // tap into yet, which the app already treats as an ordinary state.
+      // A team we have never ingested still renders, but with a null id it
+      // cannot be picked as a side — the app treats that as an ordinary state.
       return {
         id: local?.id ?? null,
         espnId: espn.id!,
@@ -196,7 +208,6 @@ export default class SportSvc {
         logoUrl: espn.logo ?? local?.logoUrl ?? null,
         color: espn.color ?? local?.color ?? null,
         alternateColor: espn.alternateColor ?? local?.alternateColor ?? null,
-        chummeTopicCategoryId: local?.chummeTopicCategoryId ?? null,
       };
     };
 

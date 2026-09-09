@@ -2,38 +2,20 @@ name: Deploy to EC2
 
 on:
   workflow_dispatch: # manual "Run workflow" button — safe default while cutting over
-  # push:
-  #   branches: [main]   # <-- uncomment once the SSM path is proven
 
-# Required for OIDC. `contents: read` has to be restated: naming any permission
-# drops every default the workflow would otherwise get, including checkout's.
 permissions:
   id-token: write
   contents: read
 
-# Two overlapping deploys would race on the same containers and the same
-# app.env. Queue instead of cancelling — cancelling mid-SSM leaves the box in
-# an unknown state, since the remote script keeps running regardless.
+
 concurrency:
   group: deploy-chumme-api
   cancel-in-progress: false
 
 env:
-  # Dedicated repo:
-  # arn:aws:ecr:ap-southeast-1:617163942417:repository/chumme-api
-  # URI: 617163942417.dkr.ecr.ap-southeast-1.amazonaws.com/chumme-api
-  #
-  # Only the NAME goes here — the registry host comes from the ecr-login step.
-  # NOT `npx/chumme-api`: that was the old ECS pipeline's repo. This is a new,
-  # dedicated one in the same account BOOSTK pushes to.
+ 
   ECR_REPOSITORY: chumme-api
 
-  # SSM RunCommand executes as ROOT, not as ec2-user, so the old `~/chumme-api`
-  # would now resolve to /root/chumme-api and orphan the existing deployment.
-  # An absolute path removes the ambiguity. The basename stays `chumme-api`, and
-  # every compose call below passes `-p chumme-api` explicitly, so the existing
-  # containers and the chumme_redis / chumme_rabbitmq volumes are adopted rather
-  # than duplicated.
   APP_DIR: /opt/chumme-api
 
 jobs:

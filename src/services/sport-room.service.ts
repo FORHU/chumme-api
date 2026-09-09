@@ -3,17 +3,17 @@ import SportRepo from "../repositories/sport.repository";
 import logger from "../utils/logger";
 
 /**
- * Team rooms and the match messages posted into them.
+ * Auto-posted match announcements.
  *
- * A team room is an ordinary ChummeTopicCategory — the same thing Circles use —
- * so it inherits chat, voice notes, threading and reactions for free. Nothing
- * here is sports-specific except how the room gets created and what gets
- * auto-posted into it.
+ * A match room needs no provisioning: it is identified by its fixture, so every
+ * ingested SportEvent is already addressable. Sports chat lives in
+ * `SportRoomMessage`, entirely separate from Circle chat — there is no
+ * sub-category or topic-category involved anywhere in this file.
  */
 
 /**
- * Author for auto-posted messages. `RoomMessage.authorId` is a required FK to
- * User, so system messages still need a real row — there is no null author.
+ * Author for auto-posted messages. `SportRoomMessage.authorId` is a required FK
+ * to User, so system messages still need a real row — there is no null author.
  * Set SPORT_BOT_USER_ID to a dedicated account; without it, auto-posting is
  * skipped rather than attributed to whoever happens to be first in the table.
  */
@@ -29,58 +29,15 @@ const SCORE_MESSAGE_SPORTS = new Set(["soccer", "hockey"]);
 
 export default class SportRoomSvc {
   /**
-   * Gives every eligible team a room. Idempotent — teams already linked are not
-   * returned by the query, so re-running is safe and cheap.
-   */
-  static async provisionMissingRooms(): Promise<{
-    created: number;
-    skipped: number;
-  }> {
-    const teams = await SportRepo.findTeamsNeedingRooms();
-    let created = 0;
-    let skipped = 0;
-
-    for (const team of teams) {
-      const subCategoryId = team.league.chummeSubCategoryId;
-      if (!subCategoryId) {
-        skipped++;
-        continue;
-      }
-
-      try {
-        const room = await SportRepo.createTeamRoom({
-          teamId: team.id,
-          chummeSubCategoryId: subCategoryId,
-          name: team.displayName,
-          note: `${team.league.name} · fan room`,
-          // What Circle search matches on, so people can find the room by any
-          // of the names the club is known by.
-          discoveryKeywords: [
-            ...new Set([team.displayName, team.name, team.abbreviation]),
-          ].filter(Boolean),
-        });
-        created++;
-        logger.info(`[SportRoom] Provisioned room "${room.name}" for ${team.displayName}`);
-      } catch (error: any) {
-        skipped++;
-        logger.error(
-          `[SportRoom] Could not provision room for ${team.displayName}: ${error?.message ?? error}`,
-        );
-      }
-    }
-
-    if (teams.length > 0) {
-      logger.info(`[SportRoom] Provisioning done — ${created} created, ${skipped} skipped`);
-    }
-
-    return { created, skipped };
-  }
-
-  /**
-   * Posts a match update into both teams' rooms.
+   * Posts a match update into the fixture's match room.
    *
-   * Silently does nothing when there is no bot account or neither team has a
-   * room yet — an unprovisioned league should not fill the logs on every tick.
+   * One write, not two: both fanbases share a single room per fixture, so a
+   * goal is announced once and everyone sees it. (The earlier team-room design
+   * posted the same text into two rooms — that duplicated every announcement
+   * for anyone following both clubs.)
+   *
+   * Silently does nothing without a bot account — an unconfigured deployment
+   * should not fill the logs on every poll.
    */
   static async postMatchUpdate(params: {
     eventId: string;
@@ -97,27 +54,19 @@ export default class SportRoomSvc {
     const text = this.composeMessage(params);
     if (!text) return 0;
 
-    const rooms = await SportRepo.findRoomsForEvent(params.eventId);
-    if (rooms.length === 0) return 0;
-
-    let posted = 0;
-    for (const room of rooms) {
-      try {
-        await SportRepo.createSystemMessage({
-          chummeTopicCategoryId: room.chummeTopicCategoryId,
-          sportEventId: params.eventId,
-          authorId: SYSTEM_AUTHOR_ID,
-          content: text,
-        });
-        posted++;
-      } catch (error: any) {
-        logger.warn(
-          `[SportRoom] Failed to post to ${room.teamName}: ${error?.message ?? error}`,
-        );
-      }
+    try {
+      await SportRepo.createSystemMessage({
+        sportEventId: params.eventId,
+        authorId: SYSTEM_AUTHOR_ID,
+        content: text,
+      });
+      return 1;
+    } catch (error: any) {
+      logger.warn(
+        `[SportRoom] Failed to post match update for ${params.eventId}: ${error?.message ?? error}`,
+      );
+      return 0;
     }
-
-    return posted;
   }
 
   /**
@@ -147,7 +96,8 @@ export default class SportRoomSvc {
           if (from === SportEventStatus.SCHEDULED) {
             return `Kick off — ${homeTeam} vs ${awayTeam}`;
           }
-          if (from === SportEventStatus.HALFTIME) return "Second half under way";
+          if (from === SportEventStatus.HALFTIME)
+            return "Second half under way";
           return null;
         case SportEventStatus.HALFTIME:
           return `Half time — ${score}`;
