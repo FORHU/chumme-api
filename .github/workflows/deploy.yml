@@ -38,7 +38,16 @@ env:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    # ARM, not x86. The EC2 target is Graviton (arm64), so an image built on a
+    # normal x64 runner pulls fine and then dies on `docker run` with
+    # "exec format error" — the compose file comes up, the container never does.
+    # Building natively on an arm64 runner is the fix, and it is faster than the
+    # QEMU + buildx --platform cross-build the BOOSTK workflow uses.
+    #
+    # If this ever queues forever with no runner picked up, the repo's plan does
+    # not include ARM runners — fall back to ubuntu-latest plus
+    # docker/setup-qemu-action and `docker buildx build --platform linux/arm64`.
+    runs-on: ubuntu-24.04-arm
     # Reads the `dev` environment's secrets and variables — that is where they live,
     # same as the old docker-build.yml. WITHOUT this line every ${{ secrets.* }} and
     # ${{ vars.* }} below silently resolves to an empty string, because a job with no
@@ -71,6 +80,15 @@ jobs:
           CHAT_WONDER_API_URL: ${{ vars.CHAT_WONDER_API_URL }}
         run: |
           set -euo pipefail
+
+          # The arm64 runner image ships a smaller toolset than the x64 one.
+          # Check the CLIs the later steps need while this job is still cheap:
+          # a missing `aws` would otherwise surface only after the image has been
+          # built and pushed, several minutes in.
+          for TOOL in aws jq docker; do
+            command -v "$TOOL" >/dev/null 2>&1 \
+              || { echo "::error::$TOOL is not installed on this runner (runs-on: ubuntu-24.04-arm)"; exit 1; }
+          done
 
           MISSING=""
           for NAME in EC2_INSTANCE_ID AWS_REGION DEPLOY_ROLE_ARN \
@@ -117,6 +135,10 @@ jobs:
 
       # Build ON THE RUNNER (not on EC2) — the instance is shared with BOOSTK and
       # a Node build there would compete for CPU with a live service.
+      #
+      # No --platform flag needed: the runner is already arm64 (see runs-on
+      # above), so a plain `docker build` produces a native arm64 image that
+      # matches the Graviton target.
       #
       # No --build-arg, unlike BOOSTK: this is a plain API with no client bundle
       # that needs values inlined at build time. Everything is runtime env.
