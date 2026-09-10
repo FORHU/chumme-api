@@ -80,8 +80,16 @@ export default class MusicLibrarySvc {
   /**
    * Get an upload pre-signed URL for MusicLibrary
    */
-  static async getUploadUrl(key: string, contentType: string) {
-    const response = await S3PresignedUtil.getUploadUrl(key, contentType);
+  static async getUploadUrl(
+    key: string,
+    contentType: string,
+    contentLength?: number,
+  ) {
+    const response = await S3PresignedUtil.getUploadUrl(
+      key,
+      contentType,
+      contentLength,
+    );
     return { message: "Music Library Upload Registered", data: response };
   }
 

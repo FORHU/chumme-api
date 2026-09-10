@@ -1,6 +1,7 @@
 import MusicLibrarySvc from "../services/music-library.service";
 import { Request, Response } from "express";
 import Joi from "joi";
+import { planUpload, UploadPolicyError } from "../utils/upload-policy";
 
 export default class MusicLibraryCtrl {
   static async uploadMusicFile(req: Request, res: Response) {
@@ -86,19 +87,35 @@ export default class MusicLibraryCtrl {
     }
   }
 
+  /**
+   * Presigned PUT for a music file. Authenticated already, but the key was
+   * still whatever the caller sent — so one user could overwrite another's
+   * object. Derived server-side now, same as `/files/get-upload-url`.
+   */
   static async getUploadUrl(req: Request, res: Response) {
     try {
-      const { key, contentType } = req.body;
-      if (!key || !contentType) {
-        return res
-          .status(400)
-          .json({ message: "key and contentType are required in the body" });
-      }
+      const { contentType, contentLength, prefix } = req.body;
 
-      const result = await MusicLibrarySvc.getUploadUrl(key, contentType);
-      return res.status(200).json(result);
+      const plan = planUpload({
+        userId: req.user.id,
+        category: "uploads",
+        contentType,
+        contentLength,
+        prefix,
+      });
+
+      const result = await MusicLibrarySvc.getUploadUrl(
+        plan.key,
+        plan.contentType,
+        plan.contentLength,
+      );
+      return res.status(200).json({ ...result, key: plan.key });
     } catch (err: any) {
-      return res.status(400).json({ message: err.message || err });
+      if (err instanceof UploadPolicyError) {
+        return res.status(400).json({ message: err.message });
+      }
+      console.error("[MusicLibraryCtrl] getUploadUrl failed:", err);
+      return res.status(500).json({ message: "Could not create upload URL" });
     }
   }
 

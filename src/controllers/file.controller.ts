@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import Joi from "joi";
 import FileSvc from "../services/file.service";
+import { planUpload, UploadPolicyError } from "../utils/upload-policy";
 
 export default class FileCtrl {
   static async saveFile(req: Request, res: Response) {
@@ -111,21 +112,41 @@ export default class FileCtrl {
     }
   }
 
+  /**
+   * Issues a presigned PUT for one object.
+   *
+   * The key is DERIVED, not accepted. This endpoint previously signed whatever
+   * `key` the body contained, and had no auth middleware — together that was
+   * unauthenticated arbitrary-path write access to the bucket. The caller now
+   * says what kind of thing it is uploading; where it lands is ours to decide.
+   */
   static async getUploadUrl(req: Request, res: Response) {
     try {
-      const { key, contentType } = req.body;
+      const { category, contentType, contentLength, prefix } = req.body;
 
-      if (!key || !contentType) {
-        return res
-          .status(400)
-          .json({ message: "key and contentType are required in the body" });
-      }
+      const plan = planUpload({
+        userId: req.user.id,
+        category,
+        contentType,
+        contentLength,
+        prefix,
+      });
 
-      const result = await FileSvc.getUploadUrl(key, contentType);
+      const url = await FileSvc.getUploadUrl(
+        plan.key,
+        plan.contentType,
+        plan.contentLength,
+      );
 
-      return res.status(200).json(result);
+      // The key goes back because the caller needs it to register the file
+      // afterwards — it no longer knows the path it is writing to.
+      return res.status(200).json({ ...url, key: plan.key });
     } catch (err: any) {
-      return res.status(400).json({ message: err.message || err });
+      if (err instanceof UploadPolicyError) {
+        return res.status(400).json({ message: err.message });
+      }
+      console.error("[FileCtrl] getUploadUrl failed:", err);
+      return res.status(500).json({ message: "Could not create upload URL" });
     }
   }
 

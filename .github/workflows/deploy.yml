@@ -46,7 +46,6 @@ jobs:
           RABBITMQ_DEFAULT_PASS: ${{ secrets.RABBITMQ_DEFAULT_PASS }}
           MAILER_TRANSPORT_HOST: ${{ vars.MAILER_TRANSPORT_HOST }}
           MAILER_PASSWORD: ${{ secrets.MAILER_PASSWORD }}
-          APP_AWS_ACCESS_KEY_ID: ${{ secrets.APP_AWS_ACCESS_KEY_ID }}
           AWS_S3_BUCKET_NAME: ${{ vars.AWS_S3_BUCKET_NAME }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
@@ -73,7 +72,7 @@ jobs:
           done
 
           for NAME in MAILER_TRANSPORT_HOST MAILER_PASSWORD \
-                      APP_AWS_ACCESS_KEY_ID AWS_S3_BUCKET_NAME \
+                      AWS_S3_BUCKET_NAME \
                       OPENAI_API_KEY YOUTUBE_API_KEY GOOGLE_CLIENT_ID \
                       CHAT_WONDER_API_URL; do
             eval "VALUE=\${$NAME:-}"
@@ -175,8 +174,8 @@ jobs:
           # Also a variable, not a secret (a sender address is not sensitive).
           MAILER_EMAIL: ${{ vars.MAILER_EMAIL }}
           MAILER_PASSWORD: ${{ secrets.MAILER_PASSWORD }}
-          APP_AWS_ACCESS_KEY_ID: ${{ secrets.APP_AWS_ACCESS_KEY_ID }}
-          APP_AWS_SECRET_ACCESS_KEY: ${{ secrets.APP_AWS_SECRET_ACCESS_KEY }}
+          # No APP_AWS_* pair: S3 runs on the instance role
+          # `production-chumme-instance`. See the app.env block below.
           AWS_S3_BUCKET_NAME: ${{ vars.AWS_S3_BUCKET_NAME }}
           S3_CDN_URL: ${{ vars.S3_CDN_URL }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -216,8 +215,16 @@ jobs:
             echo "MAILER_EMAIL=${MAILER_EMAIL}"
             echo "MAILER_PASSWORD=${MAILER_PASSWORD}"
             echo "AWS_REGION=${AWS_REGION}"
-            echo "AWS_ACCESS_KEY_ID=${APP_AWS_ACCESS_KEY_ID}"
-            echo "AWS_SECRET_ACCESS_KEY=${APP_AWS_SECRET_ACCESS_KEY}"
+            # AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY are deliberately NOT
+            # written. S3 uses the EC2 instance role
+            # `production-chumme-instance`, and `utils/s3-client.ts` only passes
+            # explicit credentials when both are present — omitting them lets
+            # the SDK's default provider chain reach instance metadata.
+            #
+            # Writing them as empty strings would also work today, but only
+            # because that guard treats "" as absent. Not writing them at all
+            # removes the dependency on that detail: a future key set here would
+            # silently take precedence over the role and be very hard to spot.
             echo "AWS_S3_BUCKET_NAME=${AWS_S3_BUCKET_NAME}"
             echo "S3_CDN_URL=${S3_CDN_URL}"
             echo "OPENAI_API_KEY=${OPENAI_API_KEY}"
