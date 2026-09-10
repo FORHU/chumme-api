@@ -1,5 +1,4 @@
 import {
-  S3Client,
   PutObjectCommand,
   DeleteObjectCommand,
   GetObjectCommand,
@@ -7,23 +6,10 @@ import {
   ListObjectsV2Command,
 } from "@aws-sdk/client-s3";
 import { Readable } from "stream";
-import {
-  S3_CDN_URL,
-  AWS_REGION,
-  AWS_ACCESS_KEY_ID,
-  AWS_SECRET_ACCESS_KEY,
-  AWS_S3_BUCKET_NAME,
-} from "../config";
+import { S3_CDN_URL, AWS_S3_BUCKET_NAME } from "../config";
 import crypto from "crypto";
 import logger from "./logger";
-
-const s3Client = new S3Client({
-  region: AWS_REGION,
-  credentials: {
-    accessKeyId: AWS_ACCESS_KEY_ID,
-    secretAccessKey: AWS_SECRET_ACCESS_KEY,
-  },
-});
+import s3Client from "./s3-client";
 
 export default class S3Util {
   /**
