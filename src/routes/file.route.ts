@@ -1,8 +1,15 @@
 import express from "express";
 import FileCtrl from "../controllers/file.controller";
 import { upload } from "../middleware/upload.middleware";
+import { authenticate } from "../middleware/auth.middleware";
 
 const router = express.Router();
+
+// This router had NO authentication. `/get-upload-url` therefore let anyone who
+// could reach the API mint a presigned PUT for any key in the bucket. It was
+// only ever inert because the signing credentials were dead; restoring signing
+// without this line would have made it live.
+router.use(authenticate);
 
 /*
  * presigned url routes

@@ -141,8 +141,16 @@ export default class FileSvc {
     return { message: "File deleted successfully" };
   }
 
-  static async getUploadUrl(key: string, contentType: string) {
-    const response = await S3PresignedUtil.getUploadUrl(key, contentType);
+  static async getUploadUrl(
+    key: string,
+    contentType: string,
+    contentLength?: number,
+  ) {
+    const response = await S3PresignedUtil.getUploadUrl(
+      key,
+      contentType,
+      contentLength,
+    );
     return { message: "File Uploaded Successfully", data: response };
   }
 
