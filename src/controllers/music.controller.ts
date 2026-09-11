@@ -330,6 +330,21 @@ export default class MusicCtrl {
         );
         fileId = fileRecord.id;
         fileUrl = fileRecord.fileUrl;
+      } else if (fileId) {
+        // A file uploaded ahead of time through the presigned URL is every bit
+        // as new as one posted here, and needs optimising just the same. Until
+        // this branch existed, `fileUrl` stayed null on that path and step 7
+        // quietly queued nothing — the client got a 201 and the song was never
+        // optimised. Best-effort: a lookup failure must not fail the create,
+        // which would be a worse outcome than an unoptimised song.
+        try {
+          const existing = await MusicLibrarySvc.getMusicFileById(fileId);
+          fileUrl = existing?.fileUrl ?? null;
+        } catch (e) {
+          logger.warn(
+            `[MusicCtrl] Could not resolve musicFileId ${fileId} for optimization: ${e}`,
+          );
+        }
       }
 
       // 6. Create Music using the new or existing file ID
