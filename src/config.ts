@@ -44,9 +44,22 @@ export const INGESTION_QUEUE_NAME =
   (isDev ? "ingestion_jobs_local" : "ingestion_jobs");
 export const CHAT_WONDER_API_URL = process.env.CHAT_WONDER_API_URL as string;
 
-// Room-message translation goes through FORHU's chat-wonder v2 service, not
-// OpenAI. `||` rather than `??` on purpose: the deploy writes an unset GitHub
-// variable as an empty string, and that should fall back, not break every call.
+// Room-message translation backend: "google" (Cloud Translation v2, the
+// default) or "forhu" (FORHU's chat-wonder v2 agent). Neither path uses OpenAI.
+// See utils/translation/translate-text.util.ts for how the choice is made.
+// `||` rather than `??` throughout on purpose: the deploy writes an unset
+// GitHub variable as an empty string, and that should fall back, not break
+// every call.
+export const TRANSLATION_PROVIDER = (
+  process.env.TRANSLATION_PROVIDER || "google"
+)
+  .trim()
+  .toLowerCase();
+export const GOOGLE_TRANSLATE_API_KEY = (
+  process.env.GOOGLE_TRANSLATE_API_KEY || ""
+).trim();
+// FORHU's service. The name predates the provider switch; it is kept so the
+// existing GitHub variable still applies.
 export const TRANSLATION_API_URL = (
   process.env.TRANSLATION_API_URL || "https://chat-dev.forhu.ai"
 ).replace(/\/+$/, "");

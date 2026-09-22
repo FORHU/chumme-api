@@ -4,6 +4,7 @@ import { prisma } from "../utils/prisma";
 import {
   languageName,
   translateText,
+  translationProvider,
 } from "../utils/translation/translate-text.util";
 
 /**
@@ -94,7 +95,9 @@ export default class MessageTranslationSvc {
       );
     }
 
-    const cacheKey = `translation:${params.room}:${message.id}:${params.targetLanguage}`;
+    // The provider is part of the key so switching backends shows the new
+    // one's output straight away, instead of week-old answers from the old one.
+    const cacheKey = `translation:${translationProvider}:${params.room}:${message.id}:${params.targetLanguage}`;
     const cached = await CacheUtil.get<MessageTranslation>(cacheKey);
     if (cached) return cached;
 
