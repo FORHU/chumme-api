@@ -181,6 +181,7 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
           CHAT_WONDER_API_URL: ${{ vars.CHAT_WONDER_API_URL }}
+          TRANSLATION_API_URL: ${{ vars.TRANSLATION_API_URL }}
           GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
           GOOGLE_ANDROID_CLIENT_ID: ${{ vars.GOOGLE_ANDROID_CLIENT_ID }}
         run: |
@@ -230,6 +231,8 @@ jobs:
             echo "OPENAI_API_KEY=${OPENAI_API_KEY}"
             echo "YOUTUBE_API_KEY=${YOUTUBE_API_KEY}"
             echo "CHAT_WONDER_API_URL=${CHAT_WONDER_API_URL}"
+            # Empty is fine: src/config.ts falls back to chat-dev.forhu.ai.
+            echo "TRANSLATION_API_URL=${TRANSLATION_API_URL}"
             echo "GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}"
             echo "GOOGLE_ANDROID_CLIENT_ID=${GOOGLE_ANDROID_CLIENT_ID}"
           } > app.env

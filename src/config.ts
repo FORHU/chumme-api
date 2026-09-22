@@ -44,6 +44,13 @@ export const INGESTION_QUEUE_NAME =
   (isDev ? "ingestion_jobs_local" : "ingestion_jobs");
 export const CHAT_WONDER_API_URL = process.env.CHAT_WONDER_API_URL as string;
 
+// Room-message translation goes through FORHU's chat-wonder v2 service, not
+// OpenAI. `||` rather than `??` on purpose: the deploy writes an unset GitHub
+// variable as an empty string, and that should fall back, not break every call.
+export const TRANSLATION_API_URL = (
+  process.env.TRANSLATION_API_URL || "https://chat-dev.forhu.ai"
+).replace(/\/+$/, "");
+
 // Google OAuth Configuration
 export const GOOGLE_CLIENT_ID = (process.env.GOOGLE_CLIENT_ID || "").trim();
 export const GOOGLE_ANDROID_CLIENT_ID = (
