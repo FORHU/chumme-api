@@ -34,6 +34,37 @@ export const getAllArtists = async () => {
   });
 };
 
+/**
+ * Artists that actually have at least one song in the catalogue.
+ *
+ * The music player only needs a name, an avatar and a song count for its
+ * artist row, so it gets this narrow list instead of `getAllArtists`, which
+ * returns every artist in the database along with their live/social fields
+ * for discovery and onboarding.
+ */
+export const getArtistsWithMusic = async () => {
+  const artists = await prisma.chummeArtist.findMany({
+    where: {
+      isDeleted: false,
+      music: { some: { deletedAt: null } },
+    },
+    select: {
+      id: true,
+      name: true,
+      imageUrl: true,
+      _count: { select: { music: { where: { deletedAt: null } } } },
+    },
+    orderBy: {
+      name: "asc",
+    },
+  });
+
+  return artists.map(({ _count, ...artist }) => ({
+    ...artist,
+    songCount: _count.music,
+  }));
+};
+
 export const getRandomArtists = async (limit: number) => {
   // Prisma doesn't have a native elegant "ORDER BY RANDOM()" so we query raw.
   const randomArtists = await prisma.$queryRaw`

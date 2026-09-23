@@ -16,6 +16,22 @@ export const getAllArtists = async () => {
   return artists;
 };
 
+export const getArtistsWithMusic = async () => {
+  const cacheKey = "artists:with-music";
+
+  // CacheUtil serialises and parses on its own — no manual JSON handling here.
+  const cached = await CacheUtil.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  const artists = await chummeArtistRepo.getArtistsWithMusic();
+
+  await CacheUtil.set(cacheKey, artists, 3600);
+
+  return artists;
+};
+
 export const getUserArtists = async (userId: string) => {
   const cacheKey = `user:${userId}:artists`;
 
@@ -94,6 +110,7 @@ export const createArtist = async (data: any) => {
 
   // Clear global artists cache
   await CacheUtil.del("artists:all");
+  await CacheUtil.del("artists:with-music");
 
   return artist;
 };
@@ -103,6 +120,7 @@ export const updateArtist = async (id: string, data: any) => {
 
   // Clear caches
   await CacheUtil.del("artists:all");
+  await CacheUtil.del("artists:with-music");
   await CacheUtil.del(`artist:${id}`);
 
   return artist;
@@ -113,6 +131,7 @@ export const deleteArtist = async (id: string) => {
 
   // Clear caches
   await CacheUtil.del("artists:all");
+  await CacheUtil.del("artists:with-music");
   await CacheUtil.del(`artist:${id}`);
 
   return result;

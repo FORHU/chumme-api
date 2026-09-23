@@ -120,6 +120,7 @@ export default class MusicSvc {
       await CacheUtil.del(`musics:artist:${data.musicArtistId}`);
     }
     await CacheUtil.delByPattern("musics:*");
+    await CacheUtil.del("artists:with-music");
     return this.enrichMusicData(music);
   }
 
@@ -193,6 +194,7 @@ export default class MusicSvc {
     const music = await MusicRepo.update(id, data);
     await CacheUtil.del(`music:${id}`);
     await CacheUtil.delByPattern("musics:*");
+    await CacheUtil.del("artists:with-music");
     return this.enrichMusicData(music);
   }
 
@@ -242,6 +244,7 @@ export default class MusicSvc {
     const music = await MusicRepo.delete(id);
     await CacheUtil.del(`music:${id}`);
     await CacheUtil.delByPattern("musics:*");
+    await CacheUtil.del("artists:with-music");
     return music;
   }
 

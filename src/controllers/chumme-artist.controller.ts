@@ -20,6 +20,24 @@ export const getAllArtists = async (req: Request, res: Response) => {
   }
 };
 
+export const getArtistsWithMusic = async (req: Request, res: Response) => {
+  try {
+    const artists = await chummeArtistService.getArtistsWithMusic();
+
+    res.status(200).json({
+      success: true,
+      data: artists,
+    });
+  } catch (error) {
+    console.error("Error fetching artists with music:", error);
+    res.status(500).json({
+      success: false,
+      message:
+        error instanceof Error ? error.message : "Failed to fetch artists",
+    });
+  }
+};
+
 export const getArtistById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
