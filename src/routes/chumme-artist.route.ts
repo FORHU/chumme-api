@@ -9,6 +9,13 @@ const router = express.Router();
 router.get("/", authenticate, chummeArtistController.getAllArtists);
 router.get("/live", authenticate, chummeArtistController.getLiveArtists);
 
+// Music player / playlist library: only artists that have songs, with counts
+router.get(
+  "/with-music",
+  authenticate,
+  chummeArtistController.getArtistsWithMusic,
+);
+
 // Skip onboarding by selecting random artists
 router.post(
   "/skip-onboarding",

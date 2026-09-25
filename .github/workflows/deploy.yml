@@ -51,6 +51,7 @@ jobs:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
           GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
           CHAT_WONDER_API_URL: ${{ vars.CHAT_WONDER_API_URL }}
+          GOOGLE_TRANSLATE_API_KEY: ${{ secrets.GOOGLE_TRANSLATE_API_KEY }}
         run: |
           set -euo pipefail
 
@@ -74,7 +75,7 @@ jobs:
           for NAME in MAILER_TRANSPORT_HOST MAILER_PASSWORD \
                       AWS_S3_BUCKET_NAME \
                       OPENAI_API_KEY YOUTUBE_API_KEY GOOGLE_CLIENT_ID \
-                      CHAT_WONDER_API_URL; do
+                      CHAT_WONDER_API_URL GOOGLE_TRANSLATE_API_KEY; do
             eval "VALUE=\${$NAME:-}"
             [ -n "$VALUE" ] || echo "::warning::$NAME is empty — the feature it gates will not work"
           done
@@ -181,6 +182,9 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
           CHAT_WONDER_API_URL: ${{ vars.CHAT_WONDER_API_URL }}
+          TRANSLATION_API_URL: ${{ vars.TRANSLATION_API_URL }}
+          TRANSLATION_PROVIDER: ${{ vars.TRANSLATION_PROVIDER }}
+          GOOGLE_TRANSLATE_API_KEY: ${{ secrets.GOOGLE_TRANSLATE_API_KEY }}
           GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
           GOOGLE_ANDROID_CLIENT_ID: ${{ vars.GOOGLE_ANDROID_CLIENT_ID }}
         run: |
@@ -230,6 +234,12 @@ jobs:
             echo "OPENAI_API_KEY=${OPENAI_API_KEY}"
             echo "YOUTUBE_API_KEY=${YOUTUBE_API_KEY}"
             echo "CHAT_WONDER_API_URL=${CHAT_WONDER_API_URL}"
+            # Empty is fine for all three. Provider defaults to google; google
+            # with no key falls back to FORHU; the FORHU URL defaults to
+            # chat-dev.forhu.ai. See src/config.ts.
+            echo "TRANSLATION_PROVIDER=${TRANSLATION_PROVIDER}"
+            echo "GOOGLE_TRANSLATE_API_KEY=${GOOGLE_TRANSLATE_API_KEY}"
+            echo "TRANSLATION_API_URL=${TRANSLATION_API_URL}"
             echo "GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}"
             echo "GOOGLE_ANDROID_CLIENT_ID=${GOOGLE_ANDROID_CLIENT_ID}"
           } > app.env

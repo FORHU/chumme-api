@@ -1,7 +1,9 @@
 import express from "express";
 import SportCtrl from "../controllers/sport.controller";
 import SportMessageCtrl from "../controllers/sport-message.controller";
+import MessageTranslationCtrl from "../controllers/message-translation.controller";
 import { authenticate } from "../middleware/auth.middleware";
+import { translateRateLimit } from "../middleware/translate-rate-limit.middleware";
 
 const router = express.Router();
 
@@ -19,5 +21,10 @@ router.get("/fixtures/:id", SportCtrl.getFixtureById);
 router.get("/fixtures/:eventId/messages", SportMessageCtrl.getMessages);
 router.post("/fixtures/:eventId/messages", SportMessageCtrl.sendMessage);
 router.delete("/messages/:messageId", SportMessageCtrl.deleteMessage);
+router.post(
+  "/messages/:messageId/translate",
+  translateRateLimit,
+  MessageTranslationCtrl.translateSportMessage,
+);
 
 export default router;
