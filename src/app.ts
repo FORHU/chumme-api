@@ -4,7 +4,7 @@ import rateLimit from "express-rate-limit";
 import helmet from "helmet";
 import { connectToPrisma } from "./utils/prisma";
 import router from "./routes";
-import { isDev } from "./config";
+import { CORS_ORIGINS, isDev } from "./config";
 import setup from "./setup";
 import cors from "cors";
 import { createServer } from "http";
@@ -26,12 +26,18 @@ const app = express();
 
 app.set("trust proxy", 1);
 
-app.use(
-  cors({
-    origin: true,
-    credentials: true,
-  }),
-);
+// Requests without an Origin (the mobile app, curl, server-to-server) always
+// pass. Browser origins need to be in CORS_ORIGINS outside development.
+// No `credentials`: auth is a bearer header, not a cookie.
+const isAllowedOrigin = (origin: string | undefined) =>
+  !origin || isDev || CORS_ORIGINS.includes(origin);
+
+const corsOrigin = (
+  origin: string | undefined,
+  callback: (err: Error | null, allow?: boolean) => void,
+) => callback(null, isAllowedOrigin(origin));
+
+app.use(cors({ origin: corsOrigin }));
 
 app.use(express.json());
 
@@ -58,13 +64,8 @@ const server = createServer(app);
 
 export const io = new Server(server, {
   cors: {
-    origin: (origin, callback) => {
-      // Allow any origin for development, or specify your frontend URL
-      // Since express-cors is already configured with origin: true, we mirror that logic
-      callback(null, true);
-    },
+    origin: corsOrigin,
     methods: ["GET", "POST"],
-    credentials: true,
   },
 });
 
@@ -121,8 +122,9 @@ connectToPrisma()
 
       // Media Processing Worker (Video/HLS) - DISABLED (Stale)
       try {
-        const { MediaProcessingWorker } =
-          await import("./listeners/media-processing.listener");
+        const { MediaProcessingWorker } = await import(
+          "./listeners/media-processing.listener"
+        );
         const mediaWorker = new MediaProcessingWorker();
         await mediaWorker.start();
         console.log(
