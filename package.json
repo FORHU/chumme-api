@@ -5,8 +5,10 @@
   "license": "MIT",
   "scripts": {
     "dev": "nodemon --watch src --ext ts --delay 2 --exec ts-node --files ./src/server.ts",
-    "lint": "eslint src/**/*.ts --fix",
-    "test": "NODE_ENV=development mocha --require ts-node/register 'test/**/*.spec.ts'",
+    "lint": "eslint \"src/**/*.ts\" --fix",
+    "lint:check": "eslint \"src/**/*.ts\"",
+    "typecheck": "tsc --noEmit",
+    "test": "NODE_ENV=development mocha --require ./test/setup-env.js --require ts-node/register 'test/**/*.spec.ts'",
     "build": "tsc",
     "start": "node ./dist/src/server.js",
     "start:worker": "node ./dist/src/worker.js",
@@ -21,8 +23,8 @@
     "data:drop-interstellar": "ts-node scripts/drop_interstellar_data.ts",
     "ingest:instagram": "ts-node scripts/instagram.script.ts",
     "scrape:instagram:comments": "ts-node scripts/scrapper/instagram-comments.ts",
-    "test:audio": "mocha --require ts-node/register --timeout 60000 test/audio-utils.spec.ts",
-    "test:integration": "mocha --require ts-node/register --timeout 60000 test/recording-flow.spec.ts"
+    "test:audio": "mocha --require ts-node/register --timeout 60000 test/audio-utils.integration.ts",
+    "test:integration": "mocha --require ts-node/register --timeout 60000 'test/**/*.integration.ts'"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.922.0",
