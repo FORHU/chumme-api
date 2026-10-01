@@ -1,8 +1,4 @@
-import {
-  ReportReason,
-  ReportStatus,
-  ReportTargetType,
-} from "@prisma/client";
+import { ReportReason, ReportStatus, ReportTargetType } from "@prisma/client";
 import { prisma } from "../utils/prisma";
 
 /** What a row in the app's Blocked Accounts list needs. */
@@ -124,6 +120,9 @@ export default class ModerationRepo {
   }
 
   static async findReportById(id: string) {
-    return prisma.userReport.findUnique({ where: { id }, select: { id: true } });
+    return prisma.userReport.findUnique({
+      where: { id },
+      select: { id: true },
+    });
   }
 }

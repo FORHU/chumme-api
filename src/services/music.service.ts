@@ -265,7 +265,10 @@ export default class MusicSvc {
         try {
           music.musicFile.fileUrl = encodeURI(music.musicFile.fileUrl);
         } catch (err) {
-          logger.warn(`[MusicSvc] Failed to encode URL: ${music.musicFile.fileUrl}`, err);
+          logger.warn(
+            `[MusicSvc] Failed to encode URL: ${music.musicFile.fileUrl}`,
+            err,
+          );
         }
       }
     }

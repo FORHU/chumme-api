@@ -60,11 +60,11 @@ export const update = async (
       voiceKey: data.voiceKey ?? undefined,
       persona: data.persona ?? undefined,
       audioPathId:
-        data.audioPathId === null ? null : (data.audioPathId ?? undefined),
+        data.audioPathId === null ? null : data.audioPathId ?? undefined,
       videoPathId:
-        data.videoPathId === null ? null : (data.videoPathId ?? undefined),
+        data.videoPathId === null ? null : data.videoPathId ?? undefined,
       imagePathId:
-        data.imagePathId === null ? null : (data.imagePathId ?? undefined),
+        data.imagePathId === null ? null : data.imagePathId ?? undefined,
     },
 
     include: {

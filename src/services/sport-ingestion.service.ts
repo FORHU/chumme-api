@@ -59,7 +59,9 @@ export function mapEspnStatus(raw?: string): SportEventStatus {
 
   if (!warnedStatuses.has(raw)) {
     warnedStatuses.add(raw);
-    logger.warn(`[SportIngestion] Unmapped ESPN status "${raw}" — treating as SCHEDULED`);
+    logger.warn(
+      `[SportIngestion] Unmapped ESPN status "${raw}" — treating as SCHEDULED`,
+    );
   }
   return SportEventStatus.SCHEDULED;
 }
@@ -104,7 +106,8 @@ export function extractFixture(event: EspnEvent): ExtractedFixture | null {
   const home = competitors.find((c) => c.homeAway === "home");
   const away = competitors.find((c) => c.homeAway === "away");
 
-  if (!event.id || !event.date || !home?.team?.id || !away?.team?.id) return null;
+  if (!event.id || !event.date || !home?.team?.id || !away?.team?.id)
+    return null;
 
   const gameDate = new Date(event.date);
   if (Number.isNaN(gameDate.getTime())) return null;
@@ -261,7 +264,10 @@ export default class SportIngestionSvc {
     // ESPN is inconsistent about which name fields it populates per sport, so
     // each falls back to the next rather than writing an empty string.
     const displayName =
-      team.displayName || team.name || team.shortDisplayName || `Team ${team.id}`;
+      team.displayName ||
+      team.name ||
+      team.shortDisplayName ||
+      `Team ${team.id}`;
 
     return SportRepo.upsertTeam({
       espnId: team.id!,
@@ -277,7 +283,9 @@ export default class SportIngestionSvc {
   }
 
   /** Every active league, one scoreboard call each. Used by the poller. */
-  static async syncAllActiveLeagues(dates?: string): Promise<LeagueSyncResult[]> {
+  static async syncAllActiveLeagues(
+    dates?: string,
+  ): Promise<LeagueSyncResult[]> {
     const leagues = await SportRepo.findLeaguesForPolling();
     const results: LeagueSyncResult[] = [];
 

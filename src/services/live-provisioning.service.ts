@@ -333,8 +333,9 @@ export class LiveProvisioningService {
 
     const primaryChannelId = artist.channelId[0];
 
-    const { default: YouTubeService } =
-      await import("./net-communities/youtube.service");
+    const { default: YouTubeService } = await import(
+      "./net-communities/youtube.service"
+    );
     const liveMap = await YouTubeService.checkLiveStatus([primaryChannelId]);
     const liveData = liveMap.get(primaryChannelId);
     const newVideoId = liveData?.videoId || null;

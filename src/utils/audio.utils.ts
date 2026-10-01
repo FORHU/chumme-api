@@ -339,7 +339,13 @@ const VOICE_EFFECT_PRESETS: Record<
       { filter: "highpass", options: { f: 80 } },
       {
         filter: "acompressor",
-        options: { threshold: 0.2, ratio: 2, attack: 20, release: 250, makeup: 2 },
+        options: {
+          threshold: 0.2,
+          ratio: 2,
+          attack: 20,
+          release: 250,
+          makeup: 2,
+        },
       },
       { filter: "volume", options: { volume: 1.3 } },
     ],
@@ -350,14 +356,29 @@ const VOICE_EFFECT_PRESETS: Record<
   STUDIO: {
     filters: [
       { filter: "highpass", options: { f: 80 } },
-      { filter: "equalizer", options: { f: 150, width_type: "h", width: 100, g: 4 } },
-      { filter: "equalizer", options: { f: 6000, width_type: "h", width: 2000, g: 2 } },
+      {
+        filter: "equalizer",
+        options: { f: 150, width_type: "h", width: 100, g: 4 },
+      },
+      {
+        filter: "equalizer",
+        options: { f: 6000, width_type: "h", width: 2000, g: 2 },
+      },
       {
         filter: "acompressor",
-        options: { threshold: 0.125, ratio: 3, attack: 15, release: 200, makeup: 3 },
+        options: {
+          threshold: 0.125,
+          ratio: 3,
+          attack: 15,
+          release: 200,
+          makeup: 3,
+        },
       },
       // Very short single tap — reads as a tight vocal booth, not an effect.
-      { filter: "aecho", options: { in_gain: 0.8, out_gain: 0.9, delays: "40", decays: "0.25" } },
+      {
+        filter: "aecho",
+        options: { in_gain: 0.8, out_gain: 0.9, delays: "40", decays: "0.25" },
+      },
       { filter: "volume", options: { volume: 1.4 } },
     ],
     mixWeights: "3 1",
@@ -367,10 +388,19 @@ const VOICE_EFFECT_PRESETS: Record<
   KTV: {
     filters: [
       { filter: "highpass", options: { f: 90 } },
-      { filter: "equalizer", options: { f: 200, width_type: "h", width: 120, g: 3 } },
+      {
+        filter: "equalizer",
+        options: { f: 200, width_type: "h", width: 120, g: 3 },
+      },
       {
         filter: "acompressor",
-        options: { threshold: 0.1, ratio: 4, attack: 10, release: 250, makeup: 4 },
+        options: {
+          threshold: 0.1,
+          ratio: 4,
+          attack: 10,
+          release: 250,
+          makeup: 4,
+        },
       },
       // Multi-tap: the closely spaced repeats smear into reverb rather than
       // reading as distinct echoes.
@@ -392,10 +422,19 @@ const VOICE_EFFECT_PRESETS: Record<
   CONCERT: {
     filters: [
       { filter: "highpass", options: { f: 90 } },
-      { filter: "equalizer", options: { f: 3000, width_type: "h", width: 1500, g: 2 } },
+      {
+        filter: "equalizer",
+        options: { f: 3000, width_type: "h", width: 1500, g: 2 },
+      },
       {
         filter: "acompressor",
-        options: { threshold: 0.125, ratio: 3.5, attack: 12, release: 300, makeup: 3 },
+        options: {
+          threshold: 0.125,
+          ratio: 3.5,
+          attack: 12,
+          release: 300,
+          makeup: 3,
+        },
       },
       {
         filter: "aecho",
@@ -416,10 +455,19 @@ const VOICE_EFFECT_PRESETS: Record<
     filters: [
       { filter: "highpass", options: { f: 300 } },
       { filter: "lowpass", options: { f: 3400 } },
-      { filter: "equalizer", options: { f: 1500, width_type: "h", width: 800, g: 5 } },
+      {
+        filter: "equalizer",
+        options: { f: 1500, width_type: "h", width: 800, g: 5 },
+      },
       {
         filter: "acompressor",
-        options: { threshold: 0.05, ratio: 8, attack: 5, release: 120, makeup: 6 },
+        options: {
+          threshold: 0.05,
+          ratio: 8,
+          attack: 5,
+          release: 120,
+          makeup: 6,
+        },
       },
       { filter: "volume", options: { volume: 1.5 } },
     ],
@@ -441,7 +489,13 @@ const VOICE_EFFECT_PRESETS: Record<
       { filter: "atempo", options: { tempo: Number((1 / 1.35).toFixed(6)) } },
       {
         filter: "acompressor",
-        options: { threshold: 0.15, ratio: 3, attack: 10, release: 200, makeup: 3 },
+        options: {
+          threshold: 0.15,
+          ratio: 3,
+          attack: 10,
+          release: 200,
+          makeup: 3,
+        },
       },
       { filter: "volume", options: { volume: 1.35 } },
     ],

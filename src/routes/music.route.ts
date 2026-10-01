@@ -41,7 +41,15 @@ router.post("/create-with-json", MusicCtrl.createMusic);
 // Alias for backward compatibility
 router.post("/create-with-files", upload.any(), MusicCtrl.createMusicWithFiles);
 
-router.patch("/update/:id", requireRoles([UserRole.CREATOR, UserRole.ADMIN]), MusicCtrl.updateMusic);
-router.delete("/delete/:id", requireRoles([UserRole.CREATOR, UserRole.ADMIN]), MusicCtrl.deleteMusic);
+router.patch(
+  "/update/:id",
+  requireRoles([UserRole.CREATOR, UserRole.ADMIN]),
+  MusicCtrl.updateMusic,
+);
+router.delete(
+  "/delete/:id",
+  requireRoles([UserRole.CREATOR, UserRole.ADMIN]),
+  MusicCtrl.deleteMusic,
+);
 
 export default router;

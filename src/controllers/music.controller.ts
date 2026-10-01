@@ -371,7 +371,7 @@ export default class MusicCtrl {
       }
 
       return res.status(201).json({
-        message: fileUrl 
+        message: fileUrl
           ? "Music created successfully with files and queued for optimization"
           : "Music created successfully with existing file",
         data: music,

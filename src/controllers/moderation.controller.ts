@@ -50,7 +50,9 @@ export default class ModerationCtrl {
     try {
       const { error } = userIdSchema.validate(req.params.id);
       if (error) {
-        return res.status(400).json({ success: false, message: "Invalid user id" });
+        return res
+          .status(400)
+          .json({ success: false, message: "Invalid user id" });
       }
       await ModerationSvc.blockUser(req.user.id, req.params.id);
       return res.status(200).json({ success: true });
@@ -63,7 +65,9 @@ export default class ModerationCtrl {
     try {
       const { error } = userIdSchema.validate(req.params.id);
       if (error) {
-        return res.status(400).json({ success: false, message: "Invalid user id" });
+        return res
+          .status(400)
+          .json({ success: false, message: "Invalid user id" });
       }
       await ModerationSvc.unblockUser(req.user.id, req.params.id);
       return res.status(200).json({ success: true });
@@ -96,9 +100,10 @@ export default class ModerationCtrl {
         details: value.details,
       });
 
-      return res
-        .status(created ? 201 : 200)
-        .json({ success: true, data: { id: report.id, status: report.status } });
+      return res.status(created ? 201 : 200).json({
+        success: true,
+        data: { id: report.id, status: report.status },
+      });
     } catch (error: any) {
       return sendError(res, error, "Failed to submit report");
     }
