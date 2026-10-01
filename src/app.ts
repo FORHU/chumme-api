@@ -121,8 +121,9 @@ connectToPrisma()
 
       // Media Processing Worker (Video/HLS) - DISABLED (Stale)
       try {
-        const { MediaProcessingWorker } =
-          await import("./listeners/media-processing.listener");
+        const { MediaProcessingWorker } = await import(
+          "./listeners/media-processing.listener"
+        );
         const mediaWorker = new MediaProcessingWorker();
         await mediaWorker.start();
         console.log(

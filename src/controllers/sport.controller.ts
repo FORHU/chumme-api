@@ -30,9 +30,7 @@ export default class SportCtrl {
     try {
       const { error, value } = fixturesQuerySchema.validate(req.query);
       if (error) {
-        return res
-          .status(400)
-          .json({ success: false, message: error.message });
+        return res.status(400).json({ success: false, message: error.message });
       }
 
       if (value.from && value.to && value.from > value.to) {
