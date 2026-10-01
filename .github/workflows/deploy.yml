@@ -19,7 +19,13 @@ env:
   APP_DIR: /opt/chumme-api
 
 jobs:
+  # Typecheck, lint and unit tests from ci.yml. A red check stops the deploy
+  # before an image is built.
+  check:
+    uses: ./.github/workflows/ci.yml
+
   deploy:
+    needs: check
 
     runs-on: ubuntu-24.04-arm
     # Reads the `dev` environment's secrets and variables — that is where they live,
@@ -187,6 +193,9 @@ jobs:
           GOOGLE_TRANSLATE_API_KEY: ${{ secrets.GOOGLE_TRANSLATE_API_KEY }}
           GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
           GOOGLE_ANDROID_CLIENT_ID: ${{ vars.GOOGLE_ANDROID_CLIENT_ID }}
+          CORS_ORIGINS: ${{ vars.CORS_ORIGINS }}
+          # Empty = no HTTPS proxy. See docs/HTTPS-SETUP.md before setting it.
+          API_DOMAIN: ${{ vars.API_DOMAIN }}
         run: |
           set -euo pipefail
 
@@ -242,6 +251,9 @@ jobs:
             echo "TRANSLATION_API_URL=${TRANSLATION_API_URL}"
             echo "GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}"
             echo "GOOGLE_ANDROID_CLIENT_ID=${GOOGLE_ANDROID_CLIENT_ID}"
+            # Comma-separated browser origins. Empty is fine: the mobile app
+            # sends no Origin header. Only a web client needs an entry here.
+            echo "CORS_ORIGINS=${CORS_ORIGINS}"
           } > app.env
           # Deliberately NOT written: SECRET_KEY, SERVICE_ACCOUNT,
           # GOOGLE_CLIENT_SECRET, FACEBOOK_APP_ID, FACEBOOK_APP_SECRET,
@@ -271,6 +283,7 @@ jobs:
             echo "APP_DIR='$APP_DIR'"
             echo "ENV_B64='$ENV_B64'"
             echo "COMPOSE_B64='$COMPOSE_B64'"
+            echo "API_DOMAIN='$API_DOMAIN'"
           } > deploy-remote.sh
 
           # Quoted terminator: the body is passed through verbatim, so $i and
@@ -311,8 +324,14 @@ jobs:
 
           docker pull "$IMAGE"
 
-          # docker-compose.prod.yaml interpolates ${IMAGE}.
-          export IMAGE
+          # docker-compose.prod.yaml interpolates ${IMAGE} and ${API_DOMAIN}.
+          export IMAGE API_DOMAIN
+
+          # The caddy (HTTPS) service only starts once API_DOMAIN is set.
+          PROFILE_ARGS=""
+          if [ -n "$API_DOMAIN" ]; then
+            PROFILE_ARGS="--profile https"
+          fi
 
           # -p pins the compose project name. Without it the name is derived
           # from the directory, and moving from ~/chumme-api to /opt/chumme-api
@@ -324,7 +343,8 @@ jobs:
           # run it twice. The trade-off: a failed migration surfaces as a
           # crash-looping container rather than an aborted deploy, which is why
           # the health check below dumps logs and fails the job loudly.
-          docker compose -p chumme-api -f docker-compose.prod.yaml up -d
+          # $PROFILE_ARGS unquoted on purpose: empty must expand to no argument.
+          docker compose -p chumme-api -f docker-compose.prod.yaml $PROFILE_ARGS up -d
 
           # Fail the deploy loudly instead of reporting green on a dead app.
           # /api/v1/health reports api, database, redis and rabbitmq status.
@@ -408,3 +428,24 @@ jobs:
             exit 1
           fi
           echo "Deploy succeeded on $EC2_INSTANCE_ID"
+
+      # The health check above runs on the instance against 127.0.0.1, so it
+      # passes even when users cannot reach the API (closed port, wrong DNS,
+      # failed certificate). This one goes through the public HTTPS name.
+      - name: Verify public HTTPS endpoint
+        if: ${{ vars.API_DOMAIN != '' }}
+        env:
+          API_DOMAIN: ${{ vars.API_DOMAIN }}
+        run: |
+          set -euo pipefail
+          # The first request after Caddy starts may wait on certificate issuance.
+          for i in $(seq 1 12); do
+            if curl -fsS --max-time 10 "https://$API_DOMAIN/api/v1/health" > /dev/null; then
+              echo "https://$API_DOMAIN is healthy"
+              exit 0
+            fi
+            echo "not yet ($i/12)"
+            sleep 10
+          done
+          echo "::error::https://$API_DOMAIN/api/v1/health is unreachable. See docs/HTTPS-SETUP.md."
+          exit 1

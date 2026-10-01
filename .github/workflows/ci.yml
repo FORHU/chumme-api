@@ -1,0 +1,48 @@
+name: CI
+
+# Runs on every PR and on main, and deploy.yml calls it before building, so a
+# commit that fails these checks never reaches the instance.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_call:
+
+permissions:
+  contents: read
+
+# github.workflow is the caller's name when deploy.yml calls this, so a deploy's
+# checks never cancel (or get cancelled by) a push run on the same ref.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      # Same major as the Dockerfile (node:22-alpine).
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # tsc needs the generated client types. generate reads only the schema,
+      # never connects, so no database is needed here.
+      - run: npx prisma generate
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint:check
+
+      # Unit specs only (test/**/*.spec.ts), all offline. The audio
+      # integration test needs AWS credentials and lives in *.integration.ts.
+      - name: Test
+        run: npm test
