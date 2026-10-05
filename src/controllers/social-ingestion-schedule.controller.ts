@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import Joi from "joi";
 import * as scheduleService from "../services/social-ingestion-schedule.service";
+import logger from "../utils/logger";
 
 export const getSchedulesByTarget = async (req: Request, res: Response) => {
   try {
@@ -12,7 +13,7 @@ export const getSchedulesByTarget = async (req: Request, res: Response) => {
       data: schedules,
     });
   } catch (error) {
-    console.error("Error fetching schedules:", error);
+    logger.error("Error fetching schedules:", error);
     res.status(500).json({
       success: false,
       message:
@@ -49,7 +50,7 @@ export const createSchedule = async (req: Request, res: Response) => {
       data: schedule,
     });
   } catch (error: any) {
-    console.error("Error creating schedule:", error);
+    logger.error("Error creating schedule:", error);
     res.status(500).json({
       success: false,
       message: error.message || "Failed to create schedule",
@@ -85,7 +86,7 @@ export const updateSchedule = async (req: Request, res: Response) => {
       data: schedule,
     });
   } catch (error: any) {
-    console.error("Error updating schedule:", error);
+    logger.error("Error updating schedule:", error);
     res.status(500).json({
       success: false,
       message: error.message || "Failed to update schedule",
@@ -103,7 +104,7 @@ export const deleteSchedule = async (req: Request, res: Response) => {
       message: "Schedule deleted successfully",
     });
   } catch (error: any) {
-    console.error("Error deleting schedule:", error);
+    logger.error("Error deleting schedule:", error);
     res.status(500).json({
       success: false,
       message: error.message || "Failed to delete schedule",

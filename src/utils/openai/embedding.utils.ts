@@ -11,7 +11,7 @@ export const getTextEmbedding = async (inputText: string) => {
     );
     return embedding;
   } catch (error) {
-    console.error("Error in getTextEmbedding utils:", error);
+    logger.error("Error in getTextEmbedding utils:", error);
     logger.chat_error(
       `[OPENAI-GetTextEmbedding], response time: "Error in getTextEmbedding utils:"`,
       error,

@@ -5,6 +5,7 @@ import { AuthenticatedSocket } from "./types";
 import { MusicStudioType } from "@prisma/client";
 import MusicLibrarySvc from "../../services/music-library.service";
 import MusicTempRecordSvc from "../../services/music-temp-record.service";
+import logger from "../../utils/logger";
 
 export const registerMediaHandlers = (
   io: Server,
@@ -58,7 +59,7 @@ export const registerMediaHandlers = (
         file = null;
       }
       if (!file) {
-        console.log("[MusicStudio] audio_chunk dropped: file not found", {
+        logger.debug("[MusicStudio] audio_chunk dropped: file not found", {
           fileId: chunk.fileId,
         });
         if (callback) callback({ error: "Audio file not found" });
@@ -87,7 +88,7 @@ export const registerMediaHandlers = (
         cachedType,
       );
       if (!canStream) {
-        console.log("[MusicStudio] audio_chunk dropped: user cannot record", {
+        logger.debug("[MusicStudio] audio_chunk dropped: user cannot record", {
           userId: socket.user.id,
           studioId,
           studioType: cachedType,
@@ -104,7 +105,7 @@ export const registerMediaHandlers = (
           MusicStudioCacheSvc.getCurrentRoleIndex(studioId),
         ]);
 
-        console.log("[MusicStudio] RELAYSINGING check:", {
+        logger.debug("[MusicStudio] RELAYSINGING check:", {
           currentSinger,
           currentRoleIndex,
           myId: socket.user.id,
@@ -113,7 +114,7 @@ export const registerMediaHandlers = (
         // Role 0 = "All-Sing" / Chorus → everyone streams
         if (currentRoleIndex !== 0) {
           if (currentSinger && currentSinger !== socket.user.id) {
-            console.log(
+            logger.debug(
               "[MusicStudio] audio_chunk dropped: not the current singer in Relay mode",
             );
             if (callback)
@@ -160,7 +161,7 @@ export const registerMediaHandlers = (
           callback({ success: true });
         }
       } catch (err: any) {
-        console.error("[MusicStudio] Failed to save temp chunk:", err);
+        logger.error("[MusicStudio] Failed to save temp chunk:", err);
         if (typeof callback === "function") {
           callback({ error: err.message || "Failed to save chunk" });
         }

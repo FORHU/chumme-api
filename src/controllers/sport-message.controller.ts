@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import Joi from "joi";
 import SportMessageSvc from "../services/sport-message.service";
+import logger from "../utils/logger";
 
 const listQuerySchema = Joi.object({
   limit: Joi.number().integer().min(1).max(100).optional(),
@@ -31,7 +32,7 @@ export default class SportMessageCtrl {
 
       return res.status(200).json({ success: true, ...result });
     } catch (error: any) {
-      console.error("[SportMessageCtrl] Error fetching messages:", error);
+      logger.error("[SportMessageCtrl] Error fetching messages:", error);
       return res.status(500).json({
         success: false,
         message: error?.message || "Failed to fetch messages",

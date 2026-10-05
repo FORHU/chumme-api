@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import Joi from "joi";
 import * as artistPersonaService from "../services/artist-persona.service";
+import logger from "../utils/logger";
 
 export const getAllPersonas = async (req: Request, res: Response) => {
   try {
@@ -11,7 +12,7 @@ export const getAllPersonas = async (req: Request, res: Response) => {
       data: personas,
     });
   } catch (error) {
-    console.error("Error fetching all personas:", error);
+    logger.error("Error fetching all personas:", error);
     res.status(500).json({
       success: false,
       message:
@@ -47,7 +48,7 @@ export const createPersona = async (req: Request, res: Response) => {
       data: persona,
     });
   } catch (error: any) {
-    console.error("Error creating persona:", error);
+    logger.error("Error creating persona:", error);
     res.status(500).json({
       success: false,
       message: error.message || "Failed to create persona",
@@ -83,7 +84,7 @@ export const updatePersona = async (req: Request, res: Response) => {
       data: persona,
     });
   } catch (error: any) {
-    console.error("Error updating persona:", error);
+    logger.error("Error updating persona:", error);
     res.status(500).json({
       success: false,
       message: error.message || "Failed to update persona",

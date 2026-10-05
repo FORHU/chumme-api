@@ -56,7 +56,7 @@ app.disable("x-powered-by");
 // Use router for routing
 app.use("/api", router);
 app.use((err: any, req: any, res: any, next: any) => {
-  console.error("[ErrorHandler]", err);
+  logger.error("[ErrorHandler]", err);
   errorHandler(err, req, res, next);
 });
 
@@ -72,6 +72,7 @@ export const io = new Server(server, {
 (global as any).io = io;
 
 import events from "./events";
+import logger from "./utils/logger";
 
 events(io);
 
@@ -85,15 +86,15 @@ connectToPrisma()
     const { pubClient, subClient } = RedisUtil.getAdapterClients();
     await Promise.all([pubClient.connect(), subClient.connect()]);
     io.adapter(createAdapter(pubClient, subClient));
-    console.log("[Socket] Redis adapter initialized");
+    logger.info("[Socket] Redis adapter initialized");
 
     // Connect shared RabbitMQ service (for publishing jobs)
     try {
       const { rabbitMQService } = await import("./utils/rabbitmq");
       await rabbitMQService.connect();
-      console.log("Shared RabbitMQ service connected");
+      logger.info("Shared RabbitMQ service connected");
     } catch (error) {
-      console.error("Failed to connect shared RabbitMQ service:", error);
+      logger.error("Failed to connect shared RabbitMQ service:", error);
     }
 
     // Initialize Workers (conditional)
@@ -104,9 +105,9 @@ connectToPrisma()
       try {
         const audioMergeWorker = new AudioMergeWorker();
         await audioMergeWorker.start();
-        console.log("Audio Merge RabbitMQ worker initialized successfully");
+        logger.info("Audio Merge RabbitMQ worker initialized successfully");
       } catch (error) {
-        console.error("Failed to initialize Audio Merge worker:", error);
+        logger.error("Failed to initialize Audio Merge worker:", error);
       }
 
       // Ingestion Worker & Scheduler
@@ -115,9 +116,9 @@ connectToPrisma()
         await ingestionWorker.start();
 
         await SchedulingService.start();
-        console.log("Ingestion Pipeline & Scheduler initialized successfully");
+        logger.info("Ingestion Pipeline & Scheduler initialized successfully");
       } catch (error) {
-        console.error("Failed to initialize Ingestion Pipeline:", error);
+        logger.error("Failed to initialize Ingestion Pipeline:", error);
       }
 
       // Media Processing Worker (Video/HLS) - DISABLED (Stale)
@@ -126,18 +127,18 @@ connectToPrisma()
           await import("./listeners/media-processing.listener");
         const mediaWorker = new MediaProcessingWorker();
         await mediaWorker.start();
-        console.log(
+        logger.info(
           "Media Processing RabbitMQ worker initialized successfully",
         );
       } catch (error) {
-        console.error("Failed to initialize Media Processing worker:", error);
+        logger.error("Failed to initialize Media Processing worker:", error);
       }
     } else {
-      console.log("Workers disabled by START_WORKERS=false");
+      logger.info("Workers disabled by START_WORKERS=false");
     }
   })
   .catch((err: any) => {
-    console.log(err);
+    logger.error(err);
   });
 
 export default server;

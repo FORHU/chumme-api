@@ -5,6 +5,7 @@ import MusicStudioRepo from "../../repositories/music-studio.repository";
 import MusicStudioCacheSvc from "../../services/music-studio-cache.service";
 import RedisUtil from "../../utils/redis.util";
 import { AuthenticatedSocket, StudioActionPayload } from "./types";
+import logger from "../../utils/logger";
 
 export const registerSingerHandlers = (
   io: Server,
@@ -70,11 +71,11 @@ export const registerSingerHandlers = (
         message: "Your request to sing has been sent",
       });
 
-      console.log(
+      logger.debug(
         `[MusicStudio] ${socket.user.name} requested singer in ${studioId}`,
       );
     } catch (err: any) {
-      console.error("[MusicStudio] Request singer error:", err);
+      logger.error("[MusicStudio] Request singer error:", err);
       socket.emit("request_singer_failed", {
         message: err.message || "Failed to request singer role",
       });
@@ -119,11 +120,11 @@ export const registerSingerHandlers = (
           studioId,
         });
 
-        console.log(
+        logger.debug(
           `[MusicStudio] ${socket.user.name} approved ${userId} as singer`,
         );
       } catch (err: any) {
-        console.error("[MusicStudio] Approve singer error:", err);
+        logger.error("[MusicStudio] Approve singer error:", err);
         socket.emit("approve_singer_failed", {
           message: err.message || "Failed to approve singer",
         });
@@ -173,11 +174,11 @@ export const registerSingerHandlers = (
           studioId,
         });
 
-        console.log(
+        logger.debug(
           `[MusicStudio] ${socket.user.name} rejected ${userId}'s request`,
         );
       } catch (err: any) {
-        console.error("[MusicStudio] Reject singer error:", err);
+        logger.error("[MusicStudio] Reject singer error:", err);
         socket.emit("reject_singer_failed", {
           message: err.message || "Failed to reject singer request",
         });

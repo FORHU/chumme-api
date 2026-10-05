@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import Joi from "joi";
 import SportSvc from "../services/sport.service";
+import logger from "../utils/logger";
 
 const fixturesQuerySchema = Joi.object({
   // ISO instants, not calendar dates — see the note in sport.repository.ts on
@@ -18,7 +19,7 @@ export default class SportCtrl {
       const leagues = await SportSvc.getLeagues();
       return res.status(200).json({ success: true, data: leagues });
     } catch (error: any) {
-      console.error("[SportCtrl] Error fetching leagues:", error);
+      logger.error("[SportCtrl] Error fetching leagues:", error);
       return res.status(500).json({
         success: false,
         message: error?.message || "Failed to fetch leagues",
@@ -43,7 +44,7 @@ export default class SportCtrl {
       const result = await SportSvc.getFixtures(value);
       return res.status(200).json({ success: true, ...result });
     } catch (error: any) {
-      console.error("[SportCtrl] Error fetching fixtures:", error);
+      logger.error("[SportCtrl] Error fetching fixtures:", error);
       return res.status(500).json({
         success: false,
         message: error?.message || "Failed to fetch fixtures",
@@ -61,7 +62,7 @@ export default class SportCtrl {
       }
       return res.status(200).json({ success: true, data: fixture });
     } catch (error: any) {
-      console.error("[SportCtrl] Error fetching fixture:", error);
+      logger.error("[SportCtrl] Error fetching fixture:", error);
       return res.status(500).json({
         success: false,
         message: error?.message || "Failed to fetch fixture",
@@ -74,7 +75,7 @@ export default class SportCtrl {
       const teams = await SportSvc.getTeamsByLeague(req.params.leagueId);
       return res.status(200).json({ success: true, data: teams });
     } catch (error: any) {
-      console.error("[SportCtrl] Error fetching teams:", error);
+      logger.error("[SportCtrl] Error fetching teams:", error);
       return res.status(500).json({
         success: false,
         message: error?.message || "Failed to fetch teams",

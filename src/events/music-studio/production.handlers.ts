@@ -11,6 +11,7 @@ import {
   UpdateVocalRolePayload,
   SetRelayModePayload,
 } from "./types";
+import logger from "../../utils/logger";
 
 export const registerProductionHandlers = (
   io: Server,
@@ -51,7 +52,7 @@ export const registerProductionHandlers = (
           startedBy: socket.user.id,
         });
 
-        console.log(`[MusicStudio] Countdown in ${studioId}`);
+        logger.debug(`[MusicStudio] Countdown in ${studioId}`);
       } catch (err: any) {
         socket.emit("recording_countdown_failed", {
           message: err.message || "Failed to start countdown",
@@ -120,7 +121,7 @@ export const registerProductionHandlers = (
           });
         }
       } catch (err: any) {
-        console.error("[MusicStudio] Sync lyrics error:", err);
+        logger.error("[MusicStudio] Sync lyrics error:", err);
       }
     },
   );
@@ -329,7 +330,9 @@ export const registerProductionHandlers = (
         passedBy: socket.user.id,
       });
 
-      console.log(`[MusicStudio] Mic passed to ${targetUserId} in ${studioId}`);
+      logger.debug(
+        `[MusicStudio] Mic passed to ${targetUserId} in ${studioId}`,
+      );
     } catch (err: any) {
       socket.emit("pass_microphone_failed", { message: err.message });
     }

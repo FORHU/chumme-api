@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import Joi from "joi";
 import * as userEmotionService from "../services/user-emotion.service";
+import logger from "../utils/logger";
 
 export const getAllEmotions = async (req: Request, res: Response) => {
   try {
@@ -11,7 +12,7 @@ export const getAllEmotions = async (req: Request, res: Response) => {
       data: emotions,
     });
   } catch (error) {
-    console.error("Error fetching all emotions:", error);
+    logger.error("Error fetching all emotions:", error);
     res.status(500).json({
       success: false,
       message:
@@ -31,7 +32,7 @@ export const getUserEmotions = async (req: Request, res: Response) => {
       data: userEmotions,
     });
   } catch (error) {
-    console.error("Error fetching user emotions:", error);
+    logger.error("Error fetching user emotions:", error);
     res.status(500).json({
       success: false,
       message:
@@ -77,7 +78,7 @@ export const addUserEmotions = async (req: Request, res: Response) => {
       data: updatedEmotions,
     });
   } catch (error) {
-    console.error("Error adding user emotions:", error);
+    logger.error("Error adding user emotions:", error);
     res.status(500).json({
       success: false,
       message:
@@ -113,7 +114,7 @@ export const removeUserEmotion = async (req: Request, res: Response) => {
       message: "Emotion removed successfully",
     });
   } catch (error) {
-    console.error("Error removing user emotion:", error);
+    logger.error("Error removing user emotion:", error);
 
     if (
       error instanceof Error &&

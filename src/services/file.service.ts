@@ -1,6 +1,7 @@
 import FileRepo from "../repositories/file.repository";
 import S3PresignedUtil from "../utils/s3-presigned.util";
 import S3Util from "../utils/s3.util";
+import logger from "../utils/logger";
 
 export default class FileSvc {
   /**
@@ -32,7 +33,7 @@ export default class FileSvc {
       try {
         sanitized = encodeURI(sanitized);
       } catch (err) {
-        console.warn(`[FileSvc] Failed to encode URL: ${sanitized}`, err);
+        logger.warn(`[FileSvc] Failed to encode URL: ${sanitized}`, err);
       }
     }
 
@@ -118,7 +119,7 @@ export default class FileSvc {
           const signedUrl = await S3PresignedUtil.getDownloadUrl(key);
           return { ...file, fileUrl: signedUrl };
         } catch (err) {
-          console.error(`Error signing URL for file ${file.id}:`, err);
+          logger.error(`Error signing URL for file ${file.id}:`, err);
         }
       }
     }

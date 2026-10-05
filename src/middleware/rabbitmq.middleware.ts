@@ -1,19 +1,20 @@
 import { rabbitMQService } from "../utils/rabbitmq";
+import logger from "../utils/logger";
 
 // Graceful shutdown handler
 export const setupGracefulShutdown = () => {
   const gracefulShutdown = async (signal: string) => {
-    console.log(`Received ${signal}. Starting graceful shutdown...`);
+    logger.info(`Received ${signal}. Starting graceful shutdown...`);
 
     try {
       // Close RabbitMQ connection
       await rabbitMQService.disconnect();
-      console.log("RabbitMQ connection closed");
+      logger.info("RabbitMQ connection closed");
 
       // Exit the process
       process.exit(0);
     } catch (error) {
-      console.error("Error during graceful shutdown:", error);
+      logger.error("Error during graceful shutdown:", error);
       process.exit(1);
     }
   };
@@ -25,13 +26,13 @@ export const setupGracefulShutdown = () => {
 
   // Handle uncaught exceptions
   process.on("uncaughtException", (error) => {
-    console.error("Uncaught Exception:", error);
+    logger.error("Uncaught Exception:", error);
     gracefulShutdown("uncaughtException");
   });
 
   // Handle unhandled promise rejections
   process.on("unhandledRejection", (reason, promise) => {
-    console.error("Unhandled Rejection at:", promise, "reason:", reason);
+    logger.error("Unhandled Rejection at:", promise, "reason:", reason);
     gracefulShutdown("unhandledRejection");
   });
 };

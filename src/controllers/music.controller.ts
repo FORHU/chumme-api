@@ -260,7 +260,7 @@ export default class MusicCtrl {
         try {
           req.body.meta_data = JSON.parse(metaFile.buffer.toString("utf-8"));
         } catch (e) {
-          console.warn("[MusicCtrl] Failed to parse meta_data file", e);
+          logger.warn("[MusicCtrl] Failed to parse meta_data file", e);
         }
       } else if (typeof req.body.metaData === "string") {
         try {
@@ -377,7 +377,7 @@ export default class MusicCtrl {
         data: music,
       });
     } catch (error: any) {
-      console.error("[MusicCtrl] Error in createMusicWithFiles:", error);
+      logger.error("[MusicCtrl] Error in createMusicWithFiles:", error);
       return res.status(500).json({ message: error.message || error });
     }
   }

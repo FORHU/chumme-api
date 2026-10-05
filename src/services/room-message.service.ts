@@ -2,6 +2,7 @@ import RoomMessageRepo from "../repositories/room-message.repository";
 import RoomUserChatRepo from "../repositories/room-user-chat.repository";
 import CacheUtil from "../utils/cache.util";
 import { prisma } from "../utils/prisma";
+import logger from "../utils/logger";
 
 export default class RoomMessageSvc {
   /**
@@ -64,7 +65,7 @@ export default class RoomMessageSvc {
         }
       } catch (err) {
         // Metadata enrichment is best-effort — never block the message itself
-        console.error(
+        logger.error(
           "[RoomMessageSvc] Failed to persist voice note metadata:",
           err,
         );

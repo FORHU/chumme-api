@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import Joi from "joi";
 import * as chummeArtistService from "../services/chumme-artist.service";
+import logger from "../utils/logger";
 
 export const getAllArtists = async (req: Request, res: Response) => {
   try {
@@ -11,7 +12,7 @@ export const getAllArtists = async (req: Request, res: Response) => {
       data: artists,
     });
   } catch (error) {
-    console.error("Error fetching all artists:", error);
+    logger.error("Error fetching all artists:", error);
     res.status(500).json({
       success: false,
       message:
@@ -29,7 +30,7 @@ export const getArtistsWithMusic = async (req: Request, res: Response) => {
       data: artists,
     });
   } catch (error) {
-    console.error("Error fetching artists with music:", error);
+    logger.error("Error fetching artists with music:", error);
     res.status(500).json({
       success: false,
       message:
@@ -55,7 +56,7 @@ export const getArtistById = async (req: Request, res: Response) => {
       data: artist,
     });
   } catch (error) {
-    console.error("Error fetching artist by ID:", error);
+    logger.error("Error fetching artist by ID:", error);
     res.status(500).json({
       success: false,
       message:
@@ -103,7 +104,7 @@ export const createArtist = async (req: Request, res: Response) => {
       data: artist,
     });
   } catch (error: any) {
-    console.error("Error creating artist:", error);
+    logger.error("Error creating artist:", error);
     res.status(500).json({
       success: false,
       message: error.message || "Failed to create artist",
@@ -151,7 +152,7 @@ export const updateArtist = async (req: Request, res: Response) => {
       data: artist,
     });
   } catch (error: any) {
-    console.error("Error updating artist:", error);
+    logger.error("Error updating artist:", error);
     res.status(500).json({
       success: false,
       message: error.message || "Failed to update artist",
@@ -169,7 +170,7 @@ export const deleteArtist = async (req: Request, res: Response) => {
       message: "Artist deleted successfully",
     });
   } catch (error: any) {
-    console.error("Error deleting artist:", error);
+    logger.error("Error deleting artist:", error);
     res.status(500).json({
       success: false,
       message: error.message || "Failed to delete artist",
@@ -188,7 +189,7 @@ export const getUserArtists = async (req: Request, res: Response) => {
       data: userArtists,
     });
   } catch (error) {
-    console.error("Error fetching user artists:", error);
+    logger.error("Error fetching user artists:", error);
     res.status(500).json({
       success: false,
       message:
@@ -232,7 +233,7 @@ export const addUserArtists = async (req: Request, res: Response) => {
       data: updatedArtists,
     });
   } catch (error) {
-    console.error("Error adding user artists:", error);
+    logger.error("Error adding user artists:", error);
     res.status(500).json({
       success: false,
       message: error instanceof Error ? error.message : "Failed to add artists",
@@ -267,7 +268,7 @@ export const removeUserArtist = async (req: Request, res: Response) => {
       message: "Artist removed successfully",
     });
   } catch (error) {
-    console.error("Error removing user artist:", error);
+    logger.error("Error removing user artist:", error);
     res.status(500).json({
       success: false,
       message:
@@ -294,7 +295,7 @@ export const skipOnboarding = async (req: Request, res: Response) => {
       data: updatedArtists,
     });
   } catch (error) {
-    console.error("Error skipping onboarding for artists:", error);
+    logger.error("Error skipping onboarding for artists:", error);
     res.status(500).json({
       success: false,
       message:
@@ -324,7 +325,7 @@ export const getLiveArtists = async (req: Request, res: Response) => {
       data: mappedArtists,
     });
   } catch (error) {
-    console.error("Error fetching live artists:", error);
+    logger.error("Error fetching live artists:", error);
     res.status(500).json({
       success: false,
       message:

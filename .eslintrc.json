@@ -14,7 +14,7 @@
     "prettier/prettier": "error",
     "@typescript-eslint/no-explicit-any": "off",
     "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
-    "no-console": "off"
+    "no-console": ["warn", { "allow": ["error"] }]
   },
   "env": {
     "node": true,

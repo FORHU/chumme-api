@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import YouTubeService from "../../services/net-communities/youtube.service";
 import { LiveProvisioningService } from "../../services/live-provisioning.service";
+import logger from "../../utils/logger";
 
 export default class YouTubeCtrl {
   /**
@@ -27,7 +28,7 @@ export default class YouTubeCtrl {
         data: result,
       });
     } catch (error: any) {
-      console.error("YouTubeCtrl.refreshRoomLive Error:", error);
+      logger.error("YouTubeCtrl.refreshRoomLive Error:", error);
       return res
         .status(500)
         .json({ message: error.message || "Internal server error" });
@@ -40,7 +41,7 @@ export default class YouTubeCtrl {
   static async getVideoDetails(req: Request, res: Response) {
     try {
       const { url, videoId: queryVideoId, id } = req.query;
-      console.log("[YouTubeCtrl.getVideoDetails] Input:", {
+      logger.debug("[YouTubeCtrl.getVideoDetails] Input:", {
         url,
         queryVideoId,
         id,
@@ -52,7 +53,7 @@ export default class YouTubeCtrl {
         videoId = YouTubeService.extractVideoId(url as string) || "";
       }
 
-      console.log("[YouTubeCtrl.getVideoDetails] Extracted videoId:", videoId);
+      logger.debug("[YouTubeCtrl.getVideoDetails] Extracted videoId:", videoId);
 
       if (!videoId) {
         return res.status(400).json({
@@ -72,7 +73,7 @@ export default class YouTubeCtrl {
         data: details,
       });
     } catch (error: any) {
-      console.error("YouTubeCtrl.getVideoDetails Error:", error);
+      logger.error("YouTubeCtrl.getVideoDetails Error:", error);
       return res
         .status(500)
         .json({ message: error.message || "Internal server error" });
@@ -104,7 +105,7 @@ export default class YouTubeCtrl {
         data: results,
       });
     } catch (error: any) {
-      console.error("YouTubeCtrl.searchVideos Error:", error);
+      logger.error("YouTubeCtrl.searchVideos Error:", error);
       return res
         .status(500)
         .json({ message: error.message || "Internal server error" });
@@ -163,7 +164,7 @@ export default class YouTubeCtrl {
         },
       });
     } catch (error: any) {
-      console.error("YouTubeCtrl.getChannelVideos Error:", error);
+      logger.error("YouTubeCtrl.getChannelVideos Error:", error);
       return res
         .status(500)
         .json({ message: error.message || "Internal server error" });
@@ -192,7 +193,7 @@ export default class YouTubeCtrl {
         data: results,
       });
     } catch (error: any) {
-      console.error("YouTubeCtrl.getPlaylistVideos Error:", error);
+      logger.error("YouTubeCtrl.getPlaylistVideos Error:", error);
       return res
         .status(500)
         .json({ message: error.message || "Internal server error" });

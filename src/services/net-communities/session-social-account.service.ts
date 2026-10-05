@@ -3,6 +3,7 @@ import axios from "axios";
 import SessionSocialAccountRepo from "../../repositories/net-communities/session-social-account.repository";
 import { AutoSyncSvc } from "./ingestion/auto-sync.service";
 import { SocialPlatform } from "@prisma/client";
+import logger from "../../utils/logger";
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 
@@ -98,7 +99,7 @@ export default class SessionSocialAccountSvc {
 
       return { message: "Google and YouTube accounts linked successfully" };
     } catch (error: any) {
-      console.error("SessionSocialAccountSvc.linkGoogleAccount Error:", error);
+      logger.error("SessionSocialAccountSvc.linkGoogleAccount Error:", error);
       throw new Error(error.message || "Failed to link Google account");
     }
   }
@@ -156,10 +157,7 @@ export default class SessionSocialAccountSvc {
 
       return { message: "Facebook and Instagram accounts linked successfully" };
     } catch (error: any) {
-      console.error(
-        "SessionSocialAccountSvc.linkFacebookAccount Error:",
-        error,
-      );
+      logger.error("SessionSocialAccountSvc.linkFacebookAccount Error:", error);
       throw new Error(error.message || "Failed to link Facebook account");
     }
   }

@@ -2,6 +2,7 @@ import amqp from "amqplib";
 import { RABBITMQ_URL } from "../config";
 import { QUEUE_NAMES } from "../utils/constant";
 import { processInstagramCrawlerData } from "../services/instagram-ingestion.service";
+import logger from "../utils/logger";
 
 export interface InstagramPostEvent {
   data: {
@@ -90,7 +91,7 @@ export class InstagramPostListener {
 
   async connect(): Promise<void> {
     try {
-      console.log("Connecting to RabbitMQ for video post events...");
+      logger.debug("Connecting to RabbitMQ for video post events...");
       this.connection = (await amqp.connect(RABBITMQ_URL)) as any;
       this.channel = await (this.connection as any).createChannel();
 
@@ -107,20 +108,20 @@ export class InstagramPostListener {
       await this.channel!.bindQueue(queueName, exchangeName, routingKey);
 
       this.isConnected = true;
-      console.log("RabbitMQ connected for instagram post events");
+      logger.info("RabbitMQ connected for instagram post events");
 
       // Handle connection events
       (this.connection as any).on("error", (err: any) => {
-        console.error("RabbitMQ connection error:", err);
+        logger.error("RabbitMQ connection error:", err);
         this.isConnected = false;
       });
 
       (this.connection as any).on("close", () => {
-        console.log("RabbitMQ connection closed");
+        logger.warn("RabbitMQ connection closed");
         this.isConnected = false;
       });
     } catch (error) {
-      console.error("Failed to connect to RabbitMQ:", error);
+      logger.error("Failed to connect to RabbitMQ:", error);
       this.isConnected = false;
       throw error;
     }
@@ -139,7 +140,9 @@ export class InstagramPostListener {
           if (msg) {
             try {
               const postData: any = JSON.parse(msg.content.toString());
-              console.log("Received Instagram post event:", postData);
+              logger.debug(
+                `Received Instagram post event ${postData?.id ?? ""}`,
+              );
 
               // Process the individual post
               await this.handleInstagramPost(postData);
@@ -147,7 +150,7 @@ export class InstagramPostListener {
               // Acknowledge the message
               this.channel?.ack(msg);
             } catch (error) {
-              console.error("Error processing video post event:", error);
+              logger.error("Error processing video post event:", error);
               // Reject the message and don't requeue
               this.channel?.nack(msg, false, false);
             }
@@ -155,19 +158,19 @@ export class InstagramPostListener {
         },
       );
 
-      console.log(
+      logger.info(
         "Listening for video post events...",
         QUEUE_NAMES.INSTAGRAM_SYNC,
       );
     } catch (error) {
-      console.error("Error setting up video post listener:", error);
+      logger.error("Error setting up video post listener:", error);
       throw error;
     }
   }
 
   private async handleInstagramPost(postData: any): Promise<void> {
     try {
-      console.log(
+      logger.debug(
         `Processing individual Instagram post: ${postData.caption} by ${postData.instagramMeta.displayName}`,
       );
 
@@ -205,9 +208,11 @@ export class InstagramPostListener {
 
       // Process the crawler data
       await processInstagramCrawlerData(postEvent);
-      console.log(`Successfully processed Instagram post: ${postData.caption}`);
+      logger.debug(
+        `Successfully processed Instagram post: ${postData.caption}`,
+      );
     } catch (error) {
-      console.error("Error handling Instagram post event:", error);
+      logger.error("Error handling Instagram post event:", error);
       throw error;
     }
   }
@@ -221,9 +226,9 @@ export class InstagramPostListener {
         await (this.connection as any).close();
       }
       this.isConnected = false;
-      console.log("Video post listener disconnected");
+      logger.info("Video post listener disconnected");
     } catch (error) {
-      console.error("Error disconnecting video post listener:", error);
+      logger.error("Error disconnecting video post listener:", error);
     }
   }
 
@@ -251,11 +256,11 @@ export class InstagramPostListener {
   //             throw new Error("Failed to publish video post event");
   //         }
 
-  //         console.log(
+  //         logger.debug(
   //             `Video post event published for: ${videoPostData.data.displayName}`
   //         );
   //     } catch (error) {
-  //         console.error("Error publishing video post event:", error);
+  //         logger.error("Error publishing video post event:", error);
   //         throw error;
   //     }
   // }

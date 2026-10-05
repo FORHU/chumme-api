@@ -7,6 +7,7 @@ import { registerProductionHandlers } from "./music-studio/production.handlers";
 import { registerMediaHandlers } from "./music-studio/media.handlers";
 import MusicStudioCacheSvc from "../services/music-studio-cache.service";
 import { PresenceBatcher } from "../utils/presence-batcher";
+import logger from "../utils/logger";
 
 export default (io: Server) => {
   const presenceBatcher = new PresenceBatcher(
@@ -18,17 +19,17 @@ export default (io: Server) => {
   io.use((socket: AuthenticatedSocket, next) => {
     authenticateSocket(socket, (err?: Error) => {
       if (err) {
-        console.error("[MusicStudio] Socket authentication failed!");
+        logger.warn("[MusicStudio] Socket authentication failed!");
         next(err);
       } else {
-        console.log("[MusicStudio] Socket authenticated successfully!");
+        logger.debug("[MusicStudio] Socket authenticated successfully!");
         next();
       }
     });
   });
 
   io.on("connection", (socket: AuthenticatedSocket) => {
-    console.log("[MusicStudio] User connected:", socket.user.id);
+    logger.debug("[MusicStudio] User connected:", socket.user.id);
 
     // Register modular handlers
     registerSessionHandlers(io, socket, presenceBatcher);

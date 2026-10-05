@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import Joi from "joi";
 import { ReportReason, ReportStatus, ReportTargetType } from "@prisma/client";
 import ModerationSvc from "../services/moderation.service";
+import logger from "../utils/logger";
 
 // The app sends lower-case values (`message`, `self_harm`); the enums are
 // upper-case. Accept either and normalise once here.
@@ -38,7 +39,7 @@ const userIdSchema = Joi.string().uuid().required();
 /** Service errors carry `statusCode` (see utils/error.util); anything else is a 500. */
 function sendError(res: Response, error: any, fallback: string) {
   const status = error?.statusCode ?? 500;
-  if (status >= 500) console.error(`[ModerationCtrl] ${fallback}:`, error);
+  if (status >= 500) logger.error(`[ModerationCtrl] ${fallback}:`, error);
   return res.status(status).json({
     success: false,
     message: status >= 500 ? fallback : error.message,

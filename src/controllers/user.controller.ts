@@ -3,6 +3,7 @@ import Joi from "joi";
 import UserSvc from "../services/user.service";
 import AuthSvc from "../services/auth.service";
 import { UserRole } from "@prisma/client";
+import logger from "../utils/logger";
 
 export default class UserCtrl {
   static async createAdmin(req: Request, res: Response) {
@@ -98,7 +99,7 @@ export default class UserCtrl {
           0,
       });
     } catch (error) {
-      console.error("Error in getCurrentUser:", error);
+      logger.error("Error in getCurrentUser:", error);
       return res.status(500).json({ message: error });
     }
   }

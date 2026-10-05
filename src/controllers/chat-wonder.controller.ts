@@ -44,7 +44,7 @@ export default class ChatWonderCtrl {
         conversationId,
       );
       // Debug: see the final parsed response payload returned to the app
-      console.log("[ChatWonderCtrl.sendChat] response:", {
+      logger.debug("[ChatWonderCtrl.sendChat] response:", {
         message: result?.message,
         videosCount: result?.videos?.length ?? 0,
         sourceMetadataCount: result?.source_metadata?.length ?? 0,
@@ -212,7 +212,7 @@ export default class ChatWonderCtrl {
                 const { raw, ...cleanResponse } = parsedResponse;
 
                 // Debug: show final parsed payload (keep it lightweight)
-                console.log("[ChatWonderCtrl.streamChat.onComplete] parsed:", {
+                logger.debug("[ChatWonderCtrl.streamChat.onComplete] parsed:", {
                   message: cleanResponse?.message,
                   videosCount: mergedVideos?.length ?? 0,
                   sourceMetadataCount: Array.isArray(sourceMetadata)
@@ -226,7 +226,7 @@ export default class ChatWonderCtrl {
                   if (s.length <= max) return s;
                   return `${s.slice(0, max)}...<truncated>`;
                 };
-                console.log(
+                logger.debug(
                   "[ChatWonderCtrl.streamChat.onComplete] raw payload preview:",
                   {
                     fullResponseLength:

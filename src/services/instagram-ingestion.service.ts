@@ -4,6 +4,7 @@ import SocialFeedRepo from "../repositories/social-feed.repository";
 import FileRepo from "../repositories/file.repository";
 import { upsertArtist } from "../repositories/chumme-artist.repository";
 import { InstagramPostEvent } from "../listeners/instagram-post.listener";
+import logger from "../utils/logger";
 
 /**
  * Service for processing TikTok crawler data and ingesting it into the database
@@ -15,7 +16,7 @@ export async function processInstagramCrawlerData(
 ): Promise<void> {
   const { data } = crawlerData;
 
-  console.log(`Processing ${data.posts.length} posts for ${data.displayName}`);
+  logger.info(`Processing ${data.posts.length} posts for ${data.displayName}`);
 
   // Step 1: Upsert artist based on TikTok profile
   const artist = await upsertArtist({
@@ -25,7 +26,7 @@ export async function processInstagramCrawlerData(
     genre: "Instagram Creator",
   });
 
-  console.log(`Artist: ${artist.name} (ID: ${artist.id})`);
+  logger.debug(`Artist: ${artist.name} (ID: ${artist.id})`);
 
   // Step 2: Process each post
   let newVideos = 0;
@@ -38,7 +39,9 @@ export async function processInstagramCrawlerData(
   for (const post of data.posts) {
     // Skip posts without video files or not downloaded
     if (!post.mediaSrc || !post.isDownloaded) {
-      console.log(`Skipping post ${post.id} - no video file or not downloaded`);
+      logger.debug(
+        `Skipping post ${post.id} - no video file or not downloaded`,
+      );
       skippedVideos++;
       continue;
     }
@@ -84,10 +87,10 @@ export async function processInstagramCrawlerData(
 
         if (videoResult.isUpdate) {
           updatedVideos++;
-          console.log(`Updated existing video: ${videoResult.item.id}`);
+          logger.debug(`Updated existing video: ${videoResult.item.id}`);
         } else {
           newVideos++;
-          console.log(`Created new video: ${videoResult.item.id}`);
+          logger.debug(`Created new video: ${videoResult.item.id}`);
         }
       } else {
         //for type == 'Image' | 'Sidecar', use MediaPostService
@@ -102,10 +105,10 @@ export async function processInstagramCrawlerData(
 
         if (mediaPostResult.isUpdate) {
           updatedPosts++;
-          console.log(`Updated existing video: ${mediaPostResult.item.id}`);
+          logger.debug(`Updated existing video: ${mediaPostResult.item.id}`);
         } else {
           newPosts++;
-          console.log(`Created new video: ${mediaPostResult.item.id}`);
+          logger.debug(`Created new video: ${mediaPostResult.item.id}`);
         }
       }
 
@@ -149,29 +152,29 @@ export async function processInstagramCrawlerData(
 
         if (signalsToLink.length > 0) {
           await SocialFeedRepo.upsertSocialSignals(resultId, signalsToLink);
-          console.log(
+          logger.debug(
             `[INGESTION] Linked ${signalsToLink.length} emotions for ${resultId}`,
           );
         } else {
-          console.log(
+          logger.debug(
             `No emotions found in Spotify data for video ${resultId}`,
           );
         }
       } else {
-        console.log(`No Spotify emotion data available for video ${resultId}`);
+        logger.debug(`No Spotify emotion data available for video ${resultId}`);
       }
     } catch (error) {
-      console.error(`Error processing post ${post.id}:`, error);
+      logger.error(`Error processing post ${post.id}:`, error);
       // Continue with other posts even if one fails
     }
   }
 
-  console.log(`Finished processing for ${artist.name}:`);
-  console.log(`  - New videos: ${newVideos}`);
-  console.log(`  - Updated videos: ${updatedVideos}`);
-  console.log(`  - Skipped videos: ${skippedVideos}`);
+  logger.info(`Finished processing for ${artist.name}:`);
+  logger.info(`  - New videos: ${newVideos}`);
+  logger.info(`  - Updated videos: ${updatedVideos}`);
+  logger.info(`  - Skipped videos: ${skippedVideos}`);
 
-  console.log(`  - New mediaPosts: ${newPosts}`);
-  console.log(`  - Updated mediaPosts: ${updatedPosts}`);
-  console.log(`  - Skipped mediaPosts: ${skippedPosts}`);
+  logger.info(`  - New mediaPosts: ${newPosts}`);
+  logger.info(`  - Updated mediaPosts: ${updatedPosts}`);
+  logger.info(`  - Skipped mediaPosts: ${skippedPosts}`);
 }

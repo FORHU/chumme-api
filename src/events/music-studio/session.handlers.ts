@@ -11,6 +11,7 @@ import {
   StudioActionPayload,
   UpdateRolePayload,
 } from "./types";
+import logger from "../../utils/logger";
 
 export const registerSessionHandlers = (
   io: Server,
@@ -53,11 +54,11 @@ export const registerSessionHandlers = (
         data: result.data,
       });
 
-      console.log(
+      logger.info(
         `[MusicStudio] ✔ ${socket.user.name} created studio: ${name}`,
       );
     } catch (err: any) {
-      console.error("[MusicStudio] Create studio error:", err);
+      logger.error("[MusicStudio] Create studio error:", err);
       socket.emit("create_studio_failed", {
         message: err.message || "Failed to create studio",
       });
@@ -70,9 +71,11 @@ export const registerSessionHandlers = (
   socket.on("join_studio", async (data: JoinStudioPayload) => {
     try {
       const { studioId, keyPassword, role } = data;
-      console.log("[DEBUG] Socket join_studio:", {
+      // keyPassword is the private studio's password — log whether one was
+      // sent, never its value.
+      logger.debug("[MusicStudio] join_studio", {
         studioId,
-        keyPassword,
+        hasKeyPassword: !!keyPassword,
         role,
       });
 
@@ -149,11 +152,11 @@ export const registerSessionHandlers = (
 
       presenceBatcher.addJoin(studioId, socket.user.id);
 
-      console.log(
+      logger.debug(
         `[MusicStudio] ✔ ${socket.user.name} joined studio: ${studioId} (Redis cached)`,
       );
     } catch (err: any) {
-      console.error("[MusicStudio] Join studio error:", err);
+      logger.error("[MusicStudio] Join studio error:", err);
       socket.emit("join_studio_failed", {
         message: err.message || "Failed to join studio",
       });
@@ -211,11 +214,11 @@ export const registerSessionHandlers = (
         });
       }
 
-      console.log(
+      logger.debug(
         `[MusicStudio] ✔ ${socket.user.name} updated role for ${targetUserId} to ${role}`,
       );
     } catch (err: any) {
-      console.error("[MusicStudio] Update role error:", err);
+      logger.error("[MusicStudio] Update role error:", err);
       socket.emit("update_role_failed", {
         message: err.message || "Failed to update role",
       });
@@ -252,11 +255,11 @@ export const registerSessionHandlers = (
           updatedBy: socket.user.id,
         });
 
-        console.log(
+        logger.debug(
           `[MusicStudio] ✔ Max members for ${studioId} set to ${count}`,
         );
       } catch (err: any) {
-        console.error("[MusicStudio] Set max members error:", err);
+        logger.error("[MusicStudio] Set max members error:", err);
         socket.emit("set_max_members_failed", {
           message: err.message || "Failed to set member limit",
         });
@@ -307,9 +310,9 @@ export const registerSessionHandlers = (
         allUsers: updatedMembers,
       });
 
-      console.log(`[MusicStudio] Bulk upgrade in ${studioId}`);
+      logger.debug(`[MusicStudio] Bulk upgrade in ${studioId}`);
     } catch (err: any) {
-      console.error("[MusicStudio] Make all singers error:", err);
+      logger.error("[MusicStudio] Make all singers error:", err);
       socket.emit("make_all_singers_failed", {
         message: err.message || "Failed to upgrade all users",
       });
@@ -351,7 +354,7 @@ export const registerSessionHandlers = (
           message: "Left studio successfully",
         });
 
-        console.log(
+        logger.info(
           `[MusicStudio] 🔒 Studio auto-closed (owner left): ${studioId}`,
         );
         return;
@@ -397,16 +400,16 @@ export const registerSessionHandlers = (
 
         await MusicStudioSvc.closeStudio(studioId, socket.user.id, true);
 
-        console.log(
+        logger.info(
           `[MusicStudio] 🔒 Studio auto-closed (0 members): ${studioId}`,
         );
       }
 
-      console.log(
+      logger.debug(
         `[MusicStudio] ✔ ${socket.user.name} left studio: ${studioId}`,
       );
     } catch (err: any) {
-      console.error("[MusicStudio] Leave studio error:", err);
+      logger.error("[MusicStudio] Leave studio error:", err);
       socket.emit("leave_studio_failed", {
         message: err.message || "Failed to leave studio",
       });
@@ -436,9 +439,9 @@ export const registerSessionHandlers = (
       const socketsInRoom = await io.in(studioId).fetchSockets();
       socketsInRoom.forEach((s) => s.leave(studioId));
 
-      console.log(`[MusicStudio] ✔ Studio closed: ${studioId}`);
+      logger.info(`[MusicStudio] ✔ Studio closed: ${studioId}`);
     } catch (err: any) {
-      console.error("[MusicStudio] Close studio error:", err);
+      logger.error("[MusicStudio] Close studio error:", err);
       socket.emit("close_studio_failed", {
         message: err.message || "Failed to close studio",
       });
@@ -504,7 +507,7 @@ export const registerSessionHandlers = (
                 // Use centralized closeStudio for full cleanup (Redis, S3, DB)
                 await MusicStudioSvc.closeStudio(studioId, userId, true);
 
-                console.log(
+                logger.info(
                   `[MusicStudio] 🔒 Studio auto-closed (owner disconnected): ${studioId}`,
                 );
               } else {
@@ -521,32 +524,32 @@ export const registerSessionHandlers = (
 
                   await MusicStudioSvc.closeStudio(studioId, userId, true);
 
-                  console.log(
+                  logger.info(
                     `[MusicStudio] 🔒 Studio auto-closed (0 members after disconnect): ${studioId}`,
                   );
                 }
               }
 
-              console.log(
+              logger.debug(
                 `[MusicStudio] User ${userId} removed after grace period from ${studioId}`,
               );
             } else {
-              console.log(
+              logger.debug(
                 `[MusicStudio] User ${userId} reconnected to ${studioId}, cancellation of removal`,
               );
             }
           } catch (err) {
-            console.error("[MusicStudio] Grace period cleanup error:", err);
+            logger.error("[MusicStudio] Grace period cleanup error:", err);
           }
         }, 15000); // 15 seconds
       }
 
-      console.log(
+      logger.debug(
         "[MusicStudio] Client disconnected (grace period started):",
         socket.user.id,
       );
     } catch (err) {
-      console.error("[MusicStudio] Disconnect error:", err);
+      logger.error("[MusicStudio] Disconnect error:", err);
     }
   });
 };

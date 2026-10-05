@@ -1,5 +1,6 @@
 import { createClient, RedisClientType } from "redis";
 import { REDIS_HOST, REDIS_PASSWORD, REDIS_PORT } from "../config";
+import logger from "./logger";
 
 export default class RedisUtil {
   static redisClient: RedisClientType;
@@ -13,13 +14,13 @@ export default class RedisUtil {
     });
 
     this.redisClient.on("ready", () => {
-      console.log(
+      logger.info(
         `[RedisUtil] Connected to Redis at ${REDIS_HOST}:${REDIS_PORT}`,
       );
     });
 
     this.redisClient.on("error", (err) => {
-      console.error("[RedisUtil] Redis connection error:", err);
+      logger.error("[RedisUtil] Redis connection error:", err);
     });
 
     await this.redisClient.connect();

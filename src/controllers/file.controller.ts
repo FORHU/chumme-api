@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import Joi from "joi";
 import FileSvc from "../services/file.service";
 import { planUpload, UploadPolicyError } from "../utils/upload-policy";
+import logger from "../utils/logger";
 
 export default class FileCtrl {
   static async saveFile(req: Request, res: Response) {
@@ -145,7 +146,7 @@ export default class FileCtrl {
       if (err instanceof UploadPolicyError) {
         return res.status(400).json({ message: err.message });
       }
-      console.error("[FileCtrl] getUploadUrl failed:", err);
+      logger.error("[FileCtrl] getUploadUrl failed:", err);
       return res.status(500).json({ message: "Could not create upload URL" });
     }
   }
