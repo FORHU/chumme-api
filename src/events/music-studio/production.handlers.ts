@@ -46,6 +46,14 @@ export const registerProductionHandlers = (
           });
         }
 
+        // Outlives the countdown by a margin so the start-recording call that
+        // follows it still finds RUNNING (and a cancel can still flip it).
+        await MusicStudioCacheSvc.setCountdownState(
+          studioId,
+          "RUNNING",
+          Math.max(1, Number(seconds) || 3) + 10,
+        );
+
         io.to(studioId).emit("countdown_started", {
           studioId,
           seconds,
@@ -56,6 +64,102 @@ export const registerProductionHandlers = (
       } catch (err: any) {
         socket.emit("recording_countdown_failed", {
           message: err.message || "Failed to start countdown",
+        });
+      }
+    },
+  );
+
+  /**
+   * CANCEL COUNTDOWN
+   * Host-only. Marks the countdown CANCELLED so a start-recording call from a
+   * timer that already fired is refused (see MusicStudioSvc.startRecording).
+   */
+  socket.on("cancel_countdown", async (data: { studioId: string }) => {
+    try {
+      const { studioId } = data;
+
+      if (!studioId) {
+        return socket.emit("cancel_countdown_failed", {
+          message: "studioId is required",
+        });
+      }
+
+      if (!(await MusicStudioSvc.isHost(studioId, socket.user.id))) {
+        return socket.emit("cancel_countdown_failed", {
+          message: "Only owner or producers can cancel the countdown",
+        });
+      }
+
+      const state = await MusicStudioCacheSvc.getStudioState(studioId);
+      if (state === "RECORDING") {
+        return socket.emit("cancel_countdown_failed", {
+          code: "ALREADY_RECORDING",
+          message: "Recording has already started",
+        });
+      }
+
+      await MusicStudioCacheSvc.setCountdownState(studioId, "CANCELLED", 15);
+
+      io.to(studioId).emit("countdown_cancelled", {
+        studioId,
+        cancelledBy: socket.user.id,
+      });
+
+      console.log(`[MusicStudio] Countdown cancelled in ${studioId}`);
+    } catch (err: any) {
+      socket.emit("cancel_countdown_failed", {
+        message: err.message || "Failed to cancel countdown",
+      });
+    }
+  });
+
+  /**
+   * SEEK TRACK
+   * Host-only; moves the backing track for everyone else in the room.
+   * Refused mid-take or mid-countdown so a take's timing can't be shifted.
+   */
+  socket.on(
+    "seek_track",
+    async (data: { studioId: string; positionMs: number }) => {
+      try {
+        const { studioId, positionMs } = data;
+
+        if (
+          !studioId ||
+          typeof positionMs !== "number" ||
+          !Number.isFinite(positionMs) ||
+          positionMs < 0
+        ) {
+          return socket.emit("seek_track_failed", {
+            message: "studioId and a non-negative positionMs are required",
+          });
+        }
+
+        if (!(await MusicStudioSvc.isHost(studioId, socket.user.id))) {
+          return socket.emit("seek_track_failed", {
+            message: "Only owner or producers can seek",
+          });
+        }
+
+        const [state, countdownState] = await Promise.all([
+          MusicStudioCacheSvc.getStudioState(studioId),
+          MusicStudioCacheSvc.getCountdownState(studioId),
+        ]);
+        if (state === "RECORDING" || countdownState === "RUNNING") {
+          return socket.emit("seek_track_failed", {
+            code: "RECORDING_IN_PROGRESS",
+            message: "Can't seek while a take or countdown is running",
+          });
+        }
+
+        socket.to(studioId).emit("track_seeked", {
+          studioId,
+          positionMs: Math.round(positionMs),
+          seekedBy: socket.user.id,
+        });
+      } catch (err: any) {
+        socket.emit("seek_track_failed", {
+          message: err.message || "Failed to seek",
         });
       }
     },

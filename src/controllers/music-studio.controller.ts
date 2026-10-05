@@ -259,6 +259,8 @@ export default class MusicStudioCtrl {
         musicId,
       );
 
+      const performers = await MusicStudioSvc.getPerformers(studioId);
+
       // Notify studio members via socket
       io.to(studioId).emit("recording_started", {
         studioId: studioId,
@@ -266,6 +268,7 @@ export default class MusicStudioCtrl {
         timestamp: result.timestamp,
         source: clientTimestamp ? "client" : "server",
         musicId,
+        performers,
       });
 
       return res.json(result);
