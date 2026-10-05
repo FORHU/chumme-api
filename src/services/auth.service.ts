@@ -12,7 +12,9 @@ import {
   ACCESS_TOKEN_EXPIRY,
   GOOGLE_CLIENT_ID,
   GOOGLE_ANDROID_CLIENT_ID,
+  isDev,
 } from "../config";
+import logger from "../utils/logger";
 import { AutoSyncSvc } from "./net-communities/ingestion/auto-sync.service";
 import { OtpPurpose, SocialPlatform, UserRole } from "@prisma/client";
 
@@ -105,6 +107,28 @@ export default class AuthSvc {
     }
   }
 
+  /**
+   * The code email failed, so the OTP never reached the inbox.
+   *
+   * Outside production the code is logged so a local setup without SMTP can
+   * still finish the flow. In production it never is: a live OTP in the logs
+   * lets anyone with log access verify, reset or take over the account.
+   */
+  private static logUndeliveredOtp(
+    flow: string,
+    userId: string,
+    otp: string,
+    error: unknown,
+  ): void {
+    if (isDev) {
+      logger.warn(
+        `[AuthSvc] ${flow} email not sent (dev only) — OTP for user ${userId}: ${otp}`,
+      );
+      return;
+    }
+    logger.error(`[AuthSvc] ${flow} email not sent for user ${userId}`, error);
+  }
+
   static async register(data: {
     email: string;
     password: string;
@@ -184,9 +208,7 @@ export default class AuthSvc {
         template_name: "verification-email.html",
       });
     } catch (error) {
-      console.error("Failed to send verification email:", error);
-      // Still log to console as backup
-      console.log(`Backup - OTP for ${user.email}: ${otp}`);
+      this.logUndeliveredOtp("Verification", user.id, otp, error);
     }
 
     // --- Automatic Social Linking (New) ---
@@ -207,13 +229,13 @@ export default class AuthSvc {
             avatarUrl: payload.picture,
           });
           // YouTube platform is created only via onboarding connect-google / linkGoogleAccount (youtube.readonly), not here.
-          console.log(
+          logger.info(
             `[AuthSvc] Auto-linked Google during registration for user ${user.id}`,
           );
         }
       } catch (err) {
-        console.error(
-          "[AuthSvc] Failed to auto-link Google account during registration:",
+        logger.error(
+          "[AuthSvc] Failed to auto-link Google account during registration",
           err,
         );
       }
@@ -241,7 +263,7 @@ export default class AuthSvc {
               accessToken: data.accessToken,
               avatarUrl: userData.picture?.data?.url,
             });
-            console.log(
+            logger.info(
               `[AuthSvc] Auto-linked Facebook/Instagram during registration for user ${user.id}`,
             );
 
@@ -254,8 +276,8 @@ export default class AuthSvc {
           }
         }
       } catch (err) {
-        console.error(
-          "[AuthSvc] Failed to auto-link Facebook account during registration:",
+        logger.error(
+          "[AuthSvc] Failed to auto-link Facebook account during registration",
           err,
         );
       }
@@ -396,11 +418,11 @@ export default class AuthSvc {
             avatarUrl: payload.picture,
           });
           // YouTube platform is created only via onboarding connect-google / linkGoogleAccount.
-          console.log(`[AuthSvc] Auto-linked Google for user ${user.id}`);
+          logger.info(`[AuthSvc] Auto-linked Google for user ${user.id}`);
         }
       } catch (err) {
-        console.error(
-          "[AuthSvc] Failed to auto-link Google account during login:",
+        logger.error(
+          "[AuthSvc] Failed to auto-link Google account during login",
           err,
         );
       }
@@ -428,7 +450,7 @@ export default class AuthSvc {
               accessToken,
               avatarUrl: userData.picture?.data?.url,
             });
-            console.log(
+            logger.info(
               `[AuthSvc] Auto-linked Facebook/Instagram for user ${user.id}`,
             );
 
@@ -441,8 +463,8 @@ export default class AuthSvc {
           }
         }
       } catch (err) {
-        console.error(
-          "[AuthSvc] Failed to auto-link Facebook account during login:",
+        logger.error(
+          "[AuthSvc] Failed to auto-link Facebook account during login",
           err,
         );
       }
@@ -536,7 +558,6 @@ export default class AuthSvc {
     });
 
     // Send email with OTP
-    // Send email with OTP
     try {
       await sendTemplatedEmail({
         subject: "Password Reset Code",
@@ -547,7 +568,7 @@ export default class AuthSvc {
         template_name: "forgot-password.html",
       });
     } catch (error) {
-      console.log(`Password Reset OTP for ${user.email}: ${otp}`);
+      this.logUndeliveredOtp("Password reset", user.id, otp, error);
     }
 
     return {
@@ -615,7 +636,7 @@ export default class AuthSvc {
         template_name: "verification-email.html",
       });
     } catch (error) {
-      console.log(`OTP for ${user.email}: ${otp}`);
+      this.logUndeliveredOtp("Verification resend", user.id, otp, error);
     }
     return {
       message: "New verification code sent to your email",
@@ -667,7 +688,7 @@ export default class AuthSvc {
         template_name: "forgot-password.html",
       });
     } catch (error) {
-      console.log(`Password change OTP for ${user.email}: ${otp}`);
+      this.logUndeliveredOtp("Password change", user.id, otp, error);
     }
 
     return {
@@ -782,7 +803,7 @@ export default class AuthSvc {
         template_name: "verification-email.html",
       });
     } catch (error) {
-      console.log(`Email change OTP for ${email}: ${otp}`);
+      this.logUndeliveredOtp("Email change", user.id, otp, error);
     }
 
     return {
@@ -974,7 +995,7 @@ export default class AuthSvc {
         userData.picture?.data?.url, // Facebook profile picture
       );
     } catch (error: any) {
-      console.error("Facebook SSO error:", error);
+      logger.error("[AuthSvc] Facebook SSO failed", error);
       throw new Error("Failed to verify Facebook token");
     }
   }
