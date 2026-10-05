@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test": "NODE_ENV=development mocha --require ./test/setup-env.js --require ts-node/register 'test/**/*.spec.ts'",
     "build": "tsc",
+    "docs:api": "ts-node --transpile-only scripts/generate-api-docs.ts",
     "start": "node ./dist/src/server.js",
     "start:worker": "node ./dist/src/worker.js",
     "dev:worker": "nodemon --watch src --ext ts --exec ts-node --files ./src/worker.ts",
