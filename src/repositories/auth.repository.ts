@@ -1,5 +1,5 @@
 import { prisma } from "../utils/prisma";
-import { OtpPurpose, UserRole } from "@prisma/client";
+import { AuthProvider, OtpPurpose, UserRole } from "@prisma/client";
 import logger from "../utils/logger";
 
 export default class AuthRepo {
@@ -301,7 +301,8 @@ export default class AuthRepo {
         email: data.email,
         name: data.name || data.email.split("@")[0],
         username,
-        password: "GOOGLE_SSO_USER",
+        password: null,
+        authProvider: AuthProvider.GOOGLE,
         isEmailVerified: true,
         avatarId,
       },
@@ -409,7 +410,8 @@ export default class AuthRepo {
         email: data.email,
         name: data.name || data.email.split("@")[0],
         username,
-        password: "FACEBOOK_SSO_USER",
+        password: null,
+        authProvider: AuthProvider.FACEBOOK,
         isEmailVerified: true,
         avatarId,
       },

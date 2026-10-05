@@ -11,6 +11,11 @@ model User {
   id                     String                  @id @default(uuid())
   email                  String                  @unique
   password               String?
+  /// How the account was created. A GOOGLE or FACEBOOK account starts with no
+  /// password and keeps this value if its owner later sets one through
+  /// "Forgot password". Linked identities (and their provider user ids) live
+  /// in SessionSocialAccount; this only says which door the account came in by.
+  authProvider           AuthProvider            @default(EMAIL)
   name                   String?
   username               String                  @unique
   isActive               Boolean                 @default(true)
@@ -1118,6 +1123,12 @@ enum OtpPurpose {
   PASSWORD_RESET
   PASSWORD_CHANGE
   EMAIL_CHANGE
+}
+
+enum AuthProvider {
+  EMAIL
+  GOOGLE
+  FACEBOOK
 }
 
 enum SocialPlatform {

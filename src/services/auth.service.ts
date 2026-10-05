@@ -2,7 +2,7 @@ import AuthRepo from "../repositories/auth.repository";
 import SessionSessionSocialAccountRepo from "../repositories/net-communities/session-social-account.repository";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
-import { OAuth2Client } from "google-auth-library";
+import { verifyGoogleIdToken } from "../utils/google-id-token.util";
 import { generateOTP, getOTPExpiry, isOTPExpired } from "../utils/otp.utils";
 import { sendTemplatedEmail } from "../utils/helpers";
 import CacheUtil from "../utils/cache.util";
@@ -10,13 +10,16 @@ import {
   ACCESS_TOKEN_SECRET,
   REFRESH_TOKEN_SECRET,
   ACCESS_TOKEN_EXPIRY,
-  GOOGLE_CLIENT_ID,
-  GOOGLE_ANDROID_CLIENT_ID,
   isDev,
 } from "../config";
 import logger from "../utils/logger";
 import { AutoSyncSvc } from "./net-communities/ingestion/auto-sync.service";
-import { OtpPurpose, SocialPlatform, UserRole } from "@prisma/client";
+import {
+  AuthProvider,
+  OtpPurpose,
+  SocialPlatform,
+  UserRole,
+} from "@prisma/client";
 
 /**
  * Addresses are rejected here as well as at the route edge. `email` is the
@@ -129,6 +132,17 @@ export default class AuthSvc {
     logger.error(`[AuthSvc] ${flow} email not sent for user ${userId}`, error);
   }
 
+  /** What a password login on a passwordless (social sign-up) account sees. */
+  private static socialOnlyLoginMessage(provider: AuthProvider): string {
+    const name =
+      provider === AuthProvider.FACEBOOK
+        ? "Facebook"
+        : provider === AuthProvider.GOOGLE
+          ? "Google"
+          : "Google or Facebook";
+    return `This account signs in with ${name}. Continue with ${name}, or use "Forgot password" to set a password.`;
+  }
+
   static async register(data: {
     email: string;
     password: string;
@@ -214,13 +228,8 @@ export default class AuthSvc {
     // --- Automatic Social Linking (New) ---
     if (data.idToken) {
       try {
-        const client = new OAuth2Client(GOOGLE_CLIENT_ID);
-        const ticket = await client.verifyIdToken({
-          idToken: data.idToken,
-          audience: [GOOGLE_CLIENT_ID, GOOGLE_ANDROID_CLIENT_ID],
-        });
-        const payload = ticket.getPayload();
-        if (payload && payload.email === user.email) {
+        const payload = await verifyGoogleIdToken(data.idToken);
+        if (payload.email === user.email) {
           await SessionSessionSocialAccountRepo.upsertSocialAccount({
             userId: user.id,
             platform: "google",
@@ -370,46 +379,21 @@ export default class AuthSvc {
       };
     }
 
-    // Verify password
+    // A social sign-up has no password until its owner sets one through
+    // "Forgot password". One check, one message, naming the way back in.
     if (!user.password) {
-      throw "This account uses a social provider. Please login with Google or Facebook.";
+      throw this.socialOnlyLoginMessage(user.authProvider);
     }
 
-    if (user.password === "GOOGLE_SSO_USER") {
-      throw "Please use Google login for this account.";
-    }
-
-    if (user.password === "FACEBOOK_SSO_USER") {
-      throw "Please use Facebook login for this account.";
-    }
-
-    try {
-      const [salt, storedHash] = user.password.split(":");
-      if (!salt || !storedHash) {
-        throw new Error("Invalid password format");
-      }
-
-      const hash = crypto
-        .pbkdf2Sync(password, salt, 1000, 64, "sha512")
-        .toString("hex");
-
-      if (storedHash !== hash) {
-        throw "Invalid credentials";
-      }
-    } catch (e) {
+    if (!this.verifyPassword(password, user.password)) {
       throw "Invalid credentials";
     }
 
     // --- Automatic Social Linking (New) ---
     if (idToken) {
       try {
-        const client = new OAuth2Client(GOOGLE_CLIENT_ID);
-        const ticket = await client.verifyIdToken({
-          idToken,
-          audience: [GOOGLE_CLIENT_ID, GOOGLE_ANDROID_CLIENT_ID],
-        });
-        const payload = ticket.getPayload();
-        if (payload && payload.email === user.email) {
+        const payload = await verifyGoogleIdToken(idToken);
+        if (payload.email === user.email) {
           await SessionSessionSocialAccountRepo.upsertSocialAccount({
             userId: user.id,
             platform: "google",
@@ -874,22 +858,9 @@ export default class AuthSvc {
   }
 
   static async googleAuthSSO(idToken: string) {
-    const client = new OAuth2Client(GOOGLE_CLIENT_ID);
-
-    console.log("[AuthSvc] googleAuthSSO verifying token:", {
-      configuredWebId: GOOGLE_CLIENT_ID,
-      configuredAndroidId: GOOGLE_ANDROID_CLIENT_ID,
-      tokenPrefix: idToken?.substring(0, 30),
-    });
     try {
-      // Verify the ID token with Google
-      const ticket = await client.verifyIdToken({
-        idToken,
-        audience: [GOOGLE_CLIENT_ID, GOOGLE_ANDROID_CLIENT_ID],
-      });
-
-      const payload = ticket.getPayload();
-      if (!payload || !payload.email) {
+      const payload = await verifyGoogleIdToken(idToken);
+      if (!payload.email) {
         throw new Error("Invalid Google token payload");
       }
 
@@ -923,8 +894,9 @@ export default class AuthSvc {
         payload.picture, // Google profile picture
       );
     } catch (error: any) {
-      console.error("[AuthSvc] Google SSO verification failed. Raw Error:");
-      console.dir(error, { depth: null });
+      // The message is enough to diagnose a wrong audience or an expired
+      // token; the full object dump this replaces also printed request config.
+      logger.warn(`[AuthSvc] Google sign-in rejected: ${error.message}`);
       throw new Error("Failed to verify Google token: " + error.message);
     }
   }
