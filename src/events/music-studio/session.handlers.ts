@@ -135,13 +135,32 @@ export const registerSessionHandlers = (
         MusicStudioCacheSvc.getCurrentSinger(studioId),
       ]);
 
+      // Hosts rebuild their "N people want to sing" list from this on (re)join;
+      // live singer_request events only cover requests made while connected.
+      const pendingSingerRequests = pendingRequests.map((r: any) => ({
+        userId: r.userId,
+        name: r.user?.name ?? null,
+        avatarUrl: r.user?.avatar?.fileUrl ?? null,
+        requestedAt: r.requestedAt,
+      }));
+
+      const owner = (result.data as any)?.owner;
+      const host = owner
+        ? {
+            userId: owner.id,
+            name: owner.name ?? owner.username ?? null,
+            avatarUrl: owner.avatar?.fileUrl ?? null,
+          }
+        : null;
+
       socket.emit("join_studio_success", {
         studioId,
         message: result.message,
-        data: result.data,
+        data: { ...result.data, host },
         users: activeUsers,
         state: currentState,
         requests: pendingRequests,
+        pendingSingerRequests,
         queue: queue,
         musicId: currentMusicId,
         currentSinger,
@@ -380,10 +399,17 @@ export const registerSessionHandlers = (
 
       presenceBatcher.addLeave(studioId, socket.user.id);
 
-      await Promise.all([
+      const [, hadPendingRequest] = await Promise.all([
         MusicStudioCacheSvc.removeMember(studioId, socket.user.id),
         MusicStudioCacheSvc.removeSingerRequest(studioId, socket.user.id),
       ]);
+      if (hadPendingRequest) {
+        io.to(studioId).emit("singer_request_cancelled", {
+          studioId,
+          userId: socket.user.id,
+          reason: "USER_LEFT",
+        });
+      }
 
       // Auto-close studio if no members remain
       const remainingMembers = await MusicStudioCacheSvc.getMembers(studioId);
@@ -472,11 +498,18 @@ export const registerSessionHandlers = (
               // Still disconnected after 15s -> Perform final cleanup
               presenceBatcher.addLeave(studioId, userId);
 
-              await Promise.all([
+              const [, hadPendingRequest] = await Promise.all([
                 MusicStudioCacheSvc.removeMember(studioId, userId),
                 MusicStudioCacheSvc.removeSingerRequest(studioId, userId),
                 MusicStudioRepo.removeUser(studioId, userId),
               ]);
+              if (hadPendingRequest) {
+                io.to(studioId).emit("singer_request_cancelled", {
+                  studioId,
+                  userId,
+                  reason: "USER_DISCONNECTED",
+                });
+              }
 
               // --- MIC RELEASE LOGIC (After Grace Period) ---
               const currentSingerId =

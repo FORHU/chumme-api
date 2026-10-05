@@ -82,6 +82,48 @@ export const registerSingerHandlers = (
   });
 
   /**
+   * CANCEL SINGER REQUEST (by the listener who made it)
+   */
+  socket.on("cancel_singer_request", async (data: StudioActionPayload) => {
+    try {
+      const { studioId } = data;
+
+      if (!studioId) {
+        return socket.emit("cancel_singer_request_failed", {
+          message: "studioId is required",
+        });
+      }
+
+      const removed = await MusicStudioCacheSvc.removeSingerRequest(
+        studioId,
+        socket.user.id,
+      );
+
+      if (!removed) {
+        return socket.emit("cancel_singer_request_failed", {
+          code: "REQUEST_NOT_PENDING",
+          message: "You have no pending request to cancel",
+        });
+      }
+
+      io.to(studioId).emit("singer_request_cancelled", {
+        studioId,
+        userId: socket.user.id,
+        reason: "CANCELLED",
+      });
+
+      console.log(
+        `[MusicStudio] ${socket.user.name} cancelled singer request in ${studioId}`,
+      );
+    } catch (err: any) {
+      console.error("[MusicStudio] Cancel singer request error:", err);
+      socket.emit("cancel_singer_request_failed", {
+        message: err.message || "Failed to cancel singer request",
+      });
+    }
+  });
+
+  /**
    * APPROVE SINGER REQUEST
    */
   socket.on(
@@ -93,6 +135,16 @@ export const registerSingerHandlers = (
         if (!studioId || !userId) {
           return socket.emit("approve_singer_failed", {
             message: "studioId and userId are required",
+          });
+        }
+
+        // The listener may have cancelled (or left) while the host looked at
+        // the request; approving it then would make them a singer anyway.
+        if (!(await MusicStudioCacheSvc.hasSingerRequest(studioId, userId))) {
+          return socket.emit("approve_singer_failed", {
+            code: "REQUEST_NOT_PENDING",
+            userId,
+            message: "This request is no longer pending",
           });
         }
 
@@ -162,6 +214,14 @@ export const registerSingerHandlers = (
         if (!isOwner && membership?.role !== MusicStudioRole.PRODUCER) {
           return socket.emit("reject_singer_failed", {
             message: "Only owner or producers can reject requests",
+          });
+        }
+
+        if (!(await MusicStudioCacheSvc.hasSingerRequest(studioId, userId))) {
+          return socket.emit("reject_singer_failed", {
+            code: "REQUEST_NOT_PENDING",
+            userId,
+            message: "This request is no longer pending",
           });
         }
 

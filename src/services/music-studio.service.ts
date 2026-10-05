@@ -93,6 +93,15 @@ export default class MusicStudioSvc {
       throw new Error("Only the owner can start recording");
     }
 
+    // A start that lands after the host cancelled the 3-2-1 countdown is a
+    // stale timer, not a new take. A fresh countdown overwrites CANCELLED.
+    const countdownState =
+      await MusicStudioCacheSvc.getCountdownState(studioId);
+    if (countdownState === "CANCELLED") {
+      throw new Error("Countdown was cancelled");
+    }
+    await MusicStudioCacheSvc.clearCountdownState(studioId);
+
     await MusicStudioCacheSvc.setStudioState(studioId, "RECORDING");
 
     // Clear any previous temp records for this studio AND this song to avoid merging old takes
@@ -386,6 +395,53 @@ export default class MusicStudioSvc {
   static async isOwner(studioId: string, userId: string) {
     const studio = await MusicStudioRepo.findById(studioId);
     return studio?.ownerId === userId;
+  }
+
+  /**
+   * Check if user hosts the studio: the owner, or a PRODUCER member
+   */
+  static async isHost(studioId: string, userId: string) {
+    if (await this.isOwner(studioId, userId)) return true;
+    const membership = await MusicStudioRepo.getMembership(studioId, userId);
+    return Boolean(
+      membership?.isActive && membership.role === MusicStudioRole.PRODUCER,
+    );
+  }
+
+  /**
+   * Who is expected to sing in the take that is starting, for the listeners'
+   * "Maya is singing" line. Relay singing has one singer at a time (unless the
+   * chorus role 0 is active); otherwise it is every connected singer/producer.
+   */
+  static async getPerformers(
+    studioId: string,
+  ): Promise<{ userId: string; name: string }[]> {
+    const [members, studioType, currentSinger, currentRoleIndex] =
+      await Promise.all([
+        MusicStudioCacheSvc.getMembers(studioId),
+        MusicStudioCacheSvc.getStudioType(studioId),
+        MusicStudioCacheSvc.getCurrentSinger(studioId),
+        MusicStudioCacheSvc.getCurrentRoleIndex(studioId),
+      ]);
+
+    const connected = members.filter((m: any) => m.isConnected !== false);
+
+    if (
+      studioType === MusicStudioType.RELAYSINGING &&
+      currentSinger &&
+      currentRoleIndex !== 0
+    ) {
+      const singer = connected.find((m: any) => m.userId === currentSinger);
+      return singer ? [{ userId: singer.userId, name: singer.name }] : [];
+    }
+
+    return connected
+      .filter(
+        (m: any) =>
+          m.role === MusicStudioRole.SINGER ||
+          m.role === MusicStudioRole.PRODUCER,
+      )
+      .map((m: any) => ({ userId: m.userId, name: m.name }));
   }
 
   /**

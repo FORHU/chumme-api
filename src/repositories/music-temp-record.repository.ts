@@ -56,6 +56,28 @@ export default class MusicTempRecordRepo {
   }
 
   /**
+   * Find the temporary records for one uploaded file (a single take)
+   */
+  static async findByFileId(studioId: string, musicId: string, fileId: string) {
+    return prisma.musicTempRecord.findMany({
+      where: { studioId, musicId, fileId },
+    });
+  }
+
+  /**
+   * Delete the temporary records for one uploaded file (a single take)
+   */
+  static async deleteByFileId(
+    studioId: string,
+    musicId: string,
+    fileId: string,
+  ) {
+    return prisma.musicTempRecord.deleteMany({
+      where: { studioId, musicId, fileId },
+    });
+  }
+
+  /**
    * Delete all temporary records by Studio ID
    */
   static async deleteByStudioId(studioId: string) {

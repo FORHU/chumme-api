@@ -59,4 +59,26 @@ export default class MusicTempRecordSvc {
   static async deleteChunksByMusicAndStudio(musicId: string, studioId: string) {
     return MusicTempRecordRepo.deleteByMusicIdAndStudioId(musicId, studioId);
   }
+
+  /**
+   * Get the chunks for one uploaded take
+   */
+  static async getChunksByFile(
+    studioId: string,
+    musicId: string,
+    fileId: string,
+  ) {
+    return MusicTempRecordRepo.findByFileId(studioId, musicId, fileId);
+  }
+
+  /**
+   * Delete the chunks for one uploaded take
+   */
+  static async deleteChunksByFile(
+    studioId: string,
+    musicId: string,
+    fileId: string,
+  ) {
+    return MusicTempRecordRepo.deleteByFileId(studioId, musicId, fileId);
+  }
 }
