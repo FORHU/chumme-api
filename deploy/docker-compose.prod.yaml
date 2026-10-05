@@ -18,6 +18,15 @@ services:
         image: ${IMAGE}
         restart: unless-stopped
         env_file: app.env
+        # Docker's default json-file driver keeps stdout forever. The logger's
+        # Console transport writes every line there, so without this cap the
+        # container log on the host grows until the shared disk fills — the
+        # in-app file rotation (src/utils/logger.ts) does not reach it.
+        logging:
+            driver: json-file
+            options:
+                max-size: "20m"
+                max-file: "5"
         ports:
             # Published on ALL interfaces, NOT loopback — deliberately different
             # from BOOSTK's services on this box.

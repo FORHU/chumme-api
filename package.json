@@ -57,6 +57,7 @@
     "socket.io": "^4.7.2",
     "sockets": "^0.4.2",
     "winston": "^3.11.0",
+    "winston-daily-rotate-file": "^5.0.0",
     "ws": "^8.19.0"
   },
   "devDependencies": {

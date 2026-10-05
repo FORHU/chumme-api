@@ -1,10 +1,19 @@
 import * as dotenv from "dotenv";
+import path from "path";
 dotenv.config();
 
 export const DATABASE_URL = process.env.DATABASE_URL as string;
 export const PORT = Number(process.env.PORT || 3002);
 export const SECRET_KEY = process.env.SECRET_KEY as string;
 export const isDev = process.env.NODE_ENV !== "production";
+// Logging (src/utils/logger.ts). LOG_DIR is resolved to an absolute path once,
+// here, so log files land in the same place no matter which directory the
+// process was started from. `||` rather than `??` throughout: deploy.yml writes
+// an empty value for anything unset, and empty must mean "use the default".
+export const LOG_DIR = path.resolve(process.env.LOG_DIR || "logs");
+export const LOG_LEVEL = process.env.LOG_LEVEL || (isDev ? "debug" : "info");
+export const LOG_MAX_SIZE = process.env.LOG_MAX_SIZE || "20m";
+export const LOG_MAX_FILES = process.env.LOG_MAX_FILES || "14d";
 // Browser origins allowed to call the API, comma-separated. Empty = none: the
 // mobile app sends no Origin header, so it is unaffected either way.
 export const CORS_ORIGINS = (process.env.CORS_ORIGINS || "")
