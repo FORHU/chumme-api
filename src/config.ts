@@ -64,6 +64,11 @@ export const TRANSLATION_API_URL = (
   process.env.TRANSLATION_API_URL || "https://chat-dev.forhu.ai"
 ).replace(/\/+$/, "");
 
+// Sports demo fixtures (seeded by `npm run db:seed:sports:demo`) are merged
+// into the fixture list only while this is "true". Off by default so a
+// production deploy never shows invented matches.
+export const SPORTS_DEMO_MODE = process.env.SPORTS_DEMO_MODE === "true";
+
 // Google OAuth Configuration
 export const GOOGLE_CLIENT_ID = (process.env.GOOGLE_CLIENT_ID || "").trim();
 export const GOOGLE_ANDROID_CLIENT_ID = (

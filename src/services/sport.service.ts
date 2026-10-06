@@ -3,6 +3,8 @@ import SportIngestionSvc, { extractFixture } from "./sport-ingestion.service";
 import { fetchScoreboard, toEspnDateRange } from "../utils/espn.util";
 import CacheUtil from "../utils/cache.util";
 import logger from "../utils/logger";
+import { withDemoState } from "../utils/sport-demo.util";
+import { SPORTS_DEMO_MODE } from "../config";
 
 /** A fixture list is a screen, not a report — no one pages past a week of games. */
 const MAX_FIXTURES = 200;
@@ -80,7 +82,27 @@ export default class SportSvc {
         leagueId: params.leagueId,
         teamId: params.teamId,
         limit,
+        includeDemo: SPORTS_DEMO_MODE,
       });
+    } else if (SPORTS_DEMO_MODE) {
+      // The live list comes from ESPN, which has never heard of the demo
+      // matches, so they are added from the database here.
+      const demo = await SportRepo.findFixtures({
+        from,
+        to,
+        leagueId: params.leagueId,
+        limit,
+        demoOnly: true,
+      });
+      items = [...items, ...demo].sort(
+        (a, b) =>
+          new Date(a.gameDate).getTime() - new Date(b.gameDate).getTime(),
+      );
+    }
+
+    if (SPORTS_DEMO_MODE) {
+      const now = new Date();
+      items = items.map((item) => withDemoState(item, now));
     }
 
     return {
@@ -242,7 +264,8 @@ export default class SportSvc {
   }
 
   static async getFixtureById(id: string) {
-    return SportRepo.findFixtureById(id);
+    const fixture = await SportRepo.findFixtureById(id);
+    return fixture ? withDemoState(fixture) : fixture;
   }
 
   static async getTeamsByLeague(leagueId: string) {
