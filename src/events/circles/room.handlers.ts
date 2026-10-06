@@ -9,6 +9,7 @@ import { sendChat } from "../../utils/chat-wonder-api";
 import { parseChatWonderResponse } from "../../utils/chat-wonder";
 import RoomMessageRepo from "../../repositories/room-message.repository";
 import CacheUtil from "../../utils/cache.util";
+import logger from "../../utils/logger";
 
 export const registerRoomHandlers = (
   io: Server,
@@ -48,7 +49,7 @@ export const registerRoomHandlers = (
           data.keyPassword,
           "MEMBER",
         );
-        console.log(
+        logger.debug(
           `[Circles] Persistent membership created for ${socket.user.id} in ${room_id}`,
         );
       }
@@ -69,11 +70,11 @@ export const registerRoomHandlers = (
 
       presenceBatcher.addJoin(room_id, socket.user.id);
 
-      console.log(
+      logger.debug(
         `[Circles] ✔ ${socket.user.name} joined room: ${roomName} (${room_id})`,
       );
     } catch (err) {
-      console.error("[Circles] Join room error:", err);
+      logger.error("[Circles] Join room error:", err);
       socket.emit("join_room_failed", { message: "Internal server error" });
     }
   });
@@ -127,8 +128,8 @@ export const registerRoomHandlers = (
         room_id,
       });
 
-      console.log(
-        `[Circles] 💬 ${socket.user.name} in ${roomName}: ${message.substring(0, 30)}${message.length > 30 ? "..." : ""}`,
+      logger.debug(
+        `[Circles] Message from ${socket.user.id} in ${roomName} (${message.length} chars)`,
       );
 
       // 5. If message mentions @chumme, invoke AI and broadcast its reply
@@ -169,17 +170,15 @@ export const registerRoomHandlers = (
               videos: parsed.videos,
             });
 
-            console.log(
-              `[Circles] 🤖 @chumme replied in ${roomName}: ${parsed.message.substring(0, 30)}...`,
-            );
+            logger.debug(`[Circles] @chumme replied in ${roomName}`);
           } catch (err: any) {
-            console.error("[Circles] @chumme error:", err);
+            logger.error("[Circles] @chumme error:", err);
             socket.emit("error", { message: "Chumme failed to respond" });
           }
         })();
       }
     } catch (err: any) {
-      console.error("[Circles] Send message error:", err);
+      logger.error("[Circles] Send message error:", err);
       socket.emit("error", {
         message: err.message || "Failed to send message",
       });
@@ -200,11 +199,11 @@ export const registerRoomHandlers = (
       presenceBatcher.addLeave(room_id, socket.user.id);
 
       socket.emit("leave_room_success", { room_id });
-      console.log(
+      logger.debug(
         `[Circles] 🚪 ${socket.user.name} left room presence: ${room_id}`,
       );
     } catch (err) {
-      console.error("[Circles] Leave room error:", err);
+      logger.error("[Circles] Leave room error:", err);
     }
   });
 };

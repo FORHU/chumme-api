@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import Joi from "joi";
 import * as userInterestService from "../services/user-interest.service";
+import logger from "../utils/logger";
 
 export const getAllInterests = async (req: Request, res: Response) => {
   try {
@@ -11,7 +12,7 @@ export const getAllInterests = async (req: Request, res: Response) => {
       data: interests,
     });
   } catch (error) {
-    console.error("Error fetching all interests:", error);
+    logger.error("Error fetching all interests:", error);
     res.status(500).json({
       success: false,
       message:
@@ -31,7 +32,7 @@ export const getUserInterests = async (req: Request, res: Response) => {
       data: userInterests,
     });
   } catch (error) {
-    console.error("Error fetching user interests:", error);
+    logger.error("Error fetching user interests:", error);
     res.status(500).json({
       success: false,
       message:
@@ -77,7 +78,7 @@ export const addUserInterests = async (req: Request, res: Response) => {
       data: updatedInterests,
     });
   } catch (error) {
-    console.error("Error adding user interests:", error);
+    logger.error("Error adding user interests:", error);
     res.status(500).json({
       success: false,
       message:
@@ -113,7 +114,7 @@ export const removeUserInterest = async (req: Request, res: Response) => {
       message: "Interest removed successfully",
     });
   } catch (error) {
-    console.error("Error removing user interest:", error);
+    logger.error("Error removing user interest:", error);
 
     if (
       error instanceof Error &&

@@ -116,12 +116,24 @@ export default class MusicStudioCacheSvc {
   }
 
   /**
-   * Remove a singer request (after approval/rejection)
+   * Remove a singer request (after approval/rejection/cancel)
+   * Returns true if a pending request was actually removed.
    */
   static async removeSingerRequest(studioId: string, userId: string) {
-    if (!this.client) return;
+    if (!this.client) return false;
     const key = `${this.STUDIO_PREFIX}${studioId}:requests`;
-    await this.client.hDel(key, userId);
+    return (await this.client.hDel(key, userId)) > 0;
+  }
+
+  /**
+   * Whether a user has a pending singer request.
+   * Without Redis requests are never stored, so treat them as pending rather
+   * than block every approval.
+   */
+  static async hasSingerRequest(studioId: string, userId: string) {
+    if (!this.client) return true;
+    const key = `${this.STUDIO_PREFIX}${studioId}:requests`;
+    return (await this.client.hExists(key, userId)) === true;
   }
 
   /**
@@ -459,6 +471,37 @@ export default class MusicStudioCacheSvc {
   }
 
   /**
+   * Set the pre-recording countdown state (RUNNING, CANCELLED)
+   */
+  static async setCountdownState(
+    studioId: string,
+    state: "RUNNING" | "CANCELLED",
+    ttlSeconds: number,
+  ) {
+    if (!this.client) return;
+    const key = `${this.STUDIO_PREFIX}${studioId}:countdown`;
+    await this.client.set(key, state, { EX: ttlSeconds });
+  }
+
+  /**
+   * Get the countdown state (null when none is running or recently cancelled)
+   */
+  static async getCountdownState(studioId: string) {
+    if (!this.client) return null;
+    const key = `${this.STUDIO_PREFIX}${studioId}:countdown`;
+    return await this.client.get(key);
+  }
+
+  /**
+   * Clear the countdown state
+   */
+  static async clearCountdownState(studioId: string) {
+    if (!this.client) return;
+    const key = `${this.STUDIO_PREFIX}${studioId}:countdown`;
+    await this.client.del(key);
+  }
+
+  /**
    * Clear all session data (on studio close)
    */
   static async clearStudioSession(studioId: string) {
@@ -479,6 +522,8 @@ export default class MusicStudioCacheSvc {
       `${this.STUDIO_PREFIX}${studioId}:currentRoleIndex`,
       `${this.STUDIO_PREFIX}${studioId}:musicQueue`,
       `${this.STUDIO_PREFIX}${studioId}:recordingStartTime`,
+      `${this.STUDIO_PREFIX}${studioId}:recordingEndTime`,
+      `${this.STUDIO_PREFIX}${studioId}:countdown`,
     ];
     await this.client.del(keys);
   }

@@ -3,6 +3,7 @@ import { mapLiveStatus } from "../utils/community-mapping.util";
 import { getLiveArtists } from "../repositories/chumme-artist.repository";
 import S3Util from "../utils/s3.util";
 import S3PresignedUtil from "../utils/s3-presigned.util";
+import logger from "../utils/logger";
 
 export default class ChummeSubCategorySvc {
   /**
@@ -292,7 +293,7 @@ export default class ChummeSubCategorySvc {
         try {
           signedUrl = await S3PresignedUtil.getDownloadUrl(key);
         } catch (err) {
-          console.error(
+          logger.error(
             `[ChummeSubCategorySvc] Error signing URL for key ${key}:`,
             err,
           );

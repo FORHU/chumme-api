@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import Joi from "joi";
 import AuthSvc from "../services/auth.service";
+import logger from "../utils/logger";
 import { UserRole } from "@prisma/client";
 
 export default class AuthCtrl {
@@ -109,7 +110,7 @@ export default class AuthCtrl {
       });
       return res.json({ message: "Login successful", data });
     } catch (error: any) {
-      console.error("Login error:", error);
+      logger.warn("[AuthCtrl] Login failed", error);
       return res.status(401).json({ message: error.message || error });
     }
   }
@@ -130,7 +131,7 @@ export default class AuthCtrl {
       const result = await AuthSvc.refreshToken(refreshToken);
       return res.json(result);
     } catch (error: any) {
-      console.error("Refresh token error:", error);
+      logger.warn("[AuthCtrl] Refresh token failed", error);
       return res.status(401).json({ message: error.message || error });
     }
   }
@@ -350,7 +351,7 @@ export default class AuthCtrl {
       const data = await AuthSvc.googleAuthSSO(idToken);
       return res.json({ message: "Google authentication successful", data });
     } catch (error: any) {
-      console.error("Google auth error:", error);
+      logger.error("[AuthCtrl] Google auth failed", error);
       return res
         .status(401)
         .json({ message: error.message || "Google authentication failed" });
@@ -373,7 +374,7 @@ export default class AuthCtrl {
       const data = await AuthSvc.facebookAuthSSO(accessToken);
       return res.json({ message: "Facebook authentication successful", data });
     } catch (error: any) {
-      console.error("Facebook auth error:", error);
+      logger.error("[AuthCtrl] Facebook auth failed", error);
       return res
         .status(401)
         .json({ message: error.message || "Facebook authentication failed" });
@@ -387,7 +388,7 @@ export default class AuthCtrl {
       await AuthSvc.logout(userId, refreshToken);
       return res.json({ message: "Logged out successfully" });
     } catch (error: any) {
-      console.error("Logout error:", error);
+      logger.error("[AuthCtrl] Logout failed", error);
       return res.status(400).json({ message: error.message || error });
     }
   }

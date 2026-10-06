@@ -3,6 +3,7 @@ import { RABBITMQ_URL } from "../config";
 import { processTikTokCrawlerData } from "../services/tiktok-ingestion.service";
 
 import { QUEUE_NAMES } from "../utils/constant";
+import logger from "../utils/logger";
 
 // Individual post structure sent from crawler
 export interface TikTokPostMessage {
@@ -137,7 +138,7 @@ export class VideoPostListener {
 
   async connect(): Promise<void> {
     try {
-      console.log("Connecting to RabbitMQ for video post events...");
+      logger.debug("Connecting to RabbitMQ for video post events...");
       this.connection = (await amqp.connect(RABBITMQ_URL)) as any;
       this.channel = await (this.connection as any).createChannel();
 
@@ -154,20 +155,20 @@ export class VideoPostListener {
       await this.channel!.bindQueue(queueName, exchangeName, routingKey);
 
       this.isConnected = true;
-      console.log("RabbitMQ connected for tiktok post events");
+      logger.info("RabbitMQ connected for tiktok post events");
 
       // Handle connection events
       (this.connection as any).on("error", (err: any) => {
-        console.error("RabbitMQ connection error:", err);
+        logger.error("RabbitMQ connection error:", err);
         this.isConnected = false;
       });
 
       (this.connection as any).on("close", () => {
-        console.log("RabbitMQ connection closed");
+        logger.warn("RabbitMQ connection closed");
         this.isConnected = false;
       });
     } catch (error) {
-      console.error("Failed to connect to RabbitMQ:", error);
+      logger.error("Failed to connect to RabbitMQ:", error);
       this.isConnected = false;
       throw error;
     }
@@ -188,7 +189,7 @@ export class VideoPostListener {
               const postData: TikTokPostMessage = JSON.parse(
                 msg.content.toString(),
               );
-              console.log("Received TikTok post event:", postData);
+              logger.debug(`Received TikTok post event ${postData?.id ?? ""}`);
 
               // Process the individual post
               await this.handleTikTokPost(postData);
@@ -196,7 +197,7 @@ export class VideoPostListener {
               // Acknowledge the message
               this.channel?.ack(msg);
             } catch (error) {
-              console.error("Error processing video post event:", error);
+              logger.error("Error processing video post event:", error);
               // Reject the message and don't requeue
               this.channel?.nack(msg, false, false);
             }
@@ -204,19 +205,19 @@ export class VideoPostListener {
         },
       );
 
-      console.log(
+      logger.info(
         "Listening for video post events...",
         QUEUE_NAMES.TIKTOK_SYNC,
       );
     } catch (error) {
-      console.error("Error setting up video post listener:", error);
+      logger.error("Error setting up video post listener:", error);
       throw error;
     }
   }
 
   private async handleTikTokPost(postData: TikTokPostMessage): Promise<void> {
     try {
-      console.log(
+      logger.debug(
         `Processing individual TikTok post: ${postData.caption} by ${postData.tiktokMeta.displayName}`,
       );
 
@@ -251,9 +252,9 @@ export class VideoPostListener {
 
       // Process the crawler data
       await processTikTokCrawlerData(videoPostEvent);
-      console.log(`Successfully processed TikTok post: ${postData.caption}`);
+      logger.debug(`Successfully processed TikTok post: ${postData.caption}`);
     } catch (error) {
-      console.error("Error handling TikTok post event:", error);
+      logger.error("Error handling TikTok post event:", error);
       throw error;
     }
   }
@@ -267,9 +268,9 @@ export class VideoPostListener {
         await (this.connection as any).close();
       }
       this.isConnected = false;
-      console.log("Video post listener disconnected");
+      logger.info("Video post listener disconnected");
     } catch (error) {
-      console.error("Error disconnecting video post listener:", error);
+      logger.error("Error disconnecting video post listener:", error);
     }
   }
 
@@ -297,11 +298,11 @@ export class VideoPostListener {
         throw new Error("Failed to publish video post event");
       }
 
-      console.log(
+      logger.debug(
         `Video post event published for: ${videoPostData.data.displayName}`,
       );
     } catch (error) {
-      console.error("Error publishing video post event:", error);
+      logger.error("Error publishing video post event:", error);
       throw error;
     }
   }

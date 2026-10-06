@@ -1,4 +1,5 @@
 import { Server } from "socket.io";
+import logger from "./logger";
 
 export class PresenceBatcher {
   private joined = new Map<string, Set<string>>(); // id -> Set<userId>
@@ -50,7 +51,7 @@ export class PresenceBatcher {
         allUsers: allMembers,
       });
 
-      console.log(
+      logger.debug(
         `[PresenceBatcher] Flushed presence for ${id}: +${joinedIds.length}, -${leftIds.length}`,
       );
     }

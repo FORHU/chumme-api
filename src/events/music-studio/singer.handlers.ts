@@ -5,6 +5,7 @@ import MusicStudioRepo from "../../repositories/music-studio.repository";
 import MusicStudioCacheSvc from "../../services/music-studio-cache.service";
 import RedisUtil from "../../utils/redis.util";
 import { AuthenticatedSocket, StudioActionPayload } from "./types";
+import logger from "../../utils/logger";
 
 export const registerSingerHandlers = (
   io: Server,
@@ -70,13 +71,55 @@ export const registerSingerHandlers = (
         message: "Your request to sing has been sent",
       });
 
-      console.log(
+      logger.debug(
         `[MusicStudio] ${socket.user.name} requested singer in ${studioId}`,
       );
     } catch (err: any) {
-      console.error("[MusicStudio] Request singer error:", err);
+      logger.error("[MusicStudio] Request singer error:", err);
       socket.emit("request_singer_failed", {
         message: err.message || "Failed to request singer role",
+      });
+    }
+  });
+
+  /**
+   * CANCEL SINGER REQUEST (by the listener who made it)
+   */
+  socket.on("cancel_singer_request", async (data: StudioActionPayload) => {
+    try {
+      const { studioId } = data;
+
+      if (!studioId) {
+        return socket.emit("cancel_singer_request_failed", {
+          message: "studioId is required",
+        });
+      }
+
+      const removed = await MusicStudioCacheSvc.removeSingerRequest(
+        studioId,
+        socket.user.id,
+      );
+
+      if (!removed) {
+        return socket.emit("cancel_singer_request_failed", {
+          code: "REQUEST_NOT_PENDING",
+          message: "You have no pending request to cancel",
+        });
+      }
+
+      io.to(studioId).emit("singer_request_cancelled", {
+        studioId,
+        userId: socket.user.id,
+        reason: "CANCELLED",
+      });
+
+      console.log(
+        `[MusicStudio] ${socket.user.name} cancelled singer request in ${studioId}`,
+      );
+    } catch (err: any) {
+      console.error("[MusicStudio] Cancel singer request error:", err);
+      socket.emit("cancel_singer_request_failed", {
+        message: err.message || "Failed to cancel singer request",
       });
     }
   });
@@ -93,6 +136,16 @@ export const registerSingerHandlers = (
         if (!studioId || !userId) {
           return socket.emit("approve_singer_failed", {
             message: "studioId and userId are required",
+          });
+        }
+
+        // The listener may have cancelled (or left) while the host looked at
+        // the request; approving it then would make them a singer anyway.
+        if (!(await MusicStudioCacheSvc.hasSingerRequest(studioId, userId))) {
+          return socket.emit("approve_singer_failed", {
+            code: "REQUEST_NOT_PENDING",
+            userId,
+            message: "This request is no longer pending",
           });
         }
 
@@ -119,11 +172,11 @@ export const registerSingerHandlers = (
           studioId,
         });
 
-        console.log(
+        logger.debug(
           `[MusicStudio] ${socket.user.name} approved ${userId} as singer`,
         );
       } catch (err: any) {
-        console.error("[MusicStudio] Approve singer error:", err);
+        logger.error("[MusicStudio] Approve singer error:", err);
         socket.emit("approve_singer_failed", {
           message: err.message || "Failed to approve singer",
         });
@@ -165,6 +218,14 @@ export const registerSingerHandlers = (
           });
         }
 
+        if (!(await MusicStudioCacheSvc.hasSingerRequest(studioId, userId))) {
+          return socket.emit("reject_singer_failed", {
+            code: "REQUEST_NOT_PENDING",
+            userId,
+            message: "This request is no longer pending",
+          });
+        }
+
         await MusicStudioCacheSvc.removeSingerRequest(studioId, userId);
 
         io.to(studioId).emit("singer_rejected", {
@@ -173,11 +234,11 @@ export const registerSingerHandlers = (
           studioId,
         });
 
-        console.log(
+        logger.debug(
           `[MusicStudio] ${socket.user.name} rejected ${userId}'s request`,
         );
       } catch (err: any) {
-        console.error("[MusicStudio] Reject singer error:", err);
+        logger.error("[MusicStudio] Reject singer error:", err);
         socket.emit("reject_singer_failed", {
           message: err.message || "Failed to reject singer request",
         });

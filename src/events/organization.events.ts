@@ -5,6 +5,7 @@ import CircleCacheSvc from "../services/circle-cache.service";
 import { registerRoomHandlers } from "./circles/room.handlers";
 import { registerMatchRoomHandlers } from "./sports/match-room.handlers";
 import { PresenceBatcher } from "../utils/presence-batcher";
+import logger from "../utils/logger";
 
 interface AuthenticatedSocket extends Socket {
   user?: any;
@@ -20,17 +21,17 @@ export default (io: Server) => {
   io.use((socket: AuthenticatedSocket, next) => {
     authenticateSocket(socket, (err?: Error) => {
       if (err) {
-        console.error("[Circles] Socket authentication failed!");
+        logger.warn("[Circles] Socket authentication failed!");
         next(err);
       } else {
-        console.log("[Circles] Socket authenticated successfully!");
+        logger.debug("[Circles] Socket authenticated successfully!");
         next();
       }
     });
   });
 
   io.on("connection", (socket: AuthenticatedSocket) => {
-    console.log("[Circles] User connected:", socket.user.id);
+    logger.debug("[Circles] User connected:", socket.user.id);
 
     // Register modular Circles handlers
     registerRoomHandlers(io, socket, presenceBatcher);
@@ -66,22 +67,22 @@ export default (io: Server) => {
                 // Still disconnected -> Cleanup
                 presenceBatcher.addLeave(roomId, userId);
                 await CircleCacheSvc.removeRoomPresence(roomId, userId);
-                console.log(
+                logger.debug(
                   `[Circles] User ${userId} removed after grace period from ${roomId}`,
                 );
               }
             } catch (err) {
-              console.error("[Circles] Grace period cleanup error:", err);
+              logger.error("[Circles] Grace period cleanup error:", err);
             }
           }, 15000);
         }
 
-        console.log(
+        logger.debug(
           "[Circles] Client disconnected (grace period started):",
           socket.user.id,
         );
       } catch (err) {
-        console.error("[Circles] Disconnect error:", err);
+        logger.error("[Circles] Disconnect error:", err);
       }
     });
   });

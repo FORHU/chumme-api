@@ -39,6 +39,35 @@ services:
         # Socket.IO shares this port with the HTTP API (io is attached to the
         # same server in src/app.ts) — there is no second relay service to run,
         # unlike BOOSTK.
+        #
+        # 3002 stays published after HTTPS goes live: APKs already installed
+        # dial http://…:3002 until users update.
+
+    # ---------------------------------------------------------------------------
+    # HTTPS. Off until the API_DOMAIN GitHub variable is set; deploy.yml then
+    # adds --profile https. Caddy gets and renews a Let's Encrypt certificate on
+    # its own and proxies websockets (Socket.IO) without extra config.
+    #
+    # REQUIRES, before setting API_DOMAIN — see docs/HTTPS-SETUP.md:
+    #   - a DNS A record for the domain pointing at this instance's Elastic IP
+    #   - host ports 80 and 443 free (BOOSTK's nginx must not hold them)
+    #   - the security group allowing inbound TCP 80 and 443
+    # ---------------------------------------------------------------------------
+    caddy:
+        image: caddy:2
+        restart: unless-stopped
+        profiles: ["https"]
+        command: caddy reverse-proxy --from ${API_DOMAIN:-} --to app:3002
+        ports:
+            - "80:80"
+            - "443:443"
+        volumes:
+            # Certificates live here. Losing the volume means re-issuing, and
+            # Let's Encrypt rate-limits repeated issues for the same domain.
+            - chumme_caddy_data:/data
+            - chumme_caddy_config:/config
+        depends_on:
+            - app
 
     # ---------------------------------------------------------------------------
     # REQUIRED. Not optional like RabbitMQ.
@@ -84,3 +113,5 @@ services:
 volumes:
     chumme_redis:
     chumme_rabbitmq:
+    chumme_caddy_data:
+    chumme_caddy_config:

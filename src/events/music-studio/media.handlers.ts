@@ -5,6 +5,7 @@ import { AuthenticatedSocket } from "./types";
 import { MusicStudioType } from "@prisma/client";
 import MusicLibrarySvc from "../../services/music-library.service";
 import MusicTempRecordSvc from "../../services/music-temp-record.service";
+import logger from "../../utils/logger";
 
 export const registerMediaHandlers = (
   io: Server,
@@ -58,7 +59,7 @@ export const registerMediaHandlers = (
         file = null;
       }
       if (!file) {
-        console.log("[MusicStudio] audio_chunk dropped: file not found", {
+        logger.debug("[MusicStudio] audio_chunk dropped: file not found", {
           fileId: chunk.fileId,
         });
         if (callback) callback({ error: "Audio file not found" });
@@ -87,7 +88,7 @@ export const registerMediaHandlers = (
         cachedType,
       );
       if (!canStream) {
-        console.log("[MusicStudio] audio_chunk dropped: user cannot record", {
+        logger.debug("[MusicStudio] audio_chunk dropped: user cannot record", {
           userId: socket.user.id,
           studioId,
           studioType: cachedType,
@@ -104,7 +105,7 @@ export const registerMediaHandlers = (
           MusicStudioCacheSvc.getCurrentRoleIndex(studioId),
         ]);
 
-        console.log("[MusicStudio] RELAYSINGING check:", {
+        logger.debug("[MusicStudio] RELAYSINGING check:", {
           currentSinger,
           currentRoleIndex,
           myId: socket.user.id,
@@ -113,7 +114,7 @@ export const registerMediaHandlers = (
         // Role 0 = "All-Sing" / Chorus → everyone streams
         if (currentRoleIndex !== 0) {
           if (currentSinger && currentSinger !== socket.user.id) {
-            console.log(
+            logger.debug(
               "[MusicStudio] audio_chunk dropped: not the current singer in Relay mode",
             );
             if (callback)
@@ -160,10 +161,125 @@ export const registerMediaHandlers = (
           callback({ success: true });
         }
       } catch (err: any) {
-        console.error("[MusicStudio] Failed to save temp chunk:", err);
+        logger.error("[MusicStudio] Failed to save temp chunk:", err);
         if (typeof callback === "function") {
           callback({ error: err.message || "Failed to save chunk" });
         }
+      }
+    },
+  );
+
+  /**
+   * DISCARD TAKES (Retake)
+   * Host-only. Deletes every participant's temp records for this studio + song
+   * so a Save after Retake can't merge the discarded round. (A new
+   * start-recording also clears them, but Retake → Save never calls it.)
+   */
+  socket.on(
+    "discard_takes",
+    async (data: { studioId: string; musicId: string }) => {
+      try {
+        const { studioId, musicId } = data;
+
+        if (!studioId || !musicId) {
+          return socket.emit("discard_takes_failed", {
+            message: "studioId and musicId are required",
+          });
+        }
+
+        if (!(await MusicStudioSvc.isHost(studioId, socket.user.id))) {
+          return socket.emit("discard_takes_failed", {
+            message: "Only owner or producers can discard takes",
+          });
+        }
+
+        const state = await MusicStudioCacheSvc.getStudioState(studioId);
+        if (state === "RECORDING") {
+          return socket.emit("discard_takes_failed", {
+            code: "RECORDING_IN_PROGRESS",
+            message: "Stop the take before discarding",
+          });
+        }
+
+        const { count } = await MusicTempRecordSvc.deleteChunksByMusicAndStudio(
+          musicId,
+          studioId,
+        );
+
+        io.to(studioId).emit("takes_discarded", {
+          studioId,
+          musicId,
+          discardedCount: count,
+          discardedBy: socket.user.id,
+        });
+
+        console.log(
+          `[MusicStudio] ${socket.user.name} discarded ${count} temp records in ${studioId}`,
+        );
+      } catch (err: any) {
+        console.error("[MusicStudio] Discard takes error:", err);
+        socket.emit("discard_takes_failed", {
+          message: err.message || "Failed to discard takes",
+        });
+      }
+    },
+  );
+
+  /**
+   * DELETE TAKE
+   * Removes one uploaded take (all temp records for its fileId). Allowed for
+   * the host or the singer who recorded it.
+   */
+  socket.on(
+    "delete_take",
+    async (data: { studioId: string; musicId: string; fileId: string }) => {
+      try {
+        const { studioId, musicId, fileId } = data;
+
+        if (!studioId || !musicId || !fileId) {
+          return socket.emit("delete_take_failed", {
+            message: "studioId, musicId and fileId are required",
+          });
+        }
+
+        const records = await MusicTempRecordSvc.getChunksByFile(
+          studioId,
+          musicId,
+          fileId,
+        );
+        if (!records.length) {
+          return socket.emit("delete_take_failed", {
+            code: "TAKE_NOT_FOUND",
+            fileId,
+            message: "Take not found",
+          });
+        }
+
+        const ownerId = (records[0].metaData as any)?.userId ?? null;
+        const isTakeOwner = ownerId === socket.user.id;
+        if (
+          !isTakeOwner &&
+          !(await MusicStudioSvc.isHost(studioId, socket.user.id))
+        ) {
+          return socket.emit("delete_take_failed", {
+            message: "Only the host or the take's singer can delete it",
+          });
+        }
+
+        await MusicTempRecordSvc.deleteChunksByFile(studioId, musicId, fileId);
+
+        io.to(studioId).emit("take_deleted", {
+          studioId,
+          musicId,
+          fileId,
+          userId: ownerId,
+          deletedBy: socket.user.id,
+        });
+      } catch (err: any) {
+        console.error("[MusicStudio] Delete take error:", err);
+        socket.emit("delete_take_failed", {
+          message: err.message || "Failed to delete take",
+        });
       }
     },
   );

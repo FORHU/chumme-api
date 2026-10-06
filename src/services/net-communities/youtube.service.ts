@@ -1,5 +1,6 @@
 import { google, youtube_v3 } from "googleapis";
 import { QuotaService } from "./ingestion/quota.service";
+import logger from "../../utils/logger";
 
 export default class YouTubeService {
   private static youtube: youtube_v3.Youtube;
@@ -48,7 +49,7 @@ export default class YouTubeService {
       const video = response.data.items?.[0];
       return video || null;
     } catch (error) {
-      console.error("Error fetching YouTube video details:", error);
+      logger.error("Error fetching YouTube video details:", error);
       throw error;
     }
   }
@@ -75,7 +76,7 @@ export default class YouTubeService {
 
       return response.data.items || [];
     } catch (error) {
-      console.error("Error searching YouTube videos:", error);
+      logger.error("Error searching YouTube videos:", error);
       throw error;
     }
   }
@@ -99,7 +100,7 @@ export default class YouTubeService {
 
       return response.data.items?.[0] || null;
     } catch (error) {
-      console.error("Error fetching YouTube channel:", error);
+      logger.error("Error fetching YouTube channel:", error);
       throw error;
     }
   }
@@ -123,7 +124,7 @@ export default class YouTubeService {
 
       return response.data.items || [];
     } catch (error) {
-      console.error("Error fetching YouTube channels batch:", error);
+      logger.error("Error fetching YouTube channels batch:", error);
       throw error;
     }
   }
@@ -153,7 +154,7 @@ export default class YouTubeService {
         totalResults: response.data.pageInfo?.totalResults,
       };
     } catch (error) {
-      console.error("Error fetching YouTube playlist items:", error);
+      logger.error("Error fetching YouTube playlist items:", error);
       throw error;
     }
   }
@@ -182,7 +183,7 @@ export default class YouTubeService {
 
       return response.data.items?.[0] || null;
     } catch (error) {
-      console.error("Error fetching YouTube 'mine' channel:", error);
+      logger.error("Error fetching YouTube 'mine' channel:", error);
       return null;
     }
   }
@@ -208,7 +209,7 @@ export default class YouTubeService {
 
       return response.data.items?.[0] || null;
     } catch (error) {
-      console.error(
+      logger.error(
         `Error fetching latest upload for channel ${channelId}:`,
         error,
       );
@@ -287,7 +288,7 @@ export default class YouTubeService {
             actualStartTime: liveDetails?.actualStartTime,
           });
         } else {
-          console.log(
+          logger.debug(
             `[YouTubeService] Dropping ${vid} for channel ${channelId}: ` +
               `embeddable=${isEmbeddable} ongoing=${isOngoing}`,
           );
@@ -296,7 +297,7 @@ export default class YouTubeService {
 
       return liveMap;
     } catch (error) {
-      console.error("Error checking YouTube live status:", error);
+      logger.error("Error checking YouTube live status:", error);
       return liveMap;
     }
   }
@@ -321,7 +322,7 @@ export default class YouTubeService {
 
       return response.data.items || [];
     } catch (error) {
-      console.error("Error fetching YouTube comment threads:", error);
+      logger.error("Error fetching YouTube comment threads:", error);
       throw error;
     }
   }

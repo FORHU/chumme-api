@@ -2,6 +2,7 @@ import { Socket } from "socket.io";
 import jwt from "jsonwebtoken";
 import { ACCESS_TOKEN_SECRET } from "../config";
 import AuthSvc from "../services/auth.service";
+import logger from "../utils/logger";
 
 interface AuthenticatedSocket extends Socket {
   user?: any;
@@ -58,7 +59,7 @@ const authenticateSocket = async (
 
     return next();
   } catch (error) {
-    console.error("Authentication error:", error);
+    logger.warn("Authentication error:", error);
     return next(new Error("Socket authentication failed"));
   }
 };

@@ -2,6 +2,7 @@ import MusicRepo from "../repositories/music.repository";
 import MusicStudioCacheSvc from "./music-studio-cache.service";
 import RelayManager from "../utils/relay-manager";
 import { MusicStudioRole } from "@prisma/client";
+import logger from "../utils/logger";
 
 /**
  * Music Queue Service
@@ -113,7 +114,7 @@ export default class MusicQueueSvc {
       finalSingerName = singerInfo?.name || "Unknown";
     }
 
-    console.log(`[MusicStudio] Song changed to ${musicId} in ${studioId}`);
+    logger.debug(`[MusicStudio] Song changed to ${musicId} in ${studioId}`);
 
     return {
       studioId,

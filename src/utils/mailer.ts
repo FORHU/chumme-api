@@ -6,6 +6,7 @@ import {
   MAILER_TRANSPORT_PORT,
   MAILER_TRANSPORT_SECURE,
 } from "../config";
+import logger from "./logger";
 
 export async function sendEmail({
   to,
@@ -28,13 +29,6 @@ export async function sendEmail({
     },
   });
 
-  console.log(
-    MAILER_EMAIL,
-    MAILER_PASSWORD,
-    MAILER_TRANSPORT_HOST,
-    MAILER_TRANSPORT_PORT,
-  );
-
   const mailOptions: SendMailOptions = {
     from: `Chumme <${MAILER_EMAIL}>`,
     to,
@@ -51,10 +45,12 @@ export async function sendEmail({
 
   try {
     await transporter.sendMail(mailOptions);
-    console.log("Email sent successfully to", to);
+    // Subject only: the recipient address is PII and adds nothing a support
+    // query cannot get from the user record.
+    logger.info(`[Mailer] Sent "${subject}"`);
     return Promise.resolve("Email sent successfully");
   } catch (error) {
-    console.error("Error sending email:", error);
+    logger.error(`[Mailer] Failed to send "${subject}"`, error);
     return Promise.reject(error);
   }
 }

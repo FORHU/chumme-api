@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import { UserRole } from "@prisma/client";
 import UserRepo from "../repositories/user.repository";
 import PlaylistRepo from "../repositories/playlist.repository";
+import logger from "../utils/logger";
 
 // Extend Express Request type to include user
 declare global {
@@ -80,7 +81,7 @@ export const authenticate = async (
     req.user = user;
     next();
   } catch (error: any) {
-    console.error("[AuthMiddleware] Token verification failed:", error.message);
+    logger.debug("[AuthMiddleware] Token verification failed:", error.message);
     return res.status(401).json({ message: "Invalid token" });
   }
 };

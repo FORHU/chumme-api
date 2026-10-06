@@ -113,7 +113,7 @@ export default class MusicStudioCtrl {
    */
   static async joinStudio(req: Request, res: Response) {
     const { studioId } = req.params;
-    console.log("[DEBUG] HTTP joinStudio:", { studioId, params: req.params });
+    logger.debug("[DEBUG] HTTP joinStudio:", { studioId, params: req.params });
 
     if (!studioId) {
       return res.status(400).json({ message: "Studio ID is required" });
@@ -259,6 +259,8 @@ export default class MusicStudioCtrl {
         musicId,
       );
 
+      const performers = await MusicStudioSvc.getPerformers(studioId);
+
       // Notify studio members via socket
       io.to(studioId).emit("recording_started", {
         studioId: studioId,
@@ -266,6 +268,7 @@ export default class MusicStudioCtrl {
         timestamp: result.timestamp,
         source: clientTimestamp ? "client" : "server",
         musicId,
+        performers,
       });
 
       return res.json(result);
@@ -328,7 +331,6 @@ export default class MusicStudioCtrl {
         voiceEffect,
         duration,
       });
-      console.log("-------RESULT----------", result);
       return res.json(result);
     } catch (err: any) {
       return res.status(400).json({ message: err.message || err });

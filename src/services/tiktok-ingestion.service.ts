@@ -4,6 +4,7 @@ import SocialFeedRepo from "../repositories/social-feed.repository";
 import FileRepo from "../repositories/file.repository";
 import { upsertArtist } from "../repositories/chumme-artist.repository";
 import type { VideoPostEvent } from "../listeners/tiktok-post.listener";
+import logger from "../utils/logger";
 
 /**
  * Service for processing TikTok crawler data and ingesting it into the database
@@ -14,7 +15,7 @@ export async function processTikTokCrawlerData(
 ): Promise<void> {
   const { data } = crawlerData;
 
-  console.log(`Processing ${data.posts.length} posts for ${data.displayName}`);
+  logger.info(`Processing ${data.posts.length} posts for ${data.displayName}`);
 
   // Step 1: Upsert artist based on TikTok profile
   const artist = await upsertArtist({
@@ -24,7 +25,7 @@ export async function processTikTokCrawlerData(
     genre: "TikTok Creator",
   });
 
-  console.log(`Artist: ${artist.name} (ID: ${artist.id})`);
+  logger.debug(`Artist: ${artist.name} (ID: ${artist.id})`);
 
   // Step 2: Process each post
   let newVideos = 0;
@@ -34,7 +35,9 @@ export async function processTikTokCrawlerData(
   for (const post of data.posts) {
     // Skip posts without video files or not downloaded
     if (!post.videoFile || !post.isDownloaded) {
-      console.log(`Skipping post ${post.id} - no video file or not downloaded`);
+      logger.debug(
+        `Skipping post ${post.id} - no video file or not downloaded`,
+      );
       skippedVideos++;
       continue;
     }
@@ -75,10 +78,10 @@ export async function processTikTokCrawlerData(
 
       if (result.isUpdate) {
         updatedVideos++;
-        console.log(`Updated existing video: ${result.item.id}`);
+        logger.debug(`Updated existing video: ${result.item.id}`);
       } else {
         newVideos++;
-        console.log(`Created new video: ${result.item.id}`);
+        logger.debug(`Created new video: ${result.item.id}`);
       }
 
       // Step 2d: Extract and link emotions from Spotify data
@@ -118,27 +121,27 @@ export async function processTikTokCrawlerData(
             result.item.id,
             signalsToLink,
           );
-          console.log(
+          logger.debug(
             `[INGESTION] Linked ${signalsToLink.length} emotions for ${result.item.id}`,
           );
         } else {
-          console.log(
+          logger.debug(
             `No emotions found in Spotify data for video ${result.item.id}`,
           );
         }
       } else {
-        console.log(
+        logger.debug(
           `No Spotify emotion data available for video ${result.item.id}`,
         );
       }
     } catch (error) {
-      console.error(`Error processing post ${post.id}:`, error);
+      logger.error(`Error processing post ${post.id}:`, error);
       // Continue with other posts even if one fails
     }
   }
 
-  console.log(`Finished processing for ${artist.name}:`);
-  console.log(`  - New videos: ${newVideos}`);
-  console.log(`  - Updated videos: ${updatedVideos}`);
-  console.log(`  - Skipped videos: ${skippedVideos}`);
+  logger.info(`Finished processing for ${artist.name}:`);
+  logger.info(`  - New videos: ${newVideos}`);
+  logger.info(`  - Updated videos: ${updatedVideos}`);
+  logger.info(`  - Skipped videos: ${skippedVideos}`);
 }

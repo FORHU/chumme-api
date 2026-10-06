@@ -2,7 +2,7 @@ import AuthRepo from "../repositories/auth.repository";
 import SessionSessionSocialAccountRepo from "../repositories/net-communities/session-social-account.repository";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
-import { OAuth2Client } from "google-auth-library";
+import { verifyGoogleIdToken } from "../utils/google-id-token.util";
 import { generateOTP, getOTPExpiry, isOTPExpired } from "../utils/otp.utils";
 import { sendTemplatedEmail } from "../utils/helpers";
 import CacheUtil from "../utils/cache.util";
@@ -10,11 +10,16 @@ import {
   ACCESS_TOKEN_SECRET,
   REFRESH_TOKEN_SECRET,
   ACCESS_TOKEN_EXPIRY,
-  GOOGLE_CLIENT_ID,
-  GOOGLE_ANDROID_CLIENT_ID,
+  isDev,
 } from "../config";
+import logger from "../utils/logger";
 import { AutoSyncSvc } from "./net-communities/ingestion/auto-sync.service";
-import { OtpPurpose, SocialPlatform, UserRole } from "@prisma/client";
+import {
+  AuthProvider,
+  OtpPurpose,
+  SocialPlatform,
+  UserRole,
+} from "@prisma/client";
 
 /**
  * Addresses are rejected here as well as at the route edge. `email` is the
@@ -105,6 +110,39 @@ export default class AuthSvc {
     }
   }
 
+  /**
+   * The code email failed, so the OTP never reached the inbox.
+   *
+   * Outside production the code is logged so a local setup without SMTP can
+   * still finish the flow. In production it never is: a live OTP in the logs
+   * lets anyone with log access verify, reset or take over the account.
+   */
+  private static logUndeliveredOtp(
+    flow: string,
+    userId: string,
+    otp: string,
+    error: unknown,
+  ): void {
+    if (isDev) {
+      logger.warn(
+        `[AuthSvc] ${flow} email not sent (dev only) — OTP for user ${userId}: ${otp}`,
+      );
+      return;
+    }
+    logger.error(`[AuthSvc] ${flow} email not sent for user ${userId}`, error);
+  }
+
+  /** What a password login on a passwordless (social sign-up) account sees. */
+  private static socialOnlyLoginMessage(provider: AuthProvider): string {
+    const name =
+      provider === AuthProvider.FACEBOOK
+        ? "Facebook"
+        : provider === AuthProvider.GOOGLE
+          ? "Google"
+          : "Google or Facebook";
+    return `This account signs in with ${name}. Continue with ${name}, or use "Forgot password" to set a password.`;
+  }
+
   static async register(data: {
     email: string;
     password: string;
@@ -184,21 +222,14 @@ export default class AuthSvc {
         template_name: "verification-email.html",
       });
     } catch (error) {
-      console.error("Failed to send verification email:", error);
-      // Still log to console as backup
-      console.log(`Backup - OTP for ${user.email}: ${otp}`);
+      this.logUndeliveredOtp("Verification", user.id, otp, error);
     }
 
     // --- Automatic Social Linking (New) ---
     if (data.idToken) {
       try {
-        const client = new OAuth2Client(GOOGLE_CLIENT_ID);
-        const ticket = await client.verifyIdToken({
-          idToken: data.idToken,
-          audience: [GOOGLE_CLIENT_ID, GOOGLE_ANDROID_CLIENT_ID],
-        });
-        const payload = ticket.getPayload();
-        if (payload && payload.email === user.email) {
+        const payload = await verifyGoogleIdToken(data.idToken);
+        if (payload.email === user.email) {
           await SessionSessionSocialAccountRepo.upsertSocialAccount({
             userId: user.id,
             platform: "google",
@@ -207,13 +238,13 @@ export default class AuthSvc {
             avatarUrl: payload.picture,
           });
           // YouTube platform is created only via onboarding connect-google / linkGoogleAccount (youtube.readonly), not here.
-          console.log(
+          logger.info(
             `[AuthSvc] Auto-linked Google during registration for user ${user.id}`,
           );
         }
       } catch (err) {
-        console.error(
-          "[AuthSvc] Failed to auto-link Google account during registration:",
+        logger.error(
+          "[AuthSvc] Failed to auto-link Google account during registration",
           err,
         );
       }
@@ -241,7 +272,7 @@ export default class AuthSvc {
               accessToken: data.accessToken,
               avatarUrl: userData.picture?.data?.url,
             });
-            console.log(
+            logger.info(
               `[AuthSvc] Auto-linked Facebook/Instagram during registration for user ${user.id}`,
             );
 
@@ -254,8 +285,8 @@ export default class AuthSvc {
           }
         }
       } catch (err) {
-        console.error(
-          "[AuthSvc] Failed to auto-link Facebook account during registration:",
+        logger.error(
+          "[AuthSvc] Failed to auto-link Facebook account during registration",
           err,
         );
       }
@@ -348,46 +379,21 @@ export default class AuthSvc {
       };
     }
 
-    // Verify password
+    // A social sign-up has no password until its owner sets one through
+    // "Forgot password". One check, one message, naming the way back in.
     if (!user.password) {
-      throw "This account uses a social provider. Please login with Google or Facebook.";
+      throw this.socialOnlyLoginMessage(user.authProvider);
     }
 
-    if (user.password === "GOOGLE_SSO_USER") {
-      throw "Please use Google login for this account.";
-    }
-
-    if (user.password === "FACEBOOK_SSO_USER") {
-      throw "Please use Facebook login for this account.";
-    }
-
-    try {
-      const [salt, storedHash] = user.password.split(":");
-      if (!salt || !storedHash) {
-        throw new Error("Invalid password format");
-      }
-
-      const hash = crypto
-        .pbkdf2Sync(password, salt, 1000, 64, "sha512")
-        .toString("hex");
-
-      if (storedHash !== hash) {
-        throw "Invalid credentials";
-      }
-    } catch (e) {
+    if (!this.verifyPassword(password, user.password)) {
       throw "Invalid credentials";
     }
 
     // --- Automatic Social Linking (New) ---
     if (idToken) {
       try {
-        const client = new OAuth2Client(GOOGLE_CLIENT_ID);
-        const ticket = await client.verifyIdToken({
-          idToken,
-          audience: [GOOGLE_CLIENT_ID, GOOGLE_ANDROID_CLIENT_ID],
-        });
-        const payload = ticket.getPayload();
-        if (payload && payload.email === user.email) {
+        const payload = await verifyGoogleIdToken(idToken);
+        if (payload.email === user.email) {
           await SessionSessionSocialAccountRepo.upsertSocialAccount({
             userId: user.id,
             platform: "google",
@@ -396,11 +402,11 @@ export default class AuthSvc {
             avatarUrl: payload.picture,
           });
           // YouTube platform is created only via onboarding connect-google / linkGoogleAccount.
-          console.log(`[AuthSvc] Auto-linked Google for user ${user.id}`);
+          logger.info(`[AuthSvc] Auto-linked Google for user ${user.id}`);
         }
       } catch (err) {
-        console.error(
-          "[AuthSvc] Failed to auto-link Google account during login:",
+        logger.error(
+          "[AuthSvc] Failed to auto-link Google account during login",
           err,
         );
       }
@@ -428,7 +434,7 @@ export default class AuthSvc {
               accessToken,
               avatarUrl: userData.picture?.data?.url,
             });
-            console.log(
+            logger.info(
               `[AuthSvc] Auto-linked Facebook/Instagram for user ${user.id}`,
             );
 
@@ -441,8 +447,8 @@ export default class AuthSvc {
           }
         }
       } catch (err) {
-        console.error(
-          "[AuthSvc] Failed to auto-link Facebook account during login:",
+        logger.error(
+          "[AuthSvc] Failed to auto-link Facebook account during login",
           err,
         );
       }
@@ -536,7 +542,6 @@ export default class AuthSvc {
     });
 
     // Send email with OTP
-    // Send email with OTP
     try {
       await sendTemplatedEmail({
         subject: "Password Reset Code",
@@ -547,7 +552,7 @@ export default class AuthSvc {
         template_name: "forgot-password.html",
       });
     } catch (error) {
-      console.log(`Password Reset OTP for ${user.email}: ${otp}`);
+      this.logUndeliveredOtp("Password reset", user.id, otp, error);
     }
 
     return {
@@ -615,7 +620,7 @@ export default class AuthSvc {
         template_name: "verification-email.html",
       });
     } catch (error) {
-      console.log(`OTP for ${user.email}: ${otp}`);
+      this.logUndeliveredOtp("Verification resend", user.id, otp, error);
     }
     return {
       message: "New verification code sent to your email",
@@ -667,7 +672,7 @@ export default class AuthSvc {
         template_name: "forgot-password.html",
       });
     } catch (error) {
-      console.log(`Password change OTP for ${user.email}: ${otp}`);
+      this.logUndeliveredOtp("Password change", user.id, otp, error);
     }
 
     return {
@@ -782,7 +787,7 @@ export default class AuthSvc {
         template_name: "verification-email.html",
       });
     } catch (error) {
-      console.log(`Email change OTP for ${email}: ${otp}`);
+      this.logUndeliveredOtp("Email change", user.id, otp, error);
     }
 
     return {
@@ -853,22 +858,9 @@ export default class AuthSvc {
   }
 
   static async googleAuthSSO(idToken: string) {
-    const client = new OAuth2Client(GOOGLE_CLIENT_ID);
-
-    console.log("[AuthSvc] googleAuthSSO verifying token:", {
-      configuredWebId: GOOGLE_CLIENT_ID,
-      configuredAndroidId: GOOGLE_ANDROID_CLIENT_ID,
-      tokenPrefix: idToken?.substring(0, 30),
-    });
     try {
-      // Verify the ID token with Google
-      const ticket = await client.verifyIdToken({
-        idToken,
-        audience: [GOOGLE_CLIENT_ID, GOOGLE_ANDROID_CLIENT_ID],
-      });
-
-      const payload = ticket.getPayload();
-      if (!payload || !payload.email) {
+      const payload = await verifyGoogleIdToken(idToken);
+      if (!payload.email) {
         throw new Error("Invalid Google token payload");
       }
 
@@ -902,8 +894,9 @@ export default class AuthSvc {
         payload.picture, // Google profile picture
       );
     } catch (error: any) {
-      console.error("[AuthSvc] Google SSO verification failed. Raw Error:");
-      console.dir(error, { depth: null });
+      // The message is enough to diagnose a wrong audience or an expired
+      // token; the full object dump this replaces also printed request config.
+      logger.warn(`[AuthSvc] Google sign-in rejected: ${error.message}`);
       throw new Error("Failed to verify Google token: " + error.message);
     }
   }
@@ -974,7 +967,7 @@ export default class AuthSvc {
         userData.picture?.data?.url, // Facebook profile picture
       );
     } catch (error: any) {
-      console.error("Facebook SSO error:", error);
+      logger.error("[AuthSvc] Facebook SSO failed", error);
       throw new Error("Failed to verify Facebook token");
     }
   }

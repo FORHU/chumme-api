@@ -5,6 +5,16 @@ import {
   MusicRelayMode,
 } from "@prisma/client";
 
+// Studio payloads reach every member (join_studio_success, the studio list),
+// so user rows are narrowed to public fields — a bare `user: true` shipped
+// email, password hash and the live otpCode to anyone who joined.
+const PUBLIC_USER_SELECT = {
+  id: true,
+  name: true,
+  username: true,
+  avatar: true,
+} as const;
+
 interface CreateMusicStudioData {
   name: string;
   keyPassword?: string; // Optional - if not set, studio is public
@@ -41,9 +51,9 @@ export default class MusicStudioRepo {
         },
       },
       include: {
-        owner: true,
+        owner: { select: PUBLIC_USER_SELECT },
         members: {
-          include: { user: true },
+          include: { user: { select: PUBLIC_USER_SELECT } },
         },
         records: true,
       },
@@ -57,18 +67,11 @@ export default class MusicStudioRepo {
     return prisma.musicStudio.findUnique({
       where: { id },
       include: {
-        owner: true,
+        owner: { select: PUBLIC_USER_SELECT },
         members: {
           where: { isActive: true },
           include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                username: true,
-                avatar: true,
-              },
-            },
+            user: { select: PUBLIC_USER_SELECT },
           },
         },
         records: {
@@ -92,10 +95,10 @@ export default class MusicStudioRepo {
     return prisma.musicStudio.findFirst({
       where: { keyPassword, deletedAt: null },
       include: {
-        owner: true,
+        owner: { select: PUBLIC_USER_SELECT },
         members: {
           where: { isActive: true },
-          include: { user: true },
+          include: { user: { select: PUBLIC_USER_SELECT } },
         },
       },
     });
@@ -148,10 +151,10 @@ export default class MusicStudioRepo {
       prisma.musicStudio.findMany({
         where: whereClause,
         include: {
-          owner: true,
+          owner: { select: PUBLIC_USER_SELECT },
           members: {
             where: { isActive: true },
-            include: { user: true },
+            include: { user: { select: PUBLIC_USER_SELECT } },
           },
           records: true,
         },
@@ -182,10 +185,10 @@ export default class MusicStudioRepo {
     return prisma.musicStudio.findMany({
       where: { ownerId, deletedAt: null },
       include: {
-        owner: true,
+        owner: { select: PUBLIC_USER_SELECT },
         members: {
           where: { isActive: true },
-          include: { user: true },
+          include: { user: { select: PUBLIC_USER_SELECT } },
         },
         records: true,
       },
@@ -205,10 +208,10 @@ export default class MusicStudioRepo {
         deletedAt: null,
       },
       include: {
-        owner: true,
+        owner: { select: PUBLIC_USER_SELECT },
         members: {
           where: { isActive: true },
-          include: { user: true },
+          include: { user: { select: PUBLIC_USER_SELECT } },
         },
         records: true,
       },
@@ -240,7 +243,7 @@ export default class MusicStudioRepo {
           leftAt: null,
           role,
         },
-        include: { user: true, studio: true },
+        include: { user: { select: PUBLIC_USER_SELECT }, studio: true },
       });
     }
 
@@ -256,7 +259,7 @@ export default class MusicStudioRepo {
             ? 1
             : null,
       },
-      include: { user: true, studio: true },
+      include: { user: { select: PUBLIC_USER_SELECT }, studio: true },
     });
   }
 
@@ -313,7 +316,7 @@ export default class MusicStudioRepo {
       where: {
         userId_studioId: { userId, studioId },
       },
-      include: { user: true },
+      include: { user: { select: PUBLIC_USER_SELECT } },
     });
   }
 
@@ -330,7 +333,7 @@ export default class MusicStudioRepo {
         userId_studioId: { userId, studioId },
       },
       data: { vocalRoleIndex },
-      include: { user: true },
+      include: { user: { select: PUBLIC_USER_SELECT } },
     });
   }
 
@@ -353,7 +356,7 @@ export default class MusicStudioRepo {
             ? 1
             : null,
       },
-      include: { user: true },
+      include: { user: { select: PUBLIC_USER_SELECT } },
     });
   }
 
@@ -387,10 +390,10 @@ export default class MusicStudioRepo {
       where: { id },
       data: data as any,
       include: {
-        owner: true,
+        owner: { select: PUBLIC_USER_SELECT },
         members: {
           where: { isActive: true },
-          include: { user: true },
+          include: { user: { select: PUBLIC_USER_SELECT } },
         },
         records: true,
       },

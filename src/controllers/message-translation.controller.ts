@@ -8,6 +8,7 @@ import {
   languageName,
   normalizeLanguageCode,
 } from "../utils/translation/translate-text.util";
+import logger from "../utils/logger";
 
 const paramsSchema = Joi.object({
   messageId: Joi.string().uuid().required(),
@@ -69,10 +70,7 @@ const handle =
           .status(error.status)
           .json({ success: false, message: error.message });
       }
-      console.error(
-        `[MessageTranslationCtrl] ${room} translate failed:`,
-        error,
-      );
+      logger.error(`[MessageTranslationCtrl] ${room} translate failed:`, error);
       return res
         .status(500)
         .json({ success: false, message: "Failed to translate message" });

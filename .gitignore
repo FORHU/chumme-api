@@ -11,3 +11,7 @@ prisma/seed-assets/voice/Excited_K-pop_fan_sh_#3-1787540376409.mp3
 prisma/seed-assets/voice/Excited_K-pop_fan_sh_#4-1787540317800.mp3
 prisma/seed-assets/voice/Loud,_diverse_crowd__#4-1787540592449 (1).mp3
 prisma/seed-assets/voice/Loud,_diverse_crowd__#4-1787540592449.mp3
+
+# Local debug dumps
+*_harvest.json
+harvested_test_data.json

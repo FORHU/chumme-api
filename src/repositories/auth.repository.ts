@@ -1,5 +1,6 @@
 import { prisma } from "../utils/prisma";
-import { OtpPurpose, UserRole } from "@prisma/client";
+import { AuthProvider, OtpPurpose, UserRole } from "@prisma/client";
+import logger from "../utils/logger";
 
 export default class AuthRepo {
   static async findUserByEmailOrUsername(email: string, username: string) {
@@ -227,8 +228,8 @@ export default class AuthRepo {
 
     if (existingUser) {
       if (data.avatarUrl) {
-        console.log(
-          `[Google SSO] Avatar sync for ${data.email}. Current avatarId: ${existingUser.avatarId}`,
+        logger.debug(
+          `[Google SSO] Avatar sync for user ${existingUser.id}. Current avatarId: ${existingUser.avatarId}`,
         );
 
         // Check if file already exists with this URL (always saved)
@@ -237,7 +238,7 @@ export default class AuthRepo {
         });
 
         if (!avatarFile) {
-          console.log(`[Google SSO] Creating new File record for avatar URL`);
+          logger.debug(`[Google SSO] Creating new File record for avatar URL`);
           avatarFile = await prisma.file.create({
             data: {
               filename: `google_avatar_${Date.now()}.jpg`,
@@ -248,7 +249,7 @@ export default class AuthRepo {
 
         // Connect the avatar to the user (syncing social profile pic)
         if (existingUser.avatarId !== avatarFile.id) {
-          console.log(
+          logger.debug(
             `[Google SSO] Connecting user ${existingUser.id} with avatarId: ${avatarFile.id}`,
           );
           return prisma.user.update({
@@ -300,7 +301,8 @@ export default class AuthRepo {
         email: data.email,
         name: data.name || data.email.split("@")[0],
         username,
-        password: "GOOGLE_SSO_USER",
+        password: null,
+        authProvider: AuthProvider.GOOGLE,
         isEmailVerified: true,
         avatarId,
       },
@@ -333,8 +335,8 @@ export default class AuthRepo {
 
     if (existingUser) {
       if (data.avatarUrl) {
-        console.log(
-          `[Facebook SSO] Avatar sync for ${data.email}. Current avatarId: ${existingUser.avatarId}`,
+        logger.debug(
+          `[Facebook SSO] Avatar sync for user ${existingUser.id}. Current avatarId: ${existingUser.avatarId}`,
         );
 
         // Check if file already exists with this URL (always saved)
@@ -343,7 +345,9 @@ export default class AuthRepo {
         });
 
         if (!avatarFile) {
-          console.log(`[Facebook SSO] Creating new File record for avatar URL`);
+          logger.debug(
+            `[Facebook SSO] Creating new File record for avatar URL`,
+          );
           avatarFile = await prisma.file.create({
             data: {
               filename: `facebook_avatar_${Date.now()}.jpg`,
@@ -354,7 +358,7 @@ export default class AuthRepo {
 
         // Connect the avatar to the user (syncing social profile pic)
         if (existingUser.avatarId !== avatarFile.id) {
-          console.log(
+          logger.debug(
             `[Facebook SSO] Connecting user ${existingUser.id} with avatarId: ${avatarFile.id}`,
           );
           return prisma.user.update({
@@ -406,7 +410,8 @@ export default class AuthRepo {
         email: data.email,
         name: data.name || data.email.split("@")[0],
         username,
-        password: "FACEBOOK_SSO_USER",
+        password: null,
+        authProvider: AuthProvider.FACEBOOK,
         isEmailVerified: true,
         avatarId,
       },

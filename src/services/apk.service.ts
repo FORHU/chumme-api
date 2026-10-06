@@ -3,6 +3,7 @@ import FileRepo from "../repositories/file.repository";
 import { prisma } from "../utils/prisma";
 import S3Util from "../utils/s3.util";
 import S3PresignedUtil from "../utils/s3-presigned.util";
+import logger from "../utils/logger";
 
 export default class ApkSvc {
   static async uploadApk(
@@ -136,7 +137,7 @@ export default class ApkSvc {
       try {
         await S3Util.deleteFile(fileUrl);
       } catch (err) {
-        console.warn(`[APK delete] S3 cleanup failed for ${fileUrl}:`, err);
+        logger.warn(`[APK delete] S3 cleanup failed for ${fileUrl}:`, err);
       }
     }
 

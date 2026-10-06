@@ -1,5 +1,3 @@
-import fs from "fs";
-import path from "path";
 import MusicTempRecordRepo from "../repositories/music-temp-record.repository";
 
 export default class MusicTempRecordSvc {
@@ -31,29 +29,6 @@ export default class MusicTempRecordSvc {
       recordDuration: data.recordDuration,
     });
 
-    // Harvest raw metadata for testing
-    try {
-      const harvestFile = path.join(process.cwd(), "raw_chunks_harvest.json");
-      const entry = {
-        timestamp: new Date().toISOString(),
-        studioId: data.studioId,
-        musicId: data.musicId,
-        userId: data.userId,
-        fileUrl: record.file.fileUrl,
-        cdn_url: record.file.fileUrl,
-        offset: data.startTimeOffset,
-        duration: data.recordDuration,
-      };
-      let list = [];
-      if (fs.existsSync(harvestFile)) {
-        list = JSON.parse(fs.readFileSync(harvestFile, "utf-8"));
-      }
-      list.push(entry);
-      fs.writeFileSync(harvestFile, JSON.stringify(list, null, 2));
-    } catch (e) {
-      // Don't block the main flow if harvesting fails
-    }
-
     return record;
   }
 
@@ -83,5 +58,27 @@ export default class MusicTempRecordSvc {
    */
   static async deleteChunksByMusicAndStudio(musicId: string, studioId: string) {
     return MusicTempRecordRepo.deleteByMusicIdAndStudioId(musicId, studioId);
+  }
+
+  /**
+   * Get the chunks for one uploaded take
+   */
+  static async getChunksByFile(
+    studioId: string,
+    musicId: string,
+    fileId: string,
+  ) {
+    return MusicTempRecordRepo.findByFileId(studioId, musicId, fileId);
+  }
+
+  /**
+   * Delete the chunks for one uploaded take
+   */
+  static async deleteChunksByFile(
+    studioId: string,
+    musicId: string,
+    fileId: string,
+  ) {
+    return MusicTempRecordRepo.deleteByFileId(studioId, musicId, fileId);
   }
 }

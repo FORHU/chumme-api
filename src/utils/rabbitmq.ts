@@ -1,5 +1,6 @@
 import amqp from "amqplib";
 import { RABBITMQ_URL } from "../config";
+import logger from "./logger";
 
 export interface MessageHandler {
   (message: any, originalMsg: amqp.ConsumeMessage): Promise<void>;
@@ -22,15 +23,14 @@ export class RabbitMQService {
 
   async connect(): Promise<void> {
     try {
-      console.log("=== RabbitMQ Connection Attempt ===");
-      console.log("RABBITMQ_URL:", RABBITMQ_URL);
-      console.log("Connecting to RabbitMQ...");
+      // Never log RABBITMQ_URL: it carries the broker username and password.
+      logger.debug("Connecting to RabbitMQ...");
 
       this.connection = (await amqp.connect(RABBITMQ_URL)) as any;
-      console.log("RabbitMQ connection established");
+      logger.debug("RabbitMQ connection established");
 
       this.channel = await (this.connection as any).createChannel();
-      console.log("RabbitMQ channel created");
+      logger.debug("RabbitMQ channel created");
 
       // Declare the main exchange
       await this.channel!.assertExchange("chumme_exchange", "topic", {
@@ -38,33 +38,33 @@ export class RabbitMQService {
       });
 
       this.isConnected = true;
-      console.log("Successfully connected to RabbitMQ");
+      logger.info("Successfully connected to RabbitMQ");
 
       // Handle connection events
       (this.connection as any).on("error", (err: any) => {
-        console.error("RabbitMQ connection error:", err);
+        logger.error("RabbitMQ connection error:", err);
         this.isConnected = false;
       });
 
       (this.connection as any).on("close", () => {
-        console.log("RabbitMQ connection closed");
+        logger.warn("RabbitMQ connection closed");
         this.isConnected = false;
         this.reconnect();
       });
     } catch (error) {
-      console.error("Failed to connect to RabbitMQ:", error);
+      logger.error("Failed to connect to RabbitMQ:", error);
       this.isConnected = false;
       throw error;
     }
   }
 
   private async reconnect(): Promise<void> {
-    console.log("Attempting to reconnect to RabbitMQ...");
+    logger.warn("Attempting to reconnect to RabbitMQ...");
     setTimeout(async () => {
       try {
         await this.connect();
       } catch (error) {
-        console.error("Reconnection failed:", error);
+        logger.error("Reconnection failed:", error);
       }
     }, 5000); // Retry after 5 seconds
   }
@@ -78,9 +78,9 @@ export class RabbitMQService {
         await (this.connection as any).close();
       }
       this.isConnected = false;
-      console.log("Disconnected from RabbitMQ");
+      logger.info("Disconnected from RabbitMQ");
     } catch (error) {
-      console.error("Error disconnecting from RabbitMQ:", error);
+      logger.error("Error disconnecting from RabbitMQ:", error);
     }
   }
 
@@ -111,9 +111,12 @@ export class RabbitMQService {
         throw new Error("Failed to publish message");
       }
 
-      console.log(`Message published to ${routingKey}:`, message);
+      // Routing key and size only: payloads carry user data.
+      logger.debug(
+        `Message published to ${routingKey} (${messageBuffer.length} bytes)`,
+      );
     } catch (error) {
-      console.error("Error publishing message:", error);
+      logger.error("Error publishing message:", error);
       throw error;
     }
   }
@@ -153,7 +156,7 @@ export class RabbitMQService {
       // Bind the queue to the exchange with routing keys
       for (const routingKey of routingKeys) {
         await this.channel.bindQueue(queueName, "chumme_exchange", routingKey);
-        console.log(`Queue ${queueName} bound to routing key: ${routingKey}`);
+        logger.debug(`Queue ${queueName} bound to routing key: ${routingKey}`);
       }
 
       // Set up message consumer
@@ -163,9 +166,8 @@ export class RabbitMQService {
           if (msg) {
             try {
               const messageContent = JSON.parse(msg.content.toString());
-              console.log(
-                `Received message from ${queueName}:`,
-                messageContent,
+              logger.debug(
+                `Received message from ${queueName} (${msg.content.length} bytes)`,
               );
 
               await handler(messageContent, msg);
@@ -173,7 +175,7 @@ export class RabbitMQService {
               // Acknowledge the message
               this.channel?.ack(msg);
             } catch (error) {
-              console.error(
+              logger.error(
                 `Error processing message from ${queueName}:`,
                 error,
               );
@@ -185,9 +187,9 @@ export class RabbitMQService {
         },
       );
 
-      console.log(`Subscribed to queue: ${queueName}`);
+      logger.info(`Subscribed to queue: ${queueName}`);
     } catch (error) {
-      console.error(`Error subscribing to queue ${queueName}:`, error);
+      logger.error(`Error subscribing to queue ${queueName}:`, error);
       throw error;
     }
   }

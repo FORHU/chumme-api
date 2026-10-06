@@ -1,10 +1,11 @@
 import { expect } from "chai";
-import { after, before, describe, it } from "mocha";
+import { after, describe, it } from "mocha";
 import axios from "axios";
+// config.ts reads the key at import time; test/setup-env.js sets it before any spec loads.
+import * as google from "../src/utils/translation/google-translate.util";
 
 // Offline: axios.post is stubbed, so this never calls Google or spends quota.
 describe("Google translation provider", function () {
-  let google: typeof import("../src/utils/translation/google-translate.util");
   const realPost = axios.post;
   let calls: { url: string; body: any; config: any }[] = [];
 
@@ -24,12 +25,6 @@ describe("Google translation provider", function () {
   const fail = (status: number, message: string) => () => {
     throw { message: `Request failed with status code ${status}`, response: { status, data: { error: { code: status, message } } } };
   };
-
-  before(async () => {
-    // config.ts reads the key at import time, so set it before the first import.
-    process.env.GOOGLE_TRANSLATE_API_KEY = "test-key";
-    google = await import("../src/utils/translation/google-translate.util");
-  });
 
   after(() => {
     (axios as any).post = realPost;

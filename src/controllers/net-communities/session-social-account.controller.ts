@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import SessionSessionSocialAccountSvc from "../../services/net-communities/session-social-account.service";
+import logger from "../../utils/logger";
 
 export default class SessionSessionSocialAccountCtrl {
   /**
@@ -39,10 +40,7 @@ export default class SessionSessionSocialAccountCtrl {
 
       return res.json(result);
     } catch (error: any) {
-      console.error(
-        "SessionSessionSocialAccountCtrl.linkAccount Error:",
-        error,
-      );
+      logger.error("SessionSessionSocialAccountCtrl.linkAccount Error:", error);
       return res
         .status(500)
         .json({ message: error.message || "Internal server error" });
@@ -63,7 +61,7 @@ export default class SessionSessionSocialAccountCtrl {
         data: accounts,
       });
     } catch (error: any) {
-      console.error(
+      logger.error(
         "SessionSessionSocialAccountCtrl.getMyAccounts Error:",
         error,
       );
@@ -91,7 +89,7 @@ export default class SessionSessionSocialAccountCtrl {
       );
       return res.json(result);
     } catch (error: any) {
-      console.error(
+      logger.error(
         "SessionSessionSocialAccountCtrl.unlinkAccount Error:",
         error,
       );

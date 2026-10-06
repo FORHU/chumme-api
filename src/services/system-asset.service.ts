@@ -1,6 +1,7 @@
 import SystemAssetRepo from "../repositories/system-asset.repository";
 import S3Util from "../utils/s3.util";
 import S3PresignedUtil from "../utils/s3-presigned.util";
+import logger from "../utils/logger";
 
 export default class SystemAssetSvc {
   static async upsertAsset(
@@ -57,7 +58,7 @@ export default class SystemAssetSvc {
           const signedUrl = await S3PresignedUtil.getDownloadUrl(key);
           return { ...asset, url: signedUrl };
         } catch (err) {
-          console.error(`Error signing URL for asset ${asset.id}:`, err);
+          logger.error(`Error signing URL for asset ${asset.id}:`, err);
         }
       }
     }

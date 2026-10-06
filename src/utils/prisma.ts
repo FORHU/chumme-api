@@ -55,9 +55,9 @@ if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
 export const connectToPrisma = async () => {
   try {
     await prisma.$connect();
-    console.log("Connected to PostgreSQL via Prisma");
+    logger.info("Connected to PostgreSQL via Prisma");
   } catch (error) {
-    console.error("Failed to connect to PostgreSQL:", error);
+    logger.error("Failed to connect to PostgreSQL:", error);
     throw error;
   }
 };
