@@ -73,9 +73,8 @@ async function main() {
   }
 
   try {
-    const { SchedulingService } = await import(
-      "./services/net-communities/ingestion/scheduling.service"
-    );
+    const { SchedulingService } =
+      await import("./services/net-communities/ingestion/scheduling.service");
     await SchedulingService.start();
     logger.info("[Worker] SchedulingService started");
   } catch (error) {
@@ -85,9 +84,8 @@ async function main() {
   // Sports fixtures and live scores. Non-fatal like the workers above: an ESPN
   // outage or an empty SportLeague table must not stop the rest of the worker.
   try {
-    const { default: SportPollingService } = await import(
-      "./services/sport-polling.service"
-    );
+    const { default: SportPollingService } =
+      await import("./services/sport-polling.service");
     await SportPollingService.start();
     logger.info("[Worker] SportPollingService started");
   } catch (error) {
