@@ -193,9 +193,7 @@ jobs:
           GOOGLE_TRANSLATE_API_KEY: ${{ secrets.GOOGLE_TRANSLATE_API_KEY }}
           GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
           GOOGLE_ANDROID_CLIENT_ID: ${{ vars.GOOGLE_ANDROID_CLIENT_ID }}
-          CORS_ORIGINS: ${{ vars.CORS_ORIGINS }}
-          # Empty = no HTTPS proxy. See docs/HTTPS-SETUP.md before setting it.
-          API_DOMAIN: ${{ vars.API_DOMAIN }}
+          SPORTS_DEMO_MODE: ${{ vars.SPORTS_DEMO_MODE }}
         run: |
           set -euo pipefail
 
@@ -251,9 +249,9 @@ jobs:
             echo "TRANSLATION_API_URL=${TRANSLATION_API_URL}"
             echo "GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}"
             echo "GOOGLE_ANDROID_CLIENT_ID=${GOOGLE_ANDROID_CLIENT_ID}"
-            # Comma-separated browser origins. Empty is fine: the mobile app
-            # sends no Origin header. Only a web client needs an entry here.
-            echo "CORS_ORIGINS=${CORS_ORIGINS}"
+            # "true" merges the seeded demo fixtures into /sports/fixtures (see
+            # scripts/seed_sports_demo.ts). Unset or anything else hides them.
+            echo "SPORTS_DEMO_MODE=${SPORTS_DEMO_MODE}"
           } > app.env
           # Deliberately NOT written: SECRET_KEY, SERVICE_ACCOUNT,
           # GOOGLE_CLIENT_SECRET, FACEBOOK_APP_ID, FACEBOOK_APP_SECRET,

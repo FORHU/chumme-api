@@ -1,5 +1,6 @@
 import { prisma } from "../utils/prisma";
 import { Prisma, SportEventStatus } from "@prisma/client";
+import { DEMO_ESPN_ID_PREFIX } from "../utils/sport-demo.util";
 
 /**
  * Everything the fixture list and the room header need to render a team:
@@ -50,6 +51,10 @@ export default class SportRepo {
     leagueId?: string;
     teamId?: string;
     limit: number;
+    /** Demo fixtures are excluded unless asked for — see sport-demo.util. */
+    includeDemo?: boolean;
+    /** Only demo fixtures — used to merge them into a live ESPN list. */
+    demoOnly?: boolean;
   }) {
     const where: Prisma.SportEventWhereInput = {
       gameDate: { gte: params.from, lte: params.to },
@@ -57,6 +62,11 @@ export default class SportRepo {
       ...(params.teamId && {
         OR: [{ homeTeamId: params.teamId }, { awayTeamId: params.teamId }],
       }),
+      ...(params.demoOnly
+        ? { espnId: { startsWith: DEMO_ESPN_ID_PREFIX } }
+        : !params.includeDemo && {
+            NOT: { espnId: { startsWith: DEMO_ESPN_ID_PREFIX } },
+          }),
     };
 
     return prisma.sportEvent.findMany({
@@ -285,6 +295,9 @@ export default class SportRepo {
     const found = await prisma.sportEvent.findFirst({
       where: {
         leagueId,
+        // A demo match is "live" by the clock but has nothing on ESPN to
+        // fetch; letting it count would poll the league every 30s for nothing.
+        NOT: { espnId: { startsWith: DEMO_ESPN_ID_PREFIX } },
         OR: [
           {
             status: {

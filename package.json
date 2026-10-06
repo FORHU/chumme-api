@@ -19,6 +19,7 @@
     "db:seed:chat": "ts-node scripts/seed_room_chats.ts",
     "db:seed:globe": "ts-node scripts/seed_globe.ts",
     "db:seed:sports": "ts-node scripts/seed_sports.ts",
+    "db:seed:sports:demo": "ts-node scripts/seed_sports_demo.ts",
     "db:migration-status": "ts-node scripts/check_migration_status.ts",
     "redis:flush": "ts-node scripts/flush_redis.ts",
     "data:drop-interstellar": "ts-node scripts/drop_interstellar_data.ts",
