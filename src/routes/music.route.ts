@@ -2,11 +2,9 @@ import express from "express";
 import MusicCtrl from "../controllers/music.controller";
 import {
   authenticate,
-  requireRoles,
   optionalAuthenticate,
 } from "../middleware/auth.middleware";
 import { upload } from "../middleware/upload.middleware";
-import { UserRole } from "@prisma/client";
 
 const router = express.Router();
 
@@ -25,31 +23,30 @@ router.get("/:id", MusicCtrl.getMusicById);
 
 // Main creation endpoint (handles both JSON and Multipart)
 //
-// Open to any authenticated user: "upload your own song" is a user-level
-// action, and the controller stamps `ownerId: req.user.id` on every record so
-// uploads stay attributable. Update and delete below remain CREATOR/ADMIN —
-// those act on *any* song by id, not just your own.
+// Any signed-in Chumme user can upload their own song. `authenticate` runs
+// before `upload.any()` so an anonymous request is rejected before its files
+// are buffered, and the controller stamps `ownerId: req.user.id` on the record.
 router.post(
   "/create",
+  authenticate,
   upload.any(), // Flexible handling of fields
   MusicCtrl.createMusicWithFiles,
 );
 
 // JSON-only creation endpoint
-router.post("/create-with-json", MusicCtrl.createMusic);
+router.post("/create-with-json", authenticate, MusicCtrl.createMusic);
 
 // Alias for backward compatibility
-router.post("/create-with-files", upload.any(), MusicCtrl.createMusicWithFiles);
+router.post(
+  "/create-with-files",
+  authenticate,
+  upload.any(),
+  MusicCtrl.createMusicWithFiles,
+);
 
-router.patch(
-  "/update/:id",
-  requireRoles([UserRole.CREATOR, UserRole.ADMIN]),
-  MusicCtrl.updateMusic,
-);
-router.delete(
-  "/delete/:id",
-  requireRoles([UserRole.CREATOR, UserRole.ADMIN]),
-  MusicCtrl.deleteMusic,
-);
+// Only the uploader can change or delete a song — enforced in
+// MusicSvc.assertOwner, which answers 404 / 403.
+router.patch("/update/:id", authenticate, MusicCtrl.updateMusic);
+router.delete("/delete/:id", authenticate, MusicCtrl.deleteMusic);
 
 export default router;

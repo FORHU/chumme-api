@@ -12,6 +12,7 @@ import { Server } from "socket.io";
 import { createAdapter } from "@socket.io/redis-adapter";
 import RedisUtil from "./utils/redis.util";
 import { errorHandler } from "./middleware/error-handler.middleware";
+import { safeErrorResponse } from "./middleware/safe-error-response.middleware";
 
 import { SchedulingService } from "./services/net-communities/ingestion/scheduling.service";
 import { AudioMergeWorker } from "./listeners/audio-merge.listener";
@@ -52,6 +53,9 @@ if (!isDev) app.use(limiter);
 // Set up security headers
 app.use(helmet());
 app.disable("x-powered-by");
+
+// Strip internal error details (Prisma, stack traces, keys) from responses
+app.use(safeErrorResponse);
 
 // Use router for routing
 app.use("/api", router);

@@ -82,6 +82,14 @@ export default class MusicRepo {
     });
   }
 
+  /** Just enough to decide whether a user may change or delete a song. */
+  static async findOwnership(id: string) {
+    return prisma.music.findUnique({
+      where: { id },
+      select: { id: true, ownerId: true, deletedAt: true },
+    });
+  }
+
   static async findByTitle(title: string) {
     return prisma.music.findFirst({
       where: { title, deletedAt: null },

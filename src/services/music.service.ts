@@ -1,6 +1,7 @@
 import MusicRepo from "../repositories/music.repository";
 import CacheUtil from "../utils/cache.util";
 import logger from "../utils/logger";
+import { ForbiddenError, NotFoundError } from "../utils/error.util";
 
 interface CreateMusicInput {
   title: string;
@@ -190,7 +191,23 @@ export default class MusicSvc {
     });
   }
 
-  static async updateMusic(id: string, data: any) {
+  /**
+   * A song can be changed or deleted only by the user who uploaded it.
+   * Songs with no owner (the seeded catalogue) are therefore read-only
+   * through the API.
+   */
+  static async assertOwner(id: string, userId: string) {
+    const music = await MusicRepo.findOwnership(id);
+    if (!music || music.deletedAt) {
+      throw new NotFoundError("Music not found");
+    }
+    if (!music.ownerId || music.ownerId !== userId) {
+      throw new ForbiddenError("You can only change songs you uploaded");
+    }
+  }
+
+  static async updateMusic(id: string, userId: string, data: any) {
+    await this.assertOwner(id, userId);
     const music = await MusicRepo.update(id, data);
     await CacheUtil.del(`music:${id}`);
     await CacheUtil.delByPattern("musics:*");
@@ -240,7 +257,8 @@ export default class MusicSvc {
     };
   }
 
-  static async deleteMusic(id: string) {
+  static async deleteMusic(id: string, userId: string) {
+    await this.assertOwner(id, userId);
     const music = await MusicRepo.delete(id);
     await CacheUtil.del(`music:${id}`);
     await CacheUtil.delByPattern("musics:*");

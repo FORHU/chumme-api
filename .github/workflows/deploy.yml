@@ -197,6 +197,7 @@ jobs:
           # Empty = no HTTPS proxy. See docs/HTTPS-SETUP.md before setting it.
           API_DOMAIN: ${{ vars.API_DOMAIN }}
           SPORTS_DEMO_MODE: ${{ vars.SPORTS_DEMO_MODE }}
+          SPORT_BOT_USER_ID: ${{ vars.SPORT_BOT_USER_ID }}
         run: |
           set -euo pipefail
 
@@ -258,6 +259,9 @@ jobs:
             # "true" merges the seeded demo fixtures into /sports/fixtures (see
             # scripts/seed_sports_demo.ts). Unset or anything else hides them.
             echo "SPORTS_DEMO_MODE=${SPORTS_DEMO_MODE}"
+            # The account that authors kickoff/goal messages in match rooms.
+            # Empty = auto-posting skipped (see sport-room.service.ts).
+            echo "SPORT_BOT_USER_ID=${SPORT_BOT_USER_ID}"
           } > app.env
           # Deliberately NOT written: SECRET_KEY, SERVICE_ACCOUNT,
           # GOOGLE_CLIENT_SECRET, FACEBOOK_APP_ID, FACEBOOK_APP_SECRET,

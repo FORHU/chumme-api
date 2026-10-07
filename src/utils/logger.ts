@@ -1,4 +1,22 @@
 import winston from "winston";
+import { redact } from "./log-redact.util";
+
+/**
+ * Runs every entry through `redact` before it is written. An Error passed as
+ * meta is merged into the entry itself, so `config`, `response` etc. arrive
+ * as top-level keys and get the same drop/mask rules as nested ones. Only
+ * string keys are touched — winston's Symbol keys (level, splat) stay.
+ */
+const redactSecrets = winston.format((info) => {
+  const plain: Record<string, unknown> = {};
+  for (const key of Object.keys(info)) plain[key] = info[key];
+  const clean = redact(plain) as Record<string, unknown>;
+  for (const key of Object.keys(info)) {
+    if (!(key in clean)) delete info[key];
+  }
+  Object.assign(info, clean);
+  return info;
+});
 
 const transports: winston.transport[] = [
   new winston.transports.Console(),
@@ -10,6 +28,7 @@ const transports: winston.transport[] = [
 const baseLogger = winston.createLogger({
   level: "info",
   format: winston.format.combine(
+    redactSecrets(),
     winston.format.timestamp(),
     winston.format.json(),
   ),
@@ -20,6 +39,7 @@ const baseLogger = winston.createLogger({
 const chatLogger = winston.createLogger({
   level: "info",
   format: winston.format.combine(
+    redactSecrets(),
     winston.format.timestamp(),
     winston.format.json(),
   ),

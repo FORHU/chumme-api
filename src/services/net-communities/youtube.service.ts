@@ -2,6 +2,18 @@ import { google, youtube_v3 } from "googleapis";
 import { QuotaService } from "./ingestion/quota.service";
 import logger from "../../utils/logger";
 
+/** Recent uploads inspected per channel when looking for a live broadcast. */
+const LIVE_CANDIDATES_PER_CHANNEL = 5;
+
+/**
+ * A channel's uploads playlist id is its channel id with the "UC" prefix
+ * swapped for "UU" — a stable YouTube convention that saves a channels.list
+ * call per channel. Returns null for anything that is not a UC… id.
+ */
+export function uploadsPlaylistFor(channelId: string): string | null {
+  return /^UC[\w-]{22}$/.test(channelId) ? `UU${channelId.slice(2)}` : null;
+}
+
 export default class YouTubeService {
   private static youtube: youtube_v3.Youtube;
 
@@ -238,43 +250,67 @@ export default class YouTubeService {
 
     const videoIdToChannelId = new Map<string, string>();
     try {
+      // 1. CANDIDATES (Cost: 1 unit per channel). A broadcast that is live
+      // right now sits at the top of the channel's uploads playlist, so the
+      // last few uploads are enough to find it. This replaced
+      // `search.list({ eventType: "live" })`, which costs 100 units per channel
+      // and burned the project's 100-searches-a-day search quota within
+      // minutes of a deploy.
       for (const channelId of channelIds) {
-        const searchResponse = await youtube.search.list({
-          part: ["id"],
-          channelId: channelId,
-          type: ["video"],
-          eventType: "live",
-          maxResults: 1,
-        });
-        await QuotaService.increment(100);
+        const uploadsPlaylistId = uploadsPlaylistFor(channelId);
+        if (!uploadsPlaylistId) continue;
 
-        const videoId = searchResponse.data.items?.[0]?.id?.videoId;
-        if (videoId) {
-          videoIdToChannelId.set(videoId, channelId);
+        try {
+          const uploads = await youtube.playlistItems.list({
+            part: ["contentDetails"],
+            playlistId: uploadsPlaylistId,
+            maxResults: LIVE_CANDIDATES_PER_CHANNEL,
+          });
+          await QuotaService.increment(1);
+
+          for (const item of uploads.data.items || []) {
+            const videoId = item.contentDetails?.videoId;
+            if (videoId) videoIdToChannelId.set(videoId, channelId);
+          }
+        } catch (error: any) {
+          // One deleted or private channel must not end the whole sweep.
+          logger.warn(
+            `[YouTubeService] Uploads unavailable for channel ${channelId}: ${error?.message ?? error}`,
+          );
         }
       }
 
       if (videoIdToChannelId.size === 0) return liveMap;
 
-      // 3. EMBEDDABILITY GATE (Cost: 1 unit): drop videos that are non-embeddable
-      // (e.g. FOX, BBC, sports streams that block third-party embeds) or have
-      // already ended. Without this check we hand the mobile player a videoId
-      // YouTube's iframe will reject with "This live stream recording is not
-      // available."
-      const videosResponse = await youtube.videos.list({
-        part: ["status", "liveStreamingDetails"],
-        id: Array.from(videoIdToChannelId.keys()),
-      });
-      await QuotaService.increment(1);
+      // 2. LIVE + EMBEDDABILITY GATE (Cost: 1 unit per 50 videos): keep only
+      // videos that are live now, and drop non-embeddable ones (e.g. FOX, BBC,
+      // sports streams that block third-party embeds). Without the embeddable
+      // check we hand the mobile player a videoId YouTube's iframe will reject
+      // with "This live stream recording is not available."
+      const candidateIds = Array.from(videoIdToChannelId.keys());
+      const items: any[] = [];
+      for (let i = 0; i < candidateIds.length; i += 50) {
+        const videosResponse = await youtube.videos.list({
+          part: ["snippet", "status", "liveStreamingDetails"],
+          id: candidateIds.slice(i, i + 50),
+        });
+        await QuotaService.increment(1);
+        items.push(...(videosResponse.data.items || []));
+      }
 
-      for (const item of videosResponse.data.items || []) {
+      for (const item of items) {
         const vid = item.id;
         if (!vid) continue;
         const channelId = videoIdToChannelId.get(vid);
-        if (!channelId) continue;
+        if (!channelId || liveMap.has(channelId)) continue;
 
         const status = item.status as any;
         const liveDetails = item.liveStreamingDetails as any;
+        const isLiveNow =
+          item.snippet?.liveBroadcastContent === "live" &&
+          !!liveDetails?.actualStartTime;
+        if (!isLiveNow) continue;
+
         const isEmbeddable = status?.embeddable !== false;
         const isOngoing = !liveDetails?.actualEndTime;
 

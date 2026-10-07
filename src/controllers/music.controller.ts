@@ -126,20 +126,24 @@ export default class MusicCtrl {
     if (error) return res.status(400).json({ message: error.message });
 
     try {
-      const music = await MusicSvc.updateMusic(id, value);
+      const music = await MusicSvc.updateMusic(id, req.user.id, value);
       return res.json(music);
     } catch (error: any) {
-      return res.status(500).json({ message: error.message || error });
+      return res
+        .status(error.statusCode || 500)
+        .json({ message: error.message || error });
     }
   }
 
   static async deleteMusic(req: Request, res: Response) {
     const { id } = req.params;
     try {
-      await MusicSvc.deleteMusic(id);
+      await MusicSvc.deleteMusic(id, req.user.id);
       return res.json({ message: "Music deleted successfully" });
     } catch (error: any) {
-      return res.status(500).json({ message: error.message || error });
+      return res
+        .status(error.statusCode || 500)
+        .json({ message: error.message || error });
     }
   }
 
