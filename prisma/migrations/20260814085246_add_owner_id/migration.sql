@@ -20,8 +20,8 @@ ALTER TABLE "SocialIngestionSchedule" DROP CONSTRAINT "SocialIngestionSchedule_s
 ALTER TABLE "ChummeArtist" ADD COLUMN IF NOT EXISTS "ownerId" TEXT;
 
 -- AlterTable
-ALTER TABLE "ChummeCategoryDesign" ADD COLUMN     "aiChatEnabled" BOOLEAN NOT NULL DEFAULT true,
-ADD COLUMN     "discoveryEnabled" BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE "ChummeCategoryDesign" ADD COLUMN IF NOT EXISTS "aiChatEnabled" BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE "ChummeCategoryDesign" ADD COLUMN IF NOT EXISTS "discoveryEnabled" BOOLEAN NOT NULL DEFAULT true;
 
 -- AlterTable
 ALTER TABLE "Music" ADD COLUMN IF NOT EXISTS "ownerId" TEXT;
