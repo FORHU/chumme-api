@@ -1,4 +1,4 @@
-import cron from "node-cron";
+import cron, { type ScheduledTask } from "node-cron";
 import SportRepo from "../repositories/sport.repository";
 import SportIngestionSvc from "./sport-ingestion.service";
 import SportRoomSvc from "./sport-room.service";
@@ -36,7 +36,7 @@ const TICK_EXPRESSION = "*/30 * * * * *";
 const lastPolledAt = new Map<string, number>();
 
 let running = false;
-let task: cron.ScheduledTask | null = null;
+let task: ScheduledTask | null = null;
 
 async function tick(): Promise<void> {
   // A slow ESPN response must not let ticks pile up on top of each other.
