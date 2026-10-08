@@ -53,7 +53,6 @@ jobs:
           MAILER_TRANSPORT_HOST: ${{ vars.MAILER_TRANSPORT_HOST }}
           MAILER_PASSWORD: ${{ secrets.MAILER_PASSWORD }}
           AWS_S3_BUCKET_NAME: ${{ vars.AWS_S3_BUCKET_NAME }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
           GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
           CHAT_WONDER_API_URL: ${{ vars.CHAT_WONDER_API_URL }}
@@ -80,7 +79,7 @@ jobs:
 
           for NAME in MAILER_TRANSPORT_HOST MAILER_PASSWORD \
                       AWS_S3_BUCKET_NAME \
-                      OPENAI_API_KEY YOUTUBE_API_KEY GOOGLE_CLIENT_ID \
+                      YOUTUBE_API_KEY GOOGLE_CLIENT_ID \
                       CHAT_WONDER_API_URL GOOGLE_TRANSLATE_API_KEY; do
             eval "VALUE=\${$NAME:-}"
             [ -n "$VALUE" ] || echo "::warning::$NAME is empty — the feature it gates will not work"
@@ -185,7 +184,6 @@ jobs:
           # `production-chumme-instance`. See the app.env block below.
           AWS_S3_BUCKET_NAME: ${{ vars.AWS_S3_BUCKET_NAME }}
           S3_CDN_URL: ${{ vars.S3_CDN_URL }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
           CHAT_WONDER_API_URL: ${{ vars.CHAT_WONDER_API_URL }}
           TRANSLATION_API_URL: ${{ vars.TRANSLATION_API_URL }}
@@ -242,7 +240,6 @@ jobs:
             # silently take precedence over the role and be very hard to spot.
             echo "AWS_S3_BUCKET_NAME=${AWS_S3_BUCKET_NAME}"
             echo "S3_CDN_URL=${S3_CDN_URL}"
-            echo "OPENAI_API_KEY=${OPENAI_API_KEY}"
             echo "YOUTUBE_API_KEY=${YOUTUBE_API_KEY}"
             echo "CHAT_WONDER_API_URL=${CHAT_WONDER_API_URL}"
             # Empty is fine for all three. Provider defaults to google; google

@@ -3,7 +3,6 @@ import ConversationRepo, {
 } from "../repositories/conversation.repository";
 import { BadRequestError, NotFoundError } from "../utils/error.util";
 import logger from "../utils/logger";
-import { defaultOpenAIRequest } from "../utils/openai";
 import CacheUtil from "../utils/cache.util";
 
 export default class ConversationSvc {
@@ -183,94 +182,6 @@ export default class ConversationSvc {
         `[CONVERSATION.SERVICE] deleteConversation Error: ${error?.message}`,
       );
       throw error;
-    }
-  }
-
-  /**
-   * Generate conversation title from first messages using AI
-   * This is called asynchronously after 3rd message
-   */
-  static async generateConversationTitle(
-    conversationId: string,
-    userId: string,
-  ) {
-    try {
-      // Check if conversation already has a title
-      const conversation = await this.getConversationById(
-        conversationId,
-        userId,
-      );
-      if (conversation.title) {
-        logger.info(
-          `[CONVERSATION.SERVICE] Conversation ${conversationId} already has a title, skipping generation`,
-        );
-        return conversation;
-      }
-
-      // Get first 5 messages
-      const messages = await ConversationRepo.getFirstMessages(
-        conversationId,
-        5,
-      );
-
-      if (messages.length < 2) {
-        logger.info(
-          `[CONVERSATION.SERVICE] Not enough messages (${messages.length}) to generate title for conversation ${conversationId}`,
-        );
-        return conversation;
-      }
-
-      // Format messages for prompt
-      const messageText = messages
-        .map((m) => `${m.role}: ${m.message}`)
-        .join("\n");
-
-      const prompt = `Generate a short, descriptive 3-5 word title for this conversation. Respond with ONLY the title, nothing else.
-
-Conversation:
-${messageText}
-
-Title:`;
-
-      const title = await defaultOpenAIRequest(prompt, {
-        role: "user",
-        temperature: 0.7,
-        maxTokens: 20,
-      });
-
-      if (!title || typeof title !== "string") {
-        logger.error(
-          `[CONVERSATION.SERVICE] Invalid title generated for conversation ${conversationId}`,
-        );
-        return conversation;
-      }
-
-      // Clean up the title (remove quotes, trim, limit length)
-      const cleanTitle = title.replace(/['"]/g, "").trim().substring(0, 100);
-
-      // Update conversation with generated title
-      const updatedConversation =
-        await ConversationRepo.updateConversationTitle(
-          conversationId,
-          userId,
-          cleanTitle,
-        );
-
-      // Invalidate caches
-      await CacheUtil.delByPattern(`conversation:${conversationId}:*`);
-      await CacheUtil.delByPattern(`conversation:list:${userId}:*`);
-
-      logger.info(
-        `[CONVERSATION.SERVICE] Generated title for conversation ${conversationId}: "${cleanTitle}"`,
-      );
-
-      return updatedConversation;
-    } catch (error: any) {
-      // Don't throw error for title generation - it's not critical
-      logger.error(
-        `[CONVERSATION.SERVICE] generateConversationTitle Error: ${error?.message}`,
-      );
-      return null;
     }
   }
 }
