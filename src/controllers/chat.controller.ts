@@ -7,35 +7,6 @@ import { BadRequestError, InternalServerError } from "../utils/error.util";
 import logger from "../utils/logger";
 
 export default class ChatCtrl {
-  static async sendChat(req: Request, res: Response, next: NextFunction) {
-    const { input, conversationId } = req.body;
-    const { id: userId } = req.user;
-
-    if (!userId) {
-      return next(
-        new InternalServerError("Authenticated user not found in request"),
-      );
-    }
-
-    const schema = Joi.object({
-      input: Joi.string().min(1).max(500).optional(),
-      conversationId: Joi.optional(),
-    });
-
-    const { error } = schema.validate(req.body);
-
-    if (error) {
-      next(new BadRequestError(error.message));
-    }
-
-    try {
-      const result = await ChatSvc.sendChat(input, userId, conversationId);
-      return res.json(result);
-    } catch (error) {
-      next(error);
-    }
-  }
-
   static async getChatByChatId(
     req: Request,
     res: Response,

@@ -8,8 +8,10 @@ import { streamChat } from "../utils/chat-wonder-stream";
 import { parseChatWonderResponse } from "../utils/chat-wonder";
 import { stripSourcesPrefix } from "../utils/chat-wonder/source-metadata.util";
 import { searchDbVideosFromSourceMetadata } from "../utils/chat-wonder/db-video-lookup.util";
-import { detectVideoIntent } from "../utils/openai/detect-video-intent.util";
-import { detectCommunityIntent } from "../utils/openai/detect-community-intent.util";
+import {
+  detectCommunityIntent,
+  detectVideoIntent,
+} from "../utils/chat-wonder/detect-intent.util";
 import { searchDbCommunities } from "../utils/chat-wonder/db-community-lookup.util";
 import { ParsedVideo } from "../utils/chat-wonder/parse-response.util";
 import YouTubeService from "../services/net-communities/youtube.service";

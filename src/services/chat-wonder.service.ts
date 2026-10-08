@@ -9,8 +9,10 @@ import {
 } from "../utils/chat-wonder-api";
 import { parseChatWonderResponse } from "../utils/chat-wonder";
 import { searchDbVideosFromSourceMetadata } from "../utils/chat-wonder/db-video-lookup.util";
-import { detectVideoIntent } from "../utils/openai/detect-video-intent.util";
-import { detectCommunityIntent } from "../utils/openai/detect-community-intent.util";
+import {
+  detectCommunityIntent,
+  detectVideoIntent,
+} from "../utils/chat-wonder/detect-intent.util";
 import { ParsedVideo } from "../utils/chat-wonder/parse-response.util";
 import {
   searchDbCommunities,
