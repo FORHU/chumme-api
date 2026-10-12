@@ -31,6 +31,10 @@ model User {
   /// interchangeable across flows — a code emailed to verify an address could be
   /// spent to change the account password. Checked on every redeem.
   otpPurpose             OtpPurpose?
+  /// Wrong guesses against the live otpCode. Reset whenever a code is minted;
+  /// at MAX_OTP_ATTEMPTS the code is voided, so a 6-digit code cannot be
+  /// brute-forced inside its expiry window.
+  otpAttempts            Int                     @default(0)
   /// Address awaiting confirmation during an email change. `email` is only
   /// overwritten once an OTP sent to *this* address comes back, so a typo or a
   /// hostile address never takes over account recovery.

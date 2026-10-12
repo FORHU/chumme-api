@@ -4,9 +4,15 @@
  * Used for: Email verification, phone verification, password reset
  */
 
+import { randomInt } from "crypto";
+
+/** Wrong guesses a live OTP survives before it is voided. */
+export const MAX_OTP_ATTEMPTS = 5;
+
+// CSPRNG, not Math.random: V8's Math.random is a predictable xorshift, and
+// these codes unlock password resets.
 export const generateOTP = (): string => {
-  const otp = Math.floor(100000 + Math.random() * 900000);
-  return otp.toString().padStart(6, "0");
+  return randomInt(100000, 1000000).toString();
 };
 
 export const getOTPExpiry = (): Date => {

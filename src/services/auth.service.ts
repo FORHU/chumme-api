@@ -3,7 +3,12 @@ import SessionSessionSocialAccountRepo from "../repositories/net-communities/ses
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import { verifyGoogleIdToken } from "../utils/google-id-token.util";
-import { generateOTP, getOTPExpiry, isOTPExpired } from "../utils/otp.utils";
+import {
+  generateOTP,
+  getOTPExpiry,
+  isOTPExpired,
+  MAX_OTP_ATTEMPTS,
+} from "../utils/otp.utils";
 import { sendTemplatedEmail } from "../utils/helpers";
 import CacheUtil from "../utils/cache.util";
 import {
@@ -28,6 +33,9 @@ import {
  * in whichever controller happens to call it.
  */
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$/;
+
+const TOO_MANY_OTP_ATTEMPTS =
+  "Too many incorrect attempts. Please request a new code.";
 
 export function isValidEmail(value: string): boolean {
   const trimmed = (value || "").trim();
@@ -75,16 +83,23 @@ export default class AuthSvc {
    * backfilled by the migration, so a null purpose here means the slot was
    * written by a build that predates this check — treat it as unusable rather
    * than as a wildcard.
+   *
+   * Every comparison spends one of MAX_OTP_ATTEMPTS guesses up front (refunded
+   * on a match); once they are gone the code is voided and the user must
+   * request a new one. Without the cap a 6-digit code falls to brute force
+   * well inside its 5-minute life.
    */
-  private static assertOtp(
+  private static async assertOtp(
     user: {
+      id: string;
       otpCode: string | null;
       otpExpiry: Date | null;
       otpPurpose: OtpPurpose | null;
+      otpAttempts: number;
     },
     otpCode: string,
     purpose: OtpPurpose,
-  ): void {
+  ): Promise<void> {
     if (!user.otpCode || !user.otpExpiry) {
       throw new Error("No verification code found. Please request a new one.");
     }
@@ -99,6 +114,11 @@ export default class AuthSvc {
       throw new Error("Verification code expired. Please request a new one.");
     }
 
+    if (!(await AuthRepo.reserveOtpAttempt(user.id, MAX_OTP_ATTEMPTS))) {
+      await this.voidOtp(user.id);
+      throw new Error(TOO_MANY_OTP_ATTEMPTS);
+    }
+
     const encoder = new TextEncoder();
     const supplied = encoder.encode(String(otpCode));
     const actual = encoder.encode(user.otpCode);
@@ -106,8 +126,25 @@ export default class AuthSvc {
       supplied.length !== actual.length ||
       !crypto.timingSafeEqual(supplied, actual)
     ) {
+      if (user.otpAttempts + 1 >= MAX_OTP_ATTEMPTS) {
+        await this.voidOtp(user.id);
+        throw new Error(TOO_MANY_OTP_ATTEMPTS);
+      }
       throw new Error("Invalid verification code");
     }
+
+    // A match is not a failed guess. Matters for verifyOtp, which leaves the
+    // code live for resetPassword to redeem a second time.
+    await AuthRepo.updateUser(user.id, { otpAttempts: { decrement: 1 } });
+  }
+
+  private static async voidOtp(userId: string): Promise<void> {
+    await AuthRepo.updateUser(userId, {
+      otpCode: null,
+      otpExpiry: null,
+      otpPurpose: null,
+      otpAttempts: 0,
+    });
   }
 
   /**
@@ -317,7 +354,7 @@ export default class AuthSvc {
 
     // Scoped to PASSWORD_RESET: this is the forgot-password pre-check, and it
     // deliberately leaves the code live for resetPassword to spend.
-    this.assertOtp(user, otpCode, OtpPurpose.PASSWORD_RESET);
+    await this.assertOtp(user, otpCode, OtpPurpose.PASSWORD_RESET);
 
     return { message: "OTP verified" };
   }
@@ -333,7 +370,7 @@ export default class AuthSvc {
       throw new Error("Email already verified");
     }
 
-    this.assertOtp(user, otpCode, OtpPurpose.EMAIL_VERIFICATION);
+    await this.assertOtp(user, otpCode, OtpPurpose.EMAIL_VERIFICATION);
 
     await AuthRepo.updateUser(user.id, {
       isEmailVerified: true,
@@ -539,6 +576,7 @@ export default class AuthSvc {
       otpCode: otp,
       otpExpiry: otpExpiry,
       otpPurpose: OtpPurpose.PASSWORD_RESET,
+      otpAttempts: 0,
     });
 
     // Send email with OTP
@@ -574,7 +612,7 @@ export default class AuthSvc {
       throw new Error("Invalid request");
     }
 
-    this.assertOtp(user, otpCode, OtpPurpose.PASSWORD_RESET);
+    await this.assertOtp(user, otpCode, OtpPurpose.PASSWORD_RESET);
 
     // Update password and clear OTP
     await AuthRepo.updateUser(user.id, {
@@ -608,6 +646,7 @@ export default class AuthSvc {
       otpCode: otp,
       otpExpiry: otpExpiry,
       otpPurpose: OtpPurpose.EMAIL_VERIFICATION,
+      otpAttempts: 0,
     });
 
     try {
@@ -663,6 +702,7 @@ export default class AuthSvc {
       otpCode: otp,
       otpExpiry: getOTPExpiry(),
       otpPurpose: OtpPurpose.PASSWORD_CHANGE,
+      otpAttempts: 0,
     });
 
     try {
@@ -718,7 +758,7 @@ export default class AuthSvc {
       );
     }
 
-    this.assertOtp(user, otpCode, OtpPurpose.PASSWORD_CHANGE);
+    await this.assertOtp(user, otpCode, OtpPurpose.PASSWORD_CHANGE);
 
     await AuthRepo.updateUser(user.id, {
       password: this.hashPassword(newPassword),
@@ -778,6 +818,7 @@ export default class AuthSvc {
       otpCode: otp,
       otpExpiry: getOTPExpiry(),
       otpPurpose: OtpPurpose.EMAIL_CHANGE,
+      otpAttempts: 0,
     });
 
     try {
@@ -807,7 +848,7 @@ export default class AuthSvc {
       throw new Error("No email change is pending. Please start again.");
     }
 
-    this.assertOtp(user, otpCode, OtpPurpose.EMAIL_CHANGE);
+    await this.assertOtp(user, otpCode, OtpPurpose.EMAIL_CHANGE);
 
     // Re-check at commit time: the address may have been claimed by someone
     // else in the minutes since it was staged, and the unique index would

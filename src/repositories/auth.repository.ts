@@ -192,6 +192,19 @@ export default class AuthRepo {
     });
   }
 
+  /**
+   * Atomically spend one guess against the live OTP. Returns false when the
+   * budget is already used up. Conditional on the row, not on a value read
+   * earlier, so a burst of parallel guesses cannot all slip under the cap.
+   */
+  static async reserveOtpAttempt(userId: string, max: number) {
+    const { count } = await prisma.user.updateMany({
+      where: { id: userId, otpCode: { not: null }, otpAttempts: { lt: max } },
+      data: { otpAttempts: { increment: 1 } },
+    });
+    return count > 0;
+  }
+
   static async getAuthUser(userId: string) {
     return prisma.user.findUnique({
       where: {
