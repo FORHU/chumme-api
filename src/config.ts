@@ -57,7 +57,8 @@ export const CHAT_WONDER_API_URL = process.env.CHAT_WONDER_API_URL as string;
 export const AWS_SQS_ENDPOINT = (process.env.AWS_SQS_ENDPOINT || "").trim();
 export const MEDIA_PROCESSING_QUEUE_URL = process.env
   .MEDIA_PROCESSING_QUEUE_URL as string;
-export const AUDIO_MERGE_QUEUE_URL = process.env.AUDIO_MERGE_QUEUE_URL as string;
+export const AUDIO_MERGE_QUEUE_URL = process.env
+  .AUDIO_MERGE_QUEUE_URL as string;
 export const INGESTION_JOBS_QUEUE_URL = process.env
   .INGESTION_JOBS_QUEUE_URL as string;
 

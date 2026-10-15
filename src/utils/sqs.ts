@@ -34,7 +34,8 @@ export async function enqueue(
   payload: unknown,
   options: { delaySeconds?: number } = {},
 ): Promise<string | undefined> {
-  if (!queueUrl) throw new Error("enqueue: queueUrl is empty — check *_QUEUE_URL env");
+  if (!queueUrl)
+    throw new Error("enqueue: queueUrl is empty — check *_QUEUE_URL env");
   const result = await getSqsClient().send(
     new SendMessageCommand({
       QueueUrl: queueUrl,
@@ -62,7 +63,9 @@ export interface Consumer {
   stop(): Promise<void>;
 }
 
-export function startConsumer<T = unknown>(options: ConsumerOptions<T>): Consumer {
+export function startConsumer<T = unknown>(
+  options: ConsumerOptions<T>,
+): Consumer {
   const {
     queueUrl,
     handler,
@@ -90,21 +93,36 @@ export function startConsumer<T = unknown>(options: ConsumerOptions<T>): Consume
       payload = JSON.parse(message.Body || "");
     } catch {
       // Retrying a malformed body can never succeed — drop it.
-      logger.error(`SQS: dropping malformed message ${message.MessageId} on ${queueUrl}`);
-      await sqs.send(new DeleteMessageCommand({ QueueUrl: queueUrl, ReceiptHandle: receiptHandle }));
+      logger.error(
+        `SQS: dropping malformed message ${message.MessageId} on ${queueUrl}`,
+      );
+      await sqs.send(
+        new DeleteMessageCommand({
+          QueueUrl: queueUrl,
+          ReceiptHandle: receiptHandle,
+        }),
+      );
       return;
     }
 
     // Keep the message hidden while a long job is still running.
-    const heartbeat = setInterval(() => {
-      changeVisibility(receiptHandle, visibilityTimeout).catch((err) =>
-        logger.warn(`SQS: heartbeat failed for ${message.MessageId}:`, err),
-      );
-    }, (visibilityTimeout * 1000) / 2);
+    const heartbeat = setInterval(
+      () => {
+        changeVisibility(receiptHandle, visibilityTimeout).catch((err) =>
+          logger.warn(`SQS: heartbeat failed for ${message.MessageId}:`, err),
+        );
+      },
+      (visibilityTimeout * 1000) / 2,
+    );
 
     try {
       await handler(payload, message);
-      await sqs.send(new DeleteMessageCommand({ QueueUrl: queueUrl, ReceiptHandle: receiptHandle }));
+      await sqs.send(
+        new DeleteMessageCommand({
+          QueueUrl: queueUrl,
+          ReceiptHandle: receiptHandle,
+        }),
+      );
     } catch (err) {
       logger.error(`SQS: job ${message.MessageId} failed on ${queueUrl}:`, err);
       await changeVisibility(receiptHandle, retryDelaySeconds).catch(() => {});
@@ -136,7 +154,10 @@ export function startConsumer<T = unknown>(options: ConsumerOptions<T>): Consume
           inFlight.add(job);
         }
       } catch (err) {
-        logger.error(`SQS: receive failed on ${queueUrl}, retrying in 5s:`, err);
+        logger.error(
+          `SQS: receive failed on ${queueUrl}, retrying in 5s:`,
+          err,
+        );
         await new Promise((resolve) => setTimeout(resolve, 5000));
       }
     }

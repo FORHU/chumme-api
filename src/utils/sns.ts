@@ -1,5 +1,9 @@
 import { PublishCommand, SNSClient } from "@aws-sdk/client-sns";
-import { AWS_REGION, AWS_SNS_ENDPOINT, CHUMME_EVENTS_TOPIC_ARN } from "../config";
+import {
+  AWS_REGION,
+  AWS_SNS_ENDPOINT,
+  CHUMME_EVENTS_TOPIC_ARN,
+} from "../config";
 
 let client: SNSClient | null = null;
 
@@ -32,7 +36,9 @@ export async function publishEvent(
   payload: unknown,
 ): Promise<string | undefined> {
   if (!CHUMME_EVENTS_TOPIC_ARN) {
-    throw new Error("publishEvent: CHUMME_EVENTS_TOPIC_ARN is empty — check env");
+    throw new Error(
+      "publishEvent: CHUMME_EVENTS_TOPIC_ARN is empty — check env",
+    );
   }
   const result = await getSnsClient().send(
     new PublishCommand({
