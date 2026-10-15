@@ -17,6 +17,15 @@ name: Deploy Dev
 #   3. Put this project's own secrets in the `dev` environment, and list them
 #      in the "Publish project env" step. DATABASE_URL, REDIS_URL and
 #      RABBITMQ_URL come from the host — do NOT set them here.
+#   4. Delete these from the environment; they belong to the old box's SSH
+#      deploy and nothing here reads them:
+#        EC2_HOST  EC2_SSH_KEY  EC2_USER  EC2_INSTANCE_ID
+#        RABBITMQ_DEFAULT_USER  RABBITMQ_DEFAULT_PASS  DATABASE_URL
+#      And delete APP_AWS_ACCESS_KEY_ID / APP_AWS_SECRET_ACCESS_KEY, which were
+#      stored as VARIABLES — plain text, visible in logs and to anyone with read
+#      access. That key pair should be rotated, not merely moved: on this host
+#      the container inherits the instance role, which already covers S3 and SQS
+#      on dev-*, so it needs no static credentials at all.
 
 on:
   workflow_dispatch:
@@ -53,7 +62,12 @@ jobs:
     # amd64, pulls cleanly, then dies with "exec format error". Do not
     # cross-build under QEMU — Node and Prisma builds take hours and look hung.
     runs-on: ubuntu-24.04-arm
-    environment: staging
+    # `dev`, not `staging` — chumme's secrets live in dev and staging is empty.
+    # The name has to match exactly: naming one that does not exist does not
+    # fail. GitHub creates an empty environment and every secret resolves to a
+    # blank string, which surfaces later as a missing-variable crash rather than
+    # as a configuration error.
+    environment: dev
 
     permissions:
       id-token: write
