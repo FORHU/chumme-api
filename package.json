@@ -22,6 +22,8 @@
     "db:seed:sports:demo": "ts-node scripts/seed_sports_demo.ts",
     "db:migration-status": "ts-node scripts/check_migration_status.ts",
     "redis:flush": "ts-node scripts/flush_redis.ts",
+    "sqs:smoke": "ts-node scripts/sqs_smoke.ts",
+    "sns:smoke": "ts-node scripts/sns_smoke.ts",
     "data:drop-interstellar": "ts-node scripts/drop_interstellar_data.ts",
     "ingest:instagram": "ts-node scripts/instagram.script.ts",
     "scrape:instagram:comments": "ts-node scripts/scrapper/instagram-comments.ts",
@@ -30,6 +32,8 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.922.0",
+    "@aws-sdk/client-sns": "^3.1152.0",
+    "@aws-sdk/client-sqs": "^3.1152.0",
     "@aws-sdk/s3-request-presigner": "^3.978.0",
     "@prisma/client": "^6.19.2",
     "@socket.io/redis-adapter": "^8.3.0",

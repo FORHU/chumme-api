@@ -50,6 +50,24 @@ export const INGESTION_QUEUE_NAME =
   (isDev ? "ingestion_jobs_local" : "ingestion_jobs");
 export const CHAT_WONDER_API_URL = process.env.CHAT_WONDER_API_URL as string;
 
+// SQS Configuration. AWS_SQS_ENDPOINT is set ONLY locally (LocalStack, see
+// docker-compose.yml); when present the SQS client uses dummy credentials so
+// the real AWS keys above (still used for S3) never reach the emulator.
+// Unset in deployed environments, where the SDK talks to real SQS.
+export const AWS_SQS_ENDPOINT = (process.env.AWS_SQS_ENDPOINT || "").trim();
+export const MEDIA_PROCESSING_QUEUE_URL = process.env
+  .MEDIA_PROCESSING_QUEUE_URL as string;
+export const AUDIO_MERGE_QUEUE_URL = process.env.AUDIO_MERGE_QUEUE_URL as string;
+export const INGESTION_JOBS_QUEUE_URL = process.env
+  .INGESTION_JOBS_QUEUE_URL as string;
+
+// SNS Configuration. Same local-only rule as AWS_SQS_ENDPOINT. Events published
+// to this topic reach every queue whose subscription filter matches the
+// eventType (the routing key) — see docker/localstack/init-queues.sh.
+export const AWS_SNS_ENDPOINT = (process.env.AWS_SNS_ENDPOINT || "").trim();
+export const CHUMME_EVENTS_TOPIC_ARN = process.env
+  .CHUMME_EVENTS_TOPIC_ARN as string;
+
 // Room-message translation backend: "google" (Cloud Translation v2, the
 // default) or "forhu" (FORHU's chat-wonder v2 agent). Neither path uses OpenAI.
 // See utils/translation/translate-text.util.ts for how the choice is made.

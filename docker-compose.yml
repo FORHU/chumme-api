@@ -36,6 +36,29 @@
           - redisdata:/data
         restart: unless-stopped
 
+      # Local SQS + SNS emulator. Queues and the topic live in memory and are
+      # recreated on every start by docker/localstack/init-queues.sh. Pinned to
+      # 3.x on purpose: images from 2026.03 on refuse to start without
+      # LOCALSTACK_AUTH_TOKEN.
+      localstack:
+        image: localstack/localstack:3
+        container_name: local_localstack
+        environment:
+          - SERVICES=sqs,sns
+          - AWS_DEFAULT_REGION=ap-southeast-1
+          - QUEUE_MAX_RECEIVES=5
+        ports:
+          - "4566:4566"
+        volumes:
+          - ./docker/localstack/init-queues.sh:/etc/localstack/init/ready.d/init-queues.sh
+        healthcheck:
+          # Passes only once every ready.d script has finished successfully.
+          test: ["CMD-SHELL", "r=$$(curl -sf http://localhost:4566/_localstack/init/ready) && echo \"$$r\" | grep -Eq '\"completed\": ?true' && ! echo \"$$r\" | grep -q '\"ERROR\"'"]
+          interval: 5s
+          timeout: 3s
+          retries: 20
+        restart: unless-stopped
+
     volumes:
       pgdata:
       rabbitmqdata:
