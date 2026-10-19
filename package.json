@@ -17,6 +17,7 @@
     "db:setup": "npx prisma generate && npx prisma migrate dev",
     "db:seed": "npx prisma db seed",
     "db:seed:chat": "ts-node scripts/seed_room_chats.ts",
+    "db:seed:links": "ts-node scripts/seed_room_links.ts",
     "db:seed:globe": "ts-node scripts/seed_globe.ts",
     "db:seed:sports": "ts-node scripts/seed_sports.ts",
     "db:seed:sports:demo": "ts-node scripts/seed_sports_demo.ts",

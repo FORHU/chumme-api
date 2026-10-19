@@ -1,0 +1,24 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ConsumeAndEnqueueChummeQueues",
+      "Effect": "Allow",
+      "Action": [
+        "sqs:SendMessage",
+        "sqs:ReceiveMessage",
+        "sqs:DeleteMessage",
+        "sqs:ChangeMessageVisibility",
+        "sqs:GetQueueAttributes",
+        "sqs:GetQueueUrl"
+      ],
+      "Resource": "arn:aws:sqs:ap-southeast-1:REPLACE_WITH_ACCOUNT_ID:REPLACE_WITH_ENV-chumme-*"
+    },
+    {
+      "Sid": "PublishChummeEvents",
+      "Effect": "Allow",
+      "Action": "sns:Publish",
+      "Resource": "arn:aws:sns:ap-southeast-1:REPLACE_WITH_ACCOUNT_ID:REPLACE_WITH_ENV-chumme-events"
+    }
+  ]
+}

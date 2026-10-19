@@ -1,0 +1,27 @@
+{
+  "_readme": [
+    "Links the room-link seeder (npm run db:seed:links) shares into community chats.",
+    "Grouped by room theme: music, sports, gaming, food, film, tech, general. 'general' is the fallback for every room.",
+    "An entry is a URL string, or { \"url\": \"...\", \"caption\": \"text sent with it\" } to choose the message text yourself.",
+    "Accepted shapes (anything else is skipped with a warning, because the app would not show a player for it):",
+    "  TikTok:    https://www.tiktok.com/@user/video/<19-digit id>   or   https://vt.tiktok.com/<code>/",
+    "  Instagram: https://www.instagram.com/reel/<shortcode>/   or   /p/<shortcode>/",
+    "  Facebook:  https://www.facebook.com/reel/<id>   or   /watch/?v=<id>   or   /<page>/videos/<id>   or   https://fb.watch/<code>/",
+    "Use public posts only. Instagram and TikTok posts the crawlers already ingested are added automatically from SocialFeedItem."
+  ],
+  "music": [
+    "https://www.facebook.com/share/v/1FBYMWW4QX/",
+    "https://www.facebook.com/share/v/1FKoRaYM6x/",
+    "https://www.facebook.com/share/v/1FThDJ55nZ/",
+    "https://www.facebook.com/share/v/1CEjeKLtYj/",
+    "https://www.tiktok.com/@kisstilludrop/video/7437787484328611094?is_from_webapp=1&sender_device=pc&web_id=7698253491609863700",
+    "https://www.tiktok.com/@ilovzy/video/7686221931133111573?is_from_webapp=1&sender_device=pc&web_id=7698253491609863700",
+    "https://www.tiktok.com/@1980s89/video/7663806778798296351?is_from_webapp=1&sender_device=pc&web_id=7698253491609863700"
+  ],
+  "sports": [],
+  "gaming": [],
+  "food": [],
+  "film": [],
+  "tech": [],
+  "general": []
+}

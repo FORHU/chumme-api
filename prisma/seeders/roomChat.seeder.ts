@@ -25,7 +25,7 @@ const ROOM_CHAT_NAMESPACE = "1b4e28ba-2fa1-11d2-883f-0016d3cca427";
  * because Prisma declares these columns with `@default(uuid())` and callers
  * downstream validate message ids with `Joi.string().uuid()`.
  */
-function uuidV5(name: string, namespace: string = ROOM_CHAT_NAMESPACE): string {
+export function uuidV5(name: string, namespace: string = ROOM_CHAT_NAMESPACE): string {
   const nsHex = namespace.replace(/-/g, "");
   const nameBytes = new TextEncoder().encode(name);
 
@@ -60,7 +60,7 @@ function uuidV5(name: string, namespace: string = ROOM_CHAT_NAMESPACE): string {
  * reactions on every run, which defeats the fixed-id idempotency above — the
  * rows would survive but the content they were generated from would not match.
  */
-function mulberry32(seed: number): () => number {
+export function mulberry32(seed: number): () => number {
   let a = seed >>> 0;
   return () => {
     a = (a + 0x6d2b79f5) >>> 0;
@@ -72,7 +72,7 @@ function mulberry32(seed: number): () => number {
 }
 
 /** FNV-1a — turns a room id into a stable 32-bit PRNG seed. */
-function seedFrom(str: string): number {
+export function seedFrom(str: string): number {
   let h = 2166136261 >>> 0;
   for (let i = 0; i < str.length; i++) {
     h ^= str.charCodeAt(i);
@@ -499,7 +499,9 @@ const THEME_KEYWORDS: [RegExp, keyof typeof SCRIPTS][] = [
   [/tech|dev|code|coding|program|software|\bai\b|startup|engineer/i, "tech"],
 ];
 
-function pickTheme(name: string): keyof typeof SCRIPTS {
+export type ChatTheme = keyof typeof SCRIPTS;
+
+export function pickTheme(name: string): keyof typeof SCRIPTS {
   for (const [pattern, theme] of THEME_KEYWORDS) {
     if (pattern.test(name)) return theme;
   }
@@ -1082,7 +1084,7 @@ async function reconcileVoiceNotes(
 }
 
 /** Domain every synthetic persona's email ends with. Never routable. */
-const PERSONA_EMAIL_DOMAIN = "@chumme.local";
+export const PERSONA_EMAIL_DOMAIN = "@chumme.local";
 
 /**
  * Remove everything the chat seeder created, anywhere in the database.
