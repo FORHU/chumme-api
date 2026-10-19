@@ -146,21 +146,34 @@ const LINK_REACTIONS = ["🔥", "😂", "❤️", "👏", "💯", "😮"];
  * (music, sports, gaming, food, film, tech, general). Keys starting with `_`
  * are notes, not themes. An entry is a URL string or `{ url, caption }`.
  */
-function loadFileLinks(): Map<ChatTheme, SocialLink[]> {
+type RoomGroup = { key: string; pattern: RegExp; links: SocialLink[] };
+
+/**
+ * `rooms` keys match room names on word boundaries, spacing-insensitive, so
+ * "Stray Kids" matches "Stray Kids Lounge" and "StrayKids", but "EXO" does not
+ * match "Exotic".
+ */
+function roomPattern(key: string): RegExp {
+  const words = key
+    .trim()
+    .split(/\s+/)
+    .map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  return new RegExp(`(?:^|[^a-z0-9])${words.join("\\s*")}(?:$|[^a-z0-9])`, "i");
+}
+
+function loadFileLinks(): { byTheme: Map<ChatTheme, SocialLink[]>; roomGroups: RoomGroup[] } {
   const byTheme = new Map<ChatTheme, SocialLink[]>();
+  const roomGroups: RoomGroup[] = [];
   if (!fs.existsSync(LINKS_FILE)) {
     console.log(`ℹ️  No ${path.basename(LINKS_FILE)} — using ingested feed links only.`);
-    return byTheme;
+    return { byTheme, roomGroups };
   }
 
   const raw = JSON.parse(fs.readFileSync(LINKS_FILE, "utf8")) as Record<string, unknown>;
   let rejected = 0;
 
-  for (const [key, entries] of Object.entries(raw)) {
-    if (key.startsWith("_") || !Array.isArray(entries)) continue;
-    const theme = key as ChatTheme;
+  const parse = (entries: unknown[]): SocialLink[] => {
     const list: SocialLink[] = [];
-
     for (const entry of entries) {
       const url = (typeof entry === "string" ? entry : (entry as { url?: string })?.url)?.trim();
       const caption =
@@ -175,12 +188,36 @@ function loadFileLinks(): Map<ChatTheme, SocialLink[]> {
       }
       list.push({ url, platform, caption });
     }
-    byTheme.set(theme, list);
+    return list;
+  };
+
+  for (const [key, entries] of Object.entries(raw)) {
+    if (key.startsWith("_")) continue;
+
+    if (key === "rooms" && entries && typeof entries === "object" && !Array.isArray(entries)) {
+      for (const [roomKey, roomEntries] of Object.entries(entries)) {
+        if (!Array.isArray(roomEntries)) continue;
+        roomGroups.push({ key: roomKey, pattern: roomPattern(roomKey), links: parse(roomEntries) });
+      }
+      continue;
+    }
+
+    if (!Array.isArray(entries)) continue;
+    byTheme.set(key as ChatTheme, parse(entries));
   }
 
-  const total = [...byTheme.values()].reduce((n, l) => n + l.length, 0);
-  console.log(`📄 Curated links: ${total} usable${rejected ? `, ${rejected} rejected` : ""}.`);
-  return byTheme;
+  // Artist links are music too, so rooms without a group of their own still
+  // get to share them.
+  const music = byTheme.get("music") ?? [];
+  for (const group of roomGroups) music.push(...group.links);
+  byTheme.set("music", music);
+
+  const total =
+    [...byTheme.values()].reduce((n, l) => n + l.length, 0);
+  console.log(
+    `📄 Curated links: ${total} usable (${roomGroups.length} room groups)${rejected ? `, ${rejected} rejected` : ""}.`,
+  );
+  return { byTheme, roomGroups };
 }
 
 /**
@@ -289,7 +326,7 @@ export async function seedRoomLinks(prisma: PrismaClient) {
     Math.max(0, Number(process.env.SEED_LINKS_PER_ROOM ?? 2) || 0),
   );
 
-  const fileLinks = loadFileLinks();
+  const { byTheme: fileLinks, roomGroups } = loadFileLinks();
   const feed = await loadFeedLinks(prisma);
 
   const everyLink = [
@@ -351,6 +388,7 @@ export async function seedRoomLinks(prisma: PrismaClient) {
   const linkContent = new Map<string, string>();
   const shrinkIds: string[] = [];
 
+  const matchedGroups = new Set<string>();
   let skippedNoChat = 0;
   let skippedNoLinks = 0;
   let seededRooms = 0;
@@ -394,6 +432,11 @@ export async function seedRoomLinks(prisma: PrismaClient) {
     };
 
     add(shuffled(alive(feed.byRoom.get(room.id))));
+    for (const group of roomGroups) {
+      if (!group.pattern.test(room.name)) continue;
+      matchedGroups.add(group.key);
+      add(shuffled(alive(group.links)));
+    }
     add(shuffled(alive(fileLinks.get(theme))));
     if (theme === "music") add(shuffled(alive(feed.unassigned)));
     add(shuffled(alive(fileLinks.get("general"))));
@@ -463,6 +506,13 @@ export async function seedRoomLinks(prisma: PrismaClient) {
         }
       }
     }
+  }
+
+  const unmatched = roomGroups.filter((g) => !matchedGroups.has(g.key)).map((g) => g.key);
+  if (unmatched.length) {
+    console.log(
+      `ℹ️  No seeded room matched: ${unmatched.join(", ")} — their links only go to the general music pool.`,
+    );
   }
 
   const removed = await deleteLinkMessages(prisma, shrinkIds);
