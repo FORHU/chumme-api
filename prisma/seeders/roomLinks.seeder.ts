@@ -257,7 +257,7 @@ async function verifyLinks(links: SocialLink[]): Promise<Set<string>> {
   await Promise.all(Array.from({ length: 6 }, worker));
 
   console.log(
-    `🔎 TikTok links checked: ${tiktok.length - dead.size} live, ${dead.size} removed${offline ? `, ${offline} unreachable (kept)` : ""}.`,
+    `🔎 TikTok links checked: ${tiktok.length - dead.size - offline} live, ${dead.size} removed${offline ? `, ${offline} unreachable (kept)` : ""}.`,
   );
   for (const url of dead) console.warn(`   ✗ ${url}`);
   return dead;
