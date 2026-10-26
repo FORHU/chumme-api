@@ -639,7 +639,7 @@ export default class MusicStudioSvc {
       // Use duration from frontend as fallback if calculatedDuration is missing
       const sessionDuration = calculatedDuration || data.duration;
 
-      // 4. Publish merge job to RabbitMQ (returns immediately)
+      // 4. Publish merge job to SQS (returns immediately)
       const jobId = `preview_${data.studioId}_${Date.now()}`;
 
       const job: AudioMergeJob = {
@@ -765,7 +765,7 @@ export default class MusicStudioSvc {
       // Use duration from frontend as fallback if calculatedDuration is missing
       const sessionDuration = calculatedDuration || data.duration;
 
-      // 5. Publish save job to RabbitMQ (returns immediately)
+      // 5. Publish save job to SQS (returns immediately)
       const jobId = `save_${data.studioId}_${Date.now()}`;
       const job: AudioMergeJob = {
         jobId,

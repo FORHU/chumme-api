@@ -3,8 +3,88 @@ import SocialFeedRepo from "../repositories/social-feed.repository";
 
 import FileRepo from "../repositories/file.repository";
 import { upsertArtist } from "../repositories/chumme-artist.repository";
-import { InstagramPostEvent } from "../listeners/instagram-post.listener";
 import logger from "../utils/logger";
+
+// Payload the Instagram crawler sends.
+export interface InstagramPostEvent {
+  data: {
+    id: string;
+    username: string;
+    displayName: string;
+    bio: string;
+    followers: string;
+    following: string;
+    profileImageUrl: string;
+    createdAt: Date;
+    posts: Array<{
+      id: string;
+      platform: string;
+      caption: string;
+      title: string;
+      createdAt: Date;
+      isDownloaded: boolean;
+      isSynced: boolean;
+      type: string;
+      url: string;
+      metadata: {
+        artist: string;
+        songTitle: string;
+        fullTitle: string;
+        spotifyData?: {
+          success: boolean;
+          data?: {
+            track?: {
+              id: string;
+              name: string;
+              artists: Array<{ id: string; name: string }>;
+              album?: any;
+              external_urls?: any;
+              preview_url?: string;
+              popularity?: number;
+              duration_ms?: number;
+            };
+            emotion?: {
+              primaryEmotion: string;
+              emotionIntensity: number;
+              description: string;
+              secondaryEmotions: string[];
+              audioCharacteristics?: any;
+            };
+            confidence?: number;
+            analysisMethod?: string;
+            note?: string;
+          };
+        };
+      };
+      postDate: Date | null;
+      instagramMetaId: string;
+      mediaSrc: {
+        id: string;
+        filename: string | null;
+        fileUrl: string;
+        createdAt: Date;
+        updatedAt: Date | null;
+        deletedAt: Date | null;
+        metadata: {
+          size: number;
+          contentType: string;
+          key: string;
+        } | null;
+        instagramPostId: string;
+      };
+      instagramMeta: {
+        id: string;
+        createdAt: Date;
+        displayName: string;
+        bio: string;
+        followers: string;
+        following: string;
+        profileImageUrl: string;
+        username: string;
+      };
+    }>;
+  };
+}
 
 /**
  * Service for processing TikTok crawler data and ingesting it into the database

@@ -80,7 +80,7 @@ import logger from "./utils/logger";
 
 events(io);
 
-// Connect to PostgreSQL via Prisma and RabbitMQ
+// Connect to PostgreSQL via Prisma
 connectToPrisma()
   .then(async () => {
     // Run setup
@@ -92,15 +92,6 @@ connectToPrisma()
     io.adapter(createAdapter(pubClient, subClient));
     logger.info("[Socket] Redis adapter initialized");
 
-    // Connect shared RabbitMQ service (for publishing jobs)
-    try {
-      const { rabbitMQService } = await import("./utils/rabbitmq");
-      await rabbitMQService.connect();
-      logger.info("Shared RabbitMQ service connected");
-    } catch (error) {
-      logger.error("Failed to connect shared RabbitMQ service:", error);
-    }
-
     // Initialize Workers (conditional)
     const startWorkers = process.env.START_WORKERS !== "false";
 
@@ -109,7 +100,7 @@ connectToPrisma()
       try {
         const audioMergeWorker = new AudioMergeWorker();
         await audioMergeWorker.start();
-        logger.info("Audio Merge RabbitMQ worker initialized successfully");
+        logger.info("Audio Merge worker initialized successfully");
       } catch (error) {
         logger.error("Failed to initialize Audio Merge worker:", error);
       }
@@ -132,7 +123,7 @@ connectToPrisma()
         const mediaWorker = new MediaProcessingWorker();
         await mediaWorker.start();
         logger.info(
-          "Media Processing RabbitMQ worker initialized successfully",
+          "Media Processing worker initialized successfully",
         );
       } catch (error) {
         logger.error("Failed to initialize Media Processing worker:", error);

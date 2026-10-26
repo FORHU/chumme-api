@@ -1,6 +1,7 @@
 import {
   ChangeMessageVisibilityCommand,
   DeleteMessageCommand,
+  GetQueueAttributesCommand,
   Message,
   ReceiveMessageCommand,
   SendMessageCommand,
@@ -173,4 +174,57 @@ export function startConsumer<T = unknown>(
       await Promise.allSettled(inFlight);
     },
   };
+}
+
+export interface QueueDepth {
+  /** Waiting to be received. */
+  visible: number;
+  /** Received by a consumer and not yet deleted. */
+  inFlight: number;
+}
+
+export async function getQueueDepth(queueUrl: string): Promise<QueueDepth> {
+  const { Attributes = {} } = await getSqsClient().send(
+    new GetQueueAttributesCommand({
+      QueueUrl: queueUrl,
+      AttributeNames: [
+        "ApproximateNumberOfMessages",
+        "ApproximateNumberOfMessagesNotVisible",
+      ],
+    }),
+  );
+  return {
+    visible: Number(Attributes.ApproximateNumberOfMessages || 0),
+    inFlight: Number(Attributes.ApproximateNumberOfMessagesNotVisible || 0),
+  };
+}
+
+export type QueueHealth = Record<string, QueueDepth | { error: string }>;
+
+const HEALTH_CACHE_MS = 30_000;
+let healthCache: { at: number; result: QueueHealth } | null = null;
+
+/**
+ * Depth of every named queue, or the error reaching it. Cached for 30s so
+ * health probes don't turn into a stream of SQS calls.
+ */
+export async function getQueueHealth(
+  queues: Record<string, string>,
+): Promise<QueueHealth> {
+  if (healthCache && Date.now() - healthCache.at < HEALTH_CACHE_MS) {
+    return healthCache.result;
+  }
+  const entries = await Promise.all(
+    Object.entries(queues).map(async ([name, url]) => {
+      if (!url) return [name, { error: "queue URL not configured" }] as const;
+      try {
+        return [name, await getQueueDepth(url)] as const;
+      } catch (err: any) {
+        return [name, { error: err?.name || "unreachable" }] as const;
+      }
+    }),
+  );
+  const result: QueueHealth = Object.fromEntries(entries);
+  healthCache = { at: Date.now(), result };
+  return result;
 }

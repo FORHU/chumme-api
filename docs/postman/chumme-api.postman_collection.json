@@ -2850,19 +2850,19 @@
           }
         },
         {
-          "name": "GET /health/rabbitmq",
+          "name": "GET /health/queues",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/v1/health/rabbitmq",
+              "raw": "{{baseUrl}}/v1/health/queues",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "v1",
                 "health",
-                "rabbitmq"
+                "queues"
               ]
             },
             "auth": {

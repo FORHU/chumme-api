@@ -3,8 +3,66 @@ import SocialFeedRepo from "../repositories/social-feed.repository";
 
 import FileRepo from "../repositories/file.repository";
 import { upsertArtist } from "../repositories/chumme-artist.repository";
-import type { VideoPostEvent } from "../listeners/tiktok-post.listener";
 import logger from "../utils/logger";
+
+// Payload the TikTok crawler sends.
+export interface VideoPostEvent {
+  data: {
+    id: string;
+    profileUrl: string;
+    displayName: string;
+    bio: string;
+    followers: string;
+    following: string;
+    likes: string;
+    profileImageUrl: string;
+    createdAt: string;
+    posts: Array<{
+      id: string;
+      tiktokMetaId: string;
+      videoPage: string;
+      caption: string;
+      title: string;
+      videoSrc: string | null;
+      createdAt: string;
+      isDownloaded: boolean;
+      metadata?: {
+        artist: string;
+        songTitle: string;
+        fullTitle: string;
+        spotifyData?: {
+          success: boolean;
+          data?: {
+            track?: any;
+            emotion?: {
+              primaryEmotion: string;
+              emotionIntensity: number;
+              description: string;
+              secondaryEmotions: string[];
+              audioCharacteristics?: any;
+            };
+            confidence?: number;
+            analysisMethod?: string;
+          };
+        };
+      };
+      videoFile: {
+        id: string;
+        postId: string;
+        filename: string;
+        fileUrl: string;
+        createdAt: string;
+        updatedAt: string;
+        deletedAt: string | null;
+        metadata: {
+          key: string;
+          size: number;
+          contentType: string;
+        };
+      } | null;
+    }>;
+  };
+}
 
 /**
  * Service for processing TikTok crawler data and ingesting it into the database

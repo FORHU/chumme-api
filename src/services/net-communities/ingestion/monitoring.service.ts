@@ -1,5 +1,6 @@
 import RedisUtil from "../../../utils/redis.util";
-import { rabbitMQService } from "../../../utils/rabbitmq";
+import { JOB_QUEUE_URLS } from "../../../config";
+import { getQueueHealth } from "../../../utils/sqs";
 import { prisma } from "../../../utils/prisma";
 import logger from "../../../utils/logger";
 
@@ -17,11 +18,8 @@ export default class MonitoringSvc {
         ? JSON.parse(workerMetricsRaw)
         : null;
 
-      // 2. Get RabbitMQ status
-      const rabbitStatus = {
-        connected: rabbitMQService.isConnectionActive(),
-        // Note: Real queue depth requires Management API or custom tracking
-      };
+      // 2. Get SQS queue depths
+      const queues = await getQueueHealth(JOB_QUEUE_URLS);
 
       // 3. Get recent ingestion stats from DB
       const recentJobs = await prisma.socialFeedItem.count({
@@ -67,7 +65,7 @@ export default class MonitoringSvc {
       return {
         status: workerMetrics ? "active" : "unknown",
         worker: workerMetrics,
-        rabbitmq: rabbitStatus,
+        queues,
         database: {
           recentIngestions24h: recentJobs,
           recentSnapshots24h: snapshotCount,

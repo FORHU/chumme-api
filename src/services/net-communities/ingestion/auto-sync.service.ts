@@ -1,10 +1,10 @@
 import { SocialPlatform } from "@prisma/client";
 import { prisma } from "../../../utils/prisma";
 import { IngestionManager } from "../connectors/platform.service";
-import { rabbitMQService } from "../../../utils/rabbitmq";
 import {
   IngestionJobType,
   IngestionJob,
+  publishIngestionJob,
 } from "../../../listeners/ingestion.listener";
 import logger from "../../../utils/logger";
 
@@ -67,13 +67,7 @@ export class AutoSyncSvc {
         meta: { userId },
       };
 
-      await rabbitMQService.publishMessage(
-        `ingestion.${IngestionJobType.DISCOVERY}`,
-        discoveryJob,
-        {
-          priority: 2,
-        },
-      );
+      await publishIngestionJob(discoveryJob);
 
       logger.info(
         `[AutoSyncSvc] Immediate discovery job queued for ${profileId}`,

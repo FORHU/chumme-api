@@ -38,16 +38,6 @@ export const AWS_SECRET_ACCESS_KEY = process.env
   .AWS_SECRET_ACCESS_KEY as string;
 export const AWS_S3_BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME as string;
 
-// RabbitMQ Configuration
-export const RABBITMQ_URL =
-  process.env.RABBITMQ_URL || "amqp://admin:admin123@localhost:5672/my_vhost";
-export const RABBITMQ_EXCHANGE =
-  process.env.RABBITMQ_EXCHANGE || "chumme_exchange";
-export const RABBITMQ_QUEUE_PREFIX =
-  process.env.RABBITMQ_QUEUE_PREFIX || "chumme";
-export const INGESTION_QUEUE_NAME =
-  process.env.INGESTION_QUEUE_NAME ||
-  (isDev ? "ingestion_jobs_local" : "ingestion_jobs");
 export const CHAT_WONDER_API_URL = process.env.CHAT_WONDER_API_URL as string;
 
 // SQS Configuration. AWS_SQS_ENDPOINT is set ONLY locally (LocalStack, see
@@ -61,6 +51,18 @@ export const AUDIO_MERGE_QUEUE_URL = process.env
   .AUDIO_MERGE_QUEUE_URL as string;
 export const INGESTION_JOBS_QUEUE_URL = process.env
   .INGESTION_JOBS_QUEUE_URL as string;
+// SQS has no message priority, so ingestion jobs at or above
+// INGESTION_HIGH_PRIORITY go to their own queue with their own consumer and
+// cannot be starved by the self-feeding backfill backlog in the main one.
+export const INGESTION_JOBS_HIGH_QUEUE_URL = process.env
+  .INGESTION_JOBS_HIGH_QUEUE_URL as string;
+// Every queue the app sends to or consumes, by name, for health reporting.
+export const JOB_QUEUE_URLS: Record<string, string> = {
+  media_processing: MEDIA_PROCESSING_QUEUE_URL,
+  audio_merge: AUDIO_MERGE_QUEUE_URL,
+  ingestion_jobs: INGESTION_JOBS_QUEUE_URL,
+  ingestion_jobs_high: INGESTION_JOBS_HIGH_QUEUE_URL,
+};
 
 // SNS Configuration. Same local-only rule as AWS_SQS_ENDPOINT. Events published
 // to this topic reach every queue whose subscription filter matches the

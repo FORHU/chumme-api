@@ -1,9 +1,9 @@
 import { prisma } from "../../../utils/prisma";
-import { rabbitMQService } from "../../../utils/rabbitmq";
 import {
   IngestionJob,
   IngestionJobType,
   IngestionMode,
+  publishIngestionJob,
 } from "../../../listeners/ingestion.listener";
 import logger from "../../../utils/logger";
 import { SocialPlatform } from "@prisma/client";
@@ -236,11 +236,7 @@ export class SchedulingService {
       },
     };
 
-    await rabbitMQService.publishMessage(
-      `ingestion.${IngestionJobType.DISCOVERY}`,
-      syncJob,
-      { priority: syncJob.priority },
-    );
+    await publishIngestionJob(syncJob);
 
     // 2. Backfill Job (Only if not caught up, Priority: Lower)
     if (!target.isHistoryCaughtUp) {
@@ -260,11 +256,7 @@ export class SchedulingService {
         },
       };
 
-      await rabbitMQService.publishMessage(
-        `ingestion.${IngestionJobType.DISCOVERY}`,
-        backfillJob,
-        { priority: backfillJob.priority },
-      );
+      await publishIngestionJob(backfillJob);
 
       logger.info(
         `[SchedulingService] Queued SYNC & BACKFILL jobs for ${targetName}`,
@@ -347,10 +339,7 @@ export class SchedulingService {
           },
         };
 
-        await rabbitMQService.publishMessage(
-          `ingestion.${IngestionJobType.DISCOVERY}`,
-          job,
-        );
+        await publishIngestionJob(job);
       }
     }
 
@@ -371,10 +360,7 @@ export class SchedulingService {
           },
         };
 
-        await rabbitMQService.publishMessage(
-          `ingestion.${IngestionJobType.SEARCH}`,
-          job,
-        );
+        await publishIngestionJob(job);
       }
     }
   }
@@ -408,11 +394,7 @@ export class SchedulingService {
       priority: 5, // High priority for manual refresh
     };
 
-    await rabbitMQService.publishMessage(
-      `ingestion.${IngestionJobType.METADATA}`,
-      job,
-      { priority: job.priority },
-    );
+    await publishIngestionJob(job);
 
     logger.info(
       `[SchedulingService] Manually triggered METADATA refresh for ${platform}:${externalId}`,

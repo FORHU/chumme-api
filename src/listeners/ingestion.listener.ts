@@ -1,6 +1,8 @@
-import amqp from "amqplib";
-import { INGESTION_QUEUE_NAME } from "../config";
-import { MessageHandler, rabbitMQService } from "../utils/rabbitmq";
+import {
+  INGESTION_JOBS_HIGH_QUEUE_URL,
+  INGESTION_JOBS_QUEUE_URL,
+} from "../config";
+import { Consumer, enqueue, startConsumer } from "../utils/sqs";
 import logger from "../utils/logger";
 import { SocialPlatform } from "@prisma/client";
 import { prisma } from "../utils/prisma";
@@ -35,57 +37,93 @@ export interface IngestionJob {
   meta?: any;
 }
 
+/**
+ * Jobs at or above this priority go to the high queue. Sync, auto-sync, topic
+ * discovery and manual refreshes land there; backfill and keyword search
+ * (priority 1 with the default crawlPriority) stay in the main queue, so their
+ * self-feeding backlog can't delay the rest.
+ */
+export const INGESTION_HIGH_PRIORITY = 2;
+
+/**
+ * Queue an ingestion job. Replaces the RabbitMQ `ingestion.<type>` routing keys
+ * and message priority: every job type shares one consumer, and priority only
+ * picks which of the two queues it waits in.
+ */
+export async function publishIngestionJob(job: IngestionJob): Promise<void> {
+  const queueUrl =
+    job.priority >= INGESTION_HIGH_PRIORITY
+      ? INGESTION_JOBS_HIGH_QUEUE_URL
+      : INGESTION_JOBS_QUEUE_URL;
+  await enqueue(queueUrl, job);
+}
+
 export class IngestionWorker {
-  private readonly queueName = INGESTION_QUEUE_NAME;
-  private readonly routingKeys = ["ingestion.*"];
+  private consumers: Consumer[] = [];
 
   async start(): Promise<void> {
-    // Kill switch. The ingestion queue is durable AND self-feeding (each page
-    // job publishes its successor, see the nextPageToken block below), so a
+    // Kill switch. The ingestion queue is self-feeding (each page job
+    // publishes its successor, see the nextPageToken block below), so a
     // backlog keeps draining across restarts no matter what the scheduler does.
     // Set DISABLE_INGESTION_WORKER=true to stop consuming; the backlog stays
-    // parked in RabbitMQ until you either re-enable or purge the queue.
+    // parked in SQS until you re-enable, purge the queue, or the queue's
+    // retention period expires it.
     if (process.env.DISABLE_INGESTION_WORKER === "true") {
       logger.warn(
-        `[IngestionWorker] DISABLE_INGESTION_WORKER=true - not subscribing to ${this.queueName}. Queued jobs remain parked.`,
+        "[IngestionWorker] DISABLE_INGESTION_WORKER=true - not consuming ingestion queues. Queued jobs remain parked.",
       );
       return;
     }
+    if (!INGESTION_JOBS_QUEUE_URL || !INGESTION_JOBS_HIGH_QUEUE_URL) {
+      throw new Error(
+        "INGESTION_JOBS_QUEUE_URL / INGESTION_JOBS_HIGH_QUEUE_URL is empty — check env",
+      );
+    }
 
     logger.info("[IngestionWorker] Starting... [v2: isLive restored]");
-    await rabbitMQService.subscribeToMessages(
-      this.queueName,
-      this.routingKeys,
-      this.handleMessage.bind(this),
-    );
-    logger.info(
-      `[IngestionWorker] Subscribed to ingestion queue: ${this.queueName}`,
-    );
+    // Five in flight across both queues, as the RabbitMQ prefetch was, to
+    // keep the RDS connection pool from being exhausted.
+    this.consumers = [
+      startConsumer<IngestionJob>({
+        queueUrl: INGESTION_JOBS_HIGH_QUEUE_URL,
+        concurrency: 3,
+        handler: this.handleMessage,
+      }),
+      startConsumer<IngestionJob>({
+        queueUrl: INGESTION_JOBS_QUEUE_URL,
+        concurrency: 2,
+        handler: this.handleMessage,
+      }),
+    ];
+    logger.info("[IngestionWorker] Consuming high and main ingestion queues");
   }
 
-  private handleMessage: MessageHandler = async (
-    message: IngestionJob,
-    _originalMsg: amqp.ConsumeMessage,
-  ) => {
+  async stop(): Promise<void> {
+    await Promise.all(this.consumers.map((c) => c.stop()));
+  }
+
+  private handleMessage = async (message: IngestionJob): Promise<void> => {
     logger.info(
       `[IngestionWorker] Processing ${message.type} job for ${message.platform}:${message.targetId}`,
     );
 
+    // 1. Deduplication check
+    const dedupKey =
+      message.type === IngestionJobType.DISCOVERY
+        ? `${message.platform}:${message.targetId}:${message.meta?.pageToken || "first"}`
+        : `${message.platform}:${message.targetId}`;
+    const shouldBypassDedup = Boolean(message.meta?.force);
+    let claimedDedup = false;
+
     try {
-      // 1. Deduplication check
-      const dedupKey =
-        message.type === IngestionJobType.DISCOVERY
-          ? `${message.platform}:${message.targetId}:${message.meta?.pageToken || "first"}`
-          : `${message.platform}:${message.targetId}`;
-      const shouldBypassDedup = Boolean(message.meta?.force);
-      if (
-        !shouldBypassDedup &&
-        (await RedisUtil.isDuplicate(message.type, dedupKey))
-      ) {
-        logger.info(
-          `[IngestionWorker] Skipping duplicate job: ${message.type} for ${dedupKey}`,
-        );
-        return;
+      if (!shouldBypassDedup) {
+        if (await RedisUtil.isDuplicate(message.type, dedupKey)) {
+          logger.info(
+            `[IngestionWorker] Skipping duplicate job: ${message.type} for ${dedupKey}`,
+          );
+          return;
+        }
+        claimedDedup = true;
       }
 
       // 2. Rate limiting check (Bumbed to 500 requests per 60s for burst testing)
@@ -93,7 +131,8 @@ export class IngestionWorker {
         logger.warn(
           `[IngestionWorker] Rate limit exceeded for platform: ${message.platform}`,
         );
-        // Throw error to trigger Dead Letter Queue routing instead of dropping job
+        // Throw so SQS retries it later (and dead-letters it after the
+        // queue's maxReceiveCount) instead of dropping the job
         throw new Error(
           `Rate limit exceeded for platform: ${message.platform}`,
         );
@@ -141,6 +180,11 @@ export class IngestionWorker {
         `[IngestionWorker] Error processing job ${message.type} for ${message.platform}:${message.targetId}:`,
         error,
       );
+      // SQS redelivers failed jobs; without this the retry would be skipped
+      // as a duplicate of itself and deleted.
+      if (claimedDedup) {
+        await RedisUtil.releaseDedup(message.type, dedupKey).catch(() => {});
+      }
       throw error;
     }
   };
@@ -281,20 +325,13 @@ export class IngestionWorker {
       }
 
       // 2. Queue metadata job for full enrichment with priority
-      const routingKey = `ingestion.${IngestionJobType.METADATA}`;
-      await rabbitMQService.publishMessage(
-        routingKey,
-        {
-          type: IngestionJobType.METADATA,
-          platform: item.platform,
-          targetId: item.id,
-          priority: job.priority,
-          meta: job.meta,
-        },
-        {
-          priority: job.priority,
-        },
-      );
+      await publishIngestionJob({
+        type: IngestionJobType.METADATA,
+        platform: item.platform,
+        targetId: item.id,
+        priority: job.priority,
+        meta: job.meta,
+      });
     }
 
     const nextProcessedCount = processedCount + items.length;
@@ -320,8 +357,7 @@ export class IngestionWorker {
       logger.info(
         `[IngestionWorker] Triggering next page ${mode} for ${job.targetId}`,
       );
-      const routingKey = `ingestion.${IngestionJobType.DISCOVERY}`;
-      await rabbitMQService.publishMessage(routingKey, {
+      await publishIngestionJob({
         ...job,
         meta: {
           ...job.meta,
@@ -366,16 +402,13 @@ export class IngestionWorker {
       // (Comment fetching disabled as per flow requirements)
 
       // Trigger AI Enrichment job
-      await rabbitMQService.publishMessage(
-        `ingestion.${IngestionJobType.ENRICHMENT}`,
-        {
-          type: IngestionJobType.ENRICHMENT,
-          platform: details.platform,
-          targetId: details.id,
-          priority: job.priority,
-          meta: job.meta,
-        },
-      );
+      await publishIngestionJob({
+        type: IngestionJobType.ENRICHMENT,
+        platform: details.platform,
+        targetId: details.id,
+        priority: job.priority,
+        meta: job.meta,
+      });
 
       logger.info(
         `[IngestionWorker] METADATA SUCCESS: ${details.platform}:${details.id} updated and AI Enrichment queued.`,

@@ -3,7 +3,6 @@ import http from "http";
 import { connectToPrisma } from "./utils/prisma";
 import logger from "./utils/logger";
 import { workerMetrics } from "./utils/worker-metrics";
-import { rabbitMQService } from "./utils/rabbitmq";
 import { AudioMergeWorker } from "./listeners/audio-merge.listener";
 import { MediaProcessingWorker } from "./listeners/media-processing.listener";
 
@@ -11,6 +10,9 @@ const WORKER_PORT = Number(process.env.WORKER_HEALTH_PORT || 8080);
 const cpuCount = os.cpus().length;
 
 let isHealthy = false;
+// SQS consumers to drain on shutdown. A job cut off by the hard exit is not
+// lost: its message reappears once the visibility timeout lapses.
+const stoppables: { stop(): Promise<void> }[] = [];
 
 const healthServer = http.createServer((req, res) => {
   if (req.url === "/health") {
@@ -39,16 +41,9 @@ async function main() {
   await connectToPrisma();
 
   try {
-    await rabbitMQService.connect();
-    logger.info("[Worker] RabbitMQ connected");
-  } catch (error) {
-    logger.error("[Worker] Failed to connect to RabbitMQ:", error);
-    process.exit(1);
-  }
-
-  try {
     const audioWorker = new AudioMergeWorker();
     await audioWorker.start();
+    stoppables.push(audioWorker);
     logger.info("[Worker] AudioMergeWorker started");
   } catch (error) {
     logger.error("[Worker] Failed to start AudioMergeWorker:", error);
@@ -58,6 +53,7 @@ async function main() {
   try {
     const mediaWorker = new MediaProcessingWorker();
     await mediaWorker.start();
+    stoppables.push(mediaWorker);
     logger.info("[Worker] MediaProcessingWorker started");
   } catch (error) {
     logger.error("[Worker] Failed to start MediaProcessingWorker:", error);
@@ -67,6 +63,7 @@ async function main() {
     const { IngestionWorker } = await import("./listeners/ingestion.listener");
     const ingestionWorker = new IngestionWorker();
     await ingestionWorker.start();
+    stoppables.push(ingestionWorker);
     logger.info("[Worker] IngestionWorker started");
   } catch (error) {
     logger.error("[Worker] Failed to start IngestionWorker:", error);
@@ -104,7 +101,10 @@ async function main() {
 function shutdown(signal: string) {
   logger.info(`[Worker] Received ${signal}. Shutting down gracefully...`);
   isHealthy = false;
-  healthServer.close(() => process.exit(0));
+  healthServer.close();
+  Promise.allSettled(stoppables.map((s) => s.stop())).then(() =>
+    process.exit(0),
+  );
   setTimeout(() => process.exit(1), 10_000);
 }
 

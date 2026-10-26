@@ -1,4 +1,5 @@
-import { rabbitMQService } from "../utils/rabbitmq";
+import { MEDIA_PROCESSING_QUEUE_URL } from "../config";
+import { Consumer, startConsumer } from "../utils/sqs";
 import { MediaJob } from "../services/media-queue.service"; // MediaQueueSvc removed, MediaJob kept
 import * as MediaUtils from "../utils/media.utils";
 import S3Util from "../utils/s3.util";
@@ -7,44 +8,46 @@ import path from "path";
 import logger from "../utils/logger";
 import { prisma } from "../utils/prisma";
 
-const MEDIA_QUEUE = "media_processing_queue";
-
 export class MediaProcessingWorker {
+  private consumer: Consumer | null = null;
+
   async start() {
-    const channel = rabbitMQService.getChannel();
-    if (!channel) {
-      logger.error("[MediaWorker] RabbitMQ channel not available");
+    if (!MEDIA_PROCESSING_QUEUE_URL) {
+      logger.error("[MediaWorker] MEDIA_PROCESSING_QUEUE_URL is empty");
       return;
     }
 
-    await channel.assertQueue(MEDIA_QUEUE, { durable: true });
-    logger.info("[MediaWorker] Listening for media jobs...");
+    this.consumer = startConsumer<MediaJob>({
+      queueUrl: MEDIA_PROCESSING_QUEUE_URL,
+      // Transcodes are CPU-heavy; keep a couple in flight at most.
+      concurrency: 2,
+      visibilityTimeout: 120,
+      handler: async (job) => {
+        logger.info(
+          `[MediaWorker] Processing job: ${job.jobType} for ${job.mediaId}`,
+        );
 
-    channel.consume(MEDIA_QUEUE, async (msg) => {
-      if (!msg) return;
+        try {
+          if (job.jobType === "optimize_video") {
+            await this.handleOptimizeVideo(job);
+          } else if (job.jobType === "optimize_audio") {
+            await this.handleOptimizeAudio(job);
+          } else if (job.jobType === "generate_hls") {
+            await this.handleGenerateHls(job);
+          }
 
-      const job: MediaJob = JSON.parse(msg.content.toString());
-      logger.info(
-        `[MediaWorker] Processing job: ${job.jobType} for ${job.mediaId}`,
-      );
-
-      try {
-        if (job.jobType === "optimize_video") {
-          await this.handleOptimizeVideo(job);
-        } else if (job.jobType === "optimize_audio") {
-          await this.handleOptimizeAudio(job);
-        } else if (job.jobType === "generate_hls") {
-          await this.handleGenerateHls(job);
+          logger.info(`[MediaWorker] Job ${job.mediaId} completed`);
+        } catch (err) {
+          logger.error(`[MediaWorker] Job ${job.mediaId} failed:`, err);
+          throw err;
         }
-
-        channel.ack(msg);
-        logger.info(`[MediaWorker] Job ${job.mediaId} completed`);
-      } catch (err) {
-        logger.error(`[MediaWorker] Job ${job.mediaId} failed:`, err);
-        // Nack with requeue=false to avoid infinite loop on bad input
-        channel.nack(msg, false, false);
-      }
+      },
     });
+    logger.info("[MediaWorker] Listening for media jobs...");
+  }
+
+  async stop() {
+    await this.consumer?.stop();
   }
 
   private async handleOptimizeVideo(job: MediaJob) {

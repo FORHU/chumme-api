@@ -1,8 +1,7 @@
-import amqp from "amqplib";
 import fs from "fs";
 import path from "path";
-import { RABBITMQ_URL } from "../config";
-import { rabbitMQService } from "../utils/rabbitmq";
+import { AUDIO_MERGE_QUEUE_URL } from "../config";
+import { Consumer, enqueue, startConsumer } from "../utils/sqs";
 import logger from "../utils/logger";
 import {
   batchOverlayAudioFiles,
@@ -48,62 +47,35 @@ export interface AudioMergeJob {
   recordDuration?: number;
 }
 
-const QUEUE_NAME = "audio-merge-queue";
-const ROUTING_KEY = "audio.merge";
-
 // ---------------------------------------------------------------------------
 // Worker
 // ---------------------------------------------------------------------------
 
 export class AudioMergeWorker {
-  private connection: amqp.Connection | null = null;
-  private channel: amqp.Channel | null = null;
+  private consumer: Consumer | null = null;
 
   async start(): Promise<void> {
-    try {
-      logger.info("[AudioMergeWorker] Connecting to RabbitMQ...");
-      this.connection = (await amqp.connect(RABBITMQ_URL)) as any;
-      this.channel = await (this.connection as any).createChannel();
-
+    if (!AUDIO_MERGE_QUEUE_URL) {
+      throw new Error("AUDIO_MERGE_QUEUE_URL is empty — check env");
+    }
+    this.consumer = startConsumer<AudioMergeJob>({
+      queueUrl: AUDIO_MERGE_QUEUE_URL,
       // Only process 1 merge at a time (CPU-heavy)
-      await this.channel!.prefetch(1);
-
-      await this.channel!.assertExchange("chumme_exchange", "topic", {
-        durable: true,
-      });
-      await this.channel!.assertQueue(QUEUE_NAME, { durable: true });
-      await this.channel!.bindQueue(QUEUE_NAME, "chumme_exchange", ROUTING_KEY);
-
-      await this.channel!.consume(QUEUE_NAME, async (msg) => {
-        if (!msg) return;
+      concurrency: 1,
+      visibilityTimeout: 120,
+      handler: async (job) => {
+        logger.info(
+          `[AudioMergeWorker] Processing ${job.jobType} job: ${job.jobId}`,
+        );
         try {
-          const job: AudioMergeJob = JSON.parse(msg.content.toString());
-          logger.info(
-            `[AudioMergeWorker] Processing ${job.jobType} job: ${job.jobId}`,
-          );
           await this.processJob(job);
-          this.channel?.ack(msg);
         } catch (error: any) {
           logger.error(`[AudioMergeWorker] Job failed: ${error.message}`);
-          // Don't requeue to avoid infinite loop
-          this.channel?.nack(msg, false, false);
+          throw error;
         }
-      });
-
-      logger.info(`[AudioMergeWorker] Listening on queue: ${QUEUE_NAME}`);
-
-      (this.connection as any).on("error", (err: any) => {
-        logger.error("[AudioMergeWorker] Connection error:", err);
-      });
-
-      (this.connection as any).on("close", () => {
-        logger.warn("[AudioMergeWorker] Connection closed. Reconnecting...");
-        setTimeout(() => this.start(), 5000);
-      });
-    } catch (error) {
-      logger.error("[AudioMergeWorker] Failed to start:", error);
-      throw error;
-    }
+      },
+    });
+    logger.info("[AudioMergeWorker] Listening on audio merge queue");
   }
 
   private async processJob(job: AudioMergeJob): Promise<void> {
@@ -320,8 +292,7 @@ export class AudioMergeWorker {
 
   async stop(): Promise<void> {
     try {
-      if (this.channel) await this.channel.close();
-      if (this.connection) await (this.connection as any).close();
+      await this.consumer?.stop();
       logger.info("[AudioMergeWorker] Stopped");
     } catch (error) {
       logger.error("[AudioMergeWorker] Error stopping:", error);
@@ -334,7 +305,7 @@ export class AudioMergeWorker {
  * Called by MusicStudioSvc to offload merging to the background worker.
  */
 export async function publishMergeJob(job: AudioMergeJob): Promise<void> {
-  await rabbitMQService.publishMessage(ROUTING_KEY, job);
+  await enqueue(AUDIO_MERGE_QUEUE_URL, job);
   logger.info(
     `[AudioMergeWorker] Job published: ${job.jobId} (${job.jobType})`,
   );

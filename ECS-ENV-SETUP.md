@@ -47,10 +47,13 @@ aws ssm put-parameter --name "/chumme-api/REDIS_PORT"        --value "6379"     
 aws ssm put-parameter --name "/chumme-api/REDIS_PASSWORD"    --value "<password>" --type "SecureString" --overwrite
 aws ssm put-parameter --name "/chumme-api/REDIS_TTL_SECONDS" --value "3600"       --type "String"       --overwrite
 
-# RabbitMQ configuration
-aws ssm put-parameter --name "/chumme-api/RABBITMQ_URL" \
-    --value "amqp://<user>:<password>@<host>:5672/<vhost>" \
-    --type "SecureString" --overwrite
+# SQS job queues (URLs are not secret; access comes from the task role)
+for Q in MEDIA_PROCESSING_QUEUE_URL AUDIO_MERGE_QUEUE_URL \
+         INGESTION_JOBS_QUEUE_URL INGESTION_JOBS_HIGH_QUEUE_URL; do
+  aws ssm put-parameter --name "/chumme-api/$Q" \
+      --value "https://sqs.<region>.amazonaws.com/<account>/<queue>" \
+      --type "String" --overwrite
+done
 ```
 
 Verify without printing the secret back to your terminal:
@@ -88,7 +91,10 @@ aws ssm get-parameters-by-path --path "/chumme-api" --query "Parameters[].Name" 
                 { "name": "OPENAI_API_KEY", "valueFrom": "/chumme-api/OPENAI_API_KEY" },
                 { "name": "MAILER_PASSWORD", "valueFrom": "/chumme-api/MAILER_PASSWORD" },
                 { "name": "REDIS_PASSWORD", "valueFrom": "/chumme-api/REDIS_PASSWORD" },
-                { "name": "RABBITMQ_URL", "valueFrom": "/chumme-api/RABBITMQ_URL" }
+                { "name": "MEDIA_PROCESSING_QUEUE_URL", "valueFrom": "/chumme-api/MEDIA_PROCESSING_QUEUE_URL" },
+                { "name": "AUDIO_MERGE_QUEUE_URL", "valueFrom": "/chumme-api/AUDIO_MERGE_QUEUE_URL" },
+                { "name": "INGESTION_JOBS_QUEUE_URL", "valueFrom": "/chumme-api/INGESTION_JOBS_QUEUE_URL" },
+                { "name": "INGESTION_JOBS_HIGH_QUEUE_URL", "valueFrom": "/chumme-api/INGESTION_JOBS_HIGH_QUEUE_URL" }
             ],
             "environment": [
                 { "name": "ACCESS_TOKEN_EXPIRY", "value": "24h" },
@@ -199,7 +205,10 @@ put_secret REFRESH_TOKEN_SECRET "$REFRESH_TOKEN_SECRET"
 put_secret OPENAI_API_KEY       "$OPENAI_API_KEY"
 put_secret MAILER_PASSWORD      "$MAILER_PASSWORD"
 put_secret REDIS_PASSWORD       "$REDIS_PASSWORD"
-put_secret RABBITMQ_URL         "$RABBITMQ_URL"
+put_plain  MEDIA_PROCESSING_QUEUE_URL    "$MEDIA_PROCESSING_QUEUE_URL"
+put_plain  AUDIO_MERGE_QUEUE_URL         "$AUDIO_MERGE_QUEUE_URL"
+put_plain  INGESTION_JOBS_QUEUE_URL      "$INGESTION_JOBS_QUEUE_URL"
+put_plain  INGESTION_JOBS_HIGH_QUEUE_URL "$INGESTION_JOBS_HIGH_QUEUE_URL"
 put_plain  ACCESS_TOKEN_EXPIRY  "$ACCESS_TOKEN_EXPIRY"
 put_plain  REDIS_HOST           "$REDIS_HOST"
 put_plain  REDIS_PORT           "$REDIS_PORT"

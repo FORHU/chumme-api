@@ -1,7 +1,6 @@
-import { rabbitMQService } from "../utils/rabbitmq";
+import { MEDIA_PROCESSING_QUEUE_URL } from "../config";
+import { enqueue } from "../utils/sqs";
 import logger from "../utils/logger";
-
-const MEDIA_QUEUE = "media_processing_queue";
 
 export interface MediaJob {
   jobType: "optimize_video" | "optimize_audio" | "generate_hls";
@@ -15,20 +14,11 @@ export interface MediaJob {
 
 class MediaQueueSvc {
   /**
-   * Publish a media processing job to RabbitMQ
+   * Publish a media processing job to SQS
    */
   static async publishJob(job: MediaJob) {
-    const channel = rabbitMQService.getChannel();
-    if (!channel) {
-      logger.error("[MediaQueue] Channel not initialized");
-      throw new Error("RabbitMQ channel not active");
-    }
-
     try {
-      await channel.assertQueue(MEDIA_QUEUE, { durable: true });
-      channel.sendToQueue(MEDIA_QUEUE, Buffer.from(JSON.stringify(job)), {
-        persistent: true,
-      });
+      await enqueue(MEDIA_PROCESSING_QUEUE_URL, job);
       logger.info(
         `[MediaQueue] Published job: ${job.jobType} for ${job.mediaId}`,
       );

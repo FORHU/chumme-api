@@ -15,12 +15,15 @@ name: Deploy Dev
 #      process listens on inside the container. HOST_PORT is allocated per
 #      project and must not change; see /etc/caddy/sites/00-PORTS.md.
 #   3. Put this project's own secrets in the `dev` environment, and list them
-#      in the "Publish project env" step. DATABASE_URL, REDIS_URL and
-#      RABBITMQ_URL come from the host — do NOT set them here.
+#      in the "Publish project env" step. DATABASE_URL and REDIS_URL come
+#      from the host — do NOT set them here. The four *_QUEUE_URL values are
+#      the dev SQS queues DevOps created; set them as `dev` variables.
 #   4. Delete these from the environment; they belong to the old box's SSH
 #      deploy and nothing here reads them:
 #        EC2_HOST  EC2_SSH_KEY  EC2_USER  EC2_INSTANCE_ID
 #        RABBITMQ_DEFAULT_USER  RABBITMQ_DEFAULT_PASS  DATABASE_URL
+#        RABBITMQ_EXCHANGE  RABBITMQ_QUEUE_PREFIX  INGESTION_QUEUE_NAME
+#      (job queues moved from RabbitMQ to SQS; nothing reads RABBITMQ_* now)
 #      And delete APP_AWS_ACCESS_KEY_ID / APP_AWS_SECRET_ACCESS_KEY, which were
 #      stored as VARIABLES — plain text, visible in logs and to anyone with read
 #      access. That key pair should be rotated, not merely moved: on this host
@@ -114,14 +117,13 @@ jobs:
           provenance: false
           tags: ${{ steps.tag.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ steps.tag.outputs.tag }}
 
-      # chumme's own config and secrets. DATABASE_URL, REDIS_HOST/PORT and
-      # RABBITMQ_URL are deliberately absent: the host supplies them from
+      # chumme's own config and secrets. DATABASE_URL and REDIS_HOST/PORT are
+      # deliberately absent: the host supplies them from
       # /opt/forhu-dev/credentials/chumme.env and they are merged in at deploy
       # time. Setting them here would override the shared values.
       #
-      # RABBITMQ_DEFAULT_USER/PASS/VHOST are gone too — those configured the
-      # per-project RabbitMQ container the old box ran. This host has one shared
-      # broker with a vhost per project, already in the credentials file.
+      # Job queues are SQS (no RABBITMQ_* keys any more). The container reaches
+      # them on the instance role, so only the queue URLs are needed here.
       #
       # Anything unset is omitted rather than written empty: an empty value
       # reads as configured and silently disables whatever consumes it.
@@ -139,13 +141,14 @@ jobs:
           CORS_ORIGINS: ${{ vars.CORS_ORIGINS || secrets.CORS_ORIGINS }}
           GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID || secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_ANDROID_CLIENT_ID: ${{ vars.GOOGLE_ANDROID_CLIENT_ID || secrets.GOOGLE_ANDROID_CLIENT_ID }}
-          INGESTION_QUEUE_NAME: ${{ vars.INGESTION_QUEUE_NAME || secrets.INGESTION_QUEUE_NAME }}
           MAILER_EMAIL: ${{ vars.MAILER_EMAIL || secrets.MAILER_EMAIL }}
           MAILER_TRANSPORT_HOST: ${{ vars.MAILER_TRANSPORT_HOST || secrets.MAILER_TRANSPORT_HOST }}
           MAILER_TRANSPORT_PORT: ${{ vars.MAILER_TRANSPORT_PORT || secrets.MAILER_TRANSPORT_PORT }}
           MAILER_TRANSPORT_SECURE: ${{ vars.MAILER_TRANSPORT_SECURE || secrets.MAILER_TRANSPORT_SECURE }}
-          RABBITMQ_EXCHANGE: ${{ vars.RABBITMQ_EXCHANGE || secrets.RABBITMQ_EXCHANGE }}
-          RABBITMQ_QUEUE_PREFIX: ${{ vars.RABBITMQ_QUEUE_PREFIX || secrets.RABBITMQ_QUEUE_PREFIX }}
+          MEDIA_PROCESSING_QUEUE_URL: ${{ vars.MEDIA_PROCESSING_QUEUE_URL }}
+          AUDIO_MERGE_QUEUE_URL: ${{ vars.AUDIO_MERGE_QUEUE_URL }}
+          INGESTION_JOBS_QUEUE_URL: ${{ vars.INGESTION_JOBS_QUEUE_URL }}
+          INGESTION_JOBS_HIGH_QUEUE_URL: ${{ vars.INGESTION_JOBS_HIGH_QUEUE_URL }}
           REDIS_TTL_SECONDS: ${{ vars.REDIS_TTL_SECONDS || secrets.REDIS_TTL_SECONDS }}
           SPORTS_DEMO_MODE: ${{ vars.SPORTS_DEMO_MODE || secrets.SPORTS_DEMO_MODE }}
           START_WORKERS: ${{ vars.START_WORKERS || secrets.START_WORKERS }}
@@ -167,9 +170,11 @@ jobs:
                    YOUTUBE_API_KEY GOOGLE_TRANSLATE_API_KEY \
                    ACCESS_TOKEN_EXPIRY AWS_S3_BUCKET_NAME S3_CDN_URL \
                    CHAT_WONDER_API_URL CORS_ORIGINS GOOGLE_CLIENT_ID \
-                   GOOGLE_ANDROID_CLIENT_ID INGESTION_QUEUE_NAME MAILER_EMAIL \
+                   GOOGLE_ANDROID_CLIENT_ID MAILER_EMAIL \
                    MAILER_TRANSPORT_HOST MAILER_TRANSPORT_PORT MAILER_TRANSPORT_SECURE \
-                   RABBITMQ_EXCHANGE RABBITMQ_QUEUE_PREFIX REDIS_TTL_SECONDS \
+                   MEDIA_PROCESSING_QUEUE_URL AUDIO_MERGE_QUEUE_URL \
+                   INGESTION_JOBS_QUEUE_URL INGESTION_JOBS_HIGH_QUEUE_URL \
+                   REDIS_TTL_SECONDS \
                    SPORTS_DEMO_MODE START_WORKERS TRANSLATION_PROVIDER \
                    TRANSLATION_API_URL TZ; do
             v="${!k:-}"

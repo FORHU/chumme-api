@@ -61,6 +61,11 @@ export default class RedisUtil {
     return result === null;
   }
 
+  /** Undo isDuplicate's claim so a retried job is not skipped. */
+  static async releaseDedup(type: string, id: string): Promise<void> {
+    await this.redisClient.del(`job:dedup:${type}:${id}`);
+  }
+
   /**
    * Simple fixed-window rate limiter
    */

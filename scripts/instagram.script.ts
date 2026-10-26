@@ -1,6 +1,9 @@
 import { prisma } from "../src/utils/prisma";
 import { upsertArtist } from "../src/repositories/chumme-artist.repository";
-import { rabbitMQService } from "../src/utils/rabbitmq";
+import {
+  IngestionJobType,
+  publishIngestionJob,
+} from "../src/listeners/ingestion.listener";
 import { SocialPlatform } from "@prisma/client";
 import * as fs from "fs";
 import * as path from "path";
@@ -28,15 +31,6 @@ async function main() {
     process.exit(1);
   }
 
-  // Connect RabbitMQ early
-  let isRabbitConnected = false;
-  try {
-    await rabbitMQService.connect();
-    isRabbitConnected = true;
-    console.log("✅ RabbitMQ Connected for enrichment queueing.");
-  } catch (err) {
-    console.warn("⚠️  RabbitMQ skipped (Check your connection). Items will be ingested but not enriched.");
-  }
 
   let processed = 0;
   let created = 0;
@@ -109,14 +103,16 @@ async function main() {
       if (existing) updated++; else created++;
 
       // 4. Enrich
-      if (isRabbitConnected) {
-        await rabbitMQService.publishMessage("ingestion.metadata", {
-          type: "metadata",
+      try {
+        await publishIngestionJob({
+          type: IngestionJobType.METADATA,
           platform: SocialPlatform.INSTAGRAM,
           targetId: videoId || post.url,
           priority: 1,
           meta: { artistId: artist.id, mode: "sync" }
         });
+      } catch {
+        console.warn("⚠️  Enrichment not queued (check INGESTION_JOBS_QUEUE_URL / AWS access).");
       }
 
       processed++;
@@ -129,7 +125,6 @@ async function main() {
   console.log(`\n✨ Ingestion Complete!`);
   console.log(`📊 Stats: Total ${processed} | Created ${created} | Updated ${updated}`);
 
-  if (isRabbitConnected) await rabbitMQService.disconnect();
   await prisma.$disconnect();
 }
 

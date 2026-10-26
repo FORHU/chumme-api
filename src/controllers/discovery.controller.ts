@@ -3,6 +3,7 @@ import { SocialPlatform } from "@prisma/client";
 import {
   IngestionJob,
   IngestionJobType,
+  publishIngestionJob,
 } from "../listeners/ingestion.listener";
 import SocialFeedRepo from "../repositories/social-feed.repository";
 import * as ArtistRepo from "../repositories/chumme-artist.repository";
@@ -11,7 +12,6 @@ import { QuotaService } from "../services/net-communities/ingestion/quota.servic
 import YouTubeService from "../services/net-communities/youtube.service";
 import logger from "../utils/logger";
 import { prisma } from "../utils/prisma";
-import { rabbitMQService } from "../utils/rabbitmq";
 
 export default class DiscoveryController {
   /**
@@ -190,11 +190,7 @@ export default class DiscoveryController {
         },
       };
 
-      await rabbitMQService.publishMessage(
-        `ingestion.${IngestionJobType.DISCOVERY}`,
-        job,
-        { priority: job.priority },
-      );
+      await publishIngestionJob(job);
 
       const quotaUsedToday = await QuotaService.getUsage();
 

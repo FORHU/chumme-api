@@ -1,5 +1,6 @@
 import express from "express";
-import { rabbitMQService } from "../utils/rabbitmq";
+import { JOB_QUEUE_URLS } from "../config";
+import { getQueueHealth } from "../utils/sqs";
 import { prisma } from "../utils/prisma";
 import RedisUtil from "../utils/redis.util";
 import { QuotaService } from "../services/net-communities/ingestion/quota.service";
@@ -8,12 +9,14 @@ const router = express.Router();
 
 /**
  * Enhanced health check endpoint with dependency status
- * Checks: API, Redis, RabbitMQ, Database (ingestion targets)
+ * Checks: API, Redis, SQS job queues, Database (ingestion targets)
  */
 router.get("/health", async (req, res) => {
-  // 1. Check RabbitMQ
-  const rabbitConnected = rabbitMQService.isConnectionActive();
-  const rabbitmqStatus = rabbitConnected ? "connected" : "disconnected";
+  // 1. Check SQS: every job queue must answer GetQueueAttributes
+  const queues = await getQueueHealth(JOB_QUEUE_URLS);
+  const sqsStatus = Object.values(queues).every((q) => !("error" in q))
+    ? "connected"
+    : "disconnected";
 
   // 2. Check Redis
   let redisStatus = "disconnected";
@@ -54,10 +57,10 @@ router.get("/health", async (req, res) => {
 
   // 4. Derive overall status
   const allHealthy =
-    rabbitmqStatus === "connected" &&
+    sqsStatus === "connected" &&
     redisStatus === "connected" &&
     dbStatus === "connected";
-  const anyDown = [rabbitmqStatus, redisStatus, dbStatus].some(
+  const anyDown = [sqsStatus, redisStatus, dbStatus].some(
     (s) => s === "disconnected",
   );
   const overallStatus = allHealthy ? "ok" : anyDown ? "degraded" : "ok";
@@ -67,7 +70,7 @@ router.get("/health", async (req, res) => {
     timestamp: new Date().toISOString(),
     services: {
       api: "healthy",
-      rabbitmq: rabbitmqStatus,
+      sqs: sqsStatus,
       redis: redisStatus,
       database: dbStatus,
     },
@@ -83,12 +86,14 @@ router.get("/health", async (req, res) => {
   return res.status(overallStatus === "ok" ? 200 : 503).json(health);
 });
 
-// RabbitMQ specific health check
-router.get("/health/rabbitmq", (req, res) => {
-  const isConnected = rabbitMQService.isConnectionActive();
-  res.status(isConnected ? 200 : 503).json({
-    service: "rabbitmq",
-    status: isConnected ? "connected" : "disconnected",
+// SQS job queues: depth of each, or the error reaching it
+router.get("/health/queues", async (req, res) => {
+  const queues = await getQueueHealth(JOB_QUEUE_URLS);
+  const ok = Object.values(queues).every((q) => !("error" in q));
+  res.status(ok ? 200 : 503).json({
+    service: "sqs",
+    status: ok ? "connected" : "disconnected",
+    queues,
     timestamp: new Date().toISOString(),
   });
 });
