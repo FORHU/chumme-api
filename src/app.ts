@@ -122,9 +122,7 @@ connectToPrisma()
           await import("./listeners/media-processing.listener");
         const mediaWorker = new MediaProcessingWorker();
         await mediaWorker.start();
-        logger.info(
-          "Media Processing worker initialized successfully",
-        );
+        logger.info("Media Processing worker initialized successfully");
       } catch (error) {
         logger.error("Failed to initialize Media Processing worker:", error);
       }
