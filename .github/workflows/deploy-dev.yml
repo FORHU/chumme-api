@@ -16,8 +16,12 @@ name: Deploy Dev
 #      project and must not change; see /etc/caddy/sites/00-PORTS.md.
 #   3. Put this project's own secrets in the `dev` environment, and list them
 #      in the "Publish project env" step. DATABASE_URL and REDIS_URL come
-#      from the host — do NOT set them here. The four *_QUEUE_URL values are
-#      the dev SQS queues DevOps created; set them as `dev` variables.
+#      from the host — do NOT set them here. The four queue URLs are read as
+#      DEV_*_QUEUE_URL `dev` variables and written to the container under their
+#      unprefixed names. The prefix is load-bearing: deploy.yml — production —
+#      also runs with `environment: dev`, and an environment variable shadows
+#      the repository one of the same name, so a plain AUDIO_MERGE_QUEUE_URL
+#      here would hand production the dev queues.
 #   4. Delete these from the environment; they belong to the old box's SSH
 #      deploy and nothing here reads them:
 #        EC2_HOST  EC2_SSH_KEY  EC2_USER  EC2_INSTANCE_ID
@@ -145,10 +149,10 @@ jobs:
           MAILER_TRANSPORT_HOST: ${{ vars.MAILER_TRANSPORT_HOST || secrets.MAILER_TRANSPORT_HOST }}
           MAILER_TRANSPORT_PORT: ${{ vars.MAILER_TRANSPORT_PORT || secrets.MAILER_TRANSPORT_PORT }}
           MAILER_TRANSPORT_SECURE: ${{ vars.MAILER_TRANSPORT_SECURE || secrets.MAILER_TRANSPORT_SECURE }}
-          MEDIA_PROCESSING_QUEUE_URL: ${{ vars.MEDIA_PROCESSING_QUEUE_URL }}
-          AUDIO_MERGE_QUEUE_URL: ${{ vars.AUDIO_MERGE_QUEUE_URL }}
-          INGESTION_JOBS_QUEUE_URL: ${{ vars.INGESTION_JOBS_QUEUE_URL }}
-          INGESTION_JOBS_HIGH_QUEUE_URL: ${{ vars.INGESTION_JOBS_HIGH_QUEUE_URL }}
+          MEDIA_PROCESSING_QUEUE_URL: ${{ vars.DEV_MEDIA_PROCESSING_QUEUE_URL }}
+          AUDIO_MERGE_QUEUE_URL: ${{ vars.DEV_AUDIO_MERGE_QUEUE_URL }}
+          INGESTION_JOBS_QUEUE_URL: ${{ vars.DEV_INGESTION_JOBS_QUEUE_URL }}
+          INGESTION_JOBS_HIGH_QUEUE_URL: ${{ vars.DEV_INGESTION_JOBS_HIGH_QUEUE_URL }}
           REDIS_TTL_SECONDS: ${{ vars.REDIS_TTL_SECONDS || secrets.REDIS_TTL_SECONDS }}
           SPORTS_DEMO_MODE: ${{ vars.SPORTS_DEMO_MODE || secrets.SPORTS_DEMO_MODE }}
           START_WORKERS: ${{ vars.START_WORKERS || secrets.START_WORKERS }}
