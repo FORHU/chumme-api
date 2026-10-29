@@ -1,4 +1,6 @@
+import { CircleVisibility } from "@prisma/client";
 import { prisma } from "../utils/prisma";
+import CircleAccessSvc from "../services/circle-access.service";
 
 export default class ChummeCategoryRepo {
   /**
@@ -8,6 +10,8 @@ export default class ChummeCategoryRepo {
     name: string;
     isAd: boolean;
     keyPassword?: string;
+    visibility?: CircleVisibility;
+    ownerId?: string;
     chummeTraits?: "NONE" | "COMMUNITIES" | "ENTERTAINMENT";
     note?: string;
     chummeVisualDesign?: {
@@ -33,6 +37,8 @@ export default class ChummeCategoryRepo {
         name: data.name,
         isAd: data.isAd,
         keyPassword: data.keyPassword || null,
+        visibility: data.visibility || "PUBLIC",
+        owner: data.ownerId ? { connect: { id: data.ownerId } } : undefined,
         chummeTraits: data.chummeTraits || "ENTERTAINMENT",
         note: data.note || null,
         channelId: data.channelId || [],
@@ -94,15 +100,21 @@ export default class ChummeCategoryRepo {
   }
 
   /**
-   * Get all non-deleted categories with subcategory counts
+   * Get all non-deleted categories with subcategory counts.
+   * Other users' PERSONAL categories are left out.
    */
-  static async getAllCategories(params: { publicOnly?: boolean } = {}) {
+  static async getAllCategories(
+    params: { publicOnly?: boolean; userId?: string } = {},
+  ) {
     return prisma.chummeCategory.findMany({
       where: {
         deletedAt: null,
-        ...(params.publicOnly && {
-          OR: [{ keyPassword: null }, { keyPassword: "" }],
-        }),
+        AND: [
+          CircleAccessSvc.visibleTo(params.userId),
+          ...(params.publicOnly
+            ? [{ OR: [{ keyPassword: null }, { keyPassword: "" }] }]
+            : []),
+        ],
       },
       include: {
         // Subcategories below already return their design; categories did not,
@@ -499,6 +511,7 @@ export default class ChummeCategoryRepo {
    */
   static async getSpecializedCategories(
     trait: "COMMUNITIES" | "ENTERTAINMENT",
+    userId?: string,
   ) {
     const isCommunities = trait === "COMMUNITIES";
 
@@ -506,6 +519,7 @@ export default class ChummeCategoryRepo {
       where: {
         deletedAt: null,
         chummeTraits: trait,
+        ...CircleAccessSvc.visibleTo(userId),
       },
       select: this.getSpecializedSelect(isCommunities) as any,
       orderBy: { createdAt: "desc" },
@@ -515,15 +529,15 @@ export default class ChummeCategoryRepo {
   /**
    * Get all categories with ENTERTAINMENT trait
    */
-  static async getChummeEntertainment() {
-    return this.getSpecializedCategories("ENTERTAINMENT");
+  static async getChummeEntertainment(userId?: string) {
+    return this.getSpecializedCategories("ENTERTAINMENT", userId);
   }
 
   /**
    * Get all categories with COMMUNITIES trait
    */
-  static async getChummeCommunities() {
-    return this.getSpecializedCategories("COMMUNITIES");
+  static async getChummeCommunities(userId?: string) {
+    return this.getSpecializedCategories("COMMUNITIES", userId);
   }
 
   /**
@@ -536,6 +550,9 @@ export default class ChummeCategoryRepo {
       note: true,
       isAd: true,
       chummeTraits: true,
+      visibility: true,
+      ownerId: true,
+      keyPassword: true,
       populationCount: true,
       chummeVisualDesign: {
         select: {

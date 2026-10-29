@@ -1,4 +1,5 @@
 import RoomMessageSvc from "../services/room-message.service";
+import CircleAccessSvc from "../services/circle-access.service";
 import { Request, Response } from "express";
 import Joi from "joi";
 
@@ -63,6 +64,7 @@ export default class RoomMessageCtrl {
     }
 
     try {
+      await CircleAccessSvc.assertRoomAccess(chummeSubCategoryId, userId);
       const response = await RoomMessageSvc.getRoomMessages(
         chummeSubCategoryId,
         userId,
@@ -80,7 +82,9 @@ export default class RoomMessageCtrl {
         },
       });
     } catch (err: any) {
-      return res.status(400).json({ message: err.message || err });
+      return res
+        .status(err.statusCode || 400)
+        .json({ message: err.message || err });
     }
   }
 

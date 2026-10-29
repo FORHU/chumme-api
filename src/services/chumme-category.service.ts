@@ -1,4 +1,8 @@
+import { CircleVisibility } from "@prisma/client";
 import ChummeCategoryRepo from "../repositories/chumme-category.repository";
+import ChummeCategoryAccessRepo from "../repositories/chumme-category-access.repository";
+import CircleAccessSvc from "./circle-access.service";
+import { ForbiddenError, NotFoundError } from "../utils/error.util";
 import { getLiveArtists } from "../repositories/chumme-artist.repository";
 import { mapLiveStatus } from "../utils/community-mapping.util";
 
@@ -10,6 +14,8 @@ export default class ChummeCategorySvc {
   static async createCategory(data: {
     name: string;
     keyPassword?: string;
+    visibility?: CircleVisibility;
+    ownerId: string;
     isAd: boolean;
     chummeTraits?: "NONE" | "COMMUNITIES" | "ENTERTAINMENT";
 
@@ -55,8 +61,11 @@ export default class ChummeCategorySvc {
       ...rest
     } = data;
 
-    return ChummeCategoryRepo.createCategory({
+    const category = await ChummeCategoryRepo.createCategory({
       ...rest,
+      // Only a PRIVATE Circle has a code; a PERSONAL one is grant-only
+      keyPassword:
+        rest.visibility === "PERSONAL" ? undefined : rest.keyPassword,
       chummeVisualDesign: {
         position,
         colorSet,
@@ -73,13 +82,19 @@ export default class ChummeCategorySvc {
         discoveryEnabled,
       },
     });
+    return CircleAccessSvc.toViewer(category, data.ownerId, new Set());
   }
 
   /**
-   * Get all chumme categories
+   * Get all chumme categories visible to the user
    */
-  static async getAllCategories(params: { publicOnly?: boolean } = {}) {
-    const categories = await ChummeCategoryRepo.getAllCategories(params);
+  static async getAllCategories(
+    params: { publicOnly?: boolean; userId?: string } = {},
+  ) {
+    const categories = await CircleAccessSvc.toViewerList(
+      await ChummeCategoryRepo.getAllCategories(params),
+      params.userId,
+    );
     const liveArtists = await getLiveArtists();
     return categories.map((cat) => {
       const mapped = mapLiveStatus(cat, liveArtists);
@@ -106,9 +121,15 @@ export default class ChummeCategorySvc {
   static async getCategoryById(
     id: string,
     trait?: "COMMUNITIES" | "ENTERTAINMENT",
+    userId?: string,
   ) {
-    const category = await ChummeCategoryRepo.getCategoryById(id, trait);
-    if (!category) {
+    const found: any = await ChummeCategoryRepo.getCategoryById(id, trait);
+    if (!found) {
+      throw new Error("Category not found");
+    }
+    const [category] = await CircleAccessSvc.toViewerList([found], userId);
+    // Other users' PERSONAL Circles don't exist for them
+    if (category.visibility === "PERSONAL" && !category.hasAccess) {
       throw new Error("Category not found");
     }
     const liveArtists = await getLiveArtists();
@@ -133,6 +154,7 @@ export default class ChummeCategorySvc {
    */
   static async updateCategory(
     id: string,
+    userId: string,
     data: {
       name?: string;
       keyPassword?: string;
@@ -160,6 +182,10 @@ export default class ChummeCategorySvc {
     const category = await ChummeCategoryRepo.getCategoryById(id);
     if (!category) {
       throw new Error("Category not found");
+    }
+    // A user-created Circle can only be changed by its owner
+    if (category.ownerId && category.ownerId !== userId) {
+      throw new ForbiddenError("Only the Circle's owner can do that");
     }
 
     // Check if new name conflicts with existing category
@@ -189,7 +215,7 @@ export default class ChummeCategorySvc {
       ...rest
     } = data;
 
-    return ChummeCategoryRepo.updateCategory(id, {
+    const updated = await ChummeCategoryRepo.updateCategory(id, {
       ...rest,
       chummeVisualDesign: {
         position,
@@ -207,17 +233,22 @@ export default class ChummeCategorySvc {
         discoveryEnabled,
       },
     });
+    const [viewed] = await CircleAccessSvc.toViewerList([updated], userId);
+    return viewed;
   }
 
   /**
    * Delete chumme category
    * Prevents deletion if category has active subcategories
    */
-  static async deleteCategory(id: string) {
+  static async deleteCategory(id: string, userId: string) {
     // Check if category exists
     const category = await ChummeCategoryRepo.getCategoryById(id);
     if (!category) {
       throw new Error("Category not found");
+    }
+    if (category.ownerId && category.ownerId !== userId) {
+      throw new ForbiddenError("Only the Circle's owner can do that");
     }
 
     // Check if category has active subcategories
@@ -229,7 +260,9 @@ export default class ChummeCategorySvc {
       );
     }
 
-    return ChummeCategoryRepo.softDeleteCategory(id);
+    const deleted = await ChummeCategoryRepo.softDeleteCategory(id);
+    await ChummeCategoryAccessRepo.deleteAllGrants(id);
+    return deleted;
   }
 
   /**
@@ -237,16 +270,19 @@ export default class ChummeCategorySvc {
    */
   static async getSubCategoriesInCategory(
     categoryId: string,
+    userId: string,
     password?: string,
   ) {
     // Verify category exists
     const category = await ChummeCategoryRepo.getCategoryById(categoryId);
     if (!category) {
-      throw new Error("Category not found");
+      throw new NotFoundError("Category not found");
     }
 
-    // Check category password if private
-    if (category.keyPassword && category.keyPassword !== password) {
+    if (category.visibility !== "PUBLIC") {
+      await CircleAccessSvc.assertCategoryAccess(categoryId, userId);
+    } else if (category.keyPassword && category.keyPassword !== password) {
+      // Legacy: a PUBLIC category created with a password before visibility
       throw new Error("Invalid password for this category");
     }
 
@@ -294,8 +330,15 @@ export default class ChummeCategorySvc {
    */
   static async getSpecializedCategories(
     trait: "COMMUNITIES" | "ENTERTAINMENT",
+    userId?: string,
   ) {
-    const categories = await ChummeCategoryRepo.getSpecializedCategories(trait);
+    const categories = await CircleAccessSvc.toViewerList(
+      (await ChummeCategoryRepo.getSpecializedCategories(
+        trait,
+        userId,
+      )) as any[],
+      userId,
+    );
     const liveArtists = await getLiveArtists();
     return categories.map((cat) => mapLiveStatus(cat, liveArtists));
   }
@@ -303,8 +346,11 @@ export default class ChummeCategorySvc {
   /**
    * Get all entertainment categories
    */
-  static async getChummeEntertainment() {
-    const categories = await ChummeCategoryRepo.getChummeEntertainment();
+  static async getChummeEntertainment(userId?: string) {
+    const categories = await CircleAccessSvc.toViewerList(
+      (await ChummeCategoryRepo.getChummeEntertainment(userId)) as any[],
+      userId,
+    );
     const liveArtists = await getLiveArtists();
     return categories.map((cat) => mapLiveStatus(cat, liveArtists));
   }
@@ -312,8 +358,11 @@ export default class ChummeCategorySvc {
   /**
    * Get all communities categories
    */
-  static async getChummeCommunities() {
-    const categories = await ChummeCategoryRepo.getChummeCommunities();
+  static async getChummeCommunities(userId?: string) {
+    const categories = await CircleAccessSvc.toViewerList(
+      (await ChummeCategoryRepo.getChummeCommunities(userId)) as any[],
+      userId,
+    );
     const liveArtists = await getLiveArtists();
     return categories.map((cat) => mapLiveStatus(cat, liveArtists));
   }

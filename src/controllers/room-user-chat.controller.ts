@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import Joi from "joi";
 import RoomUserChatSvc from "../services/room-user-chat.service";
+import CircleAccessSvc from "../services/circle-access.service";
 
 export default class RoomUserChatCtrl {
   /**
@@ -40,6 +41,7 @@ export default class RoomUserChatCtrl {
     }
 
     try {
+      await CircleAccessSvc.assertRoomAccess(chummeSubCategoryId, userId);
       const membership = await RoomUserChatSvc.joinRoom(
         userId,
         chummeSubCategoryId,
@@ -50,7 +52,9 @@ export default class RoomUserChatCtrl {
         membership,
       });
     } catch (error: any) {
-      return res.status(500).json({ message: error.message || error });
+      return res
+        .status(error.statusCode || 500)
+        .json({ message: error.message || error });
     }
   }
 

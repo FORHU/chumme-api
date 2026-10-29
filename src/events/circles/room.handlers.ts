@@ -1,5 +1,6 @@
 import { Server } from "socket.io";
 import ChummeSubCategorySvc from "../../services/chumme-subcategory.service";
+import CircleAccessSvc from "../../services/circle-access.service";
 import RoomUserChatSvc from "../../services/room-user-chat.service";
 import RoomMessageSvc from "../../services/room-message.service";
 import CircleCacheSvc from "../../services/circle-cache.service";
@@ -34,6 +35,16 @@ export const registerRoomHandlers = (
         return socket.emit("join_room_failed", {
           room_id,
           message: "Room does not exist",
+        });
+      }
+
+      // PRIVATE / PERSONAL Circles: owner and granted users only
+      try {
+        await CircleAccessSvc.assertRoomAccess(room_id, socket.user.id);
+      } catch (err: any) {
+        return socket.emit("join_room_failed", {
+          room_id,
+          message: err.message,
         });
       }
 

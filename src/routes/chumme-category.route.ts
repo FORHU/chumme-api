@@ -17,6 +17,12 @@ router.get("/:id", ChummeCategoryCtrl.getCategoryById);
 router.put("/:id", ChummeCategoryCtrl.updateCategory);
 router.delete("/:id", ChummeCategoryCtrl.deleteCategory);
 
+// Circle visibility: code entry (PRIVATE) and owner-managed grants
+router.post("/:id/join", ChummeCategoryCtrl.joinCategory);
+router.get("/:id/access", ChummeCategoryCtrl.getCategoryAccess);
+router.post("/:id/access", ChummeCategoryCtrl.grantCategoryAccess);
+router.delete("/:id/access/:userId", ChummeCategoryCtrl.revokeCategoryAccess);
+
 // Bulk room operations within a category
 router.get(
   "/:categoryId/subcategories",

@@ -78,6 +78,9 @@ model User {
   reportsAgainst         UserReport[]            @relation("ReportReportedUser")
   reportsReviewed        UserReport[]            @relation("ReportReviewer")
   ownedArtists           ChummeArtist[]          @relation("ArtistOwner")
+  ownedCategories        ChummeCategory[]        @relation("ChummeCategoryOwner")
+  categoryAccessGrants   ChummeCategoryAccess[]  @relation("CategoryAccessUser")
+  categoryAccessGranted  ChummeCategoryAccess[]  @relation("CategoryAccessGrantedBy")
 }
 
 model Session {
@@ -139,17 +142,39 @@ model ChummeCategory {
   isAd                  Boolean                 @default(false)
   chummeVisualDesignId  String?                 @unique
   keyPassword           String?
+  visibility            CircleVisibility        @default(PUBLIC)
+  ownerId               String?
   chummeTraits          ChummeTraits            @default(NONE)
   populationCount       Int                     @default(0)
   discoveryKeywords     String[]
   targetCountries       String[]                @default([])
   channelId             String[]                @default([])
   chummeVisualDesign    ChummeCategoryDesign?   @relation("CategoryDesign", fields: [chummeVisualDesignId], references: [id])
+  owner                 User?                   @relation("ChummeCategoryOwner", fields: [ownerId], references: [id])
+  accessGrants          ChummeCategoryAccess[]
   chummeSubCategories   ChummeSubCategory[]
   socialFeedItems       SocialFeedItem[]        @relation("CategoryFeed")
   ingestionTargets      SocialIngestionTarget[]
   chummeArtists         ChummeArtist[]          @relation("ChummeArtistToChummeCategory")
   socialUserDiscoveries SocialUserDiscovery[]   @relation("ChummeCategoryToSocialUserDiscovery")
+
+  @@index([ownerId])
+}
+
+// Who may see and chat in a PRIVATE or PERSONAL Circle besides its owner.
+// PRIVATE grants come from entering the code; PERSONAL ones from the owner.
+model ChummeCategoryAccess {
+  id               String         @id @default(uuid())
+  chummeCategoryId String
+  userId           String
+  grantedById      String?
+  createdAt        DateTime       @default(now())
+  chummeCategory   ChummeCategory @relation(fields: [chummeCategoryId], references: [id], onDelete: Cascade)
+  user             User           @relation("CategoryAccessUser", fields: [userId], references: [id], onDelete: Cascade)
+  grantedBy        User?          @relation("CategoryAccessGrantedBy", fields: [grantedById], references: [id], onDelete: SetNull)
+
+  @@unique([chummeCategoryId, userId])
+  @@index([userId])
 }
 
 model ChummeSubCategory {
@@ -1187,6 +1212,12 @@ enum ChummeTraits {
   NONE
   COMMUNITIES
   ENTERTAINMENT
+}
+
+enum CircleVisibility {
+  PUBLIC
+  PRIVATE
+  PERSONAL
 }
 
 enum SportEventStatus {

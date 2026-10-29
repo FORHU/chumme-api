@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import Joi from "joi";
 import ChummeSubCategorySvc from "../services/chumme-subcategory.service";
+import CircleAccessSvc from "../services/circle-access.service";
 import { io } from "../app";
 
 export default class ChummeSubCategoryCtrl {
@@ -40,20 +41,30 @@ export default class ChummeSubCategoryCtrl {
     }
 
     try {
+      const category = await CircleAccessSvc.assertCategoryAccess(
+        value.chummeCategoryId,
+        (req as any).user.id,
+      );
+
       const subCategory = await ChummeSubCategorySvc.createSubCategory(value);
 
-      // Broadcast to all connected clients so other users see the new room
-      io.emit("subcategory_created", {
-        categoryId: value.chummeCategoryId,
-        subCategory,
-      });
+      // Broadcast to all connected clients so other users see the new room.
+      // A non-public Circle's rooms aren't broadcast: everyone would get them.
+      if (category.visibility === "PUBLIC") {
+        io.emit("subcategory_created", {
+          categoryId: value.chummeCategoryId,
+          subCategory,
+        });
+      }
 
       return res.status(201).json({
         message: "Chumme subcategory created successfully",
         subCategory,
       });
     } catch (error: any) {
-      return res.status(400).json({ message: error.message || error });
+      return res
+        .status(error.statusCode || 400)
+        .json({ message: error.message || error });
     }
   }
 
@@ -125,13 +136,21 @@ export default class ChummeSubCategoryCtrl {
     }
 
     try {
+      await CircleAccessSvc.assertCategoryAccess(
+        categoryId,
+        (req as any).user.id,
+      );
       const subCategories =
         await ChummeSubCategorySvc.getChummeSubCategoryByChummeCategoryID(
           categoryId,
         );
       return res.json({ subCategories });
     } catch (error: any) {
-      return res.status(500).json({ message: error.message || error });
+      // Unknown (or hidden PERSONAL) Circle: same empty answer as before
+      if (error.statusCode === 404) return res.json({ subCategories: [] });
+      return res
+        .status(error.statusCode || 500)
+        .json({ message: error.message || error });
     }
   }
 

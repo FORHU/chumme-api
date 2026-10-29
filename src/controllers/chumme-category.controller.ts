@@ -2,7 +2,11 @@ import { Request, Response } from "express";
 import Joi from "joi";
 import ChummeCategorySvc from "../services/chumme-category.service";
 import ChummeCategoriesConsts from "../constants/chumme-categories.constants";
+import CircleAccessSvc from "../services/circle-access.service";
 import { io } from "../app";
+
+// A PRIVATE Circle's code: 6 characters, A–Z and 0–9 (the app generates it)
+const CIRCLE_CODE = /^[A-Z0-9]{6}$/;
 
 export default class ChummeCategoryCtrl {
   /**
@@ -15,7 +19,25 @@ export default class ChummeCategoryCtrl {
     const schema = Joi.object({
       name: Joi.string().min(1).max(100).required(),
       isAd: Joi.boolean().required(),
-      keyPassword: Joi.string().allow(null, "").optional(), // Null/Empty = public, otherwise private
+      visibility: Joi.string()
+        .valid("PUBLIC", "PRIVATE", "PERSONAL")
+        .default("PUBLIC"),
+      keyPassword: Joi.when("visibility", {
+        is: "PRIVATE",
+        then: Joi.string()
+          .trim()
+          .uppercase()
+          .pattern(CIRCLE_CODE)
+          .required()
+          .messages({
+            "any.required": "A private Circle needs a code",
+            "string.empty": "A private Circle needs a code",
+            "string.pattern.base": "The code must be 6 letters or numbers",
+          }),
+        otherwise: Joi.string().allow(null, "").optional(), // Legacy: non-empty = password-protected
+      }),
+      // The owner is always the signed-in user, never the body
+      ownerId: Joi.any().strip(),
       traits: Joi.string()
         .valid("NONE", "COMMUNITIES", "ENTERTAINMENT")
         .optional(),
@@ -50,10 +72,11 @@ export default class ChummeCategoryCtrl {
       const { traits, ...rest } = value;
       const category = await ChummeCategorySvc.createCategory({
         ...rest,
+        ownerId: (req as any).user.id,
         chummeTraits: traits,
       });
 
-      io.emit("category_created", { category });
+      io.emit("category_created", CircleAccessSvc.toBroadcast(category));
 
       return res.status(201).json({
         message: "Chumme category created successfully",
@@ -66,7 +89,9 @@ export default class ChummeCategoryCtrl {
 
   static async getAllCategories(req: Request, res: Response) {
     try {
-      const categories = await ChummeCategorySvc.getAllCategories();
+      const categories = await ChummeCategorySvc.getAllCategories({
+        userId: (req as any).user.id,
+      });
 
       return res.json({ categories });
     } catch (error: any) {
@@ -101,6 +126,7 @@ export default class ChummeCategoryCtrl {
       const category = await ChummeCategorySvc.getCategoryById(
         id,
         (trait as any) || undefined,
+        (req as any).user.id,
       );
       return res.json({ category });
     } catch (error: any) {
@@ -146,19 +172,25 @@ export default class ChummeCategoryCtrl {
     try {
       // Map `traits` (API field) → `chummeTraits` (service/DB field)
       const { traits, ...rest } = value;
-      const category = await ChummeCategorySvc.updateCategory(id, {
-        ...rest,
-        ...(traits && { chummeTraits: traits }),
-      });
+      const category = await ChummeCategorySvc.updateCategory(
+        id,
+        (req as any).user.id,
+        {
+          ...rest,
+          ...(traits && { chummeTraits: traits }),
+        },
+      );
 
-      io.emit("category_updated", { category });
+      io.emit("category_updated", CircleAccessSvc.toBroadcast(category));
 
       return res.json({
         message: "Chumme category updated successfully",
         category,
       });
     } catch (error: any) {
-      return res.status(400).json({ message: error.message || error });
+      return res
+        .status(error.statusCode || 400)
+        .json({ message: error.message || error });
     }
   }
 
@@ -178,13 +210,15 @@ export default class ChummeCategoryCtrl {
     }
 
     try {
-      await ChummeCategorySvc.deleteCategory(id);
+      await ChummeCategorySvc.deleteCategory(id, (req as any).user.id);
 
       io.emit("category_deleted", { id });
 
       return res.json({ message: "Chumme category deleted successfully" });
     } catch (error: any) {
-      return res.status(400).json({ message: error.message || error });
+      return res
+        .status(error.statusCode || 400)
+        .json({ message: error.message || error });
     }
   }
 
@@ -211,11 +245,115 @@ export default class ChummeCategoryCtrl {
     try {
       const subCategories = await ChummeCategorySvc.getSubCategoriesInCategory(
         categoryId,
+        (req as any).user.id,
         (password as string) || undefined,
       );
       return res.json({ subCategories, count: subCategories.length });
     } catch (error: any) {
-      return res.status(400).json({ message: error.message || error });
+      return res
+        .status(error.statusCode || 400)
+        .json({ message: error.message || error });
+    }
+  }
+
+  /**
+   * Enter a PRIVATE Circle's code to get access
+   */
+  static async joinCategory(req: Request, res: Response) {
+    const schema = Joi.object({
+      id: Joi.string().required(),
+      keyPassword: Joi.string().trim().required().messages({
+        "any.required": "Enter the Circle's code",
+        "string.empty": "Enter the Circle's code",
+      }),
+    });
+
+    const { error, value } = schema.validate({
+      id: req.params.id,
+      keyPassword: req.body?.keyPassword,
+    });
+    if (error) {
+      return res.status(400).json({ message: error.message });
+    }
+
+    try {
+      await CircleAccessSvc.joinWithCode(
+        value.id,
+        (req as any).user.id,
+        value.keyPassword,
+      );
+      return res.json({ message: "You're in", hasAccess: true });
+    } catch (error: any) {
+      return res
+        .status(error.statusCode || 400)
+        .json({ message: error.message || error });
+    }
+  }
+
+  /**
+   * Owner: list the users granted access
+   */
+  static async getCategoryAccess(req: Request, res: Response) {
+    try {
+      const users = await CircleAccessSvc.listGrantedUsers(
+        req.params.id,
+        (req as any).user.id,
+      );
+      return res.json({ users });
+    } catch (error: any) {
+      return res
+        .status(error.statusCode || 400)
+        .json({ message: error.message || error });
+    }
+  }
+
+  /**
+   * Owner: grant a user access by username
+   */
+  static async grantCategoryAccess(req: Request, res: Response) {
+    const schema = Joi.object({
+      username: Joi.string().trim().min(1).required().messages({
+        "any.required": "Enter a username",
+        "string.empty": "Enter a username",
+      }),
+    });
+
+    const { error, value } = schema.validate({
+      username: req.body?.username,
+    });
+    if (error) {
+      return res.status(400).json({ message: error.message });
+    }
+
+    try {
+      await CircleAccessSvc.grantByUsername(
+        req.params.id,
+        (req as any).user.id,
+        value.username,
+      );
+      return res.status(201).json({ message: "Access granted" });
+    } catch (error: any) {
+      return res
+        .status(error.statusCode || 400)
+        .json({ message: error.message || error });
+    }
+  }
+
+  /**
+   * Owner: remove a user's access
+   */
+  static async revokeCategoryAccess(req: Request, res: Response) {
+    try {
+      await CircleAccessSvc.revoke(
+        req.params.id,
+        (req as any).user.id,
+        req.params.userId,
+      );
+      return res.json({ message: "Access removed" });
+    } catch (error: any) {
+      return res
+        .status(error.statusCode || 400)
+        .json({ message: error.message || error });
     }
   }
 
@@ -265,6 +403,7 @@ export default class ChummeCategoryCtrl {
     try {
       const categories = await ChummeCategorySvc.getSpecializedCategories(
         trait as any,
+        (req as any).user.id,
       );
       return res.json({ categories });
     } catch (error: any) {
@@ -277,7 +416,9 @@ export default class ChummeCategoryCtrl {
    */
   static async getChummeEntertainment(req: Request, res: Response) {
     try {
-      const categories = await ChummeCategorySvc.getChummeEntertainment();
+      const categories = await ChummeCategorySvc.getChummeEntertainment(
+        (req as any).user.id,
+      );
       return res.json({ categories });
     } catch (error: any) {
       return res.status(500).json({ message: error.message || error });
@@ -289,7 +430,9 @@ export default class ChummeCategoryCtrl {
    */
   static async getChummeCommunities(req: Request, res: Response) {
     try {
-      const categories = await ChummeCategorySvc.getChummeCommunities();
+      const categories = await ChummeCategorySvc.getChummeCommunities(
+        (req as any).user.id,
+      );
       return res.json({ categories });
     } catch (error: any) {
       return res.status(500).json({ message: error.message || error });
