@@ -17,6 +17,7 @@ export default class RoomMessageCtrl {
       voiceMessageId: Joi.string().uuid().optional(),
       videoMessageId: Joi.string().uuid().optional(),
       parentMessageId: Joi.string().uuid().optional(),
+      duration: Joi.number().min(0).optional(),
       waveform: Joi.array().items(Joi.number()).optional(),
     });
 

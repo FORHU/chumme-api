@@ -87,6 +87,13 @@ const FACEBOOK_PATTERNS = [
   /^https?:\/\/fb\.watch\/[A-Za-z0-9_-]{5,}\/?(?:[?#].*)?$/i,
 ];
 
+/**
+ * Platforms recognised but no longer seeded. Their links are skipped silently
+ * (they're valid, just unwanted) wherever they come from — the curated file or
+ * the ingested feed.
+ */
+const DISABLED_PLATFORMS = new Set<LinkPlatform>(["instagram"]);
+
 function classify(url: string): LinkPlatform | null {
   if (TIKTOK_PATTERNS.some((p) => p.test(url))) return "tiktok";
   if (INSTAGRAM_PATTERN.test(url)) return "instagram";
@@ -186,6 +193,7 @@ function loadFileLinks(): { byTheme: Map<ChatTheme, SocialLink[]>; roomGroups: R
         rejected += 1;
         continue;
       }
+      if (DISABLED_PLATFORMS.has(platform)) continue;
       list.push({ url, platform, caption });
     }
     return list;
@@ -242,7 +250,7 @@ async function loadFeedLinks(prisma: PrismaClient) {
   for (const item of items) {
     const url = item.externalUrl!.trim();
     const platform = classify(url);
-    if (!platform) continue;
+    if (!platform || DISABLED_PLATFORMS.has(platform)) continue;
 
     const link: SocialLink = { url, platform };
     if (item.chummeSubCategoryId) {

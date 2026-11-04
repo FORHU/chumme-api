@@ -33,13 +33,22 @@ describe("RoomMediaPolicySvc", function () {
     }));
   };
 
-  const send = (kind: "voice" | "video") =>
+  const send = (kind: "voice" | "video", reportedDuration?: number) =>
     RoomMediaPolicySvc.assertAllowed({
       roomId: "r1",
       userId: "u1",
       kind,
       fileId: "f1",
+      reportedDuration,
     });
+
+  /** ffprobe unavailable, e.g. no binary for the box's architecture */
+  const givenProbeDown = (isAdmin: boolean) => {
+    stub(RoomMediaPolicySvc, "isCommunityAdmin", async () => isAdmin);
+    stub(RoomMediaPolicySvc, "probeFile", async () => {
+      throw new Error("spawn ffprobe ENOENT");
+    });
+  };
 
   const rejection = async (p: Promise<unknown>) => {
     try {
@@ -93,6 +102,29 @@ describe("RoomMediaPolicySvc", function () {
   it("rejects a member voice message over 7s", async function () {
     given(false, { duration: 8 });
     const err = await rejection(send("voice"));
+    expect(err.statusCode).to.equal(400);
+  });
+
+  it("falls back to the reported duration when ffprobe is down", async function () {
+    givenProbeDown(false);
+    expect(await send("voice", 5)).to.equal(5);
+  });
+
+  it("still holds the reported duration to the limit", async function () {
+    givenProbeDown(false);
+    const err = await rejection(send("voice", 12));
+    expect(err.statusCode).to.equal(400);
+  });
+
+  it("rejects when ffprobe is down and nothing was reported", async function () {
+    givenProbeDown(true);
+    const err = await rejection(send("voice"));
+    expect(err.statusCode).to.equal(400);
+  });
+
+  it("measured duration beats a lower reported one", async function () {
+    given(false, { duration: 20 });
+    const err = await rejection(send("voice", 3));
     expect(err.statusCode).to.equal(400);
   });
 

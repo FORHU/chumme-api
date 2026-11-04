@@ -17,7 +17,7 @@ export default class RoomMessageSvc {
     voiceMessageId?: string;
     videoMessageId?: string;
     parentMessageId?: string;
-    /** Client-reported; ignored in favour of the measured duration */
+    /** Client-reported; only used when the file can't be probed */
     duration?: number;
     waveform?: number[];
   }) {
@@ -56,6 +56,7 @@ export default class RoomMessageSvc {
         userId: data.userId,
         kind: "voice",
         fileId: data.voiceMessageId,
+        reportedDuration: data.duration,
       });
       await this.persistMediaMeta(data.voiceMessageId, {
         duration,
@@ -68,6 +69,7 @@ export default class RoomMessageSvc {
         userId: data.userId,
         kind: "video",
         fileId: data.videoMessageId,
+        reportedDuration: data.duration,
       });
       await this.persistMediaMeta(data.videoMessageId, { duration });
     }

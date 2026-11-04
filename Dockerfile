@@ -2,8 +2,9 @@ FROM node:22-alpine
 
 WORKDIR /app
 
-# Install tzdata so the container supports timezones
-RUN apk add --no-cache tzdata
+# Install tzdata so the container supports timezones. ffmpeg brings ffprobe:
+# ffprobe-static ships no linux/arm64 binary, and the box is arm64.
+RUN apk add --no-cache tzdata ffmpeg
 
 # Set default timezone
 ENV TZ=Asia/Manila

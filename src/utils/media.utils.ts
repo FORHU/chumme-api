@@ -10,9 +10,14 @@ import { PassThrough } from "stream";
 
 import S3Util from "./s3.util";
 
-// Set the ffmpeg and ffprobe paths globally
-if (ffmpegPath) ffmpeg.setFfmpegPath(ffmpegPath);
-if (ffprobePath.path) ffmpeg.setFfprobePath(ffprobePath.path);
+// Set the ffmpeg and ffprobe paths globally. The static packages compute a
+// path even for platforms they ship no binary for (ffprobe-static has none for
+// linux/arm64), so only use one that exists — otherwise fluent-ffmpeg falls
+// back to the system binary on PATH.
+if (ffmpegPath && fs.existsSync(ffmpegPath)) ffmpeg.setFfmpegPath(ffmpegPath);
+if (ffprobePath.path && fs.existsSync(ffprobePath.path)) {
+  ffmpeg.setFfprobePath(ffprobePath.path);
+}
 
 export { ffmpeg };
 

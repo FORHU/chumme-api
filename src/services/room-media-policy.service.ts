@@ -89,13 +89,15 @@ export default class RoomMediaPolicySvc {
 
   /**
    * Throws unless this user may attach this file to a message in this room.
-   * Returns the measured duration in seconds.
+   * Returns the duration in seconds: measured when the file can be probed,
+   * otherwise the client-reported one (still held to the same limit).
    */
   static async assertAllowed(params: {
     roomId: string;
     userId: string;
     kind: RoomMediaKind;
     fileId: string;
+    reportedDuration?: number;
   }) {
     const limits = await this.getLimits(params.roomId, params.userId);
     const max =
@@ -107,36 +109,49 @@ export default class RoomMediaPolicySvc {
       );
     }
 
-    let meta: MediaMetadata;
+    let meta: MediaMetadata | null = null;
     try {
       meta = await this.probeFile(params.fileId);
     } catch (err) {
       if (err instanceof NotFoundError) throw err;
+      // An ffprobe/S3 outage must not take chat media down with it (it once
+      // blocked every voice note: no arm64 binary), so fall back below.
       logger.error(
         `[RoomMediaPolicySvc] Could not probe file ${params.fileId}:`,
         err,
       );
-      throw new BadRequestError("Could not read the length of this recording");
     }
 
-    if (params.kind === "video" && !meta.hasVideo) {
+    if (meta && params.kind === "video" && !meta.hasVideo) {
       throw new BadRequestError("Video message must be a video file");
     }
-    if (params.kind === "voice" && !meta.hasAudio) {
+    if (meta && params.kind === "voice" && !meta.hasAudio) {
       throw new BadRequestError("Voice message must be an audio file");
     }
-    // ffprobe reports 0 when the container has no duration; failing closed
-    // here is the only way the limit can't be bypassed with such a file.
-    if (!meta.duration || meta.duration <= 0) {
+
+    // ffprobe reports 0 when the container has no duration
+    const reported = Number(params.reportedDuration);
+    const duration =
+      meta && meta.duration > 0
+        ? meta.duration
+        : Number.isFinite(reported) && reported > 0
+          ? reported
+          : 0;
+    if (duration <= 0) {
       throw new BadRequestError("Could not read the length of this recording");
     }
+    if (!meta || meta.duration <= 0) {
+      logger.warn(
+        `[RoomMediaPolicySvc] Using client-reported duration ${duration}s for file ${params.fileId}`,
+      );
+    }
 
-    if (meta.duration > max + DURATION_TOLERANCE_SECONDS) {
+    if (duration > max + DURATION_TOLERANCE_SECONDS) {
       throw new BadRequestError(
         `${params.kind === "video" ? "Videos" : "Voice messages"} can be at most ${max} seconds`,
       );
     }
 
-    return meta.duration;
+    return duration;
   }
 }
