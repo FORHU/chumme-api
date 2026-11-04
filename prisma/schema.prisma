@@ -128,6 +128,7 @@ model File {
   personaImage  ChummeArtistPersona? @relation("PersonaImageFile")
   personaVideo  ChummeArtistPersona? @relation("PersonaVideoFile")
   voiceMessages      RoomMessage[]      @relation("VoiceMessageFile")
+  videoMessages      RoomMessage[]      @relation("VideoMessageFile")
   sportVoiceMessages SportRoomMessage[] @relation("SportVoiceMessageFile")
   users         User[]               @relation("UserAvatar")
 }
@@ -553,6 +554,8 @@ model RoomMessage {
   isSystem            Boolean               @default(false)
   content             Json?
   voiceMessageId      String?
+  /// Video clip. Community Admins only — see RoomMediaPolicySvc.
+  videoMessageId      String?
   parentMessageId     String?
   createdAt           DateTime              @default(now())
   updatedAt           DateTime              @updatedAt
@@ -562,6 +565,7 @@ model RoomMessage {
   parentMessage       RoomMessage?          @relation("ThreadedMessages", fields: [parentMessageId], references: [id])
   replies             RoomMessage[]         @relation("ThreadedMessages")
   voiceMessage        File?                 @relation("VoiceMessageFile", fields: [voiceMessageId], references: [id])
+  videoMessage        File?                 @relation("VideoMessageFile", fields: [videoMessageId], references: [id])
   reactions           RoomMessageReaction[] @relation("MessageReactions")
 
   @@index([chummeSubCategoryId, createdAt])

@@ -284,26 +284,20 @@ export default class ChummeSubCategorySvc {
    */
   static async mapMessageWithSignedUrl(msg: any) {
     let voiceNote = undefined;
+    let videoNote = undefined;
 
     if (msg.voiceMessage) {
-      const key = (S3Util as any).getKeyFromUrl(msg.voiceMessage.fileUrl);
-      let signedUrl = msg.voiceMessage.fileUrl; // Fallback to raw
-
-      if (key) {
-        try {
-          signedUrl = await S3PresignedUtil.getDownloadUrl(key);
-        } catch (err) {
-          logger.error(
-            `[ChummeSubCategorySvc] Error signing URL for key ${key}:`,
-            err,
-          );
-        }
-      }
-
       voiceNote = {
         duration: msg.voiceMessage.metaData?.duration || 0,
         waveform: msg.voiceMessage.metaData?.waveform || [],
-        audioUrl: signedUrl,
+        audioUrl: await this.signFileUrl(msg.voiceMessage.fileUrl),
+      };
+    }
+
+    if (msg.videoMessage) {
+      videoNote = {
+        duration: msg.videoMessage.metaData?.duration || 0,
+        videoUrl: await this.signFileUrl(msg.videoMessage.fileUrl),
       };
     }
 
@@ -311,6 +305,22 @@ export default class ChummeSubCategorySvc {
       ...msg,
       user: msg.author,
       voiceNote,
+      videoNote,
     };
+  }
+
+  private static async signFileUrl(fileUrl: string) {
+    const key = (S3Util as any).getKeyFromUrl(fileUrl);
+    if (!key) return fileUrl; // Fallback to raw
+
+    try {
+      return await S3PresignedUtil.getDownloadUrl(key);
+    } catch (err) {
+      logger.error(
+        `[ChummeSubCategorySvc] Error signing URL for key ${key}:`,
+        err,
+      );
+      return fileUrl;
+    }
   }
 }

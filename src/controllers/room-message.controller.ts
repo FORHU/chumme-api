@@ -1,5 +1,6 @@
 import RoomMessageSvc from "../services/room-message.service";
 import CircleAccessSvc from "../services/circle-access.service";
+import RoomMediaPolicySvc from "../services/room-media-policy.service";
 import { Request, Response } from "express";
 import Joi from "joi";
 
@@ -14,7 +15,9 @@ export default class RoomMessageCtrl {
       chummeSubCategoryId: Joi.string().required(),
       content: Joi.any().required(),
       voiceMessageId: Joi.string().uuid().optional(),
+      videoMessageId: Joi.string().uuid().optional(),
       parentMessageId: Joi.string().uuid().optional(),
+      waveform: Joi.array().items(Joi.number()).optional(),
     });
 
     const { error, value } = schema.validate(req.body);
@@ -32,7 +35,30 @@ export default class RoomMessageCtrl {
         data: message,
       });
     } catch (error: any) {
-      return res.status(500).json({ message: error.message || error });
+      return res
+        .status(error.statusCode || 500)
+        .json({ message: error.message || error });
+    }
+  }
+
+  /**
+   * Voice/video limits for the caller in a room (admin vs member)
+   */
+  static async getMediaLimits(req: Request, res: Response) {
+    const userId = (req as any).user.id;
+    const { chummeSubCategoryId } = req.params;
+
+    try {
+      await CircleAccessSvc.assertRoomAccess(chummeSubCategoryId, userId);
+      const limits = await RoomMediaPolicySvc.getLimits(
+        chummeSubCategoryId,
+        userId,
+      );
+      return res.json({ success: true, data: limits });
+    } catch (err: any) {
+      return res
+        .status(err.statusCode || 400)
+        .json({ message: err.message || err });
     }
   }
 

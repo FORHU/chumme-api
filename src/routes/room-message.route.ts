@@ -13,6 +13,10 @@ router.post(
   translateRateLimit,
   MessageTranslationCtrl.translateCircleMessage,
 );
+router.get(
+  "/:chummeSubCategoryId/media-limits",
+  RoomMessageCtrl.getMediaLimits,
+);
 router.get("/:chummeSubCategoryId", RoomMessageCtrl.getRoomMessages);
 router.delete("/:id", RoomMessageCtrl.removeMessage);
 

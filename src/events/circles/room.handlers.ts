@@ -3,6 +3,7 @@ import ChummeSubCategorySvc from "../../services/chumme-subcategory.service";
 import CircleAccessSvc from "../../services/circle-access.service";
 import RoomUserChatSvc from "../../services/room-user-chat.service";
 import RoomMessageSvc from "../../services/room-message.service";
+import RoomMediaPolicySvc from "../../services/room-media-policy.service";
 import CircleCacheSvc from "../../services/circle-cache.service";
 import { PresenceBatcher } from "../../utils/presence-batcher";
 import ChatWonderSvc from "../../services/chat-wonder.service";
@@ -74,9 +75,16 @@ export const registerRoomHandlers = (
 
       socket.join(room_id);
 
+      // Lets the client cap the recorder and hide video upload for members
+      const mediaLimits = await RoomMediaPolicySvc.getLimits(
+        room_id,
+        socket.user.id,
+      );
+
       socket.emit("join_room_success", {
         room_id,
         message: "Successfully joined room",
+        mediaLimits,
       });
 
       presenceBatcher.addJoin(room_id, socket.user.id);
@@ -100,6 +108,7 @@ export const registerRoomHandlers = (
         message,
         roomName,
         voiceMessageId,
+        videoMessageId,
         parentMessageId,
         duration,
         waveform,
@@ -116,6 +125,7 @@ export const registerRoomHandlers = (
         userId: socket.user.id,
         content: message,
         voiceMessageId,
+        videoMessageId,
         parentMessageId,
         duration,
         waveform,
@@ -125,10 +135,9 @@ export const registerRoomHandlers = (
       const mappedMessage =
         await ChummeSubCategorySvc.mapMessageWithSignedUrl(newMessage);
 
-      // 3. If client sent duration/waveform, enrich the voiceNote
-      if (mappedMessage.voiceNote && (duration || waveform)) {
-        mappedMessage.voiceNote.duration =
-          duration || mappedMessage.voiceNote.duration;
+      // 3. If client sent a waveform, enrich the voiceNote. Duration stays the
+      // server-measured one.
+      if (mappedMessage.voiceNote && waveform) {
         mappedMessage.voiceNote.waveform =
           waveform || mappedMessage.voiceNote.waveform;
       }

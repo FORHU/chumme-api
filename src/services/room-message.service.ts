@@ -1,6 +1,8 @@
 import RoomMessageRepo from "../repositories/room-message.repository";
 import RoomUserChatRepo from "../repositories/room-user-chat.repository";
+import RoomMediaPolicySvc from "./room-media-policy.service";
 import CacheUtil from "../utils/cache.util";
+import { BadRequestError } from "../utils/error.util";
 import { prisma } from "../utils/prisma";
 import logger from "../utils/logger";
 
@@ -13,7 +15,9 @@ export default class RoomMessageSvc {
     userId: string;
     content: any;
     voiceMessageId?: string;
+    videoMessageId?: string;
     parentMessageId?: string;
+    /** Client-reported; ignored in favour of the measured duration */
     duration?: number;
     waveform?: number[];
   }) {
@@ -39,37 +43,33 @@ export default class RoomMessageSvc {
       }
     }
 
-    // 3. Persist voice note duration/waveform on the file record so messages
-    // loaded from history show the real duration instead of 0:00
-    if (data.voiceMessageId && (data.duration || data.waveform?.length)) {
-      try {
-        const file = await prisma.file.findUnique({
-          where: { id: data.voiceMessageId },
-          select: { metaData: true },
-        });
-        if (file) {
-          const existing =
-            file.metaData && typeof file.metaData === "object"
-              ? (file.metaData as Record<string, unknown>)
-              : {};
-          await prisma.file.update({
-            where: { id: data.voiceMessageId },
-            data: {
-              metaData: {
-                ...existing,
-                ...(data.duration ? { duration: data.duration } : {}),
-                ...(data.waveform?.length ? { waveform: data.waveform } : {}),
-              },
-            },
-          });
-        }
-      } catch (err) {
-        // Metadata enrichment is best-effort — never block the message itself
-        logger.error(
-          "[RoomMessageSvc] Failed to persist voice note metadata:",
-          err,
-        );
-      }
+    // 3. Enforce the room's media limits (admin: 30s voice + 30s video,
+    // members: 7s voice, no video). Durations are measured server-side.
+    if (data.voiceMessageId && data.videoMessageId) {
+      throw new BadRequestError(
+        "A message can carry a voice note or a video, not both",
+      );
+    }
+    if (data.voiceMessageId) {
+      const duration = await RoomMediaPolicySvc.assertAllowed({
+        roomId: data.chummeSubCategoryId,
+        userId: data.userId,
+        kind: "voice",
+        fileId: data.voiceMessageId,
+      });
+      await this.persistMediaMeta(data.voiceMessageId, {
+        duration,
+        ...(data.waveform?.length ? { waveform: data.waveform } : {}),
+      });
+    }
+    if (data.videoMessageId) {
+      const duration = await RoomMediaPolicySvc.assertAllowed({
+        roomId: data.chummeSubCategoryId,
+        userId: data.userId,
+        kind: "video",
+        fileId: data.videoMessageId,
+      });
+      await this.persistMediaMeta(data.videoMessageId, { duration });
     }
 
     // 4. Clear cache
@@ -81,8 +81,34 @@ export default class RoomMessageSvc {
       authorId: data.userId,
       content: data.content,
       voiceMessageId: data.voiceMessageId,
+      videoMessageId: data.videoMessageId,
       parentMessageId: data.parentMessageId,
     });
+  }
+
+  /**
+   * Persist duration/waveform on the file record so messages loaded from
+   * history show the real duration instead of 0:00
+   */
+  static async persistMediaMeta(fileId: string, patch: Record<string, unknown>) {
+    try {
+      const file = await prisma.file.findUnique({
+        where: { id: fileId },
+        select: { metaData: true },
+      });
+      if (!file) return;
+      const existing =
+        file.metaData && typeof file.metaData === "object"
+          ? (file.metaData as Record<string, unknown>)
+          : {};
+      await prisma.file.update({
+        where: { id: fileId },
+        data: { metaData: { ...existing, ...patch } as any },
+      });
+    } catch (err) {
+      // Metadata enrichment is best-effort — never block the message itself
+      logger.error("[RoomMessageSvc] Failed to persist media metadata:", err);
+    }
   }
 
   /**

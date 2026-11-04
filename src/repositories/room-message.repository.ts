@@ -9,6 +9,7 @@ export default class RoomMessageRepo {
     authorId: string;
     content?: any;
     voiceMessageId?: string;
+    videoMessageId?: string;
     parentMessageId?: string;
     isSystem?: boolean;
   }) {
@@ -18,6 +19,7 @@ export default class RoomMessageRepo {
         authorId: data.authorId,
         content: data.content || null,
         voiceMessageId: data.voiceMessageId || null,
+        videoMessageId: data.videoMessageId || null,
         parentMessageId: data.parentMessageId || null,
         isSystem: data.isSystem ?? false,
       },
@@ -35,6 +37,13 @@ export default class RoomMessageRepo {
           },
         },
         voiceMessage: {
+          select: {
+            id: true,
+            fileUrl: true,
+            metaData: true,
+          },
+        },
+        videoMessage: {
           select: {
             id: true,
             fileUrl: true,
@@ -93,6 +102,13 @@ export default class RoomMessageRepo {
           },
         },
         voiceMessage: {
+          select: {
+            id: true,
+            fileUrl: true,
+            metaData: true,
+          },
+        },
+        videoMessage: {
           select: {
             id: true,
             fileUrl: true,
