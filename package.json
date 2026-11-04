@@ -27,6 +27,7 @@
     "sns:smoke": "ts-node scripts/sns_smoke.ts",
     "data:drop-interstellar": "ts-node scripts/drop_interstellar_data.ts",
     "data:remove-instagram": "ts-node scripts/remove_instagram_content.ts",
+    "data:remove-links": "ts-node scripts/remove_room_links.ts",
     "ingest:instagram": "ts-node scripts/instagram.script.ts",
     "scrape:instagram:comments": "ts-node scripts/scrapper/instagram-comments.ts",
     "test:audio": "mocha --require ts-node/register --timeout 60000 test/audio-utils.integration.ts",
