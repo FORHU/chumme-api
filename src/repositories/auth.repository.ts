@@ -222,6 +222,55 @@ export default class AuthRepo {
     });
   }
 
+  /**
+   * Keeps an existing user's avatar in step with their Google/Facebook picture,
+   * but only while the avatar is still one that came from that provider (or
+   * they have none). An avatar the user uploaded, or one from another
+   * provider, is never replaced: SSO used to overwrite uploads on every
+   * sign-in.
+   */
+  private static async syncSocialAvatar<
+    U extends { id: string; avatarId: string | null },
+  >(existingUser: U, avatarUrl: string | undefined, provider: "google" | "facebook") {
+    if (!avatarUrl) return existingUser;
+
+    const prefix = `${provider}_avatar_`;
+    if (existingUser.avatarId) {
+      const current = await prisma.file.findUnique({
+        where: { id: existingUser.avatarId },
+        select: { filename: true },
+      });
+      if (!current?.filename?.startsWith(prefix)) {
+        logger.debug(
+          `[${provider} SSO] Keeping user ${existingUser.id}'s own avatar ${existingUser.avatarId}`,
+        );
+        return existingUser;
+      }
+    }
+
+    let avatarFile = await prisma.file.findFirst({
+      where: { fileUrl: avatarUrl, deletedAt: null },
+    });
+    if (!avatarFile) {
+      avatarFile = await prisma.file.create({
+        data: { filename: `${prefix}${Date.now()}.jpg`, fileUrl: avatarUrl },
+      });
+    }
+    if (existingUser.avatarId === avatarFile.id) return existingUser;
+
+    logger.debug(
+      `[${provider} SSO] Connecting user ${existingUser.id} with avatarId: ${avatarFile.id}`,
+    );
+    return prisma.user.update({
+      where: { id: existingUser.id },
+      data: { avatarId: avatarFile.id },
+      include: {
+        avatar: { select: { fileUrl: true } },
+        socialUserDiscoveries: true,
+      },
+    });
+  }
+
   static async findOrCreateGoogleUser(data: {
     email: string;
     name?: string;
@@ -240,42 +289,7 @@ export default class AuthRepo {
     });
 
     if (existingUser) {
-      if (data.avatarUrl) {
-        logger.debug(
-          `[Google SSO] Avatar sync for user ${existingUser.id}. Current avatarId: ${existingUser.avatarId}`,
-        );
-
-        // Check if file already exists with this URL (always saved)
-        let avatarFile = await prisma.file.findFirst({
-          where: { fileUrl: data.avatarUrl, deletedAt: null },
-        });
-
-        if (!avatarFile) {
-          logger.debug(`[Google SSO] Creating new File record for avatar URL`);
-          avatarFile = await prisma.file.create({
-            data: {
-              filename: `google_avatar_${Date.now()}.jpg`,
-              fileUrl: data.avatarUrl,
-            },
-          });
-        }
-
-        // Connect the avatar to the user (syncing social profile pic)
-        if (existingUser.avatarId !== avatarFile.id) {
-          logger.debug(
-            `[Google SSO] Connecting user ${existingUser.id} with avatarId: ${avatarFile.id}`,
-          );
-          return prisma.user.update({
-            where: { id: existingUser.id },
-            data: { avatarId: avatarFile.id },
-            include: {
-              avatar: { select: { fileUrl: true } },
-              socialUserDiscoveries: true,
-            },
-          });
-        }
-      }
-      return existingUser;
+      return this.syncSocialAvatar(existingUser, data.avatarUrl, "google");
     }
 
     // Create new user with Google provider
@@ -347,44 +361,7 @@ export default class AuthRepo {
     });
 
     if (existingUser) {
-      if (data.avatarUrl) {
-        logger.debug(
-          `[Facebook SSO] Avatar sync for user ${existingUser.id}. Current avatarId: ${existingUser.avatarId}`,
-        );
-
-        // Check if file already exists with this URL (always saved)
-        let avatarFile = await prisma.file.findFirst({
-          where: { fileUrl: data.avatarUrl, deletedAt: null },
-        });
-
-        if (!avatarFile) {
-          logger.debug(
-            `[Facebook SSO] Creating new File record for avatar URL`,
-          );
-          avatarFile = await prisma.file.create({
-            data: {
-              filename: `facebook_avatar_${Date.now()}.jpg`,
-              fileUrl: data.avatarUrl,
-            },
-          });
-        }
-
-        // Connect the avatar to the user (syncing social profile pic)
-        if (existingUser.avatarId !== avatarFile.id) {
-          logger.debug(
-            `[Facebook SSO] Connecting user ${existingUser.id} with avatarId: ${avatarFile.id}`,
-          );
-          return prisma.user.update({
-            where: { id: existingUser.id },
-            data: { avatarId: avatarFile.id },
-            include: {
-              avatar: { select: { fileUrl: true } },
-              socialUserDiscoveries: true,
-            },
-          });
-        }
-      }
-      return existingUser;
+      return this.syncSocialAvatar(existingUser, data.avatarUrl, "facebook");
     }
 
     // Create new user with Facebook provider
