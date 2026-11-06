@@ -194,21 +194,23 @@ const MIME_BY_EXT: Record<string, string> = {
  */
 export async function prepareVoiceClips(
   prisma: PrismaClient,
+  assetsDir: string = ASSETS_DIR,
 ): Promise<VoiceClip[]> {
-  if (!fs.existsSync(ASSETS_DIR)) {
+  const shown = path.relative(path.join(__dirname, "..", ".."), assetsDir);
+  if (!fs.existsSync(assetsDir)) {
     console.log(
-      `🔇 No voice assets folder — skipping voice notes. Drop MP3s in prisma/seed-assets/voice/ to enable.`,
+      `🔇 No voice assets folder — skipping voice notes. Drop MP3s in ${shown}/ to enable.`,
     );
     return [];
   }
 
   const files = fs
-    .readdirSync(ASSETS_DIR)
+    .readdirSync(assetsDir)
     .filter((f) => AUDIO_EXTENSIONS.has(path.extname(f).toLowerCase()))
     .sort();
 
   if (files.length === 0) {
-    console.log(`🔇 prisma/seed-assets/voice/ is empty — skipping voice notes.`);
+    console.log(`🔇 ${shown}/ is empty — skipping voice notes.`);
     return [];
   }
 
@@ -223,7 +225,7 @@ export async function prepareVoiceClips(
   const clips: VoiceClip[] = [];
 
   for (const name of files) {
-    const fullPath = path.join(ASSETS_DIR, name);
+    const fullPath = path.join(assetsDir, name);
     const buffer = fs.readFileSync(fullPath);
     const ext = path.extname(name).toLowerCase();
 
@@ -328,6 +330,19 @@ export async function purgeSeededVoiceNotes(prisma: PrismaClient) {
     where: { voiceMessageId: { in: ids } },
     data: { voiceMessageId: null },
   });
+
+  // A match-room voice note has no text, so detaching would leave an empty
+  // message nobody can read. Those go; any that also carry text are detached.
+  const sportRemoved = await prisma.sportRoomMessage.deleteMany({
+    where: { voiceMessageId: { in: ids }, content: null },
+  });
+  await prisma.sportRoomMessage.updateMany({
+    where: { voiceMessageId: { in: ids } },
+    data: { voiceMessageId: null },
+  });
+  if (sportRemoved.count) {
+    console.log(`🗑️  Match-room voice notes removed: ${sportRemoved.count}`);
+  }
 
   const removed = await prisma.file.deleteMany({ where: { id: { in: ids } } });
 
