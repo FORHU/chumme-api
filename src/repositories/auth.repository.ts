@@ -231,7 +231,11 @@ export default class AuthRepo {
    */
   private static async syncSocialAvatar<
     U extends { id: string; avatarId: string | null },
-  >(existingUser: U, avatarUrl: string | undefined, provider: "google" | "facebook") {
+  >(
+    existingUser: U,
+    avatarUrl: string | undefined,
+    provider: "google" | "facebook",
+  ) {
     if (!avatarUrl) return existingUser;
 
     const prefix = `${provider}_avatar_`;

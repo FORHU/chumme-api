@@ -59,9 +59,7 @@ export default class RoomMediaPolicySvc {
       },
     });
     if (!room) throw new NotFoundError("Room not found");
-    return (
-      room.ownerId === userId || room.chummeCategory?.ownerId === userId
-    );
+    return room.ownerId === userId || room.chummeCategory?.ownerId === userId;
   }
 
   static async getLimits(roomId: string, userId: string) {
@@ -81,9 +79,7 @@ export default class RoomMediaPolicySvc {
     }
 
     const key = (S3Util as any).getKeyFromUrl(file.fileUrl);
-    const url = key
-      ? await S3PresignedUtil.getDownloadUrl(key)
-      : file.fileUrl;
+    const url = key ? await S3PresignedUtil.getDownloadUrl(key) : file.fileUrl;
     return getMediaMetadata(url);
   }
 

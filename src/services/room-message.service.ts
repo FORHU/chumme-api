@@ -92,7 +92,10 @@ export default class RoomMessageSvc {
    * Persist duration/waveform on the file record so messages loaded from
    * history show the real duration instead of 0:00
    */
-  static async persistMediaMeta(fileId: string, patch: Record<string, unknown>) {
+  static async persistMediaMeta(
+    fileId: string,
+    patch: Record<string, unknown>,
+  ) {
     try {
       const file = await prisma.file.findUnique({
         where: { id: fileId },
