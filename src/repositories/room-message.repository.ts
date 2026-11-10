@@ -154,8 +154,12 @@ export default class RoomMessageRepo {
    * Remove message
    */
   static async removeMessage(id: string) {
-    return prisma.roomMessage.delete({
-      where: { id },
-    });
+    // The reaction FK is ON DELETE RESTRICT, so a reacted-to message can only
+    // go once its reactions have.
+    const [, deleted] = await prisma.$transaction([
+      prisma.roomMessageReaction.deleteMany({ where: { messageId: id } }),
+      prisma.roomMessage.delete({ where: { id } }),
+    ]);
+    return deleted;
   }
 }

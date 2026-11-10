@@ -3,6 +3,7 @@ import ChummeSubCategorySvc from "../../services/chumme-subcategory.service";
 import CircleAccessSvc from "../../services/circle-access.service";
 import RoomUserChatSvc from "../../services/room-user-chat.service";
 import RoomMessageSvc from "../../services/room-message.service";
+import RoomMessageReactionSvc from "../../services/room-message-reaction.service";
 import RoomMediaPolicySvc from "../../services/room-media-policy.service";
 import CircleCacheSvc from "../../services/circle-cache.service";
 import { PresenceBatcher } from "../../utils/presence-batcher";
@@ -204,6 +205,51 @@ export const registerRoomHandlers = (
       });
     }
   });
+
+  /**
+   * TOGGLE REACTION
+   *
+   * `{ room_id, messageId, emoji }`. Adds the caller's emoji to the message,
+   * or removes it if it's already there, then broadcasts the message's full
+   * reaction list to the room as `message_reaction_updated`. The sender gets
+   * the same broadcast and, if they asked for one, an ack.
+   */
+  socket.on(
+    "toggle_message_reaction",
+    async (data: any, ack?: (response: unknown) => void) => {
+      const reply = typeof ack === "function" ? ack : () => {};
+      const room_id = data?.room_id;
+      const messageId = data?.messageId;
+      try {
+        if (typeof room_id !== "string" || typeof messageId !== "string") {
+          return reply({ ok: false, message: "Missing required fields" });
+        }
+
+        const { added, reactions } = await RoomMessageReactionSvc.toggle({
+          roomId: room_id,
+          messageId,
+          userId: socket.user.id,
+          emoji: data?.emoji,
+        });
+
+        io.to(room_id).emit("message_reaction_updated", {
+          room_id,
+          messageId,
+          reactions,
+        });
+        reply({ ok: true, added, messageId, reactions });
+      } catch (err: any) {
+        if (!err?.statusCode || err.statusCode >= 500) {
+          logger.error("[Circles] Toggle reaction error:", err);
+        }
+        reply({
+          ok: false,
+          messageId,
+          message: err?.statusCode ? err.message : "Failed to react",
+        });
+      }
+    },
+  );
 
   /**
    * LEAVE ROOM (Presence only, keeps persistent membership)
