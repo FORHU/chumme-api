@@ -556,6 +556,10 @@ model RoomMessage {
   voiceMessageId      String?
   /// Video clip. Community Admins only — see RoomMediaPolicySvc.
   videoMessageId      String?
+  /// A GIF or sticker picked from KLIPY: `{ provider, kind, slug, url, ... }`.
+  /// See room-message-attachment.util.ts. Content stays "GIF" / "Sticker" so
+  /// older builds still show something.
+  attachment          Json?
   parentMessageId     String?
   createdAt           DateTime              @default(now())
   updatedAt           DateTime              @updatedAt

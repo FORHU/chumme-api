@@ -5,6 +5,7 @@ import CacheUtil from "../utils/cache.util";
 import { BadRequestError } from "../utils/error.util";
 import { prisma } from "../utils/prisma";
 import logger from "../utils/logger";
+import { parseMessageAttachment } from "../utils/room-message-attachment.util";
 
 export default class RoomMessageSvc {
   /**
@@ -20,7 +21,17 @@ export default class RoomMessageSvc {
     /** Client-reported; only used when the file can't be probed */
     duration?: number;
     waveform?: number[];
+    /** A KLIPY GIF or sticker; checked by parseMessageAttachment. */
+    attachment?: unknown;
   }) {
+    // 0. Shape check first: it needs no database.
+    const attachment = parseMessageAttachment(data.attachment);
+    if (attachment && (data.voiceMessageId || data.videoMessageId)) {
+      throw new BadRequestError(
+        "A message can carry a GIF or sticker, or a voice note or video — not both",
+      );
+    }
+
     // 1. Verify user is a member of the room
     const isMember = await RoomUserChatRepo.isMember(
       data.userId,
@@ -85,6 +96,7 @@ export default class RoomMessageSvc {
       voiceMessageId: data.voiceMessageId,
       videoMessageId: data.videoMessageId,
       parentMessageId: data.parentMessageId,
+      attachment,
     });
   }
 

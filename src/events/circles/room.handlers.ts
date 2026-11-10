@@ -113,6 +113,7 @@ export const registerRoomHandlers = (
         parentMessageId,
         duration,
         waveform,
+        attachment,
       } = data;
       if (!room_id || !message || message.trim() === "") {
         return socket.emit("not_allowed", {
@@ -130,6 +131,7 @@ export const registerRoomHandlers = (
         parentMessageId,
         duration,
         waveform,
+        attachment,
       });
 
       // 2. Map message for frontend

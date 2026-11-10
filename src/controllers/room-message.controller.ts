@@ -19,6 +19,8 @@ export default class RoomMessageCtrl {
       parentMessageId: Joi.string().uuid().optional(),
       duration: Joi.number().min(0).optional(),
       waveform: Joi.array().items(Joi.number()).optional(),
+      // Checked field by field in RoomMessageSvc (parseMessageAttachment).
+      attachment: Joi.object().unknown(true).optional(),
     });
 
     const { error, value } = schema.validate(req.body);

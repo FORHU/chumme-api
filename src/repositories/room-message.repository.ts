@@ -1,4 +1,5 @@
 import { prisma } from "../utils/prisma";
+import type { MessageAttachment } from "../utils/room-message-attachment.util";
 
 export default class RoomMessageRepo {
   /**
@@ -12,6 +13,7 @@ export default class RoomMessageRepo {
     videoMessageId?: string;
     parentMessageId?: string;
     isSystem?: boolean;
+    attachment?: MessageAttachment;
   }) {
     return prisma.roomMessage.create({
       data: {
@@ -20,6 +22,7 @@ export default class RoomMessageRepo {
         content: data.content || null,
         voiceMessageId: data.voiceMessageId || null,
         videoMessageId: data.videoMessageId || null,
+        ...(data.attachment ? { attachment: data.attachment } : {}),
         parentMessageId: data.parentMessageId || null,
         isSystem: data.isSystem ?? false,
       },
