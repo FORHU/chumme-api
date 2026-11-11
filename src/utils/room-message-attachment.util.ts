@@ -58,10 +58,7 @@ export const parseMessageAttachment = (
   if (a.kind !== "gif" && a.kind !== "sticker") {
     throw new BadRequestError("Attachment kind must be gif or sticker");
   }
-  if (
-    typeof a.slug !== "string" ||
-    !/^[A-Za-z0-9_-]{1,128}$/.test(a.slug)
-  ) {
+  if (typeof a.slug !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(a.slug)) {
     throw new BadRequestError("Invalid attachment id");
   }
   if (!isKlipyMediaUrl(a.url)) {

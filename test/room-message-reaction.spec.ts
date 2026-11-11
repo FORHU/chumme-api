@@ -9,16 +9,7 @@ import RoomMessageReactionSvc, {
 describe("RoomMessageReactionSvc", function () {
   describe("isReactionEmoji", function () {
     it("accepts single emojis and emoji sequences", function () {
-      for (const emoji of [
-        "❤️",
-        "😂",
-        "🔥",
-        "👍🏽",
-        "👨‍👩‍👧",
-        "🇰🇷",
-        "1️⃣",
-        "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
-      ]) {
+      for (const emoji of ["❤️", "😂", "🔥", "👍🏽", "👨‍👩‍👧", "🇰🇷", "1️⃣", "🏴󠁧󠁢󠁥󠁮󠁧󠁿"]) {
         expect(isReactionEmoji(emoji), emoji).to.equal(true);
       }
     });

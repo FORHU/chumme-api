@@ -37,9 +37,9 @@ describe("parseMessageAttachment", function () {
   });
 
   it("drops fields it doesn't know", function () {
-    expect(parseMessageAttachment({ ...gif, html: "<script>" })).to.not.have.property(
-      "html",
-    );
+    expect(
+      parseMessageAttachment({ ...gif, html: "<script>" }),
+    ).to.not.have.property("html");
   });
 
   it("means no attachment for undefined and null", function () {
@@ -57,7 +57,9 @@ describe("parseMessageAttachment", function () {
       "not a url",
     ]) {
       expect(status({ ...gif, url }), url).to.equal(400);
-      expect(status({ ...gif, previewUrl: url }), `preview ${url}`).to.equal(400);
+      expect(status({ ...gif, previewUrl: url }), `preview ${url}`).to.equal(
+        400,
+      );
     }
   });
 
