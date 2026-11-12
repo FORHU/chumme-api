@@ -74,6 +74,7 @@ model User {
   uploadedMusic          Music[]                 @relation("MusicOwner")
   blocking               UserBlock[]             @relation("BlockBlocker")
   blockedBy              UserBlock[]             @relation("BlockBlocked")
+  deviceTokens           DeviceToken[]
   reportsFiled           UserReport[]            @relation("ReportReporter")
   reportsAgainst         UserReport[]            @relation("ReportReportedUser")
   reportsReviewed        UserReport[]            @relation("ReportReviewer")
@@ -731,6 +732,30 @@ model UserReport {
   @@index([reporterId, targetType, targetId])
 }
 
+/// A device that can receive push notifications for a signed-in user.
+///
+/// `token` is unique across all users: a phone has one token, so when someone
+/// else signs in on it the row moves to them instead of both accounts getting
+/// the other's alerts. Sign-out deletes the row, and so does the sender when
+/// FCM reports the token as unregistered. `lastSeenAt` is refreshed on every
+/// register call, so rows that stop checking in can be pruned.
+model DeviceToken {
+  id         String         @id @default(uuid())
+  userId     String
+  token      String         @unique
+  platform   DevicePlatform
+  /// FCM for a raw Firebase token (Flutter); EXPO for an ExponentPushToken[…]
+  /// from the RN app, which has to go through Expo's push service instead.
+  provider   PushProvider   @default(FCM)
+  appVersion String?
+  lastSeenAt DateTime       @default(now())
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
 model Interest {
   id            String         @id @default(uuid())
   name          String         @unique
@@ -1166,6 +1191,16 @@ enum AuthProvider {
   EMAIL
   GOOGLE
   FACEBOOK
+}
+
+enum DevicePlatform {
+  ANDROID
+  IOS
+}
+
+enum PushProvider {
+  FCM
+  EXPO
 }
 
 enum SocialPlatform {

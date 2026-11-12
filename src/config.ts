@@ -28,6 +28,12 @@ export const REDIS_PORT = Number(process.env.REDIS_PORT || 6379);
 export const REDIS_PASSWORD = process.env.REDIS_PASSWORD as string;
 export const REDIS_TTL_SECONDS = Number(process.env.REDIS_TTL_SECONDS) || 3600;
 export const SERVICE_ACCOUNT = process.env.SERVICE_ACCOUNT as string;
+// Firebase service-account JSON for push (FCM V1), base64-encoded so it fits on
+// one line of app.env. Unset = push is off: tokens are still stored, sends are
+// skipped with a warning. See services/push.service.ts.
+export const FIREBASE_SERVICE_ACCOUNT_BASE64 = (
+  process.env.FIREBASE_SERVICE_ACCOUNT_BASE64 || ""
+).trim();
 export const S3_CDN_URL = (process.env.S3_CDN_URL as string)
   ?.replace(/cloudfront\.netr$/, "cloudfront.net")
   ?.replace(/\.$/, "");

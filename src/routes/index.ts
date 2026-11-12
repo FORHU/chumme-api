@@ -34,6 +34,7 @@ import apkRoute from "./web/apk.route";
 import searchRoute from "./search.route";
 import sportRoute from "./sport.route";
 import reportRoute from "./report.route";
+import deviceRoute from "./device.route";
 
 import systemRoute from "./system.route";
 import socialAccountRoute from "./net-communities/session-social-account.route";
@@ -64,6 +65,7 @@ router.use("/v1/auth", authRoute);
 router.use("/v1/chat", chatRoutes);
 router.use("/v1/users", userRoute);
 router.use("/v1/reports", reportRoute);
+router.use("/v1/devices", deviceRoute);
 router.use("/v1/posts", postRoute);
 router.use("/v1/user-chat", RoomUserChatRoute);
 
