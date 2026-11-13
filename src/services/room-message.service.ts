@@ -1,6 +1,7 @@
 import RoomMessageRepo from "../repositories/room-message.repository";
 import RoomUserChatRepo from "../repositories/room-user-chat.repository";
 import RoomMediaPolicySvc from "./room-media-policy.service";
+import ReplyPushSvc from "./reply-push.service";
 import CacheUtil from "../utils/cache.util";
 import { BadRequestError } from "../utils/error.util";
 import { prisma } from "../utils/prisma";
@@ -89,7 +90,7 @@ export default class RoomMessageSvc {
     await CacheUtil.delByPattern(`messages:room:${data.chummeSubCategoryId}:*`);
 
     // 5. Create message
-    return RoomMessageRepo.createMessage({
+    const message = await RoomMessageRepo.createMessage({
       chummeSubCategoryId: data.chummeSubCategoryId,
       authorId: data.userId,
       content: data.content,
@@ -98,6 +99,12 @@ export default class RoomMessageSvc {
       parentMessageId: data.parentMessageId,
       attachment,
     });
+
+    // 6. Push the replied-to author. Not awaited: the reply is already saved,
+    // and the sender shouldn't wait on FCM.
+    if (message.parentMessageId) void ReplyPushSvc.notify(message);
+
+    return message;
   }
 
   /**
