@@ -189,9 +189,13 @@ jobs:
 
           echo "::notice::wrote $(grep -c . env.tmp) env keys"
 
+          # Intelligent-Tiering: Standard caps a value at 4 KB, and the
+          # Firebase service account alone is ~3.2 KB of base64. AWS moves the
+          # parameter to the Advanced tier (8 KB, $0.05/month) only when needed.
           aws ssm put-parameter \
             --name "${{ env.ENV_PARAM }}" \
             --type SecureString --overwrite \
+            --tier Intelligent-Tiering \
             --value "file://env.tmp" \
             --region "${{ env.AWS_REGION }}" > /dev/null
           rm -f env.tmp
