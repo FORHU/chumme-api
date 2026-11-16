@@ -26,7 +26,10 @@ export type RoomMediaKind = "voice" | "video";
 /** A video's still, stored in its File `metaData` next to `duration`. */
 export interface VideoPoster {
   posterUrl: string;
-  /** Of the poster, which is the video's shape the right way up. */
+  /**
+   * Of the poster: the shape of the picture the right way up, with any black
+   * bars baked into the file left out.
+   */
   width: number;
   height: number;
 }

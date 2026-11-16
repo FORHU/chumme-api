@@ -246,54 +246,150 @@ export const generateThumbnail = async (
   });
 };
 
+/** Frames `cropdetect` looks at. Its box only grows, so a dark frame or two
+ * among them can't make it cut into the picture. */
+const CROPDETECT_FRAMES = 12;
+
 /**
- * One JPEG frame from a video, `atSeconds` in, scaled to `width` wide. Phone
- * videos are auto-rotated, so the frame is the right way up. Killed after
- * `timeoutMs` so a slow source can't hold the caller.
+ * One JPEG frame from a video, `atSeconds` in, with any black bars baked into
+ * the file cut off, then scaled so its longer side is at most `maxSide`. Phone
+ * videos are auto-rotated, so the frame is the right way up, and its size is
+ * the shape of the picture the viewer actually sees. `cropped` says whether
+ * bars were removed.
+ *
+ * Killed after `timeoutMs` so a slow source can't hold the caller.
  */
 export const extractVideoFrame = async (
   input: string,
   atSeconds: number,
   {
-    width = 480,
-    timeoutMs = 8000,
-  }: { width?: number; timeoutMs?: number } = {},
-): Promise<{ buffer: Buffer; width: number; height: number }> => {
+    maxSide = 960,
+    timeoutMs = 12000,
+  }: { maxSide?: number; timeoutMs?: number } = {},
+): Promise<{
+  buffer: Buffer;
+  width: number;
+  height: number;
+  cropped: boolean;
+}> => {
   const cleanUrl = ensureCleanUrl(input);
-  const outputPath = makeTempPath("frame", ".jpg");
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "frame-"));
 
   try {
-    await new Promise<void>((resolve, reject) => {
-      const command = ffmpeg(cleanUrl)
+    // One read of the source, at full size so the crop is exact and the
+    // poster stays sharp: a short run of frames for cropdetect, written out
+    // so the first one can become the poster.
+    const stderr: string[] = [];
+    await runFfmpeg(
+      ffmpeg(cleanUrl)
         .seekInput(Math.max(0, atSeconds))
-        .frames(1)
-        // -2 keeps the height even, which the JPEG encoder wants.
-        .videoFilters(`scale=${width}:-2`)
-        .outputOptions(["-q:v 4"])
-        .output(outputPath)
-        .on("end", () => {
-          clearTimeout(timer);
-          resolve();
-        })
-        .on("error", (err) => {
-          clearTimeout(timer);
-          reject(err);
-        });
-      const timer = setTimeout(() => {
-        command.kill("SIGKILL");
-        reject(new Error(`Frame extraction timed out after ${timeoutMs}ms`));
-      }, timeoutMs);
-      command.run();
-    });
+        .frames(CROPDETECT_FRAMES)
+        .videoFilters("cropdetect=limit=24:round=2:skip=0:reset=0")
+        .outputOptions(["-q:v 3"])
+        .output(path.join(dir, "f%02d.jpg"))
+        .on("stderr", (line: string) => stderr.push(line)),
+      timeoutMs,
+    );
 
-    const buffer = fs.readFileSync(outputPath);
+    const first = path.join(dir, "f01.jpg");
+    const full = jpegSize(fs.readFileSync(first));
+    if (!full) throw new Error("ffmpeg wrote no readable JPEG");
+    const crop = chooseBarCrop(full, lastCropdetect(stderr));
+
+    const posterPath = path.join(dir, "poster.jpg");
+    await runFfmpeg(
+      ffmpeg(first)
+        .videoFilters([
+          ...(crop ? [`crop=${crop.w}:${crop.h}:${crop.x}:${crop.y}`] : []),
+          // Shrink only, keeping the shape, then even sides for the encoder.
+          `scale=w='min(${maxSide},iw)':h='min(${maxSide},ih)':force_original_aspect_ratio=decrease`,
+          "scale=trunc(iw/2)*2:trunc(ih/2)*2",
+        ])
+        .outputOptions(["-q:v 4"])
+        .output(posterPath),
+      timeoutMs,
+    );
+    const buffer = fs.readFileSync(posterPath);
     const size = jpegSize(buffer);
     if (!size) throw new Error("ffmpeg wrote no readable JPEG");
-    return { buffer, ...size };
+    return { buffer, ...size, cropped: crop != null };
   } finally {
-    fs.promises.unlink(outputPath).catch(() => {});
+    fs.promises.rm(dir, { recursive: true, force: true }).catch(() => {});
   }
 };
+
+function runFfmpeg(
+  command: ffmpeg.FfmpegCommand,
+  timeoutMs: number,
+): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      command.kill("SIGKILL");
+      reject(new Error(`ffmpeg timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+    command
+      .on("end", () => {
+        clearTimeout(timer);
+        resolve();
+      })
+      .on("error", (err) => {
+        clearTimeout(timer);
+        reject(err);
+      })
+      .run();
+  });
+}
+
+export interface CropBox {
+  w: number;
+  h: number;
+  x: number;
+  y: number;
+}
+
+/** The final `crop=w:h:x:y` that ffmpeg's cropdetect logged, if any. */
+export function lastCropdetect(lines: string[]): CropBox | null {
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const m = /crop=(\d+):(\d+):(\d+):(\d+)/.exec(lines[i]);
+    if (m) {
+      const [w, h, x, y] = m.slice(1).map(Number);
+      return { w, h, x, y };
+    }
+  }
+  return null;
+}
+
+/**
+ * Decides whether cropdetect found black bars worth removing, and returns
+ * the box to keep. Each axis is judged on its own, and only bars that are
+ * sizeable (over 8% of the frame) and centred count: a dark scene or a dark
+ * edge in the picture would otherwise get cut. What is kept must still be
+ * at least a quarter of the frame on that axis.
+ */
+export function chooseBarCrop(
+  frame: { width: number; height: number },
+  detected: CropBox | null,
+): CropBox | null {
+  if (!detected) return null;
+
+  const axis = (full: number, kept: number, offset: number) => {
+    if (kept <= 0 || kept >= full * 0.92 || kept < full * 0.25) return null;
+    const centredOffset = (full - kept) / 2;
+    if (Math.abs(offset - centredOffset) > full * 0.04) return null;
+    return { kept, offset };
+  };
+
+  const x = axis(frame.width, detected.w, detected.x);
+  const y = axis(frame.height, detected.h, detected.y);
+  if (!x && !y) return null;
+
+  return {
+    w: x?.kept ?? frame.width,
+    h: y?.kept ?? frame.height,
+    x: x?.offset ?? 0,
+    y: y?.offset ?? 0,
+  };
+}
 
 /** Pixel size from a JPEG's start-of-frame marker, or null if there is none. */
 export function jpegSize(
