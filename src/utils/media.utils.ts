@@ -254,7 +254,10 @@ export const generateThumbnail = async (
 export const extractVideoFrame = async (
   input: string,
   atSeconds: number,
-  { width = 480, timeoutMs = 8000 }: { width?: number; timeoutMs?: number } = {},
+  {
+    width = 480,
+    timeoutMs = 8000,
+  }: { width?: number; timeoutMs?: number } = {},
 ): Promise<{ buffer: Buffer; width: number; height: number }> => {
   const cleanUrl = ensureCleanUrl(input);
   const outputPath = makeTempPath("frame", ".jpg");
@@ -293,7 +296,9 @@ export const extractVideoFrame = async (
 };
 
 /** Pixel size from a JPEG's start-of-frame marker, or null if there is none. */
-export function jpegSize(buf: Buffer): { width: number; height: number } | null {
+export function jpegSize(
+  buf: Buffer,
+): { width: number; height: number } | null {
   if (buf.length < 4 || buf[0] !== 0xff || buf[1] !== 0xd8) return null;
   let i = 2;
   while (i + 9 < buf.length) {
@@ -307,7 +312,10 @@ export function jpegSize(buf: Buffer): { width: number; height: number } | null 
       marker !== 0xc8 &&
       marker !== 0xcc
     ) {
-      return { height: buf.readUInt16BE(i + 5), width: buf.readUInt16BE(i + 7) };
+      return {
+        height: buf.readUInt16BE(i + 5),
+        width: buf.readUInt16BE(i + 7),
+      };
     }
     i += 2 + buf.readUInt16BE(i + 2);
   }

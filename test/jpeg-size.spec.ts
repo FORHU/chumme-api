@@ -3,14 +3,16 @@ import { describe, it } from "mocha";
 import { jpegSize } from "../src/utils/media.utils";
 
 describe("jpegSize", function () {
-  // SOI, an APP0 segment to skip, then SOF0 for 480x854.
+  // SOI, an APP0 segment to skip, then a frame header (marker `sof`) for
+  // 480x854: precision 08, height 0356, width 01e0, then 3 components.
   const jpeg = (sof: number) =>
-    Buffer.from([
-      0xff, 0xd8,
-      0xff, 0xe0, 0x00, 0x06, 0x4a, 0x46, 0x49, 0x46,
-      0xff, sof, 0x00, 0x11, 0x08, 0x03, 0x56, 0x01, 0xe0, 0x03,
-      0x01, 0x22, 0x00, 0x02, 0x11, 0x01, 0x03, 0x11, 0x01,
-    ]);
+    Buffer.from(
+      "ffd8" +
+        "ffe000064a464946" +
+        `ff${sof.toString(16)}0011` +
+        "08035601e003012200021101031101",
+      "hex",
+    );
 
   it("reads a baseline frame past other segments", function () {
     expect(jpegSize(jpeg(0xc0))).to.deep.equal({ width: 480, height: 854 });
