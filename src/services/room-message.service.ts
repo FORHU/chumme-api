@@ -83,7 +83,15 @@ export default class RoomMessageSvc {
         fileId: data.videoMessageId,
         reportedDuration: data.duration,
       });
-      await this.persistMediaMeta(data.videoMessageId, { duration });
+      const poster = await RoomMediaPolicySvc.makePoster({
+        fileId: data.videoMessageId,
+        userId: data.userId,
+        duration,
+      });
+      await this.persistMediaMeta(data.videoMessageId, {
+        duration,
+        ...(poster ?? {}),
+      });
     }
 
     // 4. Clear cache

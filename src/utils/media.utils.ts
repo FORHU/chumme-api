@@ -246,6 +246,74 @@ export const generateThumbnail = async (
   });
 };
 
+/**
+ * One JPEG frame from a video, `atSeconds` in, scaled to `width` wide. Phone
+ * videos are auto-rotated, so the frame is the right way up. Killed after
+ * `timeoutMs` so a slow source can't hold the caller.
+ */
+export const extractVideoFrame = async (
+  input: string,
+  atSeconds: number,
+  { width = 480, timeoutMs = 8000 }: { width?: number; timeoutMs?: number } = {},
+): Promise<{ buffer: Buffer; width: number; height: number }> => {
+  const cleanUrl = ensureCleanUrl(input);
+  const outputPath = makeTempPath("frame", ".jpg");
+
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const command = ffmpeg(cleanUrl)
+        .seekInput(Math.max(0, atSeconds))
+        .frames(1)
+        // -2 keeps the height even, which the JPEG encoder wants.
+        .videoFilters(`scale=${width}:-2`)
+        .outputOptions(["-q:v 4"])
+        .output(outputPath)
+        .on("end", () => {
+          clearTimeout(timer);
+          resolve();
+        })
+        .on("error", (err) => {
+          clearTimeout(timer);
+          reject(err);
+        });
+      const timer = setTimeout(() => {
+        command.kill("SIGKILL");
+        reject(new Error(`Frame extraction timed out after ${timeoutMs}ms`));
+      }, timeoutMs);
+      command.run();
+    });
+
+    const buffer = fs.readFileSync(outputPath);
+    const size = jpegSize(buffer);
+    if (!size) throw new Error("ffmpeg wrote no readable JPEG");
+    return { buffer, ...size };
+  } finally {
+    fs.promises.unlink(outputPath).catch(() => {});
+  }
+};
+
+/** Pixel size from a JPEG's start-of-frame marker, or null if there is none. */
+export function jpegSize(buf: Buffer): { width: number; height: number } | null {
+  if (buf.length < 4 || buf[0] !== 0xff || buf[1] !== 0xd8) return null;
+  let i = 2;
+  while (i + 9 < buf.length) {
+    if (buf[i] !== 0xff) return null;
+    const marker = buf[i + 1];
+    // SOF0–SOF15, except DHT (C4), JPG (C8) and DAC (CC).
+    if (
+      marker >= 0xc0 &&
+      marker <= 0xcf &&
+      marker !== 0xc4 &&
+      marker !== 0xc8 &&
+      marker !== 0xcc
+    ) {
+      return { height: buf.readUInt16BE(i + 5), width: buf.readUInt16BE(i + 7) };
+    }
+    i += 2 + buf.readUInt16BE(i + 2);
+  }
+  return null;
+}
+
 /** Optimizes video for web streaming */
 export const optimizeVideoToStream = async (
   inputUrl: string,

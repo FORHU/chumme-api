@@ -1,7 +1,12 @@
+import crypto from "crypto";
 import { prisma } from "../utils/prisma";
 import S3Util from "../utils/s3.util";
 import S3PresignedUtil from "../utils/s3-presigned.util";
-import { getMediaMetadata, MediaMetadata } from "../utils/media.utils";
+import {
+  extractVideoFrame,
+  getMediaMetadata,
+  MediaMetadata,
+} from "../utils/media.utils";
 import {
   BadRequestError,
   ForbiddenError,
@@ -17,6 +22,14 @@ export const MEMBER_VOICE_MAX_SECONDS = 7;
 const DURATION_TOLERANCE_SECONDS = 0.5;
 
 export type RoomMediaKind = "voice" | "video";
+
+/** A video's still, stored in its File `metaData` next to `duration`. */
+export interface VideoPoster {
+  posterUrl: string;
+  /** Of the poster, which is the video's shape the right way up. */
+  width: number;
+  height: number;
+}
 
 export interface RoomMediaLimits {
   isAdmin: boolean;
@@ -70,6 +83,10 @@ export default class RoomMediaPolicySvc {
    * ffprobe the stored file. Private bucket, so probe through a signed URL.
    */
   static async probeFile(fileId: string): Promise<MediaMetadata> {
+    return getMediaMetadata(await this.readableUrl(fileId));
+  }
+
+  private static async readableUrl(fileId: string): Promise<string> {
     const file = await prisma.file.findUnique({
       where: { id: fileId },
       select: { fileUrl: true, deletedAt: true },
@@ -79,8 +96,41 @@ export default class RoomMediaPolicySvc {
     }
 
     const key = (S3Util as any).getKeyFromUrl(file.fileUrl);
-    const url = key ? await S3PresignedUtil.getDownloadUrl(key) : file.fileUrl;
-    return getMediaMetadata(url);
+    return key ? await S3PresignedUtil.getDownloadUrl(key) : file.fileUrl;
+  }
+
+  /**
+   * A still from the video for the chat bubble to show before it plays.
+   * Returns null on any failure: a message is never held back for want of a
+   * poster, and the app falls back to loading the video's first frame.
+   */
+  static async makePoster(params: {
+    fileId: string;
+    userId: string;
+    duration: number;
+  }): Promise<VideoPoster | null> {
+    try {
+      // Not frame 0: phone clips often open on black or a fade-in.
+      const at = Math.min(1, params.duration / 3);
+      const frame = await extractVideoFrame(
+        await this.readableUrl(params.fileId),
+        at,
+      );
+      // Same folder shape as client uploads (upload-policy.ts).
+      const key = `images/${params.userId}/posters/${Date.now()}-${crypto.randomBytes(4).toString("hex")}.jpg`;
+      const posterUrl = await S3Util.uploadFileWithKey(
+        frame.buffer,
+        key,
+        "image/jpeg",
+      );
+      return { posterUrl, width: frame.width, height: frame.height };
+    } catch (err) {
+      logger.error(
+        `[RoomMediaPolicySvc] Could not make a poster for file ${params.fileId}:`,
+        err,
+      );
+      return null;
+    }
   }
 
   /**

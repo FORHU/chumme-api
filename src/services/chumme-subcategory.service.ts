@@ -295,9 +295,16 @@ export default class ChummeSubCategorySvc {
     }
 
     if (msg.videoMessage) {
+      const meta = msg.videoMessage.metaData ?? {};
       videoNote = {
-        duration: msg.videoMessage.metaData?.duration || 0,
+        duration: meta.duration || 0,
         videoUrl: await this.signFileUrl(msg.videoMessage.fileUrl),
+        // Absent on videos sent before posters existed.
+        posterUrl: meta.posterUrl
+          ? await this.signFileUrl(meta.posterUrl)
+          : undefined,
+        width: meta.width,
+        height: meta.height,
       };
     }
 
