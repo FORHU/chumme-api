@@ -70,22 +70,27 @@ export function makeTempPath(prefix: string, ext = ".wav"): string {
 /** Read a temp file into a Buffer and delete it. */
 export function readAndCleanup(filePath: string): Buffer {
   const buffer = fs.readFileSync(filePath);
-  // try {
-  //   fs.unlinkSync(filePath);
-  // } catch (_) {}
+  cleanupTempFiles([filePath]);
   return buffer;
 }
 
 /**
- * Delete temp files. Skips paths that are not in os.tmpdir() (original local files).
+ * Delete temp files. Skips paths that are not in os.tmpdir() (original local
+ * files), and ones already gone.
+ *
+ * This must stay on: the merge pipeline writes several files per job, and on
+ * Lambda /tmp survives between warm invocations, so a leak fills it and fails
+ * later jobs on the same sandbox.
  */
-export function cleanupTempFiles(_paths: string[]): void {
-  // const tmpDir = os.tmpdir();
-  // for (const p of paths) {
-  //   try {
-  //     if (p.startsWith(tmpDir)) fs.unlinkSync(p);
-  //   } catch (_) {}
-  // }
+export function cleanupTempFiles(paths: string[]): void {
+  const tmpDir = os.tmpdir();
+  for (const p of paths) {
+    try {
+      if (p && p.startsWith(tmpDir)) fs.unlinkSync(p);
+    } catch (_) {
+      // Already deleted, or never written.
+    }
+  }
 }
 
 /**

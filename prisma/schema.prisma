@@ -1021,6 +1021,9 @@ model MusicRecord {
   updatedAt      DateTime          @updatedAt
   metaData       Json?
   recordDuration Float?
+  /// The audio-merge save job that wrote this row. Unique so a retried job
+  /// cannot save the same recording twice. Null on rows from before it existed.
+  jobId          String?           @unique
   file           MusicLibrary      @relation("MusicRecordLibraryFile", fields: [fileId], references: [id])
   music          Music             @relation(fields: [musicId], references: [id])
   studio         MusicStudio       @relation("StudioRecords", fields: [studioId], references: [id])

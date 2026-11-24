@@ -62,12 +62,33 @@ export const INGESTION_JOBS_QUEUE_URL = process.env
 // cannot be starved by the self-feeding backfill backlog in the main one.
 export const INGESTION_JOBS_HIGH_QUEUE_URL = process.env
   .INGESTION_JOBS_HIGH_QUEUE_URL as string;
+// Finished audio renders come back on this queue when the merge runs outside
+// the API process (the Lambda, or src/worker.ts). Optional: unset means every
+// merge is rendered and saved in-process.
+export const AUDIO_MERGE_RESULTS_QUEUE_URL = (
+  process.env.AUDIO_MERGE_RESULTS_QUEUE_URL || ""
+).trim();
+// "local": this process consumes audio-merge-queue and renders with FFmpeg.
+// "lambda": the Lambda consumes it; this process only handles results. Never
+// let both consume the queue at once.
+export const AUDIO_MERGE_MODE: "local" | "lambda" =
+  (process.env.AUDIO_MERGE_MODE || "").trim().toLowerCase() === "lambda"
+    ? "lambda"
+    : "local";
+// Must match the queue's maxReceiveCount (2 in AWS and LocalStack): on the
+// last receive a failed job tells the client instead of failing silently.
+export const AUDIO_MERGE_MAX_RECEIVES =
+  Number(process.env.AUDIO_MERGE_MAX_RECEIVES) || 2;
 // Every queue the app sends to or consumes, by name, for health reporting.
 export const JOB_QUEUE_URLS: Record<string, string> = {
   media_processing: MEDIA_PROCESSING_QUEUE_URL,
   audio_merge: AUDIO_MERGE_QUEUE_URL,
   ingestion_jobs: INGESTION_JOBS_QUEUE_URL,
   ingestion_jobs_high: INGESTION_JOBS_HIGH_QUEUE_URL,
+  // Only when configured: an unset optional queue must not fail /health.
+  ...(AUDIO_MERGE_RESULTS_QUEUE_URL
+    ? { audio_merge_results: AUDIO_MERGE_RESULTS_QUEUE_URL }
+    : {}),
 };
 
 // SNS Configuration. Same local-only rule as AWS_SQS_ENDPOINT. Events published

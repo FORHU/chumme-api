@@ -47,6 +47,11 @@ export async function enqueue(
   return result.MessageId;
 }
 
+/** Which delivery of this message it is: 1 on the first receive. */
+export function receiveCount(message: Pick<Message, "Attributes">): number {
+  return Number(message.Attributes?.ApproximateReceiveCount) || 1;
+}
+
 export interface ConsumerOptions<T> {
   queueUrl: string;
   handler: (payload: T, message: Message) => Promise<void>;
@@ -148,6 +153,12 @@ export function startConsumer<T = unknown>(
             MaxNumberOfMessages: Math.min(free, 10),
             WaitTimeSeconds: 20,
             VisibilityTimeout: visibilityTimeout,
+            // Lets a handler see which attempt this is (receiveCount below).
+            // Both spellings: the new one for AWS, the deprecated one ("All"
+            // is the only value its type allows that includes the count) for
+            // LocalStack 3, which predates the new one.
+            MessageSystemAttributeNames: ["ApproximateReceiveCount"],
+            AttributeNames: ["All"],
           }),
         );
         for (const message of Messages) {

@@ -29,6 +29,9 @@ QUEUES=(
   'audio-merge-queue|2|{"eventType":["audio.merge"]}'
   'ingestion_jobs||{"eventType":[{"prefix":"ingestion."}]}'
   'ingestion_jobs_high||'
+  # Renders come back here from the audio-merge Lambda or src/worker.ts. The
+  # handler is idempotent (MusicRecord.jobId), so it gets the default retries.
+  'audio-merge-results||'
 )
 
 topic_arn=$(awslocal sns create-topic --region "$REGION" --name "$TOPIC" \

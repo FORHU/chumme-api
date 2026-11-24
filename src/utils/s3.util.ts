@@ -51,6 +51,14 @@ export default class S3Util {
     await s3Client.send(command);
     logger.info(`[S3] Uploaded successfully: ${key}`);
 
+    return this.publicUrl(key);
+  }
+
+  /**
+   * The CDN URL clients use for a key. Needs S3_CDN_URL, so call it where that
+   * is set (the API), not in the audio-merge Lambda.
+   */
+  static publicUrl(key: string): string {
     let baseUrl = S3_CDN_URL;
     if (
       baseUrl &&
@@ -230,15 +238,21 @@ export default class S3Util {
    * Delete all files from S3 matching a given prefix.
    * Useful for cleaning up timestamped files (e.g. old preview versions).
    * @param prefix - S3 key prefix to match
+   * @param keep - exact keys under the prefix to leave in place
    */
-  static async deleteByPrefix(prefix: string): Promise<number> {
+  static async deleteByPrefix(
+    prefix: string,
+    keep: string[] = [],
+  ): Promise<number> {
     const listCommand = new ListObjectsV2Command({
       Bucket: AWS_S3_BUCKET_NAME,
       Prefix: prefix,
     });
 
     const response = await s3Client.send(listCommand);
-    const objects = response.Contents || [];
+    const objects = (response.Contents || []).filter(
+      (obj) => !obj.Key || !keep.includes(obj.Key),
+    );
 
     if (objects.length === 0) return 0;
 

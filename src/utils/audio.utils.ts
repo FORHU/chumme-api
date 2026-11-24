@@ -537,92 +537,98 @@ export const mixVocalsWithBacking = async (
   // Download backing track to temp file to avoid FFmpeg 403 errors with remote URLs
   let localBackingPath: string | null = null;
 
-  localBackingPath = await downloadSingle(backingTrackUrl);
+  try {
+    localBackingPath = await downloadSingle(backingTrackUrl);
 
-  await new Promise<void>((resolve, reject) => {
-    const command = ffmpeg();
-    command.input(localBackingPath!);
-    command.input(tempVocalsPath);
+    await new Promise<void>((resolve, reject) => {
+      const command = ffmpeg();
+      command.input(localBackingPath!);
+      command.input(tempVocalsPath);
 
-    // Build the vocal chain for the selected effect, threading each filter's
-    // output into the next one's input (v_0 -> v_1 -> ...). An unknown effect
-    // falls back to STUDIO rather than dropping the chain, so a client sending a
-    // preset this build doesn't know still gets a mixed, processed vocal.
-    const preset =
-      VOICE_EFFECT_PRESETS[voiceEffect] ?? VOICE_EFFECT_PRESETS.STUDIO;
+      // Build the vocal chain for the selected effect, threading each filter's
+      // output into the next one's input (v_0 -> v_1 -> ...). An unknown effect
+      // falls back to STUDIO rather than dropping the chain, so a client sending a
+      // preset this build doesn't know still gets a mixed, processed vocal.
+      const preset =
+        VOICE_EFFECT_PRESETS[voiceEffect] ?? VOICE_EFFECT_PRESETS.STUDIO;
 
-    const filterChain: any[] = [];
-    let vocalLabel = "1:a";
+      const filterChain: any[] = [];
+      let vocalLabel = "1:a";
 
-    preset.filters.forEach((step, index) => {
-      const outputs = `v_${index}`;
-      filterChain.push({
-        filter: step.filter,
-        options: step.options,
-        inputs: vocalLabel,
-        outputs,
+      preset.filters.forEach((step, index) => {
+        const outputs = `v_${index}`;
+        filterChain.push({
+          filter: step.filter,
+          options: step.options,
+          inputs: vocalLabel,
+          outputs,
+        });
+        vocalLabel = outputs;
       });
-      vocalLabel = outputs;
-    });
 
-    filterChain.push(
-      {
-        filter: "amix",
-        options: {
-          inputs: 2,
-          weights: preset.mixWeights,
-          duration: "shortest",
+      filterChain.push(
+        {
+          filter: "amix",
+          options: {
+            inputs: 2,
+            weights: preset.mixWeights,
+            duration: "shortest",
+          },
+          inputs: [vocalLabel, "0:a"],
+          outputs: "mixed",
         },
-        inputs: [vocalLabel, "0:a"],
-        outputs: "mixed",
-      },
-      {
-        filter: "alimiter",
-        options: { limit: 0.95 },
-        inputs: "mixed",
-        outputs: "final",
-      },
-    );
+        {
+          filter: "alimiter",
+          options: { limit: 0.95 },
+          inputs: "mixed",
+          outputs: "final",
+        },
+      );
 
-    let finalOutput = "final";
+      let finalOutput = "final";
 
-    // Trim to duration if specified
-    if (maxDuration && maxDuration > 0) {
-      finalOutput = "trimmed";
-      filterChain.push({
-        filter: "atrim",
-        options: { duration: maxDuration },
-        inputs: "final",
-        outputs: finalOutput,
-      });
+      // Trim to duration if specified
+      if (maxDuration && maxDuration > 0) {
+        finalOutput = "trimmed";
+        filterChain.push({
+          filter: "atrim",
+          options: { duration: maxDuration },
+          inputs: "final",
+          outputs: finalOutput,
+        });
+      }
+
+      command.complexFilter(filterChain);
+      command.map(finalOutput);
+
+      // 5. Inject Metadata
+      command.outputOptions("-metadata", `title="${title}"`);
+      command.outputOptions("-metadata", `artist="${artist}"`);
+      command.outputOptions("-metadata", 'comment="Powered by Chumme AI"');
+
+      command
+        .on("start", (cmd) =>
+          logger.info(`[FFmpeg] Mix+Loudnorm (${voiceEffect}): ${cmd}`),
+        )
+        .on("error", (err) => {
+          logger.error("[FFmpeg] Mix error:", err);
+          reject(err);
+        })
+        .on("end", () => resolve())
+        .format("mp3")
+        .audioBitrate("320k")
+        .save(outputPath);
+    });
+  } catch (err) {
+    // A failed encode can leave a partial MP3 behind.
+    cleanupTempFiles([outputPath]);
+    throw err;
+  } finally {
+    // The output is NOT cleaned here: the caller streams it, then deletes it.
+    cleanupTempFiles([tempVocalsPath]);
+    if (localBackingPath && !isLocalPath(backingTrackUrl)) {
+      cleanupTempFiles([localBackingPath]);
     }
-
-    command.complexFilter(filterChain);
-    command.map(finalOutput);
-
-    // 5. Inject Metadata
-    command.outputOptions("-metadata", `title="${title}"`);
-    command.outputOptions("-metadata", `artist="${artist}"`);
-    command.outputOptions("-metadata", 'comment="Powered by Chumme AI"');
-
-    command
-      .on("start", (cmd) =>
-        logger.info(`[FFmpeg] Mix+Loudnorm (${voiceEffect}): ${cmd}`),
-      )
-      .on("error", (err) => {
-        logger.error("[FFmpeg] Mix error:", err);
-        reject(err);
-      })
-      .on("end", () => resolve())
-      .format("mp3")
-      .audioBitrate("320k")
-      .save(outputPath);
-  });
-
-  // DO NOT Read and Cleanup yet. Return the path so worker can stream it.
-  cleanupTempFiles([tempVocalsPath]);
-  if (localBackingPath && !isLocalPath(backingTrackUrl)) {
-    cleanupTempFiles([localBackingPath]);
   }
   return outputPath;
 };

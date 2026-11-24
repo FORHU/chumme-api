@@ -12,7 +12,8 @@ queue's `_failed` dead-letter queue.
 
 | Queue | DLQ | maxReceiveCount | Env var | Producer → consumer |
 |---|---|---|---|---|
-| `audio-merge-queue` | `audio-merge-queue_failed` | 2 | `AUDIO_MERGE_QUEUE_URL` | `publishMergeJob` → `AudioMergeWorker` (1 at a time) |
+| `audio-merge-queue` | `audio-merge-queue_failed` | 2 | `AUDIO_MERGE_QUEUE_URL` | `publishMergeJob` → `AudioMergeWorker` (1 at a time, `AUDIO_MERGE_MODE=local`) or the audio-merge Lambda (`lambda`) |
+| `audio-merge-results` | `audio-merge-results_failed` | 5 | `AUDIO_MERGE_RESULTS_QUEUE_URL` (optional) | Lambda or `src/worker.ts` → `AudioMergeResultWorker` in the API process (2 at a time) |
 | `media_processing_queue` | `media_processing_queue_failed` | 2 | `MEDIA_PROCESSING_QUEUE_URL` | `MediaQueueSvc.publishJob` → `MediaProcessingWorker` (2 at a time) |
 | `ingestion_jobs` | `ingestion_jobs_failed` | 5 | `INGESTION_JOBS_QUEUE_URL` | `publishIngestionJob`, priority < 2 → `IngestionWorker` (2 at a time) |
 | `ingestion_jobs_high` | `ingestion_jobs_high_failed` | 5 | `INGESTION_JOBS_HIGH_QUEUE_URL` | `publishIngestionJob`, priority ≥ 2 → `IngestionWorker` (3 at a time) |
@@ -23,9 +24,17 @@ topic discovery and manual refreshes have priority 2 or higher. They go to
 `ingestion_jobs_high`, which has its own consumer, so they don't wait behind that
 backlog.
 
-**Why audio and media retry only once.** Their handlers are not idempotent (a
+**Why audio and media retry only once.** Their handlers were not idempotent (a
 save job writes DB rows), and RabbitMQ never retried them at all. One retry
-covers a job cut off by a deploy.
+covers a job cut off by a deploy. Audio saves are now idempotent
+(`MusicRecord.jobId` is unique), so `audio-merge-queue` can move to 3; keep
+`AUDIO_MERGE_MAX_RECEIVES` equal to it so the last attempt reports
+`save_failed` / `preview_failed` to the client.
+
+**AWS dev queues are Terraform-managed** (`forhu-terraform-v2/forhu-dev`,
+`chumme-queues.tf`). Change them there, not with `deploy/sqs/provision.sh`,
+which sets every queue's `maxReceiveCount` to 5 and would undo the 2 on
+`audio-merge-queue`.
 
 ## Provisioning (DevOps)
 

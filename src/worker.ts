@@ -1,6 +1,7 @@
 import os from "os";
 import http from "http";
 import { connectToPrisma } from "./utils/prisma";
+import { AUDIO_MERGE_MODE } from "./config";
 import logger from "./utils/logger";
 import { workerMetrics } from "./utils/worker-metrics";
 import { AudioMergeWorker } from "./listeners/audio-merge.listener";
@@ -40,14 +41,20 @@ async function main() {
 
   await connectToPrisma();
 
-  try {
-    const audioWorker = new AudioMergeWorker();
-    await audioWorker.start();
-    stoppables.push(audioWorker);
-    logger.info("[Worker] AudioMergeWorker started");
-  } catch (error) {
-    logger.error("[Worker] Failed to start AudioMergeWorker:", error);
-    process.exit(1);
+  // This process has no socket.io, so AudioMergeWorker sends its results to
+  // the API over AUDIO_MERGE_RESULTS_QUEUE_URL and refuses to start without
+  // it. Before, it saved here and preview_ready / recording_saved were lost.
+  if (AUDIO_MERGE_MODE === "local") {
+    try {
+      const audioWorker = new AudioMergeWorker();
+      await audioWorker.start();
+      stoppables.push(audioWorker);
+      logger.info("[Worker] AudioMergeWorker started");
+    } catch (error) {
+      logger.error("[Worker] Failed to start AudioMergeWorker:", error);
+    }
+  } else {
+    logger.info("[Worker] AudioMergeWorker skipped: AUDIO_MERGE_MODE=lambda");
   }
 
   try {

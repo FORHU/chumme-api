@@ -4,7 +4,12 @@ import rateLimit from "express-rate-limit";
 import helmet from "helmet";
 import { connectToPrisma } from "./utils/prisma";
 import router from "./routes";
-import { CORS_ORIGINS, isDev } from "./config";
+import {
+  AUDIO_MERGE_MODE,
+  AUDIO_MERGE_RESULTS_QUEUE_URL,
+  CORS_ORIGINS,
+  isDev,
+} from "./config";
 import setup from "./setup";
 import cors from "cors";
 import { createServer } from "http";
@@ -16,6 +21,7 @@ import { safeErrorResponse } from "./middleware/safe-error-response.middleware";
 
 import { SchedulingService } from "./services/net-communities/ingestion/scheduling.service";
 import { AudioMergeWorker } from "./listeners/audio-merge.listener";
+import { AudioMergeResultWorker } from "./listeners/audio-result.listener";
 import { IngestionWorker } from "./listeners/ingestion.listener";
 
 // BigInt serialization fix for JSON responses
@@ -95,14 +101,35 @@ connectToPrisma()
     // Initialize Workers (conditional)
     const startWorkers = process.env.START_WORKERS !== "false";
 
-    if (startWorkers) {
-      // Audio Merge Worker (background FFmpeg processing)
+    // Audio merge results from the Lambda or src/worker.ts. Not gated on
+    // START_WORKERS: it does no FFmpeg work, and it must run where socket.io is.
+    if (AUDIO_MERGE_RESULTS_QUEUE_URL) {
       try {
-        const audioMergeWorker = new AudioMergeWorker();
-        await audioMergeWorker.start();
-        logger.info("Audio Merge worker initialized successfully");
+        await new AudioMergeResultWorker().start();
+        logger.info("Audio Merge result worker initialized successfully");
       } catch (error) {
-        logger.error("Failed to initialize Audio Merge worker:", error);
+        logger.error("Failed to initialize Audio Merge result worker:", error);
+      }
+    } else if (AUDIO_MERGE_MODE === "lambda") {
+      logger.error(
+        "AUDIO_MERGE_MODE=lambda but AUDIO_MERGE_RESULTS_QUEUE_URL is unset: " +
+          "renders will finish but nothing will save them",
+      );
+    }
+
+    if (startWorkers) {
+      // Audio Merge Worker (background FFmpeg processing). In lambda mode the
+      // Lambda consumes the job queue instead; two consumers must never race.
+      if (AUDIO_MERGE_MODE === "local") {
+        try {
+          const audioMergeWorker = new AudioMergeWorker();
+          await audioMergeWorker.start();
+          logger.info("Audio Merge worker initialized successfully");
+        } catch (error) {
+          logger.error("Failed to initialize Audio Merge worker:", error);
+        }
+      } else {
+        logger.info("Audio Merge worker skipped: AUDIO_MERGE_MODE=lambda");
       }
 
       // Ingestion Worker & Scheduler

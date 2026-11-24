@@ -1,56 +1,30 @@
-import fs from "fs";
-import path from "path";
-import { AUDIO_MERGE_QUEUE_URL } from "../config";
-import { Consumer, enqueue, startConsumer } from "../utils/sqs";
+import {
+  AUDIO_MERGE_MAX_RECEIVES,
+  AUDIO_MERGE_QUEUE_URL,
+  AUDIO_MERGE_RESULTS_QUEUE_URL,
+} from "../config";
+import { Consumer, enqueue, receiveCount, startConsumer } from "../utils/sqs";
 import logger from "../utils/logger";
 import {
-  batchOverlayAudioFiles,
-  concatenateAudioFiles,
-  mixVocalsWithBacking,
-  VoiceEffect,
-} from "../utils/audio.utils";
-import S3Util from "../utils/s3.util";
-import MusicLibraryRepo from "../repositories/music-library.repository";
-import MusicRecordRepo from "../repositories/music-record.repository";
-import MusicTempRecordRepo from "../repositories/music-temp-record.repository";
-import { prisma } from "../utils/prisma";
+  AudioMergeJob,
+  AudioMergeResult,
+  renderMix,
+} from "../services/audio-render";
+import { handleMergeResult } from "./audio-result.listener";
+
+export type { AudioMergeJob } from "../services/audio-render";
 
 // ---------------------------------------------------------------------------
-// Types
+// Worker (AUDIO_MERGE_MODE=local)
 // ---------------------------------------------------------------------------
 
-export interface AudioMergeJob {
-  jobId: string;
-  studioId: string;
-  musicId: string;
-  studioType: "CROWDSINGING" | "RELAYSINGING";
-  audioUrls: string[];
-  offsets: number[];
-  backingTrackUrl: string;
-  jobType: "preview" | "save";
-  /** For save jobs: singer IDs to credit */
-  singerIds?: string[];
-  /** For save jobs: performance mapping */
-  performanceMapping?: {
-    startLine: number;
-    endLine: number;
-    singerId: string;
-    vocalRoleIndex?: number;
-  }[];
-  /** For save jobs: additional metadata */
-  metaData?: any;
-  /** Max duration in seconds to trim the final audio */
-  maxDuration?: number;
-  /** Voice effect preset */
-  voiceEffect?: VoiceEffect;
-  /** Final merged recording duration */
-  recordDuration?: number;
-}
-
-// ---------------------------------------------------------------------------
-// Worker
-// ---------------------------------------------------------------------------
-
+/**
+ * Consumes audio-merge-queue in this process: renders with FFmpeg, then hands
+ * the result to the save half. In the API process that is a direct call. In a
+ * process without socket.io (src/worker.ts) it goes over audio-merge-results
+ * to the API — handling it here would save the rows but silently drop
+ * preview_ready / recording_saved, as worker.ts used to.
+ */
 export class AudioMergeWorker {
   private consumer: Consumer | null = null;
 
@@ -58,236 +32,48 @@ export class AudioMergeWorker {
     if (!AUDIO_MERGE_QUEUE_URL) {
       throw new Error("AUDIO_MERGE_QUEUE_URL is empty — check env");
     }
+    if (!(global as any).io && !AUDIO_MERGE_RESULTS_QUEUE_URL) {
+      throw new Error(
+        "AudioMergeWorker outside the API process needs AUDIO_MERGE_RESULTS_QUEUE_URL, " +
+          "or its socket events would be lost",
+      );
+    }
     this.consumer = startConsumer<AudioMergeJob>({
       queueUrl: AUDIO_MERGE_QUEUE_URL,
       // Only process 1 merge at a time (CPU-heavy)
       concurrency: 1,
       visibilityTimeout: 120,
-      handler: async (job) => {
+      handler: async (job, message) => {
+        const attempt = receiveCount(message);
         logger.info(
-          `[AudioMergeWorker] Processing ${job.jobType} job: ${job.jobId}`,
+          `[AudioMergeWorker] Processing ${job.jobType} job ${job.jobId} (attempt ${attempt}/${AUDIO_MERGE_MAX_RECEIVES})`,
         );
         try {
-          await this.processJob(job);
+          const output = await renderMix(job, attempt);
+          await deliver({ status: "done", job, ...output });
         } catch (error: any) {
-          logger.error(`[AudioMergeWorker] Job failed: ${error.message}`);
+          logger.error(
+            `[AudioMergeWorker] Job ${job.jobId} failed: ${error.message}`,
+          );
+          // On the last attempt tell the client, rather than leave it waiting.
+          if (attempt >= AUDIO_MERGE_MAX_RECEIVES) {
+            await deliver({
+              status: "failed",
+              job,
+              error: String(error?.message || error),
+            }).catch((e) =>
+              logger.error(
+                `[AudioMergeWorker] Could not report failure of ${job.jobId}:`,
+                e,
+              ),
+            );
+          }
+          // SQS retries it, or after the last attempt moves it to the DLQ.
           throw error;
         }
       },
     });
     logger.info("[AudioMergeWorker] Listening on audio merge queue");
-  }
-
-  private async processJob(job: AudioMergeJob): Promise<void> {
-    const startTime = Date.now();
-
-    // 1. Merge vocals based on studio type
-    let vocalsBuffer: Buffer;
-    if (job.studioType === "RELAYSINGING") {
-      const initialOffset = job.offsets[0] || 0;
-      vocalsBuffer = await concatenateAudioFiles(
-        job.audioUrls,
-        initialOffset,
-        "wav",
-      );
-    } else {
-      vocalsBuffer = await batchOverlayAudioFiles(job.audioUrls, job.offsets);
-    }
-
-    logger.info(
-      `[AudioMergeWorker] Vocals merged: ${vocalsBuffer.length} bytes in ${Date.now() - startTime}ms`,
-    );
-
-    // 2. Mix vocals with backing track (produces final MP3 path with loudness norm and metadata)
-    const finalAudioPath = await mixVocalsWithBacking(
-      vocalsBuffer,
-      job.backingTrackUrl,
-      {
-        maxDuration: job.maxDuration,
-        voiceEffect: job.voiceEffect,
-        title: job.metaData?.title || `Mix_${job.musicId}`,
-        artist: job.singerIds?.join(", ") || "Chumme Artist",
-      },
-    );
-
-    if (!finalAudioPath || !fs.existsSync(finalAudioPath)) {
-      throw new Error("Final audio file was not generated");
-    }
-
-    const mergeTime = Date.now() - startTime;
-    logger.info(
-      `[AudioMergeWorker] Final mix complete at ${finalAudioPath} in ${mergeTime}ms`,
-    );
-
-    // 3. Upload to S3 and handle based on job type
-    const io = (global as any).io;
-    if (!io) {
-      logger.error(
-        `[AudioMergeWorker] CRITICAL: global.io is undefined. Cannot emit socket events!`,
-      );
-    }
-
-    try {
-      if (job.jobType === "preview") {
-        // Delete old preview(s) for this studio+music combo before uploading new one
-        const previewPrefix = `previews/preview_${job.studioId}_${job.musicId}`;
-        try {
-          await S3Util.deleteByPrefix(previewPrefix);
-        } catch (e) {
-          logger.warn(
-            `[AudioMergeWorker] Failed to cleanup old previews: ${e}`,
-          );
-        }
-
-        // Upload with unique key so CDN/client always gets fresh content
-        const previewKey = `previews/preview_${job.studioId}_${job.musicId}_${Date.now()}.mp3`;
-
-        // Use stream for S3 upload
-        const audioStream = fs.createReadStream(finalAudioPath);
-        const previewUrl = await S3Util.uploadFileWithKey(
-          audioStream as any,
-          previewKey,
-          "audio/mpeg",
-        );
-
-        // Create MusicLibrary record for the preview
-        const fileRecord = await MusicLibraryRepo.create({
-          filename: path.basename(previewKey),
-          fileUrl: previewUrl,
-          fileType: "PREVIEW",
-          metaData: {
-            mimetype: "audio/mpeg",
-            size: fs.statSync(finalAudioPath).size,
-            isTransient: true,
-          },
-        });
-
-        // Broadcast preview_ready to studio
-        if (io) {
-          io.to(job.studioId).emit("preview_ready", {
-            studioId: job.studioId,
-            previewUrl,
-            fileId: fileRecord.id,
-            chunkCount: job.audioUrls.length,
-            mergeTimeMs: mergeTime,
-          });
-        }
-
-        logger.info(
-          `[AudioMergeWorker] Preview delivered: ${previewUrl} (${mergeTime}ms)`,
-        );
-      } else if (job.jobType === "save") {
-        const mergedFilename = `recording_${job.studioId}_${job.musicId}.mp3`;
-
-        // Use stream for S3 upload to prevent OOM
-        const audioStream = fs.createReadStream(finalAudioPath);
-        const mergedUrl = await S3Util.uploadFile(
-          audioStream as any,
-          mergedFilename,
-          "audio/mpeg",
-        );
-
-        // Create MusicLibrary + MusicRecord in DB
-        const fileRecord = await MusicLibraryRepo.create({
-          filename: mergedFilename,
-          fileUrl: mergedUrl,
-          metaData: {
-            mimetype: "audio/mpeg",
-            size: fs.statSync(finalAudioPath).size,
-          },
-          fileType: "RECORDING",
-        });
-
-        const musicRecord = await MusicRecordRepo.create({
-          studioId: job.studioId,
-          musicId: job.musicId,
-          fileId: fileRecord.id,
-          singerIds: job.singerIds || [],
-          metaData: job.metaData,
-          recordDuration: job.recordDuration || job.maxDuration,
-        });
-
-        // Create music parts if performance mapping provided
-        if (job.performanceMapping && job.performanceMapping.length > 0) {
-          await prisma.musicSingerPart.createMany({
-            data: job.performanceMapping.map((p, index) => ({
-              recordId: musicRecord.id,
-              startLine: p.startLine,
-              endLine: p.endLine,
-              singerId: p.singerId,
-              vocalRoleIndex: p.vocalRoleIndex || 1,
-              order: index,
-            })),
-          });
-        }
-
-        // Cleanup temp records + S3 chunks
-        const lookupMusicId = job.metaData?.lookupMusicId || job.musicId;
-
-        await MusicTempRecordRepo.deleteByMusicIdAndStudioId(
-          lookupMusicId,
-          job.studioId,
-        );
-
-        try {
-          // 4. Delete temporary chunks from S3
-          for (const url of job.audioUrls) {
-            try {
-              await S3Util.deleteFile(url);
-            } catch (e) {
-              logger.warn(
-                `[AudioMergeWorker] Failed to delete chunk ${url}: ${e}`,
-              );
-            }
-          }
-
-          // 5. Delete preview files for this studio+music session
-          const previewPrefix = `previews/preview_${job.studioId}_${job.musicId}`;
-          try {
-            await S3Util.deleteByPrefix(previewPrefix);
-          } catch (e) {
-            // Preview might not exist, that's okay
-          }
-        } catch (e) {
-          logger.warn(`[AudioMergeWorker] Failed to cleanup S3 files: ${e}`);
-        }
-
-        // A record without singers can never be listed by findByUserId — surface
-        // it here rather than letting the client show a false "saved".
-        if (!musicRecord.singers?.length) {
-          logger.error(
-            `[AudioMergeWorker] Record ${musicRecord.id} saved with NO singers — it will not appear in any user's recordings`,
-            { jobId: job.jobId, studioId: job.studioId },
-          );
-        }
-
-        // Broadcast recording_saved to studio
-        if (io) {
-          io.to(job.studioId).emit("recording_saved", {
-            studioId: job.studioId,
-            musicId: job.musicId,
-            recordId: musicRecord.id,
-            fileUrl: mergedUrl,
-            mergeTimeMs: mergeTime,
-          });
-        }
-
-        logger.info(
-          `[AudioMergeWorker] Recording saved: ${musicRecord.id} (${mergeTime}ms)`,
-        );
-      }
-    } finally {
-      // Final cleanup of the mixed file
-      if (fs.existsSync(finalAudioPath)) {
-        // try {
-        //   fs.unlinkSync(finalAudioPath);
-        // } catch (e) {
-        //   logger.warn(
-        //     `[AudioMergeWorker] Failed to cleanup final mix: ${finalAudioPath}`,
-        //   );
-        // }
-      }
-    }
   }
 
   async stop(): Promise<void> {
@@ -297,6 +83,14 @@ export class AudioMergeWorker {
     } catch (error) {
       logger.error("[AudioMergeWorker] Error stopping:", error);
     }
+  }
+}
+
+async function deliver(result: AudioMergeResult): Promise<void> {
+  if ((global as any).io) {
+    await handleMergeResult(result);
+  } else {
+    await enqueue(AUDIO_MERGE_RESULTS_QUEUE_URL, result);
   }
 }
 

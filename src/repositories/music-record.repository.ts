@@ -7,7 +7,20 @@ interface CreateMusicRecordData {
   singerIds?: string[]; // Optional array of user IDs who participated
   metaData?: any;
   recordDuration?: number;
+  /** The save job that wrote it; unique, so a retried job cannot save twice. */
+  jobId?: string;
 }
+
+const RECORD_INCLUDE = {
+  studio: true,
+  music: {
+    include: {
+      musicArtist: true,
+    },
+  },
+  file: true,
+  singers: true,
+};
 
 export default class MusicRecordRepo {
   /**
@@ -22,22 +35,22 @@ export default class MusicRecordRepo {
         fileId: data.fileId,
         metaData: (data as any).metaData,
         recordDuration: data.recordDuration,
+        jobId: data.jobId,
         // NOTE: an empty array is truthy — `connect: []` would silently create a
         // record with no singers, which findByUserId can never return.
         singers: data.singerIds?.length
           ? { connect: data.singerIds.map((id) => ({ id })) }
           : undefined,
       },
-      include: {
-        studio: true,
-        music: {
-          include: {
-            musicArtist: true,
-          },
-        },
-        file: true,
-        singers: true,
-      },
+      include: RECORD_INCLUDE,
+    });
+  }
+
+  /** The record a save job wrote, if it already ran. */
+  static async findByJobId(jobId: string) {
+    return prisma.musicRecord.findUnique({
+      where: { jobId },
+      include: RECORD_INCLUDE,
     });
   }
 
