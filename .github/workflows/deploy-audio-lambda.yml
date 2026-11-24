@@ -1,0 +1,102 @@
+name: Deploy audio-merge Lambda (dev)
+
+# Builds the audio-merge Lambda image, pushes it to ECR, and points the
+# function at it. Terraform (forhu-terraform-v2/forhu-dev) owns the function,
+# its role, env vars and event source mapping; this workflow owns only the
+# image. The deploy role has ECR push plus lambda:UpdateFunctionCode and
+# lambda:GetFunction on dev-chumme-audio-merge, and nothing else.
+#
+# Until infra creates the function, the update step is skipped and the run
+# only pushes the image. Send infra the tag from the job summary.
+
+on:
+  push:
+    branches: [main]
+    # Only what the Lambda bundles (see tsconfig.lambda.json).
+    paths:
+      - src/lambda/**
+      - src/services/audio-render.ts
+      - src/utils/audio.utils.ts
+      - src/utils/media.utils.ts
+      - src/utils/s3.util.ts
+      - src/utils/s3-client.ts
+      - src/utils/sqs.ts
+      - src/utils/logger.ts
+      - src/utils/log-redact.util.ts
+      - src/config.ts
+      - Dockerfile.lambda
+      - tsconfig.lambda.json
+      - package-lock.json
+      - .github/workflows/deploy-audio-lambda.yml
+  workflow_dispatch:
+
+concurrency:
+  group: forhu-dev-chumme-audio-lambda
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ap-southeast-1
+  ACCOUNT_ID: "617163942417"
+  ECR_REPOSITORY: dev-chumme-audio-merge
+  FUNCTION_NAME: dev-chumme-audio-merge
+
+jobs:
+  deploy:
+    name: Build and deploy (audio-merge Lambda, dev)
+    # Native arm64: the function is Graviton. Cross-building under QEMU works
+    # but is slow.
+    runs-on: ubuntu-24.04-arm
+    environment: dev
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEV_DEPLOY_ROLE_ARN || 'arn:aws:iam::617163942417:role/forhu-deploy' }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to ECR
+        run: |
+          aws ecr get-login-password --region "$AWS_REGION" \
+            | docker login --username AWS --password-stdin \
+              "$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
+
+      - name: Build and push image
+        id: image
+        run: |
+          set -euo pipefail
+          IMAGE="$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:${GITHUB_SHA}"
+          # --provenance=false: Lambda rejects the manifest list (image index)
+          # that buildx produces when it attaches provenance.
+          docker buildx build --platform linux/arm64 --provenance=false \
+            -f Dockerfile.lambda -t "$IMAGE" --push .
+          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Audio-merge Lambda image"
+            echo ""
+            echo "Tag: \`${GITHUB_SHA}\`"
+            echo ""
+            echo "Image: \`$IMAGE\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Point the function at the new image
+        env:
+          IMAGE: ${{ steps.image.outputs.image }}
+        run: |
+          set -euo pipefail
+          if ! aws lambda get-function --function-name "$FUNCTION_NAME" > /dev/null 2>&1; then
+            echo "::notice::$FUNCTION_NAME does not exist yet. Send infra this tag: ${GITHUB_SHA}"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "Function not created yet: send infra the tag above." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          aws lambda update-function-code --function-name "$FUNCTION_NAME" \
+            --image-uri "$IMAGE" > /dev/null
+          aws lambda wait function-updated-v2 --function-name "$FUNCTION_NAME"
+          echo "Function now runs $IMAGE" >> "$GITHUB_STEP_SUMMARY"

@@ -41,6 +41,11 @@ export const s3Client = new S3Client({
     credentials: {
       accessKeyId: AWS_ACCESS_KEY_ID,
       secretAccessKey: AWS_SECRET_ACCESS_KEY,
+      // Lambda puts its role's temporary keys in these same env vars, and
+      // temporary keys are rejected without their session token.
+      ...(process.env.AWS_SESSION_TOKEN && {
+        sessionToken: process.env.AWS_SESSION_TOKEN,
+      }),
     },
   }),
 });

@@ -1,9 +1,11 @@
 #!/bin/bash
 # Creates chumme's SQS queues and SNS topic in real AWS — the server-side twin
-# of docker/localstack/init-queues.sh. Same queues, DLQs, maxReceiveCount and
-# routing filters; only the names gain an environment prefix.
+# of docker/localstack/init-queues.sh. Same queues, DLQs and routing filters;
+# the names gain an environment prefix. NOT the same maxReceiveCount: this sets
+# one value on every queue (QUEUE_MAX_RECEIVES, default 5), where
+# init-queues.sh gives audio-merge-queue and media_processing_queue 2.
 #
-#   bash deploy/sqs/provision.sh dev     # dev-chumme-*  (shared dev host)
+#   (dev queues are Terraform-managed; this script refuses to touch them)
 #   bash deploy/sqs/provision.sh prod    # prod-chumme-* (production EC2)
 #
 # Run it from AWS CloudShell (ap-southeast-1) or anywhere with an admin
@@ -19,8 +21,17 @@ set -euo pipefail
 
 ENV_NAME="${1:-}"
 case "$ENV_NAME" in
-  dev|prod) ;;
-  *) echo "usage: $0 dev|prod" >&2; exit 2 ;;
+  dev)
+    # Terraform owns the dev queues now (forhu-terraform-v2/forhu-dev,
+    # chumme-queues.tf). This script sets every queue's maxReceiveCount to the
+    # same value, so running it would move audio-merge-queue from 2 to 5 and
+    # drift from Terraform. Ask infra for queue changes instead.
+    echo "dev queues are managed in Terraform (forhu-terraform-v2/forhu-dev, chumme-queues.tf)." >&2
+    echo "Refusing to modify them. Use docker/localstack/init-queues.sh for local queues." >&2
+    exit 3
+    ;;
+  prod) ;;
+  *) echo "usage: $0 prod" >&2; exit 2 ;;
 esac
 
 REGION="${AWS_REGION:-ap-southeast-1}"

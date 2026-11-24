@@ -1,0 +1,35 @@
+# The audio-merge Lambda (src/lambda/audio-merge.ts). arm64 only: the
+# function is Graviton, and an x86 image fails at invoke with "exec format
+# error". Build with provenance off — Lambda rejects the manifest list that
+# buildx otherwise produces:
+#
+#   docker buildx build --platform linux/arm64 --provenance=false \
+#     -f Dockerfile.lambda -t <ecr>/dev-chumme-audio-merge:<tag> --push .
+#
+# CI does this: .github/workflows/deploy-audio-lambda.yml.
+
+FROM public.ecr.aws/lambda/nodejs:22 AS build
+WORKDIR /build
+# --ignore-scripts: the Lambda build needs no Prisma client, bcrypt or any
+# other install step; tsconfig.lambda.json compiles only the handler's imports.
+COPY package.json package-lock.json tsconfig.json tsconfig.lambda.json ./
+RUN npm ci --ignore-scripts --no-audit --no-fund
+COPY types ./types
+COPY src ./src
+RUN npx tsc -p tsconfig.lambda.json
+
+FROM public.ecr.aws/lambda/nodejs:22
+WORKDIR ${LAMBDA_TASK_ROOT}
+COPY package.json package-lock.json ./
+# Production deps without install scripts, then the one script the handler
+# needs: ffmpeg-static's, which downloads the linux-arm64 ffmpeg binary. The
+# Lambda base image has no ffmpeg package to install instead.
+RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund \
+  && node node_modules/ffmpeg-static/install.js \
+  && node_modules/ffmpeg-static/ffmpeg -hide_banner -version | head -n 1 \
+  && npm cache clean --force
+COPY --from=build /build/dist-lambda/ ./
+
+# "<module path>.<export>". Lambda splits at the FIRST dot, so the module's
+# file name must contain none (audio-merge.handler.ts failed to load).
+CMD ["src/lambda/audio-merge.handler"]

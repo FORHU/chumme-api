@@ -6,6 +6,7 @@ node_modules
 /src/generated/prisma
 prisma/migrations/migration_lock.toml
 dist/*
+dist-lambda/
 prisma/seed-assets/voice/Excited_K-pop_fan_sh_#2-1787540310935.mp3
 prisma/seed-assets/voice/Excited_K-pop_fan_sh_#3-1787540376409.mp3
 prisma/seed-assets/voice/Excited_K-pop_fan_sh_#4-1787540317800.mp3

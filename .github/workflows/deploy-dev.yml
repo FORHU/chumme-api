@@ -154,6 +154,11 @@ jobs:
           AUDIO_MERGE_QUEUE_URL: ${{ vars.DEV_AUDIO_MERGE_QUEUE_URL }}
           INGESTION_JOBS_QUEUE_URL: ${{ vars.DEV_INGESTION_JOBS_QUEUE_URL }}
           INGESTION_JOBS_HIGH_QUEUE_URL: ${{ vars.DEV_INGESTION_JOBS_HIGH_QUEUE_URL }}
+          # DEV_-prefixed for the same reason as the queue URLs above: deploy.yml
+          # also reads this environment, and AUDIO_MERGE_MODE=lambda meant for dev
+          # would switch production too. Optional: unset = merge in-process.
+          AUDIO_MERGE_RESULTS_QUEUE_URL: ${{ vars.DEV_AUDIO_MERGE_RESULTS_QUEUE_URL }}
+          AUDIO_MERGE_MODE: ${{ vars.DEV_AUDIO_MERGE_MODE }}
           REDIS_TTL_SECONDS: ${{ vars.REDIS_TTL_SECONDS || secrets.REDIS_TTL_SECONDS }}
           SPORTS_DEMO_MODE: ${{ vars.SPORTS_DEMO_MODE || secrets.SPORTS_DEMO_MODE }}
           START_WORKERS: ${{ vars.START_WORKERS || secrets.START_WORKERS }}
@@ -180,6 +185,7 @@ jobs:
                    MAILER_TRANSPORT_HOST MAILER_TRANSPORT_PORT MAILER_TRANSPORT_SECURE \
                    MEDIA_PROCESSING_QUEUE_URL AUDIO_MERGE_QUEUE_URL \
                    INGESTION_JOBS_QUEUE_URL INGESTION_JOBS_HIGH_QUEUE_URL \
+                   AUDIO_MERGE_RESULTS_QUEUE_URL AUDIO_MERGE_MODE \
                    REDIS_TTL_SECONDS \
                    SPORTS_DEMO_MODE START_WORKERS TRANSLATION_PROVIDER \
                    TRANSLATION_API_URL TZ; do

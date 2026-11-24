@@ -18,12 +18,18 @@ const redactSecrets = winston.format((info) => {
   return info;
 });
 
-const transports: winston.transport[] = [
-  new winston.transports.Console(),
-  new winston.transports.File({ filename: "error.log", level: "error" }),
-  new winston.transports.File({ filename: "combined.log" }),
-  new winston.transports.File({ filename: "chat-send.log", level: "chat" }),
-];
+// On Lambda the working directory is read-only and stdout already goes to
+// CloudWatch, so log files would only fail to open.
+const inLambda = Boolean(process.env.AWS_LAMBDA_FUNCTION_NAME);
+
+const transports: winston.transport[] = inLambda
+  ? [new winston.transports.Console()]
+  : [
+      new winston.transports.Console(),
+      new winston.transports.File({ filename: "error.log", level: "error" }),
+      new winston.transports.File({ filename: "combined.log" }),
+      new winston.transports.File({ filename: "chat-send.log", level: "chat" }),
+    ];
 
 const baseLogger = winston.createLogger({
   level: "info",
@@ -43,7 +49,11 @@ const chatLogger = winston.createLogger({
     winston.format.timestamp(),
     winston.format.json(),
   ),
-  transports: [new winston.transports.File({ filename: "chat-send.log" })],
+  transports: [
+    inLambda
+      ? new winston.transports.Console()
+      : new winston.transports.File({ filename: "chat-send.log" }),
+  ],
 });
 
 function createModuleLogger() {

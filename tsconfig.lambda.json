@@ -1,0 +1,12 @@
+{
+  // Builds only the audio-merge Lambda and what it imports. Kept apart from
+  // tsconfig.json so the build needs no Prisma client: nothing the handler
+  // imports may reach Prisma or socket.io (see src/services/audio-render.ts).
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist-lambda",
+    "sourceMap": false
+  },
+  "include": [],
+  "files": ["src/lambda/audio-merge.ts"]
+}
