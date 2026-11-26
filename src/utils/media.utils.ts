@@ -318,6 +318,51 @@ export const extractVideoFrame = async (
   }
 };
 
+/**
+ * Writes the first `seconds` of a video (its first video and audio stream) to
+ * `outPath`, whose extension picks the container.
+ *
+ * By default the streams are copied, not re-encoded: fast and cheap on the
+ * small box, and lossless. A copy can only start on a keyframe, but this one
+ * starts at 0, which always is one. Pass `reencode` (H.264/AAC, so `outPath`
+ * should end .mp4) for a file whose streams the container won't take as they
+ * are. Killed after `timeoutMs`.
+ */
+export const trimVideoStart = async (
+  input: string,
+  seconds: number,
+  outPath: string,
+  {
+    reencode = false,
+    timeoutMs = 120000,
+  }: { reencode?: boolean; timeoutMs?: number } = {},
+): Promise<void> => {
+  const isWebm = path.extname(outPath).toLowerCase() === ".webm";
+  await runFfmpeg(
+    ffmpeg(ensureCleanUrl(input))
+      .outputOptions([
+        "-map 0:v:0",
+        // Optional: a clip may have no sound.
+        "-map 0:a:0?",
+        `-t ${seconds}`,
+        ...(reencode
+          ? [
+              "-c:v libx264",
+              "-preset veryfast",
+              "-crf 23",
+              "-pix_fmt yuv420p",
+              "-c:a aac",
+              "-b:a 128k",
+            ]
+          : ["-c copy", "-avoid_negative_ts make_zero"]),
+        // The index up front, so playback can start before the whole file loads.
+        ...(isWebm ? [] : ["-movflags +faststart"]),
+      ])
+      .output(outPath),
+    timeoutMs,
+  );
+};
+
 function runFfmpeg(
   command: ffmpeg.FfmpegCommand,
   timeoutMs: number,

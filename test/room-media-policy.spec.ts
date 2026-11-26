@@ -33,7 +33,7 @@ describe("RoomMediaPolicySvc", function () {
     }));
   };
 
-  const send = (kind: "voice" | "video", reportedDuration?: number) =>
+  const allow = (kind: "voice" | "video", reportedDuration?: number) =>
     RoomMediaPolicySvc.assertAllowed({
       roomId: "r1",
       userId: "u1",
@@ -41,6 +41,10 @@ describe("RoomMediaPolicySvc", function () {
       fileId: "f1",
       reportedDuration,
     });
+
+  /** The duration let through. */
+  const send = (kind: "voice" | "video", reportedDuration?: number) =>
+    allow(kind, reportedDuration).then((r) => r.duration);
 
   /** ffprobe unavailable, e.g. no binary for the box's architecture */
   const givenProbeDown = (isAdmin: boolean) => {
@@ -77,9 +81,25 @@ describe("RoomMediaPolicySvc", function () {
     expect(await send("video")).to.equal(30.2);
   });
 
-  it("rejects an admin video over 30s", async function () {
-    given(true, { duration: 31, hasVideo: true });
-    const err = await rejection(send("video"));
+  it("keeps an admin video over 30s, to be trimmed to 30s", async function () {
+    given(true, { duration: 95, hasVideo: true });
+    expect(await allow("video")).to.deep.equal({ duration: 95, trimTo: 30 });
+  });
+
+  it("doesn't trim an admin video within the limit", async function () {
+    given(true, { duration: 30.2, hasVideo: true });
+    expect((await allow("video")).trimTo).to.equal(undefined);
+  });
+
+  it("refuses an over-long video whose length wasn't measured", async function () {
+    givenProbeDown(true);
+    const err = await rejection(send("video", 95));
+    expect(err.statusCode).to.equal(400);
+  });
+
+  it("still refuses an over-long voice message rather than trimming it", async function () {
+    given(true, { duration: 31 });
+    const err = await rejection(send("voice"));
     expect(err.statusCode).to.equal(400);
   });
 

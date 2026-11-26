@@ -1,4 +1,7 @@
 import crypto from "crypto";
+import fs from "fs";
+import os from "os";
+import path from "path";
 import { prisma } from "../utils/prisma";
 import S3Util from "../utils/s3.util";
 import S3PresignedUtil from "../utils/s3-presigned.util";
@@ -6,6 +9,7 @@ import {
   extractVideoFrame,
   getMediaMetadata,
   MediaMetadata,
+  trimVideoStart,
 } from "../utils/media.utils";
 import {
   BadRequestError,
@@ -22,6 +26,25 @@ export const MEMBER_VOICE_MAX_SECONDS = 7;
 const DURATION_TOLERANCE_SECONDS = 0.5;
 
 export type RoomMediaKind = "voice" | "video";
+
+/** What `assertAllowed` lets through. */
+export interface AllowedMedia {
+  /** Seconds, as measured (or, with ffprobe down, as reported). */
+  duration: number;
+  /**
+   * Set when a video is over the limit: it's kept, cut down to its first
+   * `trimTo` seconds (`trimVideo`), the way Facebook trims a long story.
+   */
+  trimTo?: number;
+}
+
+/** Containers a trimmed video can keep, by extension. */
+const VIDEO_TYPES: Record<string, string> = {
+  mp4: "video/mp4",
+  m4v: "video/mp4",
+  mov: "video/quicktime",
+  webm: "video/webm",
+};
 
 /** A video's still, stored in its File `metaData` next to `duration`. */
 export interface VideoPoster {
@@ -137,9 +160,104 @@ export default class RoomMediaPolicySvc {
   }
 
   /**
+   * Cuts a stored video down to its first `seconds` and puts the cut in its
+   * place: a new object, the File pointed at it, the original deleted. Returns
+   * the cut's measured length. Throws a 400 when it can't be cut, so an
+   * over-long video is still refused rather than sent whole.
+   */
+  static async trimVideo(params: {
+    fileId: string;
+    userId: string;
+    seconds: number;
+  }): Promise<number> {
+    const file = await prisma.file.findUnique({
+      where: { id: params.fileId },
+      select: { fileUrl: true },
+    });
+    const originalUrl = file?.fileUrl ?? null;
+    const originalKey = originalUrl
+      ? (S3Util as any).getKeyFromUrl(originalUrl)
+      : undefined;
+    const ext = path
+      .extname(originalKey ?? "")
+      .slice(1)
+      .toLowerCase();
+    const source = await this.readableUrl(params.fileId);
+    const dir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "trim-"));
+
+    try {
+      let outExt = ext in VIDEO_TYPES ? ext : "mp4";
+      let out = path.join(dir, `trimmed.${outExt}`);
+      try {
+        await trimVideoStart(source, params.seconds, out);
+      } catch (err) {
+        // Streams the container won't take as they are: re-encode to MP4,
+        // slower but always playable.
+        logger.warn(
+          `[RoomMediaPolicySvc] Copy-trim failed for file ${params.fileId}, re-encoding:`,
+          err,
+        );
+        outExt = "mp4";
+        out = path.join(dir, "trimmed-reencoded.mp4");
+        await trimVideoStart(source, params.seconds, out, {
+          reencode: true,
+          timeoutMs: 240000,
+        });
+      }
+
+      const meta = await getMediaMetadata(out);
+      if (!meta.hasVideo || meta.duration <= 0) {
+        throw new Error("the trimmed file has no readable video");
+      }
+
+      // Beside the original, so it stays in the uploader's folder.
+      const stem = originalKey
+        ? originalKey.replace(/\.[^./]+$/, "")
+        : `videos/${params.userId}/${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
+      const fileUrl = await S3Util.uploadFileWithKey(
+        await fs.promises.readFile(out),
+        `${stem}-first${params.seconds}s.${outExt}`,
+        VIDEO_TYPES[outExt],
+      );
+      await prisma.file.update({
+        where: { id: params.fileId },
+        data: { fileUrl },
+      });
+      if (originalUrl) {
+        // The full-length upload isn't needed any more. Not awaited.
+        S3Util.deleteFile(originalUrl).catch((err) =>
+          logger.warn(
+            `[RoomMediaPolicySvc] Could not delete the untrimmed upload of file ${params.fileId}:`,
+            err,
+          ),
+        );
+      }
+      logger.info(
+        `[RoomMediaPolicySvc] Trimmed file ${params.fileId} to ${meta.duration.toFixed(1)}s`,
+      );
+      return meta.duration;
+    } catch (err) {
+      logger.error(
+        `[RoomMediaPolicySvc] Could not trim file ${params.fileId}:`,
+        err,
+      );
+      throw new BadRequestError(
+        `Couldn't shorten this video to ${params.seconds} seconds. Trim it and try again.`,
+      );
+    } finally {
+      fs.promises.rm(dir, { recursive: true, force: true }).catch(() => {});
+    }
+  }
+
+  /**
    * Throws unless this user may attach this file to a message in this room.
-   * Returns the duration in seconds: measured when the file can be probed,
+   * The duration in seconds is measured when the file can be probed,
    * otherwise the client-reported one (still held to the same limit).
+   *
+   * A video over the limit isn't refused when its length was measured: it
+   * comes back with `trimTo`, for the caller to cut it down (`trimVideo`).
+   * One whose length couldn't be measured is refused, since ffmpeg is likely
+   * down too.
    */
   static async assertAllowed(params: {
     roomId: string;
@@ -147,7 +265,7 @@ export default class RoomMediaPolicySvc {
     kind: RoomMediaKind;
     fileId: string;
     reportedDuration?: number;
-  }) {
+  }): Promise<AllowedMedia> {
     const limits = await this.getLimits(params.roomId, params.userId);
     const max =
       params.kind === "video" ? limits.maxVideoSeconds : limits.maxVoiceSeconds;
@@ -196,11 +314,15 @@ export default class RoomMediaPolicySvc {
     }
 
     if (duration > max + DURATION_TOLERANCE_SECONDS) {
+      const measured = meta != null && meta.duration > 0;
+      if (params.kind === "video" && measured) {
+        return { duration, trimTo: max };
+      }
       throw new BadRequestError(
         `${params.kind === "video" ? "Videos" : "Voice messages"} can be at most ${max} seconds`,
       );
     }
 
-    return duration;
+    return { duration };
   }
 }

@@ -63,7 +63,7 @@ export default class RoomMessageSvc {
       );
     }
     if (data.voiceMessageId) {
-      const duration = await RoomMediaPolicySvc.assertAllowed({
+      const { duration } = await RoomMediaPolicySvc.assertAllowed({
         roomId: data.chummeSubCategoryId,
         userId: data.userId,
         kind: "voice",
@@ -76,13 +76,22 @@ export default class RoomMessageSvc {
       });
     }
     if (data.videoMessageId) {
-      const duration = await RoomMediaPolicySvc.assertAllowed({
+      const allowed = await RoomMediaPolicySvc.assertAllowed({
         roomId: data.chummeSubCategoryId,
         userId: data.userId,
         kind: "video",
         fileId: data.videoMessageId,
         reportedDuration: data.duration,
       });
+      // Over the limit: keep the first 30s rather than refuse it. Before the
+      // poster, which is taken from the trimmed file.
+      const duration = allowed.trimTo
+        ? await RoomMediaPolicySvc.trimVideo({
+            fileId: data.videoMessageId,
+            userId: data.userId,
+            seconds: allowed.trimTo,
+          })
+        : allowed.duration;
       const poster = await RoomMediaPolicySvc.makePoster({
         fileId: data.videoMessageId,
         userId: data.userId,
@@ -90,6 +99,8 @@ export default class RoomMessageSvc {
       });
       await this.persistMediaMeta(data.videoMessageId, {
         duration,
+        // How long the upload was before it was trimmed.
+        ...(allowed.trimTo ? { trimmedFrom: allowed.duration } : {}),
         ...(poster ?? {}),
       });
     }
