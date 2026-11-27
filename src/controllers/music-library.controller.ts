@@ -12,6 +12,7 @@ export default class MusicLibraryCtrl {
       }
 
       const file = await MusicLibrarySvc.uploadMusicFile(
+        req.user.id,
         req.file.buffer,
         req.file.originalname,
         req.file.mimetype,
@@ -42,11 +43,12 @@ export default class MusicLibraryCtrl {
   static async deleteMusicFile(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const result = await MusicLibrarySvc.deleteMusicFile(id);
+      const result = await MusicLibrarySvc.deleteMusicFile(id, req.user);
       return res.status(200).json(result);
     } catch (err: any) {
-      const statusCode = err.message.includes("not found") ? 404 : 400;
-      return res.status(statusCode).json({ message: err.message || err });
+      return res
+        .status(err.statusCode || 400)
+        .json({ message: err.message || err });
     }
   }
 
@@ -123,16 +125,18 @@ export default class MusicLibraryCtrl {
   static async getDownloadUrl(req: Request, res: Response) {
     try {
       const { key } = req.query;
-      if (!key) {
+      if (!key || typeof key !== "string") {
         return res
           .status(400)
           .json({ message: "key is required in query parameters" });
       }
 
-      const result = await MusicLibrarySvc.getDownloadUrl(key as string);
+      const result = await MusicLibrarySvc.getDownloadUrl(key, req.user);
       return res.status(200).json(result);
     } catch (err: any) {
-      return res.status(400).json({ message: err.message || err });
+      return res
+        .status(err.statusCode || 400)
+        .json({ message: err.message || err });
     }
   }
 }

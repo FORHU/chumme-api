@@ -18,6 +18,7 @@ import { publishMergeJob } from "../listeners/audio-merge.listener";
 import type { AudioMergeJob } from "../listeners/audio-merge.listener";
 import { S3_CDN_URL } from "../config";
 import RedisUtil from "../utils/redis.util";
+import { ForbiddenError, NotFoundError } from "../utils/error.util";
 import crypto from "crypto";
 
 export const MAX_STUDIO_KEY_ATTEMPTS = 5;
@@ -744,11 +745,20 @@ export default class MusicStudioSvc {
 
   /**
    * Save a recording: merge temp chunks, upload to S3, create MusicRecord
+   *
+   * Host only: the owner, or a PRODUCER member, which is also who the app
+   * shows the Save button to. It used to check only that the room existed, so
+   * anyone could file a recording into someone else's room.
    */
   static async saveRecording(data: SaveRecordingInput) {
     const studio = await MusicStudioRepo.findById(data.studioId);
     if (!studio) {
-      throw new Error("Studio not found");
+      throw new NotFoundError("Studio not found");
+    }
+    if (!data.userId || !(await this.isHost(data.studioId, data.userId))) {
+      throw new ForbiddenError(
+        "Only the room owner or a producer can save a recording",
+      );
     }
 
     const { url: backingTrackUrl, originalId: originalMusicId } =

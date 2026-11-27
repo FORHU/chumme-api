@@ -1,7 +1,10 @@
+import crypto from "crypto";
 import MusicLibraryRepo from "../repositories/music-library.repository";
 import S3PresignedUtil from "../utils/s3-presigned.util";
 import S3Util from "../utils/s3.util";
+import { ForbiddenError, NotFoundError } from "../utils/error.util";
 import FileSvc from "./file.service";
+import { Viewer, canManageFileKey } from "./music-access.service";
 
 export default class MusicLibrarySvc {
   /**
@@ -29,15 +32,29 @@ export default class MusicLibrarySvc {
 
   /**
    * Upload music file to S3 and save library record
+   *
+   * Keyed `uploads/<userId>/…` like a presigned upload, because the key is
+   * the only record of who uploaded the file (see music-access).
    */
   static async uploadMusicFile(
+    userId: string,
     fileBuffer: Buffer,
     filename: string,
     mimeType: string,
     metaData?: any,
     fileType?: any,
   ) {
-    const fileUrl = await S3Util.uploadFile(fileBuffer, filename, mimeType);
+    const extension =
+      (filename.split(".").pop() || "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, "")
+        .slice(0, 8) || "bin";
+    const unique = `${Date.now()}-${crypto.randomBytes(8).toString("hex")}`;
+    const fileUrl = await S3Util.uploadFileWithKey(
+      fileBuffer,
+      `uploads/${userId}/${unique}.${extension}`,
+      mimeType,
+    );
 
     const musicFile = await MusicLibraryRepo.create({
       filename: filename,
@@ -61,19 +78,29 @@ export default class MusicLibrarySvc {
   }
 
   /**
-   * Delete music library record and S3 file
+   * Delete music library record and S3 file. Only the uploader, or staff.
+   *
+   * The row goes first: if a song or recording still points at it the delete
+   * fails on the foreign key, and the S3 object must survive that.
    */
-  static async deleteMusicFile(id: string) {
+  static async deleteMusicFile(id: string, viewer: Viewer) {
     const musicFile = await MusicLibraryRepo.findById(id);
     if (!musicFile) {
-      throw new Error("Music library record not found");
+      throw new NotFoundError("Music library record not found");
     }
 
-    if (musicFile.fileUrl) {
-      await S3Util.deleteFile(musicFile.fileUrl);
+    // The same key is checked and deleted, so the two cannot disagree.
+    const key = musicFile.fileUrl
+      ? S3Util.getKeyFromUrl(musicFile.fileUrl)
+      : undefined;
+    if (!canManageFileKey(key, viewer)) {
+      throw new ForbiddenError("You can only delete files you uploaded");
     }
 
     await MusicLibraryRepo.delete(id);
+    if (key) {
+      await S3Util.deleteFileByKey(key);
+    }
     return { message: "Music library record deleted successfully" };
   }
 
@@ -94,9 +121,15 @@ export default class MusicLibrarySvc {
   }
 
   /**
-   * Get a download pre-signed URL for MusicLibrary
+   * Get a download pre-signed URL for MusicLibrary. Only for a key the caller
+   * uploaded (or any key, for staff): this used to sign whatever key it was
+   * given, which opened the whole bucket. Songs in the catalogue don't need
+   * it; their fileUrl is already a public CDN link.
    */
-  static async getDownloadUrl(key: string) {
+  static async getDownloadUrl(key: string, viewer: Viewer) {
+    if (!canManageFileKey(key, viewer)) {
+      throw new ForbiddenError("You can only download files you uploaded");
+    }
     const response = await S3PresignedUtil.getDownloadUrl(key);
     return { message: "Music Library Download Registered", data: response };
   }
