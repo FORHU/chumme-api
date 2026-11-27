@@ -1,4 +1,23 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "../utils/prisma";
+
+/**
+ * The studio fields a recording response may carry. Never `studio: true`: the
+ * row also holds `keyPassword`, the private-room password.
+ */
+const STUDIO_SUMMARY = {
+  select: { id: true, name: true, studioType: true, ownerId: true },
+} as const;
+
+interface ListParams {
+  page?: number;
+  limit?: number;
+  /** Extra filter, ANDed in: who may see which records (see music-access). */
+  visibleTo?: Prisma.MusicRecordWhereInput;
+}
+
+const visibility = (where?: Prisma.MusicRecordWhereInput) =>
+  where ? { AND: [where] } : {};
 
 interface CreateMusicRecordData {
   studioId: string;
@@ -29,7 +48,7 @@ export default class MusicRecordRepo {
           : undefined,
       },
       include: {
-        studio: true,
+        studio: STUDIO_SUMMARY,
         music: {
           include: {
             musicArtist: true,
@@ -48,7 +67,7 @@ export default class MusicRecordRepo {
     return prisma.musicRecord.findUnique({
       where: { id },
       include: {
-        studio: true,
+        studio: STUDIO_SUMMARY,
         music: {
           include: {
             musicArtist: true,
@@ -73,16 +92,17 @@ export default class MusicRecordRepo {
   /**
    * Get all MusicRecords with pagination
    */
-  static async findAll(params: { page?: number; limit?: number } = {}) {
+  static async findAll(params: ListParams = {}) {
     const page = params.page || 1;
     const limit = params.limit || 10;
     const skip = (page - 1) * limit;
+    const where = { deletedAt: null, ...visibility(params.visibleTo) };
 
     const [data, total] = await Promise.all([
       prisma.musicRecord.findMany({
-        where: { deletedAt: null },
+        where,
         include: {
-          studio: true,
+          studio: STUDIO_SUMMARY,
           music: {
             include: {
               musicArtist: true,
@@ -100,9 +120,7 @@ export default class MusicRecordRepo {
         skip,
         take: limit,
       }),
-      prisma.musicRecord.count({
-        where: { deletedAt: null },
-      }),
+      prisma.musicRecord.count({ where }),
     ]);
 
     return {
@@ -119,22 +137,21 @@ export default class MusicRecordRepo {
   /**
    * Get MusicRecords by studioId with pagination
    */
-  static async findByStudioId(
-    studioId: string,
-    params: { page?: number; limit?: number } = {},
-  ) {
+  static async findByStudioId(studioId: string, params: ListParams = {}) {
     const page = params.page || 1;
     const limit = params.limit || 10;
     const skip = (page - 1) * limit;
+    const where = {
+      studioId,
+      deletedAt: null,
+      ...visibility(params.visibleTo),
+    };
 
     const [data, total] = await Promise.all([
       prisma.musicRecord.findMany({
-        where: {
-          studioId: studioId,
-          deletedAt: null,
-        },
+        where,
         include: {
-          studio: true,
+          studio: STUDIO_SUMMARY,
           music: {
             include: {
               musicArtist: true,
@@ -152,12 +169,7 @@ export default class MusicRecordRepo {
         skip,
         take: limit,
       }),
-      prisma.musicRecord.count({
-        where: {
-          studioId: studioId,
-          deletedAt: null,
-        },
-      }),
+      prisma.musicRecord.count({ where }),
     ]);
 
     return {
@@ -174,19 +186,21 @@ export default class MusicRecordRepo {
   /**
    * Get MusicRecords by musicId (all recordings of a song) with pagination
    */
-  static async findByMusicId(
-    musicId: string,
-    params: { page?: number; limit?: number } = {},
-  ) {
+  static async findByMusicId(musicId: string, params: ListParams = {}) {
     const page = params.page || 1;
     const limit = params.limit || 10;
     const skip = (page - 1) * limit;
+    const where = {
+      musicId,
+      deletedAt: null,
+      ...visibility(params.visibleTo),
+    };
 
     const [data, total] = await Promise.all([
       prisma.musicRecord.findMany({
-        where: { musicId, deletedAt: null },
+        where,
         include: {
-          studio: true,
+          studio: STUDIO_SUMMARY,
           file: true,
           singers: true,
           musicParts: {
@@ -199,9 +213,7 @@ export default class MusicRecordRepo {
         skip,
         take: limit,
       }),
-      prisma.musicRecord.count({
-        where: { musicId, deletedAt: null },
-      }),
+      prisma.musicRecord.count({ where }),
     ]);
 
     return {

@@ -326,6 +326,7 @@ export default class MusicCtrl {
       // 5. Upload Audio File to MusicLibrary if provided
       if (audioFile) {
         const fileRecord = await MusicLibrarySvc.uploadMusicFile(
+          req.user.id,
           audioFile.buffer,
           audioFile.originalname,
           audioFile.mimetype,

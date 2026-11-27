@@ -389,7 +389,9 @@ export default class MusicStudioCtrl {
       logger.info(`[MusicStudioCtrl] saveRecording result`, { result });
       return res.json(result);
     } catch (err: any) {
-      return res.status(400).json({ message: err.message || err });
+      return res
+        .status(err.statusCode || 400)
+        .json({ message: err.message || err });
     }
   }
 }

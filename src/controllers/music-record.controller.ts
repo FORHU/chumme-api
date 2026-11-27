@@ -2,6 +2,10 @@ import { Request, Response } from "express";
 import Joi from "joi";
 import MusicRecordSvc from "../services/music-record.service";
 
+/** 403/404 from the service keep their status; anything else is a 400. */
+const fail = (res: Response, err: any) =>
+  res.status(err?.statusCode || 400).json({ message: err?.message || err });
+
 export default class MusicRecordCtrl {
   /**
    * POST /music-records
@@ -27,19 +31,22 @@ export default class MusicRecordCtrl {
     }
 
     try {
-      const result = await MusicRecordSvc.create({
-        ...value,
-        metaData: value.meta_data,
-        file: value.file
-          ? {
-              ...value.file,
-              metaData: value.file.meta_data,
-            }
-          : undefined,
-      });
+      const result = await MusicRecordSvc.create(
+        {
+          ...value,
+          metaData: value.meta_data,
+          file: value.file
+            ? {
+                ...value.file,
+                metaData: value.file.meta_data,
+              }
+            : undefined,
+        },
+        req.user,
+      );
       return res.status(201).json(result);
     } catch (err: any) {
-      return res.status(400).json({ message: err.message || err });
+      return fail(res, err);
     }
   }
 
@@ -50,33 +57,32 @@ export default class MusicRecordCtrl {
   static async getById(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const result = await MusicRecordSvc.getById(id);
+      const result = await MusicRecordSvc.getById(id, req.user);
       return res.status(200).json(result);
     } catch (err: any) {
-      const statusCode = err.message === "Music record not found" ? 404 : 400;
-      return res.status(statusCode).json({ message: err.message || err });
+      return fail(res, err);
     }
   }
 
   /**
    * GET /music-records/list
-   * Get all music records with pagination
+   * The caller's music records with pagination
    */
   static async getAll(req: Request, res: Response) {
     try {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
 
-      const result = await MusicRecordSvc.getAll(page, limit);
+      const result = await MusicRecordSvc.getAll(req.user, page, limit);
       return res.status(200).json(result);
     } catch (err: any) {
-      return res.status(400).json({ message: err.message || err });
+      return fail(res, err);
     }
   }
 
   /**
    * GET /music-records/studio/:studioId
-   * Get all music records by a specific studio
+   * The caller's music records made in a specific studio
    */
   static async getByStudioId(req: Request, res: Response) {
     try {
@@ -84,16 +90,21 @@ export default class MusicRecordCtrl {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
 
-      const result = await MusicRecordSvc.getByStudioId(studioId, page, limit);
+      const result = await MusicRecordSvc.getByStudioId(
+        studioId,
+        req.user,
+        page,
+        limit,
+      );
       return res.status(200).json(result);
     } catch (err: any) {
-      return res.status(400).json({ message: err.message || err });
+      return fail(res, err);
     }
   }
 
   /**
    * GET /music-records/music/:musicId
-   * Get all recordings of a specific song
+   * The caller's recordings of a specific song
    */
   static async getByMusicId(req: Request, res: Response) {
     try {
@@ -101,10 +112,15 @@ export default class MusicRecordCtrl {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
 
-      const result = await MusicRecordSvc.getByMusicId(musicId, page, limit);
+      const result = await MusicRecordSvc.getByMusicId(
+        musicId,
+        req.user,
+        page,
+        limit,
+      );
       return res.status(200).json(result);
     } catch (err: any) {
-      return res.status(400).json({ message: err.message || err });
+      return fail(res, err);
     }
   }
 
@@ -115,11 +131,10 @@ export default class MusicRecordCtrl {
   static async delete(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const result = await MusicRecordSvc.delete(id);
+      const result = await MusicRecordSvc.delete(id, req.user);
       return res.status(200).json(result);
     } catch (err: any) {
-      const statusCode = err.message === "Music record not found" ? 404 : 400;
-      return res.status(statusCode).json({ message: err.message || err });
+      return fail(res, err);
     }
   }
 
@@ -129,10 +144,15 @@ export default class MusicRecordCtrl {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
 
-      const result = await MusicRecordSvc.getByUserId(userId, page, limit);
+      const result = await MusicRecordSvc.getByUserId(
+        userId,
+        req.user,
+        page,
+        limit,
+      );
       return res.status(200).json(result);
     } catch (err: any) {
-      return res.status(400).json({ message: err.message || err });
+      return fail(res, err);
     }
   }
 }
