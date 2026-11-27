@@ -10,14 +10,22 @@ import { PassThrough } from "stream";
 
 import S3Util from "./s3.util";
 
-// Set the ffmpeg and ffprobe paths globally. The static packages compute a
-// path even for platforms they ship no binary for (ffprobe-static has none for
+// Set the ffmpeg and ffprobe paths globally.
+//
+// FFMPEG_PATH / FFPROBE_PATH win when set: the Docker image points them at
+// Alpine's own build. ffmpeg-static's Linux binary links glibc statically,
+// and a static glibc can't resolve hostnames on Alpine (musl), so it can't
+// open any https URL — every trim and poster read from a signed S3 link failed
+// with "Error opening input file … Input/output error".
+//
+// Otherwise the static packages, for local development. They compute a path
+// even for platforms they ship no binary for (ffprobe-static has none for
 // linux/arm64), so only use one that exists — otherwise fluent-ffmpeg falls
 // back to the system binary on PATH.
-if (ffmpegPath && fs.existsSync(ffmpegPath)) ffmpeg.setFfmpegPath(ffmpegPath);
-if (ffprobePath.path && fs.existsSync(ffprobePath.path)) {
-  ffmpeg.setFfprobePath(ffprobePath.path);
-}
+const ffmpegBin = process.env.FFMPEG_PATH || ffmpegPath;
+const ffprobeBin = process.env.FFPROBE_PATH || ffprobePath.path;
+if (ffmpegBin && fs.existsSync(ffmpegBin)) ffmpeg.setFfmpegPath(ffmpegBin);
+if (ffprobeBin && fs.existsSync(ffprobeBin)) ffmpeg.setFfprobePath(ffprobeBin);
 
 export { ffmpeg };
 

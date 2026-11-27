@@ -21,6 +21,15 @@ describe("redactString", function () {
     );
   });
 
+  it("masks every credential in a presigned S3 link, the session token too", function () {
+    const out = redactString(
+      "https://b.s3.amazonaws.com/v.mp4?X-Amz-Credential=ASIA123%2F20261127&X-Amz-Security-Token=IQoJb3JpZ2luX2VjEAg%2BFAKE&X-Amz-Signature=abc&x-id=GetObject",
+    );
+    expect(out).to.equal(
+      "https://b.s3.amazonaws.com/v.mp4?X-Amz-Credential=[REDACTED]&X-Amz-Security-Token=[REDACTED]&X-Amz-Signature=[REDACTED]&x-id=GetObject",
+    );
+  });
+
   it("masks bearer tokens", function () {
     expect(
       redactString("Authorization: Bearer eyJhbGciOi.payload.sig"),

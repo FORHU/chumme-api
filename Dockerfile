@@ -6,6 +6,11 @@ WORKDIR /app
 # ffprobe-static ships no linux/arm64 binary, and the box is arm64.
 RUN apk add --no-cache tzdata ffmpeg
 
+# Use Alpine's ffmpeg, not the npm ffmpeg-static binary: that one links glibc
+# statically, can't resolve hostnames here, and so can't read the signed S3
+# links that video trimming and posters work from (src/utils/media.utils.ts).
+ENV FFMPEG_PATH=/usr/bin/ffmpeg FFPROBE_PATH=/usr/bin/ffprobe
+
 # Set default timezone
 ENV TZ=Asia/Manila
 

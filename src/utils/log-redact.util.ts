@@ -34,7 +34,7 @@ const STRING_PATTERNS: [RegExp, string][] = [
   [/\b(sk|rk|pk)[-_][A-Za-z0-9_-]{16,}/g, MASK], // OpenAI / Stripe-style keys
   [/(Bearer\s+)[A-Za-z0-9._~+/=-]{10,}/gi, `$1${MASK}`],
   [
-    /([?&](?:key|api_key|apikey|access_token|token|signature|X-Amz-Signature|X-Amz-Credential)=)[^&\s"']+/gi,
+    /([?&](?:key|api_key|apikey|access_token|token|signature|X-Amz-Signature|X-Amz-Credential|X-Amz-Security-Token)=)[^&\s"']+/gi,
     `$1${MASK}`,
   ],
   [/(postgres(?:ql)?:\/\/[^:\s]+:)[^@\s]+@/gi, `$1${MASK}@`], // DB passwords
