@@ -315,7 +315,9 @@ export default class MusicStudioSvc {
     if (!redis) {
       // Only outside a running server (scripts, specs): the server connects to
       // Redis at boot and studios cannot run without it.
-      logger.warn("[MusicStudio] Redis unavailable; studio key attempts not capped");
+      logger.warn(
+        "[MusicStudio] Redis unavailable; studio key attempts not capped",
+      );
     } else {
       const attempts = await redis.incr(key);
       if (attempts === 1) {
