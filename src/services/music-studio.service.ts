@@ -17,6 +17,24 @@ import { removeVocals } from "../utils/audio.utils";
 import { publishMergeJob } from "../listeners/audio-merge.listener";
 import type { AudioMergeJob } from "../listeners/audio-merge.listener";
 import { S3_CDN_URL } from "../config";
+import RedisUtil from "../utils/redis.util";
+import crypto from "crypto";
+
+export const MAX_STUDIO_KEY_ATTEMPTS = 5;
+export const STUDIO_KEY_LOCK_SECONDS = 15 * 60;
+export const TOO_MANY_STUDIO_KEY_ATTEMPTS =
+  "Too many incorrect codes. Please try again in 15 minutes.";
+
+/**
+ * Constant-time code comparison. Both sides are hashed first so the compare
+ * runs over equal-length buffers and the timing leaks neither the matching
+ * prefix nor the code's length.
+ */
+const studioKeyMatches = (expected: string, supplied?: string): boolean => {
+  if (typeof supplied !== "string" || supplied.length === 0) return false;
+  const digest = (s: string) => crypto.createHash("sha256").update(s).digest();
+  return crypto.timingSafeEqual(digest(expected), digest(supplied));
+};
 
 interface CreateStudioInput {
   name: string;
@@ -50,16 +68,9 @@ export default class MusicStudioSvc {
    * If keyPassword is not provided, studio is public
    */
   static async createStudio(data: CreateStudioInput) {
-    // Check if keyPassword already exists (only if provided)
-    if (data.keyPassword) {
-      const existing = await MusicStudioRepo.findByKeyPassword(
-        data.keyPassword,
-      );
-      if (existing) {
-        throw new Error("A studio with this password already exists");
-      }
-    }
-
+    // Codes are deliberately not unique across rooms: the room id identifies
+    // the room. Rejecting a taken code told anyone creating a room which codes
+    // already guarded someone else's private room.
     const studio = await MusicStudioRepo.create(data);
 
     return {
@@ -256,8 +267,13 @@ export default class MusicStudioSvc {
     }
 
     // Validate keyPassword only if studio has one (private studio)
-    if (studio.keyPassword && studio.keyPassword !== keyPassword) {
-      throw new Error("Invalid studio key");
+    if (studio.keyPassword) {
+      await this.assertStudioKey(
+        studioId,
+        userId,
+        studio.keyPassword,
+        keyPassword,
+      );
     }
 
     // Check if already in studio
@@ -275,6 +291,48 @@ export default class MusicStudioSvc {
       data: updatedStudio,
       membership,
     };
+  }
+
+  /**
+   * Checks a private room's code, capped at MAX_STUDIO_KEY_ATTEMPTS wrong
+   * guesses per user and room per STUDIO_KEY_LOCK_SECONDS. Without the cap a
+   * 6-character A–Z0–9 code falls to a script hitting POST /:id/join or the
+   * join_studio socket event.
+   *
+   * Every check spends a guess up front (INCR is atomic, so parallel requests
+   * cannot all slip under the cap); a correct code clears the counter. While
+   * locked even the right code is refused, so the lock is not an oracle.
+   */
+  private static async assertStudioKey(
+    studioId: string,
+    userId: string,
+    expected: string,
+    supplied: string | undefined,
+  ): Promise<void> {
+    const redis = RedisUtil.useConnection();
+    const key = `studio:key-attempts:${studioId}:${userId}`;
+
+    if (!redis) {
+      // Only outside a running server (scripts, specs): the server connects to
+      // Redis at boot and studios cannot run without it.
+      logger.warn(
+        "[MusicStudio] Redis unavailable; studio key attempts not capped",
+      );
+    } else {
+      const attempts = await redis.incr(key);
+      if (attempts === 1) {
+        await redis.expire(key, STUDIO_KEY_LOCK_SECONDS);
+      }
+      if (attempts > MAX_STUDIO_KEY_ATTEMPTS) {
+        throw new Error(TOO_MANY_STUDIO_KEY_ATTEMPTS);
+      }
+    }
+
+    if (!studioKeyMatches(expected, supplied)) {
+      throw new Error("Invalid studio key");
+    }
+
+    if (redis) await redis.del(key);
   }
 
   /**

@@ -89,22 +89,6 @@ export default class MusicStudioRepo {
   }
 
   /**
-   * Find a MusicStudio by keyPassword (for joining)
-   */
-  static async findByKeyPassword(keyPassword: string) {
-    return prisma.musicStudio.findFirst({
-      where: { keyPassword, deletedAt: null },
-      include: {
-        owner: { select: PUBLIC_USER_SELECT },
-        members: {
-          where: { isActive: true },
-          include: { user: { select: PUBLIC_USER_SELECT } },
-        },
-      },
-    });
-  }
-
-  /**
    * Get all active studios with pagination
    */
   static async findAll(
