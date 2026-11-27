@@ -1,6 +1,8 @@
 import { Request, Response } from "express";
 import Joi from "joi";
-import MusicStudioSvc from "../services/music-studio.service";
+import MusicStudioSvc, {
+  TOO_MANY_STUDIO_KEY_ATTEMPTS,
+} from "../services/music-studio.service";
 import logger from "../utils/logger";
 import { io } from "../app";
 
@@ -136,7 +138,8 @@ export default class MusicStudioCtrl {
       );
       return res.json(result);
     } catch (err: any) {
-      return res.status(400).json({ message: err.message || err });
+      const status = err.message === TOO_MANY_STUDIO_KEY_ATTEMPTS ? 429 : 400;
+      return res.status(status).json({ message: err.message || err });
     }
   }
 
